@@ -10,6 +10,8 @@
     "test": "playwright test --grep-invert @external",
     "test:external": "playwright test --grep @external",
     "test:ui": "playwright test --ui --grep-invert @external",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
     "seed:catalog": "node scripts/seed-catalog-cache.cjs"
   },
   "dependencies": {
@@ -31,6 +33,7 @@
     "eslint-config-next": "16.3.5",
     "prisma": "^6.19.3",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   }
 }
