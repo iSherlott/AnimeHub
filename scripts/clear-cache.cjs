@@ -15,9 +15,9 @@ const { PrismaClient } = require(
   path.join(__dirname, "..", "node_modules", "@prisma", "client")
 );
 
-const DB_PATH = path.join(__dirname, "..", "prisma", "dev.db");
-const DB_URL = `file:${DB_PATH.replace(/\\/g, "/")}`;
-const prisma = new PrismaClient({ datasourceUrl: DB_URL });
+// Sem datasourceUrl explícita — a Prisma Client já lê ANIME_HUB_DATABASE_URL
+// do .env na raiz do projeto sozinha, igual o resto do app.
+const prisma = new PrismaClient();
 
 (async () => {
   const catalogCount = await prisma.catalogEntry.count();

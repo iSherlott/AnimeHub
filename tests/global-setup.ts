@@ -1,9 +1,8 @@
 import { ChildProcess, execSync, spawn } from "node:child_process";
-import fs from "node:fs";
 import path from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { ANIME_FIXTURES, UTILITY_FIXTURE } from "./fixtures/animes";
-import { TEST_DB_PATH, TEST_DB_URL } from "./test-db";
+import { TEST_DB_URL } from "./test-db";
 import {
   TEST_ADMIN_EMAIL,
   TEST_ADMIN_SESSION_TOKEN,
@@ -33,10 +32,17 @@ function waitForServer(url: string, timeoutMs: number): Promise<void> {
 }
 
 export default async function globalSetup() {
-  for (const suffix of ["", "-journal"]) {
-    const file = TEST_DB_PATH + suffix;
-    if (fs.existsSync(file)) fs.rmSync(file);
-  }
+  // Postgres persiste entre rodadas (ao contrário do arquivo .db do SQLite,
+  // que era simplesmente apagado antes de cada `npm test`). Recria o schema
+  // do zero — em vez de só truncar as tabelas — pra manter a mesma garantia
+  // de antes: TODAS as migrations são reaplicadas do zero a cada rodada, sem
+  // depender do histórico de `_prisma_migrations` já gravado no banco (que
+  // um `migrate deploy` simples nunca corrigiria se divergisse). Fica restrito
+  // ao banco `animehub_test` (nunca `animehub`, o de dev) via TEST_DB_URL.
+  const resetClient = new PrismaClient({ datasourceUrl: TEST_DB_URL });
+  await resetClient.$executeRawUnsafe(`DROP SCHEMA IF EXISTS public CASCADE;`);
+  await resetClient.$executeRawUnsafe(`CREATE SCHEMA public;`);
+  await resetClient.$disconnect();
 
   execSync("npx prisma migrate deploy", {
     cwd: ROOT,
