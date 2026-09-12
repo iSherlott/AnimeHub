@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+:root {
+  --color-ink: #0b0b0d;
+  --color-surface: #18171c;
+  --color-surface-raised: #201f26;
+  --color-border: #2c2b31;
+  --color-border-strong: #f7f7f5;
+
+  --color-text-primary: #f7f7f5;
+  --color-text-body: #e4e4e2;
+  --color-text-muted: #9b98a1;
+
+  --color-jump-red: #e4002b;
+  --color-jump-red-pressed: #c50023;
+  --color-jump-red-bright: #ff1a3d;
+  --color-jump-yellow: #ffd400;
+
+  --color-status-watching: #2e6ff2;
+  --color-status-completed: #22c55e;
+  --color-status-planned: #ffd400;
+  --color-status-paused: #c08a2e;
+  --color-status-dropped: #52525b;
+  --color-cache: #f59e0b;
+}
+
+@theme inline {
+  --color-ink: var(--color-ink);
+  --color-surface: var(--color-surface);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+
+  --color-text-primary: var(--color-text-primary);
+  --color-text-body: var(--color-text-body);
+  --color-text-muted: var(--color-text-muted);
+
+  --color-jump-red: var(--color-jump-red);
+  --color-jump-red-pressed: var(--color-jump-red-pressed);
+  --color-jump-red-bright: var(--color-jump-red-bright);
+  --color-jump-yellow: var(--color-jump-yellow);
+
+  --color-status-watching: var(--color-status-watching);
+  --color-status-completed: var(--color-status-completed);
+  --color-status-planned: var(--color-status-planned);
+  --color-status-paused: var(--color-status-paused);
+  --color-status-dropped: var(--color-status-dropped);
+  --color-cache: var(--color-cache);
+
+  --font-display: var(--font-anton);
+  --font-sans: var(--font-inter);
+  --font-jp: var(--font-noto-jp);
+}
+
+body {
+  background: var(--color-ink);
+  color: var(--color-text-body);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display), "Arial Narrow Bold", "Helvetica Neue", sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.font-jp {
+  font-family: var(--font-jp), sans-serif;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out both;
+}
+
+/* ---- Shounen Jump motifs ----
+   Defined with @utility (Tailwind v4) so they support variants like
+   group-hover:/hover: directly in JSX className strings. */
+
+/* Clipped top-left corner, used on poster cards / panels */
+@utility jump-corner {
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
+}
+
+/* Angular badge: corners cut top-right + bottom-left */
+@utility jump-badge {
+  clip-path: polygon(
+    0 0,
+    calc(100% - 6px) 0,
+    100% 6px,
+    100% 100%,
+    6px 100%,
+    0 calc(100% - 6px)
+  );
+}
+
+/* Hard offset "comic panel" shadow, replacing soft blurred shadows */
+@utility jump-shadow {
+  box-shadow: 5px 5px 0 0 #000;
+}
+
+@utility jump-shadow-lg {
+  box-shadow: 7px 7px 0 0 #000;
+}
+
+/* Halftone dot texture wash */
+@utility jump-halftone {
+  background-image: radial-gradient(
+    rgba(247, 247, 245, 0.5) 1px,
+    transparent 1.5px
+  );
+  background-size: 7px 7px;
+}
+
+/* Speed-line burst, meant to sit behind hero copy */
+@utility jump-speedlines {
+  background-image: repeating-conic-gradient(
+    from 0deg at 25% 45%,
+    rgba(228, 0, 43, 0.18) 0deg 1.2deg,
+    transparent 1.2deg 9deg
+  );
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-8deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.animate-pop-in {
+  animation: pop-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}

@@ -1,0 +1,40 @@
+import type { Metadata } from "next";
+import { Anton, Inter, Noto_Sans_JP } from "next/font/google";
+import { TitlePreferenceProvider } from "@/lib/titlePreference";
+import "./globals.css";
+
+const anton = Anton({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-anton",
+});
+
+const inter = Inter({
+  weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
+
+const notoSansJP = Noto_Sans_JP({
+  weight: ["400", "500", "700"],
+  subsets: ["latin"],
+  variable: "--font-noto-jp",
+});
+
+export const metadata: Metadata = {
+  title: "Anime Hub",
+  description: "Seu catálogo pessoal de animes, lançamentos e progresso.",
+};
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    <html
+      lang="pt-BR"
+      className={`${anton.variable} ${inter.variable} ${notoSansJP.variable} h-full antialiased`}
+    >
+      <body className="flex min-h-full flex-col bg-ink">
+        <TitlePreferenceProvider>{children}</TitlePreferenceProvider>
+      </body>
+    </html>
+  );
+}

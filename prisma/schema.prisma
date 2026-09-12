@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("ANIME_HUB_DATABASE_URL")
+}
+
+model Anime {
+  id              String    @id @default(cuid())
+  anilistId       Int       @unique
+  kitsuId         Int?      @unique
+  malId           Int?
+  shikimoriId     Int?
+  /// ID numérico na AniDB (ex.: 15617). Preenchido manualmente — a busca por
+  /// título exigiria baixar o dump anime-titles.xml.gz do domínio principal,
+  /// que bloqueia o ambiente onde este projeto roda. Ache o ID na URL da
+  /// página do anime em anidb.net.
+  anidbId         Int?
+  /// Nota média (0-10) vinda da AniDB — comunidade diferente da do MAL.
+  anidbRating     Float?
+  anidbVotes      Int?
+  /// Prêmios recebidos, separados por vírgula (só a AniDB rastreia isso).
+  anidbAwards     String?
+  /// Links pra outros bancos de dados (MAL, ANN, Wikipedia EN/JP, site
+  /// oficial), como JSON {label: url}. Vem do bloco <resources> da AniDB.
+  anidbResources  String?
+  /// Todos os títulos por idioma que a AniDB conhece (é a fonte mais
+  /// completa nisso — às vezes tem até título oficial em português), como
+  /// JSON [{language, title, isOfficial}]. Alimenta a lista "Outros títulos".
+  anidbTitles     String?
+  lastRefreshedAt DateTime?
+  titleRomaji     String
+  titleEnglish    String?
+  titleNative     String?
+  /// Título em português — não existe fonte gratuita confiável pra isso,
+  /// então é preenchido manualmente pelo usuário (ver TitleEditor).
+  titlePortuguese String?
+  /// Cache do HTML <ruby>/<rt> gerado a partir de titleNative (kuroshiro +
+  /// kuromoji) — evita re-tokenizar toda vez que a página carrega.
+  titleFurigana   String?
+  coverImage      String?
+  bannerImage     String?
+  description     String?
+  episodes        Int?
+  /// TV / MOVIE / OVA / ONA / SPECIAL / MUSIC — vem da AniList (format) ou
+  /// do Type da AniDB.
+  format          String?
+  status          String?
+  season          String?
+  seasonYear      Int?
+  genres          String?
+  seriesKey       String?
+  seasonNumber    Int       @default(1)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  platformLinks PlatformLink[]
+  progress      WatchProgress?
+  episodeList   Episode[]
+
+  @@index([seriesKey])
+}
+
+model Episode {
+  id            String    @id @default(cuid())
+  animeId       String
+  anime         Anime     @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  number        Int
+  /// Temporada/cour dentro do próprio anime (ex.: One Piece tem 1 entrada
+  /// só na Kitsu com centenas de episódios espalhados em várias
+  /// "seasonNumber") — usado pra agrupar a grade de episódios por
+  /// temporada. Diferente do seasonNumber do Anime (que separa franquias
+  /// em entradas de catálogo distintas).
+  seasonNumber  Int       @default(1)
+  titleRomaji   String?
+  titleJapanese String?
+  thumbnail     String?
+  airDate       DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@unique([animeId, number])
+}
+
+model PlatformLink {
+  id        String   @id @default(cuid())
+  animeId   String
+  anime     Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  platform  String
+  url       String
+  createdAt DateTime @default(now())
+
+  @@unique([animeId, platform])
+}
+
+/**
+ * Cache do catálogo "Descobrir" — animes que ainda podem não estar na sua
+ * lista. Guardamos o que a AniList/Kitsu já nos deram (imagens, datas de
+ * início/fim, nº de episódios, previsão do próximo episódio) para a tela de
+ * Descobrir continuar funcionando mesmo se essas APIs ficarem fora do ar.
+ */
+model CatalogEntry {
+  id                String    @id @default(cuid())
+  anilistId         Int?      @unique
+  kitsuId           Int?      @unique
+  titleRomaji       String
+  titleEnglish      String?
+  titleNative       String?
+  coverImage        String?
+  bannerImage       String?
+  description       String?
+  episodes          Int?
+  status            String?
+  season            String?
+  seasonYear        Int?
+  genres            String?
+  startDate         DateTime?
+  endDate           DateTime?
+  nextEpisodeNumber Int?
+  nextEpisodeAt     DateTime?
+  /// Posição no ranking de popularidade de quando foi buscado (1 = mais
+  /// popular). Vem do sort by popularity da AniList ou do /trending da
+  /// Kitsu — alimenta a fileira "Em alta" do Descobrir.
+  popularityRank    Int?
+  source            String
+  fetchedAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([season, seasonYear])
+}
+
+/**
+ * Cache do calendário de lançamentos — episódios com data/hora de exibição
+ * confirmada pela AniList (AiringSchedule). É o equivalente legítimo (via
+ * API pública) ao "simulcast calendar" da Crunchyroll: não fazemos scraping
+ * do site deles nem do AniDB (ambos proíbem isso nos termos de uso e têm
+ * proteção antibot) — a AniList expõe exatamente esse dado por API aberta.
+ */
+model AiringScheduleEntry {
+  id           String   @id @default(cuid())
+  anilistId    Int
+  episode      Int
+  airingAt     DateTime
+  titleRomaji  String
+  titleEnglish String?
+  titleNative  String?
+  coverImage   String?
+  bannerImage  String?
+  genres       String?
+  fetchedAt    DateTime @default(now())
+
+  @@unique([anilistId, episode])
+  @@index([airingAt])
+}
+
+model WatchProgress {
+  id              String    @id @default(cuid())
+  animeId         String    @unique
+  anime           Anime     @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  status          String    @default("PLAN_TO_WATCH")
+  episodeProgress Int       @default(0)
+  score           Int?
+  notes           String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  updatedAt       DateTime  @updatedAt
+}
