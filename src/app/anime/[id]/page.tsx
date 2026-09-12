@@ -90,14 +90,21 @@ export default async function AnimeDetailPage({
                   furiganaHtml={furiganaHtml}
                 />
               </h1>
-              {anime.anidbRating && (
+              {anime.anidbRating ? (
                 <span
                   className="jump-badge flex items-center gap-1 bg-jump-yellow px-2 py-1 text-xs font-bold text-ink"
                   title={`Nota da AniDB${anime.anidbVotes ? ` — ${anime.anidbVotes} votos` : ""}`}
                 >
                   AniDB {anime.anidbRating.toFixed(1)}
                 </span>
-              )}
+              ) : anime.averageScore ? (
+                <span
+                  className="jump-badge flex items-center gap-1 bg-jump-yellow px-2 py-1 text-xs font-bold text-ink"
+                  title="Nota média da comunidade AniList"
+                >
+                  AniList {(anime.averageScore / 10).toFixed(1)}
+                </span>
+              ) : null}
             </div>
             {anime.titleNative && (
               <p className="font-jp mt-1 text-lg text-text-muted">

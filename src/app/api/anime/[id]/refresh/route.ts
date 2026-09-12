@@ -53,6 +53,7 @@ export async function POST(_request: Request, { params }: Params) {
           season: media.season ?? anime.season,
           seasonYear: media.seasonYear ?? anime.seasonYear,
           genres: media.genres.length ? media.genres.join(",") : anime.genres,
+          averageScore: media.averageScore ?? anime.averageScore,
         },
       });
       status.anilist = "ok";

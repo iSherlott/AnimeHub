@@ -19,6 +19,7 @@ function anilistToCatalogData(media: AniListMedia, popularityRank: number | null
     season: media.season,
     seasonYear: media.seasonYear,
     genres: media.genres.join(","),
+    averageScore: media.averageScore,
     startDate: startDateISO ? new Date(startDateISO) : null,
     endDate: endDateISO ? new Date(endDateISO) : null,
     nextEpisodeNumber: media.nextAiringEpisode?.episode ?? null,
@@ -53,6 +54,25 @@ export async function cacheAniListMedia(
 }
 
 /**
+ * AniList e Kitsu alimentam o cache em linhas separadas para o mesmo anime
+ * (uma via `anilistId`, outra via `kitsuId`, sem ligação entre elas), então
+ * a mesma obra pode aparecer duas vezes numa listagem. Mantém só uma linha
+ * por título normalizado, priorizando a que já tem `anilistId` (fonte mais
+ * completa).
+ */
+function dedupeByTitle(entries: CatalogEntry[]): CatalogEntry[] {
+  const byTitle = new Map<string, CatalogEntry>();
+  for (const entry of entries) {
+    const key = entry.titleRomaji.trim().toLowerCase();
+    const existing = byTitle.get(key);
+    if (!existing || (existing.anilistId == null && entry.anilistId != null)) {
+      byTitle.set(key, entry);
+    }
+  }
+  return [...byTitle.values()];
+}
+
+/**
  * Prioriza o que bate exatamente com a temporada pedida; completa o resto
  * com o restante do cache (mais recente primeiro) até 24 itens, pra fileira
  * de "Descobrir" nunca ficar vazia/curta enquanto a AniList tá fora do ar.
@@ -63,19 +83,28 @@ export async function getCachedSeason(
 ): Promise<CatalogEntry[]> {
   const TOTAL = 24;
 
-  const exact = await prisma.catalogEntry.findMany({
-    where: { season, seasonYear },
-    orderBy: { titleRomaji: "asc" },
-  });
+  const exact = dedupeByTitle(
+    await prisma.catalogEntry.findMany({
+      where: { season, seasonYear },
+      orderBy: { titleRomaji: "asc" },
+    })
+  );
   if (exact.length >= TOTAL) return exact;
 
+  const exactTitles = new Set(exact.map((e) => e.titleRomaji.trim().toLowerCase()));
+  const remaining = TOTAL - exact.length;
   const rest = await prisma.catalogEntry.findMany({
     where: { NOT: { id: { in: exact.map((e) => e.id) } } },
     orderBy: { updatedAt: "desc" },
-    take: TOTAL - exact.length,
+    // margem: parte do que vier pode ser duplicata (de si mesmo ou de um
+    // título já coberto por `exact`) e ser descartada pelo filtro abaixo.
+    take: remaining * 2,
   });
+  const filler = dedupeByTitle(rest).filter(
+    (e) => !exactTitles.has(e.titleRomaji.trim().toLowerCase())
+  );
 
-  return [...exact, ...rest];
+  return [...exact, ...filler.slice(0, remaining)];
 }
 
 export async function searchCachedCatalog(
@@ -85,18 +114,22 @@ export async function searchCachedCatalog(
   if (!needle) return [];
 
   const all = await prisma.catalogEntry.findMany();
-  return all.filter((entry) =>
+  const matches = all.filter((entry) =>
     [entry.titleRomaji, entry.titleEnglish, entry.titleNative]
       .filter(Boolean)
       .some((t) => t!.toLowerCase().includes(needle))
   );
+  return dedupeByTitle(matches);
 }
 
 /** Top do ranking de popularidade (fileira "🔥 Em alta" do Descobrir). */
 export async function getTopRanked(limit = 10): Promise<CatalogEntry[]> {
-  return prisma.catalogEntry.findMany({
+  // Busca tudo que tem rank (é um conjunto pequeno por natureza — só o topo
+  // de popularidade) em vez de arriscar um "take" curto demais que
+  // sub-preenche a fileira se metade colidir na deduplicação.
+  const ranked = await prisma.catalogEntry.findMany({
     where: { popularityRank: { not: null } },
     orderBy: { popularityRank: "asc" },
-    take: limit,
   });
+  return dedupeByTitle(ranked).slice(0, limit);
 }

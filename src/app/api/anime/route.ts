@@ -16,6 +16,7 @@ type NormalizedMedia = {
   season: string | null;
   seasonYear: number | null;
   genres: string;
+  averageScore: number | null;
 };
 
 async function resolveMedia(anilistId: number): Promise<NormalizedMedia> {
@@ -34,6 +35,7 @@ async function resolveMedia(anilistId: number): Promise<NormalizedMedia> {
       season: media.season,
       seasonYear: media.seasonYear,
       genres: media.genres.join(","),
+      averageScore: media.averageScore,
     };
   } catch (error) {
     const cached = await prisma.catalogEntry.findUnique({ where: { anilistId } });
@@ -51,6 +53,7 @@ async function resolveMedia(anilistId: number): Promise<NormalizedMedia> {
       season: cached.season,
       seasonYear: cached.seasonYear,
       genres: cached.genres ?? "",
+      averageScore: cached.averageScore,
     };
   }
 }
@@ -112,6 +115,7 @@ export async function POST(request: NextRequest) {
         season: media.season,
         seasonYear: media.seasonYear,
         genres: media.genres,
+        averageScore: media.averageScore,
         seriesKey,
         seasonNumber,
         progress: {

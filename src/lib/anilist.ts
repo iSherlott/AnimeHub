@@ -23,6 +23,8 @@ export type AniListMedia = {
   season: string | null;
   seasonYear: number | null;
   genres: string[];
+  /** Nota média da comunidade AniList, 0-100 (mesma escala que o site deles). */
+  averageScore: number | null;
   startDate: AniListFuzzyDate | null;
   endDate: AniListFuzzyDate | null;
   nextAiringEpisode: { episode: number; airingAt: number } | null;
@@ -45,6 +47,7 @@ const MEDIA_FIELDS = `
   season
   seasonYear
   genres
+  averageScore
   startDate {
     year
     month

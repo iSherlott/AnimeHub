@@ -30,6 +30,7 @@ function makeMedia(overrides: Partial<AniListMedia> = {}): AniListMedia {
     season: null,
     seasonYear: null,
     genres: [],
+    averageScore: null,
     startDate: null,
     endDate: null,
     nextAiringEpisode: null,

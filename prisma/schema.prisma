@@ -21,6 +21,10 @@ model Anime {
   /// Nota média (0-10) vinda da AniDB — comunidade diferente da do MAL.
   anidbRating     Float?
   anidbVotes      Int?
+  /// Nota média da comunidade AniList, 0-100 (escala nativa deles). Vem
+  /// automaticamente em toda busca/refresh — ao contrário da nota da AniDB,
+  /// não depende de vincular manualmente nenhum ID.
+  averageScore    Int?
   /// Prêmios recebidos, separados por vírgula (só a AniDB rastreia isso).
   anidbAwards     String?
   /// Links pra outros bancos de dados (MAL, ANN, Wikipedia EN/JP, site
@@ -115,6 +119,9 @@ model CatalogEntry {
   season            String?
   seasonYear        Int?
   genres            String?
+  /// Nota média da comunidade AniList, 0-100 (escala nativa deles) — só
+  /// disponível pra entradas vindas dessa fonte (source: "anilist").
+  averageScore      Int?
   startDate         DateTime?
   endDate           DateTime?
   nextEpisodeNumber Int?

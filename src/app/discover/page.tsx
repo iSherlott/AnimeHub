@@ -139,12 +139,10 @@ export default function DiscoverPage() {
     return Array.from(set);
   }, [catalogAll]);
 
-  const seasons = useMemo(() => {
-    const order = ["WINTER", "SPRING", "SUMMER", "FALL"];
-    const set = new Set<string>();
-    for (const item of catalogAll) if (item.season) set.add(item.season);
-    return order.filter((s) => set.has(s));
-  }, [catalogAll]);
+  // Sempre as 4 estações fixas — não depende do que já está em cache, senão
+  // uma estação sem nenhum item buscado ainda (ex.: inverno logo após o
+  // catálogo ser limpo) some do filtro em vez de aparecer com resultado vazio.
+  const seasons = ["WINTER", "SPRING", "SUMMER", "FALL"];
 
   const years = useMemo(() => {
     const set = new Set<number>();

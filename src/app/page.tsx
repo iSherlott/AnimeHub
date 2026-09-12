@@ -79,7 +79,7 @@ export default async function Home() {
         }
       />
 
-      <div className="-mt-8 flex flex-col gap-2 sm:-mt-16">
+      <div className="flex flex-col gap-2">
         {STATUS_ROWS.map(({ status, title }) => {
           const items = byStatus(status);
           if (items.length === 0) return null;

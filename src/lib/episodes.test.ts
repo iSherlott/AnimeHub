@@ -34,6 +34,7 @@ function makeAnime(overrides: Partial<Anime> = {}): Anime {
     anidbId: null,
     anidbRating: null,
     anidbVotes: null,
+    averageScore: null,
     anidbAwards: null,
     anidbResources: null,
     anidbTitles: null,
