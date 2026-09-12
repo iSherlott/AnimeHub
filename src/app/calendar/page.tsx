@@ -2,18 +2,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Header } from "@/components/Header";
-import { CalendarEntryCard } from "@/components/CalendarEntryCard";
+import { CalendarDayColumn } from "@/components/CalendarDayColumn";
 import type { CalendarItem } from "@/lib/calendarItem";
 
-const DAY_LABELS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
 const MAX_WEEK_OFFSET = 8;
 
+/**
+ * Semana fixa de calendário (Dom→Sáb), ancorada no domingo da semana atual
+ * — não uma janela rolante de "hoje + 6 dias", que mudaria de recorte
+ * dependendo do dia em que a página fosse aberta.
+ */
 function buildWeekDays(weekOffset: number): Date[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  today.setDate(today.getDate() + weekOffset * 7);
+  const sunday = new Date(today);
+  sunday.setDate(sunday.getDate() - sunday.getDay() + weekOffset * 7);
   return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today);
+    const d = new Date(sunday);
     d.setDate(d.getDate() + i);
     return d;
   });
@@ -25,14 +30,21 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [showAll, setShowAll] = useState(false);
 
   const weekDays = useMemo(() => buildWeekDays(weekOffset), [weekOffset]);
+  const todayKey = useMemo(() => new Date().toDateString(), []);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetch(`/api/calendar?weekOffset=${weekOffset}`)
+    // O início da semana (domingo 00:00 no fuso do navegador) é enviado como
+    // timestamp absoluto — o servidor não deve recalcular "hoje" com o
+    // próprio relógio, porque server e navegador podem estar em fusos
+    // diferentes e discordar sobre qual semana é a atual.
+    const weekStart = Math.floor(weekDays[0].getTime() / 1000);
+    fetch(`/api/calendar?weekOffset=${weekOffset}&weekStart=${weekStart}`)
       .then(async (res) => {
         const data = await res.json();
         if (cancelled) return;
@@ -52,7 +64,7 @@ export default function CalendarPage() {
     return () => {
       cancelled = true;
     };
-  }, [weekOffset]);
+  }, [weekOffset, weekDays]);
 
   const weekRangeLabel = useMemo(() => {
     const start = weekDays[0];
@@ -70,6 +82,11 @@ export default function CalendarPage() {
     });
   }, [items, weekDays]);
 
+  const myListCountThisWeek = useMemo(
+    () => items.filter((item) => item.inMyList).length,
+    [items]
+  );
+
   return (
     <div className="min-h-screen bg-ink pb-16">
       <Header />
@@ -79,38 +96,67 @@ export default function CalendarPage() {
           Calendário
         </h1>
         <p className="mt-1 text-sm text-text-muted">
-          Episódios com data e horário de exibição confirmados.
+          {myListCountThisWeek > 0
+            ? `${myListCountThisWeek} lançamento${myListCountThisWeek > 1 ? "s" : ""} da sua lista nesta semana.`
+            : "Episódios com data e horário de exibição confirmados."}
         </p>
 
-        <div className="mt-4 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setWeekOffset((w) => Math.max(-MAX_WEEK_OFFSET, w - 1))}
-            disabled={weekOffset <= -MAX_WEEK_OFFSET || loading}
-            className="jump-badge border border-border bg-surface px-3 py-1.5 text-xs font-bold uppercase text-text-body transition hover:border-jump-red disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            ← Semana anterior
-          </button>
-          <span className="font-display text-sm uppercase text-text-muted">
-            {weekOffset === 0 ? "Esta semana" : weekRangeLabel}
-          </span>
-          <button
-            type="button"
-            onClick={() => setWeekOffset((w) => Math.min(MAX_WEEK_OFFSET, w + 1))}
-            disabled={weekOffset >= MAX_WEEK_OFFSET || loading}
-            className="jump-badge border border-border bg-surface px-3 py-1.5 text-xs font-bold uppercase text-text-body transition hover:border-jump-red disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Próxima semana →
-          </button>
-          {weekOffset !== 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setWeekOffset(0)}
-              className="text-xs text-text-muted underline-offset-2 hover:text-text-body hover:underline"
+              onClick={() => setWeekOffset((w) => Math.max(-MAX_WEEK_OFFSET, w - 1))}
+              disabled={weekOffset <= -MAX_WEEK_OFFSET || loading}
+              className="jump-badge border border-border bg-surface px-3 py-1.5 text-xs font-bold uppercase text-text-body transition hover:border-jump-red disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Voltar para hoje
+              ← Semana anterior
             </button>
-          )}
+            <span className="font-display min-w-24 text-center text-sm uppercase text-text-muted">
+              {weekOffset === 0 ? "Esta semana" : weekRangeLabel}
+            </span>
+            <button
+              type="button"
+              onClick={() => setWeekOffset((w) => Math.min(MAX_WEEK_OFFSET, w + 1))}
+              disabled={weekOffset >= MAX_WEEK_OFFSET || loading}
+              className="jump-badge border border-border bg-surface px-3 py-1.5 text-xs font-bold uppercase text-text-body transition hover:border-jump-red disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Próxima semana →
+            </button>
+            {weekOffset !== 0 && (
+              <button
+                type="button"
+                onClick={() => setWeekOffset(0)}
+                className="text-xs text-text-muted underline-offset-2 hover:text-text-body hover:underline"
+              >
+                Voltar para hoje
+              </button>
+            )}
+          </div>
+
+          <div className="ml-0 flex border-2 border-border-strong sm:ml-auto">
+            <button
+              type="button"
+              onClick={() => setShowAll(false)}
+              className={`jump-badge px-3 py-1.5 text-xs font-bold uppercase transition ${
+                !showAll
+                  ? "bg-jump-yellow text-ink"
+                  : "bg-surface text-text-muted hover:text-text-body"
+              }`}
+            >
+              ★ Minha lista
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className={`px-3 py-1.5 text-xs font-bold uppercase transition ${
+                showAll
+                  ? "bg-jump-yellow text-ink"
+                  : "bg-surface text-text-muted hover:text-text-body"
+              }`}
+            >
+              Todos os lançamentos
+            </button>
+          </div>
         </div>
       </div>
 
@@ -126,40 +172,20 @@ export default function CalendarPage() {
                 AniList fora do ar — mostrando o calendário salvo localmente.
               </p>
             )}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-7">
-              {weekDays.map((day, i) => {
-                const isToday = weekOffset === 0 && i === 0;
-                return (
-                  <div key={day.toISOString()} className="flex flex-col gap-2">
-                    <div
-                      className={`flex items-center gap-2 border-b-2 pb-2 ${
-                        isToday ? "border-jump-red" : "border-border"
-                      }`}
-                    >
-                      <span
-                        className={`font-display text-sm uppercase ${
-                          isToday ? "text-jump-red" : "text-text-body"
-                        }`}
-                      >
-                        {DAY_LABELS[day.getDay()]}
-                      </span>
-                      <span className="text-xs text-text-muted">
-                        {day.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      {itemsByDay[i].length === 0 ? (
-                        <p className="text-xs text-text-muted">Nada previsto</p>
-                      ) : (
-                        itemsByDay[i].map((item) => (
-                          <CalendarEntryCard key={item.key} item={item} cached={cached} />
-                        ))
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+            <div
+              key={`${weekOffset}-${showAll}`}
+              className="animate-fade-in grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-4 lg:grid-cols-7"
+            >
+              {weekDays.map((day, i) => (
+                <CalendarDayColumn
+                  key={day.toISOString()}
+                  day={day}
+                  items={itemsByDay[i]}
+                  showAll={showAll}
+                  cached={cached}
+                  isToday={day.toDateString() === todayKey}
+                />
+              ))}
             </div>
           </>
         )}
