@@ -72,7 +72,7 @@ export async function getAnidbAnimeById(aid: number): Promise<AnidbAnime> {
 
   const titles = asArray(anime.titles?.title).map((t: any) => ({
     language: t["@_xml:lang"] ?? "unknown",
-    title: t["#text"] ?? String(t),
+    title: String(t["#text"] ?? t),
     isOfficial: t["@_type"] === "official",
   }));
 
@@ -85,11 +85,11 @@ export async function getAnidbAnimeById(aid: number): Promise<AnidbAnime> {
   }
 
   const episodes = asArray(anime.episodes?.episode).map((ep: any) => ({
-    number: ep.epno?.["#text"] ?? String(ep.epno ?? ""),
+    number: String(ep.epno?.["#text"] ?? ep.epno ?? ""),
     airDate: ep.airdate ?? null,
     titles: asArray(ep.title).map((t: any) => ({
       language: t["@_xml:lang"] ?? "unknown",
-      title: t["#text"] ?? String(t),
+      title: String(t["#text"] ?? t),
     })),
   }));
 
@@ -100,11 +100,11 @@ export async function getAnidbAnimeById(aid: number): Promise<AnidbAnime> {
     description: anime.description ?? null,
     startDate: anime.startdate ?? null,
     endDate: anime.enddate ?? null,
-    episodeCount: anime.episodecount ? Number(anime.episodecount) : null,
-    rating: anime.ratings?.permanent?.["#text"]
+    episodeCount: anime.episodecount != null ? Number(anime.episodecount) : null,
+    rating: anime.ratings?.permanent?.["#text"] != null
       ? Number(anime.ratings.permanent["#text"])
       : null,
-    ratingVotes: anime.ratings?.permanent?.["@_count"]
+    ratingVotes: anime.ratings?.permanent?.["@_count"] != null
       ? Number(anime.ratings.permanent["@_count"])
       : null,
     awards: asArray(anime.awards?.award).map((a: any) => a["#text"] ?? String(a)),

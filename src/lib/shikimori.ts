@@ -48,7 +48,7 @@ export async function searchShikimoriAnime(title: string): Promise<ShikimoriMatc
     name: source.name ?? entry.name,
     imageUrl: imagePath ? `https://shikimori.one${imagePath}` : null,
     episodes: source.episodes ?? null,
-    score: source.score ? Number(source.score) : null,
+    score: source.score != null ? Number(source.score) : null,
     genres: (source.genres ?? []).map((g: { name: string }) => g.name),
     description: source.description ?? null,
   };
