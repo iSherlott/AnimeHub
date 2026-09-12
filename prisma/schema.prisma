@@ -19,13 +19,34 @@ model User {
   /// qualquer conteúdo público que a pessoa publicar (ex.: comentários).
   displayName  String
   avatarUrl    String?
+  /// "ADMIN" | "MEMBER". A primeira conta criada no sistema vira admin
+  /// automaticamente (mesmo bootstrap que já herda os dados órfãos).
+  role         String    @default("MEMBER")
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  sessions  Session[]
-  animeList Anime[]
+  sessions       Session[]
+  animeList      Anime[]
+  invitesCreated Invite[] @relation("InvitesCreated")
+  inviteUsed     Invite?  @relation("InviteUsed")
 
   @@index([email])
+}
+
+/// Cadastro é só por convite — só um administrador pode gerar um. Cada
+/// código vale pra uma única conta.
+model Invite {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  createdBy String
+  creator   User      @relation("InvitesCreated", fields: [createdBy], references: [id], onDelete: Cascade)
+  usedById  String?   @unique
+  usedBy    User?     @relation("InviteUsed", fields: [usedById], references: [id], onDelete: SetNull)
+  usedAt    DateTime?
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([createdBy])
 }
 
 model Session {

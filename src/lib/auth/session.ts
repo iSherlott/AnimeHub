@@ -12,6 +12,7 @@ export type PublicUser = {
   email: string;
   displayName: string;
   avatarUrl: string | null;
+  role: string;
 };
 
 export function toPublicUser(user: User): PublicUser {
@@ -20,6 +21,7 @@ export function toPublicUser(user: User): PublicUser {
     email: user.email,
     displayName: user.displayName,
     avatarUrl: user.avatarUrl,
+    role: user.role,
   };
 }
 
@@ -73,6 +75,28 @@ export async function requireUser(): Promise<
     return {
       user: null,
       response: NextResponse.json({ error: "Faça login para continuar" }, { status: 401 }),
+    };
+  }
+  return { user, response: null };
+}
+
+/**
+ * Como requireUser(), mas também exige role === "ADMIN". Uso:
+ *   const { user, response } = await requireAdmin();
+ *   if (!user) return response;
+ */
+export async function requireAdmin(): Promise<
+  { user: User; response: null } | { user: null; response: NextResponse }
+> {
+  const { user, response } = await requireUser();
+  if (!user) return { user: null, response };
+  if (user.role !== "ADMIN") {
+    return {
+      user: null,
+      response: NextResponse.json(
+        { error: "Apenas administradores podem fazer isso" },
+        { status: 403 }
+      ),
     };
   }
   return { user, response: null };

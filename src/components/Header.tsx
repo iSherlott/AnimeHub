@@ -46,6 +46,17 @@ function NavLinks({
       >
         Calendário
       </Link>
+      {user?.role === "ADMIN" && (
+        <Link
+          href="/admin"
+          onClick={onNavigate}
+          className={`transition hover:text-text-primary ${
+            pathname === "/admin" ? "text-text-primary" : "text-text-muted"
+          }`}
+        >
+          Administração
+        </Link>
+      )}
     </>
   );
 }
