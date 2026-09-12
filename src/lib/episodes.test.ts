@@ -27,6 +27,7 @@ vi.mock("@/lib/kitsu", () => ({ searchKitsuAnime, getKitsuEpisodes }));
 function makeAnime(overrides: Partial<Anime> = {}): Anime {
   return {
     id: "anime-1",
+    userId: null,
     anilistId: 1,
     kitsuId: null,
     malId: null,

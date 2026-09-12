@@ -7,8 +7,44 @@ datasource db {
   url      = env("ANIME_HUB_DATABASE_URL")
 }
 
+/// Conta opcional — navegar pelo catálogo/calendário/descobrir nunca exige
+/// login. Só dados vinculados a uma pessoa (lista pessoal, favoritos,
+/// comentários) exigem sessão ativa.
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  passwordSalt String
+  /// Nome de exibição (não precisa ser único) — mostrado no cabeçalho e em
+  /// qualquer conteúdo público que a pessoa publicar (ex.: comentários).
+  displayName  String
+  avatarUrl    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions  Session[]
+  animeList Anime[]
+
+  @@index([email])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
 model Anime {
   id              String    @id @default(cuid())
+  /// Dono da lista — opcional só durante a migração de dados pré-contas;
+  /// toda entrada nova é criada já vinculada ao usuário autenticado.
+  userId          String?
+  user            User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
   anilistId       Int       @unique
   kitsuId         Int?      @unique
   malId           Int?
@@ -65,6 +101,7 @@ model Anime {
   episodeList   Episode[]
 
   @@index([seriesKey])
+  @@index([userId])
 }
 
 model Episode {

@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { TitleLanguageMenu } from "@/components/TitleLanguageMenu";
+import type { PublicUser } from "@/lib/auth/session";
 
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
+  const [user, setUser] = useState<PublicUser | null | undefined>(undefined);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -15,6 +18,28 @@ export function Header() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setUser(data.user);
+      })
+      .catch(() => {
+        if (!cancelled) setUser(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    setUser(null);
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <header
@@ -57,6 +82,26 @@ export function Header() {
         </Link>
       </nav>
       <TitleLanguageMenu />
+      <div className="ml-auto flex items-center gap-3 text-sm">
+        {user === undefined ? null : user ? (
+          <>
+            <span className="hidden text-text-muted sm:inline">{user.displayName}</span>
+            <button
+              onClick={handleLogout}
+              className="font-semibold uppercase tracking-wide text-text-muted transition hover:text-text-primary"
+            >
+              Sair
+            </button>
+          </>
+        ) : (
+          <Link
+            href="/login"
+            className="font-semibold uppercase tracking-wide text-text-muted transition hover:text-text-primary"
+          >
+            Entrar
+          </Link>
+        )}
+      </div>
     </header>
   );
 }
