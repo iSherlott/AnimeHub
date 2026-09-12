@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Header } from "@/components/Header";
 import { CalendarDayColumn } from "@/components/CalendarDayColumn";
+import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { CalendarItem } from "@/lib/calendarItem";
 
 const MAX_WEEK_OFFSET = 8;
@@ -25,12 +26,27 @@ function buildWeekDays(weekOffset: number): Date[] {
 }
 
 export default function CalendarPage() {
+  const user = useCurrentUser();
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [cached, setCached] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAllRaw] = useState(false);
+  const userTouchedToggle = useRef(false);
+
+  function setShowAll(value: boolean) {
+    userTouchedToggle.current = true;
+    setShowAllRaw(value);
+  }
+
+  useEffect(() => {
+    // Sem login não existe "minha lista" pra mostrar — evita a tela ficar
+    // sempre vazia por padrão pra quem não está logado. Se a pessoa já
+    // mexeu no toggle manualmente, não sobrescreve a escolha dela.
+    if (userTouchedToggle.current) return;
+    if (user === null) setShowAllRaw(true);
+  }, [user]);
 
   const weekDays = useMemo(() => buildWeekDays(weekOffset), [weekOffset]);
   const todayKey = useMemo(() => new Date().toDateString(), []);

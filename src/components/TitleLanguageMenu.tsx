@@ -35,7 +35,7 @@ export function TitleLanguageMenu() {
   }, []);
 
   return (
-    <div ref={rootRef} className="relative ml-auto">
+    <div ref={rootRef} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface text-text-body transition hover:border-jump-red hover:text-jump-red"
