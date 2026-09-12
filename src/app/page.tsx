@@ -5,6 +5,7 @@ import { Row } from "@/components/Row";
 import { AnimeCard } from "@/components/AnimeCard";
 import { HeroBanner } from "@/components/HeroBanner";
 import { ensureTitleFurigana } from "@/lib/ensureFurigana";
+import { getCurrentUser } from "@/lib/auth/session";
 import { WATCH_STATUS_LABELS, type WatchStatus } from "@/lib/types";
 
 const STATUS_ROWS: { status: WatchStatus; title: string }[] = [
@@ -16,7 +17,33 @@ const STATUS_ROWS: { status: WatchStatus; title: string }[] = [
 ];
 
 export default async function Home() {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return (
+      <div className="jump-halftone min-h-screen bg-ink">
+        <Header />
+        <div className="flex flex-col items-center gap-4 px-6 py-24 text-center">
+          <p className="font-display -rotate-2 text-2xl uppercase text-text-primary drop-shadow-[3px_3px_0_#000]">
+            Faça login para ver sua lista
+          </p>
+          <p className="max-w-md text-sm text-text-muted">
+            Descobrir e o calendário de lançamentos continuam livres pra
+            navegar sem conta — só a sua lista pessoal precisa de login.
+          </p>
+          <Link
+            href="/login"
+            className="jump-shadow border-2 border-border-strong bg-jump-red px-5 py-2 font-display text-sm uppercase tracking-wide text-text-primary transition hover:bg-jump-red-bright"
+          >
+            Entrar
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const animes = await prisma.anime.findMany({
+    where: { userId: user.id },
     include: { platformLinks: true, progress: true },
     orderBy: { createdAt: "desc" },
   });

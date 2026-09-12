@@ -48,6 +48,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Falha ao criar a conta" }, { status: 500 });
   }
 
+  // A primeira conta criada no sistema herda os dados que ainda não tinham
+  // dono (a lista pessoal de antes de existir login) — evita precisar de um
+  // script de migração manual só pra "ativar" a conta real depois.
+  const totalUsers = await prisma.user.count();
+  if (totalUsers === 1) {
+    await prisma.anime.updateMany({ where: { userId: null }, data: { userId: user.id } });
+  }
+
   await createSession(user.id);
   return NextResponse.json({ user: toPublicUser(user) }, { status: 201 });
 }

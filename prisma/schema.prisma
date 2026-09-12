@@ -45,8 +45,11 @@ model Anime {
   /// toda entrada nova é criada já vinculada ao usuário autenticado.
   userId          String?
   user            User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  anilistId       Int       @unique
-  kitsuId         Int?      @unique
+  /// Não são @unique globalmente — cada usuário tem sua própria lista, então
+  /// dois usuários diferentes podem (e vão) acompanhar o mesmo anime, cada
+  /// um com sua própria linha. A unicidade é por usuário (@@unique abaixo).
+  anilistId       Int
+  kitsuId         Int?
   malId           Int?
   shikimoriId     Int?
   /// ID numérico na AniDB (ex.: 15617). Preenchido manualmente — a busca por
@@ -100,6 +103,8 @@ model Anime {
   progress      WatchProgress?
   episodeList   Episode[]
 
+  @@unique([userId, anilistId])
+  @@unique([userId, kitsuId])
   @@index([seriesKey])
   @@index([userId])
 }

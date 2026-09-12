@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAiringSchedule } from "@/lib/anilist";
 import { cacheAiringSchedule, getCachedAiringSchedule } from "@/lib/airingCache";
 import { calendarItemFromAniList, calendarItemFromCache } from "@/lib/calendarItem";
+import { getCurrentUser } from "@/lib/auth/session";
 
 const MAX_WEEK_OFFSET = 8;
 
@@ -62,7 +63,16 @@ export async function GET(request: NextRequest) {
   const from = weekStart - BUFFER_SECONDS;
   const to = weekStart + WEEK_SECONDS + BUFFER_SECONDS;
 
-  const myAnime = await prisma.anime.findMany({ select: { id: true, anilistId: true } });
+  // Navegar o calendário nunca exige login — sem sessão, ninguém aparece
+  // marcado como "já está na minha lista" (não existe "minha lista" pra
+  // mostrar).
+  const user = await getCurrentUser();
+  const myAnime = user
+    ? await prisma.anime.findMany({
+        where: { userId: user.id },
+        select: { id: true, anilistId: true },
+      })
+    : [];
   const myAnimeByAnilistId = new Map(myAnime.map((a) => [a.anilistId, a.id]));
 
   try {

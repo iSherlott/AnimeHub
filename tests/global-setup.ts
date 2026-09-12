@@ -4,6 +4,7 @@ import path from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { ANIME_FIXTURES, UTILITY_FIXTURE } from "./fixtures/animes";
 import { TEST_DB_PATH, TEST_DB_URL } from "./test-db";
+import { TEST_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
 
 const ROOT = path.join(__dirname, "..");
 export const TEST_SERVER_PORT = 3100;
@@ -40,9 +41,29 @@ export default async function globalSetup() {
 
   const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
   try {
+    // Usuário + sessão fixos, injetados direto no banco (sem passar pelo
+    // hashing real de senha, que não importa aqui — nenhum teste faz login
+    // de verdade, só reaproveita esse token via storageState do Playwright).
+    const user = await prisma.user.create({
+      data: {
+        email: TEST_USER_EMAIL,
+        passwordHash: "e2e-fixture-not-a-real-hash",
+        passwordSalt: "e2e-fixture-not-a-real-salt",
+        displayName: "E2E Test User",
+      },
+    });
+    await prisma.session.create({
+      data: {
+        token: TEST_SESSION_TOKEN,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 365 * 24 * 3600 * 1000),
+      },
+    });
+
     for (const fixture of [...ANIME_FIXTURES, UTILITY_FIXTURE]) {
       await prisma.anime.create({
         data: {
+          userId: user.id,
           anilistId: fixture.anilistId,
           titleRomaji: fixture.titleRomaji,
           genres: "",

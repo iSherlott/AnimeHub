@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth/session";
 import { Header } from "@/components/Header";
 import { ProgressEditor } from "@/components/ProgressEditor";
 import { PlatformLinksManager } from "@/components/PlatformLinksManager";
@@ -21,20 +22,23 @@ export default async function AnimeDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const user = await getCurrentUser();
+  if (!user) notFound();
+
   const { id } = await params;
   const anime = await prisma.anime.findUnique({
     where: { id },
     include: { platformLinks: true, progress: true },
   });
 
-  if (!anime) notFound();
+  if (!anime || anime.userId !== user.id) notFound();
 
   const genres = anime.genres ? anime.genres.split(",").filter(Boolean) : [];
 
   const [seasons, episodesResult, furiganaHtml] = await Promise.all([
     anime.seriesKey
       ? prisma.anime.findMany({
-          where: { seriesKey: anime.seriesKey },
+          where: { seriesKey: anime.seriesKey, userId: user.id },
           orderBy: { seasonNumber: "asc" },
           select: { id: true, seasonNumber: true, titleRomaji: true },
         })

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAnimeById } from "@/lib/anilist";
 import { deriveSeriesInfo } from "@/lib/series";
+import { requireUser } from "@/lib/auth/session";
 
 type NormalizedMedia = {
   id: number;
@@ -59,7 +60,11 @@ async function resolveMedia(anilistId: number): Promise<NormalizedMedia> {
 }
 
 export async function GET() {
+  const { user, response } = await requireUser();
+  if (!user) return response;
+
   const animes = await prisma.anime.findMany({
+    where: { userId: user.id },
     include: { platformLinks: true, progress: true },
     orderBy: { createdAt: "desc" },
   });
@@ -67,6 +72,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const { user, response } = await requireUser();
+  if (!user) return response;
+
   let body;
   try {
     body = await request.json();
@@ -79,7 +87,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "anilistId é obrigatório" }, { status: 400 });
   }
 
-  const existing = await prisma.anime.findUnique({ where: { anilistId } });
+  const existing = await prisma.anime.findUnique({
+    where: { userId_anilistId: { userId: user.id, anilistId } },
+  });
   if (existing) {
     return NextResponse.json({ error: "Anime já está na sua lista" }, { status: 409 });
   }
@@ -103,6 +113,7 @@ export async function POST(request: NextRequest) {
   try {
     anime = await prisma.anime.create({
       data: {
+        userId: user.id,
         anilistId: media.id,
         titleRomaji: media.titleRomaji,
         titleEnglish: media.titleEnglish,

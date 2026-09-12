@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { User } from "@prisma/client";
 
@@ -57,4 +58,22 @@ export async function getCurrentUser(): Promise<User | null> {
   });
   if (!session || session.expiresAt < new Date()) return null;
   return session.user;
+}
+
+/**
+ * Helper pra rotas de API que exigem sessão ativa. Uso:
+ *   const { user, response } = await requireUser();
+ *   if (!user) return response;
+ */
+export async function requireUser(): Promise<
+  { user: User; response: null } | { user: null; response: NextResponse }
+> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return {
+      user: null,
+      response: NextResponse.json({ error: "Faça login para continuar" }, { status: 401 }),
+    };
+  }
+  return { user, response: null };
 }

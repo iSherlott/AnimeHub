@@ -5,6 +5,7 @@ import { refetchEpisodes } from "@/lib/episodes";
 import { searchJikanAnime } from "@/lib/jikan";
 import { searchShikimoriAnime } from "@/lib/shikimori";
 import { getAnidbAnimeById, isAnidbConfigured } from "@/lib/anidb";
+import { requireUser } from "@/lib/auth/session";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -21,9 +22,12 @@ const OTHER_SOURCES_DISABLED = process.env.DISABLE_OTHER_SOURCES === "true";
  * legítima. DISABLE_OTHER_SOURCES=true deixa só a AniDB ativa (modo de teste).
  */
 export async function POST(_request: Request, { params }: Params) {
+  const { user, response } = await requireUser();
+  if (!user) return response;
+
   const { id } = await params;
   let anime = await prisma.anime.findUnique({ where: { id } });
-  if (!anime) {
+  if (!anime || anime.userId !== user.id) {
     return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
   }
 

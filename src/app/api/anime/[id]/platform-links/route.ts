@@ -1,11 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/auth/session";
 
 type Params = { params: Promise<{ id: string }> };
 
+async function assertOwnsAnime(id: string, userId: string) {
+  const anime = await prisma.anime.findUnique({ where: { id }, select: { userId: true } });
+  return anime?.userId === userId;
+}
+
 export async function POST(request: NextRequest, { params }: Params) {
+  const { user, response } = await requireUser();
+  if (!user) return response;
+
   const { id } = await params;
-  const body = await request.json();
+  if (!(await assertOwnsAnime(id, user.id))) {
+    return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
+  }
   const platform: string = body.platform;
   const url: string = body.url;
 
@@ -26,13 +44,26 @@ export async function POST(request: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(request: NextRequest, { params }: Params) {
+  const { user, response } = await requireUser();
+  if (!user) return response;
+
   const { id } = await params;
+  if (!(await assertOwnsAnime(id, user.id))) {
+    return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
+  }
+
   const linkId = request.nextUrl.searchParams.get("linkId");
 
   if (!linkId) {
     return NextResponse.json({ error: "linkId é obrigatório" }, { status: 400 });
   }
 
-  await prisma.platformLink.delete({ where: { id: linkId, animeId: id } });
+  try {
+    await prisma.platformLink.delete({ where: { id: linkId, animeId: id } });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: "Link não encontrado" }, { status: 404 });
+  }
+
   return NextResponse.json({ ok: true });
 }
