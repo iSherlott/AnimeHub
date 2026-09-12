@@ -34,11 +34,83 @@ export type AnidbAnime = {
   }[];
 };
 
+// fast-xml-parser (with ignoreAttributes: false) represents an XML element
+// either as a bare value (string, or number when the text looks numeric)
+// when it has no attributes, or as an object with a "#text" key plus
+// "@_"-prefixed attribute keys when it does. These types model exactly that
+// duality for each element shape this parser actually consumes, instead of
+// falling back to `any`.
+type XmlValue = string | number;
+type AnidbTitleNode = XmlValue | { "@_xml:lang"?: string; "@_type"?: string; "#text"?: XmlValue };
+type AnidbEpisodeTitleNode = XmlValue | { "@_xml:lang"?: string; "#text"?: XmlValue };
+type AnidbEpnoNode = XmlValue | { "@_type"?: string; "#text"?: XmlValue };
+type AnidbAwardNode = XmlValue | { "#text"?: XmlValue };
+type AnidbPermanentRatingNode = XmlValue | { "@_count"?: XmlValue; "#text"?: XmlValue };
+
+type AnidbResourceNode = {
+  "@_type"?: string;
+  externalentity?: { url?: XmlValue } | { url?: XmlValue }[];
+};
+
+type AnidbEpisodeNode = {
+  epno?: AnidbEpnoNode;
+  airdate?: string;
+  title?: AnidbEpisodeTitleNode | AnidbEpisodeTitleNode[];
+};
+
+type AnidbAnimeNode = {
+  picture?: string;
+  description?: string;
+  startdate?: string;
+  enddate?: string;
+  episodecount?: XmlValue;
+  titles?: { title?: AnidbTitleNode | AnidbTitleNode[] };
+  resources?: { resource?: AnidbResourceNode | AnidbResourceNode[] };
+  awards?: { award?: AnidbAwardNode | AnidbAwardNode[] };
+  episodes?: { episode?: AnidbEpisodeNode | AnidbEpisodeNode[] };
+  ratings?: { permanent?: AnidbPermanentRatingNode };
+};
+
+type AnidbXmlDocument = {
+  error?: string | { "#text"?: string; "@_code"?: string };
+  anime?: AnidbAnimeNode;
+};
+
 const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_" });
 
 function asArray<T>(value: T | T[] | undefined): T[] {
   if (value == null) return [];
   return Array.isArray(value) ? value : [value];
+}
+
+function textOf(node: XmlValue | { "#text"?: XmlValue } | undefined): string {
+  if (node == null) return "";
+  return String(typeof node === "object" ? node["#text"] ?? "" : node);
+}
+
+function numberOf(node: XmlValue | { "#text"?: XmlValue } | undefined): number | null {
+  const value = typeof node === "object" ? node?.["#text"] : node;
+  return value != null ? Number(value) : null;
+}
+
+function mapTitle(node: AnidbTitleNode): { language: string; title: string; isOfficial: boolean } {
+  if (typeof node === "object") {
+    return {
+      language: node["@_xml:lang"] ?? "unknown",
+      title: textOf(node),
+      isOfficial: node["@_type"] === "official",
+    };
+  }
+  // Defensive only — real AniDB <title> elements always carry xml:lang, so
+  // this bare-primitive branch shouldn't be reachable in practice.
+  return { language: "unknown", title: String(node), isOfficial: false };
+}
+
+function mapEpisodeTitle(node: AnidbEpisodeTitleNode): { language: string; title: string } {
+  if (typeof node === "object") {
+    return { language: node["@_xml:lang"] ?? "unknown", title: textOf(node) };
+  }
+  return { language: "unknown", title: String(node) };
 }
 
 /** Busca um anime pelo AID (ID numérico da AniDB) — precisa de client configurado. */
@@ -60,7 +132,7 @@ export async function getAnidbAnimeById(aid: number): Promise<AnidbAnime> {
   // descomprime automaticamente quando o header content-encoding vem
   // setado, então só precisamos ler o texto normalmente.
   const xml = await res.text();
-  const data = parser.parse(xml);
+  const data = parser.parse(xml) as AnidbXmlDocument;
 
   if (data.error) {
     const message = typeof data.error === "object" ? data.error["#text"] : data.error;
@@ -70,27 +142,20 @@ export async function getAnidbAnimeById(aid: number): Promise<AnidbAnime> {
   const anime = data.anime;
   if (!anime) throw new Error("AniDB: resposta sem dados de anime");
 
-  const titles = asArray(anime.titles?.title).map((t: any) => ({
-    language: t["@_xml:lang"] ?? "unknown",
-    title: String(t["#text"] ?? t),
-    isOfficial: t["@_type"] === "official",
-  }));
+  const titles = asArray(anime.titles?.title).map(mapTitle);
 
   const resources: Record<string, string> = {};
   for (const resource of asArray(anime.resources?.resource)) {
     const type = resource["@_type"];
     const externalEntity = asArray(resource.externalentity)[0];
     const url = externalEntity?.url;
-    if (type && url) resources[type] = url;
+    if (type && url != null) resources[type] = String(url);
   }
 
-  const episodes = asArray(anime.episodes?.episode).map((ep: any) => ({
-    number: String(ep.epno?.["#text"] ?? ep.epno ?? ""),
+  const episodes = asArray(anime.episodes?.episode).map((ep) => ({
+    number: textOf(ep.epno),
     airDate: ep.airdate ?? null,
-    titles: asArray(ep.title).map((t: any) => ({
-      language: t["@_xml:lang"] ?? "unknown",
-      title: String(t["#text"] ?? t),
-    })),
+    titles: asArray(ep.title).map(mapEpisodeTitle),
   }));
 
   return {
@@ -101,13 +166,12 @@ export async function getAnidbAnimeById(aid: number): Promise<AnidbAnime> {
     startDate: anime.startdate ?? null,
     endDate: anime.enddate ?? null,
     episodeCount: anime.episodecount != null ? Number(anime.episodecount) : null,
-    rating: anime.ratings?.permanent?.["#text"] != null
-      ? Number(anime.ratings.permanent["#text"])
-      : null,
-    ratingVotes: anime.ratings?.permanent?.["@_count"] != null
-      ? Number(anime.ratings.permanent["@_count"])
-      : null,
-    awards: asArray(anime.awards?.award).map((a: any) => a["#text"] ?? String(a)),
+    rating: numberOf(anime.ratings?.permanent),
+    ratingVotes:
+      typeof anime.ratings?.permanent === "object"
+        ? numberOf(anime.ratings.permanent["@_count"])
+        : null,
+    awards: asArray(anime.awards?.award).map(textOf),
     resources,
     episodes,
   };

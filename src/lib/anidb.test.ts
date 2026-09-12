@@ -202,6 +202,33 @@ describe("getAnidbAnimeById", () => {
     expect(result.ratingVotes).toBe(0);
   });
 
+  // Same bug class again: a resource <url> that happens to be a bare
+  // numeric ID (AniDB does this for some resource types) gets coerced to a
+  // JS number by fast-xml-parser, silently violating
+  // `resources: Record<string, string>` and producing a broken <a href>
+  // when rendered on the anime detail page.
+  it("always returns resource URLs as strings, even when the value is purely numeric", async () => {
+    vi.stubEnv("ANIDB_CLIENT_NAME", "interface");
+    vi.stubEnv("ANIDB_CLIENT_VERSION", "1");
+    const { getAnidbAnimeById } = await loadAnidbModule();
+    const numericResourceXml = `<?xml version="1.0" encoding="UTF-8"?>
+<anime id="1">
+  <resources>
+    <resource type="1">
+      <externalentity>
+        <url>12345</url>
+      </externalentity>
+    </resource>
+  </resources>
+</anime>`;
+    vi.mocked(fetch).mockResolvedValueOnce(xmlResponse(numericResourceXml));
+
+    const result = await getAnidbAnimeById(1);
+
+    expect(result.resources["1"]).toBe("12345");
+    expect(typeof result.resources["1"]).toBe("string");
+  });
+
   it("builds the request URL with the configured client name and version", async () => {
     vi.stubEnv("ANIDB_CLIENT_NAME", "interface");
     vi.stubEnv("ANIDB_CLIENT_VERSION", "1");

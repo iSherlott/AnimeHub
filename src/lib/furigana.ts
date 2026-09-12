@@ -1,7 +1,9 @@
+import type Kuroshiro from "kuroshiro";
+
 // Lazy singleton — o dicionário do kuromoji é pesado (~15MB) então só
 // carregamos uma vez por processo, na primeira vez que alguém pedir furigana.
-let kuroshiroInstance: any = null;
-let initPromise: Promise<any> | null = null;
+let kuroshiroInstance: Kuroshiro | null = null;
+let initPromise: Promise<Kuroshiro> | null = null;
 
 async function getKuroshiro() {
   if (kuroshiroInstance) return kuroshiroInstance;

@@ -21,7 +21,17 @@ export type ShikimoriMatch = {
   description: string | null;
 };
 
-async function shikimoriFetch(path: string): Promise<any> {
+type ShikimoriAnimeEntry = {
+  id: number;
+  name: string;
+  image?: { original?: string | null; preview?: string | null } | null;
+  episodes?: number | null;
+  score?: number | string | null;
+  genres?: { name: string }[];
+  description?: string | null;
+};
+
+async function shikimoriFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${SHIKIMORI_BASE_URL}${path}`, {
     headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
   });
@@ -32,12 +42,16 @@ async function shikimoriFetch(path: string): Promise<any> {
 }
 
 export async function searchShikimoriAnime(title: string): Promise<ShikimoriMatch | null> {
-  const list = await shikimoriFetch(`/animes?search=${encodeURIComponent(title)}&limit=1`);
+  const list = await shikimoriFetch<ShikimoriAnimeEntry[]>(
+    `/animes?search=${encodeURIComponent(title)}&limit=1`
+  );
   const entry = list?.[0];
   if (!entry) return null;
 
   // busca os detalhes completos (a listagem não traz sinopse)
-  const detail = await shikimoriFetch(`/animes/${entry.id}`).catch(() => null);
+  const detail = await shikimoriFetch<ShikimoriAnimeEntry>(`/animes/${entry.id}`).catch(
+    () => null
+  );
   const source = detail ?? entry;
 
   const imagePath: string | null =
@@ -49,7 +63,7 @@ export async function searchShikimoriAnime(title: string): Promise<ShikimoriMatc
     imageUrl: imagePath ? `https://shikimori.one${imagePath}` : null,
     episodes: source.episodes ?? null,
     score: source.score != null ? Number(source.score) : null,
-    genres: (source.genres ?? []).map((g: { name: string }) => g.name),
+    genres: (source.genres ?? []).map((g) => g.name),
     description: source.description ?? null,
   };
 }

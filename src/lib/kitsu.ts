@@ -36,7 +36,41 @@ export type KitsuEpisode = {
   airDate: string | null;
 };
 
-async function kitsuFetch(path: string): Promise<any> {
+type KitsuCategoriesResponse = {
+  data?: Array<{ attributes?: { title?: string | null } }>;
+};
+
+type KitsuAnimeSearchResponse = {
+  data?: Array<{
+    id: string;
+    attributes: {
+      canonicalTitle: string;
+      titles?: KitsuTitles;
+      posterImage?: KitsuImage;
+      coverImage?: KitsuImage;
+      synopsis?: string | null;
+      episodeCount?: number | null;
+      startDate?: string | null;
+      endDate?: string | null;
+    };
+  }>;
+};
+
+type KitsuEpisodesResponse = {
+  data?: Array<{
+    attributes: {
+      number: number | null;
+      seasonNumber?: number | null;
+      canonicalTitle?: string | null;
+      titles?: KitsuTitles;
+      thumbnail?: KitsuImage;
+      airdate?: string | null;
+    };
+  }>;
+  links?: { next?: string };
+};
+
+async function kitsuFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${KITSU_API_BASE_URL}${path}`, {
     headers: { Accept: "application/vnd.api+json" },
   });
@@ -47,19 +81,19 @@ async function kitsuFetch(path: string): Promise<any> {
 }
 
 export async function getKitsuGenres(kitsuId: number): Promise<string[]> {
-  const json = await kitsuFetch(
+  const json = await kitsuFetch<KitsuCategoriesResponse>(
     `/anime/${kitsuId}/categories?page[limit]=20`
   );
   return (json.data ?? [])
-    .map((entry: any) => entry.attributes?.title)
-    .filter(Boolean);
+    .map((entry) => entry.attributes?.title)
+    .filter((title): title is string => Boolean(title));
 }
 
 export async function searchKitsuAnime(
   title: string
 ): Promise<KitsuAnimeMatch | null> {
   const query = encodeURIComponent(title);
-  const json = await kitsuFetch(
+  const json = await kitsuFetch<KitsuAnimeSearchResponse>(
     `/anime?filter[text]=${query}&page[limit]=1`
   );
   const entry = json.data?.[0];
@@ -94,7 +128,7 @@ export async function getKitsuEpisodes(
 
   while (path && guard < 100) {
     guard += 1;
-    const json = await kitsuFetch(path);
+    const json: KitsuEpisodesResponse = await kitsuFetch<KitsuEpisodesResponse>(path);
 
     for (const entry of json.data ?? []) {
       const attrs = entry.attributes;

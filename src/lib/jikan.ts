@@ -12,7 +12,18 @@ export type JikanAnimeMatch = {
   episodes: number | null;
 };
 
-async function jikanFetch(path: string): Promise<any> {
+type JikanSearchResponse = {
+  data?: Array<{
+    mal_id: number;
+    synopsis?: string | null;
+    genres?: { name: string }[];
+    themes?: { name: string }[];
+    score?: number | null;
+    episodes?: number | null;
+  }>;
+};
+
+async function jikanFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${JIKAN_BASE_URL}${path}`);
   if (!res.ok) {
     throw new Error(`Jikan request failed (${res.status}): ${await res.text()}`);
@@ -21,16 +32,16 @@ async function jikanFetch(path: string): Promise<any> {
 }
 
 export async function searchJikanAnime(title: string): Promise<JikanAnimeMatch | null> {
-  const json = await jikanFetch(`/anime?q=${encodeURIComponent(title)}&limit=1`);
+  const json = await jikanFetch<JikanSearchResponse>(
+    `/anime?q=${encodeURIComponent(title)}&limit=1`
+  );
   const entry = json.data?.[0];
   if (!entry) return null;
 
   return {
     malId: entry.mal_id,
     synopsis: entry.synopsis ?? null,
-    genres: [...(entry.genres ?? []), ...(entry.themes ?? [])].map(
-      (g: { name: string }) => g.name
-    ),
+    genres: [...(entry.genres ?? []), ...(entry.themes ?? [])].map((g) => g.name),
     score: entry.score ?? null,
     episodes: entry.episodes ?? null,
   };
