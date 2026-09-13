@@ -107,6 +107,10 @@ model Anime {
   titleFurigana   String?
   coverImage      String?
   bannerImage     String?
+  /// Cor de destaque extraída da capa/banner (ver src/lib/accentColor.ts),
+  /// recalculada a cada refresh — usada como tonalidade de fundo na página
+  /// de detalhe e no hero da home.
+  accentColor     String?
   description     String?
   episodes        Int?
   /// TV / MOVIE / OVA / ONA / SPECIAL / MUSIC — vem da AniList (format) ou
@@ -118,6 +122,13 @@ model Anime {
   genres          String?
   seriesKey       String?
   seasonNumber    Int       @default(1)
+  /// Curadoria manual do usuário — alimenta o hero rotativo da home
+  /// (ver HeroBannerRotator). Não tem relação com WatchStatus.
+  isFavorite      Boolean   @default(false)
+  /// Marcado quando isFavorite vira true, limpo quando vira false — define
+  /// a ordem do hero rotativo sem ser afetado por outros updatedAt (título,
+  /// refresh, etc.) que não têm nada a ver com favoritar.
+  favoritedAt     DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -129,6 +140,7 @@ model Anime {
   @@unique([userId, kitsuId])
   @@index([seriesKey])
   @@index([userId])
+  @@index([userId, isFavorite])
 }
 
 model Episode {

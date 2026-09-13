@@ -4,6 +4,7 @@ import { deriveSeriesInfo } from "@/lib/series";
 import { requireUser } from "@/lib/auth/session";
 import { resolveAnimeMedia, type NormalizedMedia } from "@/lib/resolveAnimeMedia";
 import { callInternalService } from "@/lib/serviceDelegate";
+import { extractAccentColor } from "@/lib/accentColor";
 
 export async function GET() {
   const { user, response } = await requireUser();
@@ -101,6 +102,15 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+
+  // Cor de destaque roda em segundo plano — baixar e processar a imagem
+  // não deve atrasar a resposta de "adicionar à lista".
+  const animeId = anime.id;
+  void extractAccentColor(media.bannerImage ?? media.coverImage)
+    .then((accentColor) => {
+      if (accentColor) return prisma.anime.update({ where: { id: animeId }, data: { accentColor } });
+    })
+    .catch((error) => console.error("Falha ao salvar cor de destaque:", error));
 
   return NextResponse.json({ anime }, { status: 201 });
 }

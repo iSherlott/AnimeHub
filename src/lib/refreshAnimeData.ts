@@ -6,6 +6,7 @@ import { searchShikimoriAnime } from "@/lib/shikimori";
 import { getAnidbAnimeById, isAnidbConfigured } from "@/lib/anidb";
 import { mergeGenres, pickAnidbTitles, type AnidbTitleCandidate } from "@/lib/identityResolution";
 import { callInternalService } from "@/lib/serviceDelegate";
+import { extractAccentColor } from "@/lib/accentColor";
 import type { Anime } from "@prisma/client";
 
 export type SourceStatus = "ok" | "failed" | "skipped" | "disabled";
@@ -202,6 +203,17 @@ export async function refreshAnimeData(initialAnime: Anime): Promise<RefreshResu
   }
 
   await prisma.anime.update({ where: { id }, data: { lastRefreshedAt: new Date() } });
+
+  // Cor de destaque roda em segundo plano, depois de responder — baixar e
+  // processar a imagem não deve atrasar "Atualizar dados".
+  void prisma.anime
+    .findUnique({ where: { id } })
+    .then(async (finalAnime) => {
+      if (!finalAnime) return;
+      const accentColor = await extractAccentColor(finalAnime.bannerImage ?? finalAnime.coverImage);
+      if (accentColor) await prisma.anime.update({ where: { id }, data: { accentColor } });
+    })
+    .catch((error) => console.error("Falha ao salvar cor de destaque:", error));
 
   return { status, episodeCount };
 }

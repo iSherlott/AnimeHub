@@ -25,6 +25,12 @@ FROM node:20-slim AS runner
 WORKDIR /app
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
+# Docker define HOSTNAME=<container id> automaticamente, e o server.js do
+# output standalone do Next usa process.env.HOSTNAME (quando definido) como
+# endereço de bind — sem isso o servidor escuta só no IP interno do
+# container, nunca em todas as interfaces, e o port forwarding do Docker
+# nunca alcança ele (ECONNREFUSED de fora e até de dentro via localhost).
+ENV HOSTNAME=0.0.0.0
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
