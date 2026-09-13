@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Anton, Inter, Noto_Sans_JP } from "next/font/google";
+import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
+import { MuiProviders } from "@/components/MuiProviders";
 import { TitlePreferenceProvider } from "@/lib/titlePreference";
 import "./globals.css";
 
@@ -33,7 +35,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${anton.variable} ${inter.variable} ${notoSansJP.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-ink">
-        <TitlePreferenceProvider>{children}</TitlePreferenceProvider>
+        <AppRouterCacheProvider>
+          <MuiProviders>
+            <TitlePreferenceProvider>{children}</TitlePreferenceProvider>
+          </MuiProviders>
+        </AppRouterCacheProvider>
       </body>
     </html>
   );
