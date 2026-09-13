@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Box, Button, Typography } from "@mui/material";
 
 type TitleEntry = { language: string; title: string; isOfficial: boolean };
 
@@ -32,26 +33,44 @@ export function OtherTitles({ titlesJson }: { titlesJson: string | null }) {
   if (titles.length === 0) return null;
 
   return (
-    <div>
-      <button
+    <Box>
+      <Button
         onClick={() => setOpen((v) => !v)}
-        className="text-xs text-text-muted underline-offset-2 hover:text-text-body hover:underline"
+        size="small"
+        sx={{ px: 0, minWidth: 0, fontSize: 12, fontWeight: 400, textTransform: "none", color: "text.secondary", "&:hover": { textDecoration: "underline", bgcolor: "transparent" } }}
       >
         {open ? "▾" : "▸"} Outros títulos ({titles.length}) — via AniDB
-      </button>
+      </Button>
       {open && (
-        <ul className="mt-2 grid grid-cols-1 gap-1 border-l-2 border-border pl-3 text-xs sm:grid-cols-2">
+        <Box
+          component="ul"
+          sx={{
+            mt: 1,
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+            gap: 0.5,
+            borderLeft: 2,
+            borderColor: "divider",
+            pl: 1.5,
+            listStyle: "none",
+            m: 0,
+          }}
+        >
           {titles.map((t, i) => (
-            <li key={i} className="text-text-body">
-              <span className="text-text-muted">
+            <Typography component="li" key={i} variant="caption" sx={{ color: "text.secondary" }}>
+              <Box component="span" sx={{ color: "text.disabled" }}>
                 {LANGUAGE_LABELS[t.language] ?? t.language}:
-              </span>{" "}
+              </Box>{" "}
               {t.title}
-              {t.isOfficial && <span className="ml-1 text-jump-yellow">★</span>}
-            </li>
+              {t.isOfficial && (
+                <Box component="span" sx={{ ml: 0.5, color: "secondary.main" }}>
+                  ★
+                </Box>
+              )}
+            </Typography>
           ))}
-        </ul>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 }

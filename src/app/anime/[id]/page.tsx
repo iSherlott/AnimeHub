@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { Box, Chip, Stack, Typography } from "@mui/material";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { Header } from "@/components/Header";
@@ -58,38 +59,54 @@ export default async function AnimeDetailPage({
     <div className="min-h-screen bg-ink pb-16">
       <Header />
 
-      <div className="relative h-64 w-full overflow-hidden sm:h-80">
+      <Box sx={{ position: "relative", height: { xs: 256, sm: 320 }, width: "100%", overflow: "hidden" }}>
         {anime.bannerImage ? (
           <Image
             src={anime.bannerImage}
             alt={anime.titleRomaji}
             fill
-            className="object-cover opacity-40"
+            style={{ objectFit: "cover", opacity: 0.4 }}
           />
         ) : (
-          <div className="jump-halftone h-full w-full bg-surface" />
+          <Box sx={{ height: "100%", width: "100%", bgcolor: "background.paper" }} />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/40 to-transparent" />
-      </div>
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(to top, #0b0b0d, rgba(11,11,13,0.4), transparent)",
+          }}
+        />
+      </Box>
 
-      <div className="relative z-10 -mt-24 flex flex-col gap-6 px-6 sm:flex-row sm:px-10">
-        <div className="jump-corner jump-shadow-lg relative -mt-4 h-56 w-40 flex-shrink-0 overflow-hidden border-2 border-border-strong sm:h-72 sm:w-48">
+      <Box sx={{ position: "relative", zIndex: 1, mt: -12, display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 3, px: { xs: 3, sm: 5 } }}>
+        <Box
+          sx={{
+            position: "relative",
+            mt: -1,
+            height: { xs: 224, sm: 288 },
+            width: { xs: 160, sm: 192 },
+            flexShrink: 0,
+            overflow: "hidden",
+            border: 2,
+            borderColor: "divider",
+            bgcolor: "background.paper",
+          }}
+        >
           {anime.coverImage ? (
-            <Image
-              src={anime.coverImage}
-              alt={anime.titleRomaji}
-              fill
-              className="object-cover"
-            />
+            <Image src={anime.coverImage} alt={anime.titleRomaji} fill style={{ objectFit: "cover" }} />
           ) : null}
-        </div>
+        </Box>
 
-        <div className="flex flex-1 flex-col gap-4">
-          <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <h1
+        <Box sx={{ display: "flex", flex: 1, flexDirection: "column", gap: 3 }}>
+          <Box>
+            <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap", alignItems: "center" }}>
+              <Typography
+                component="h1"
                 data-testid="anime-title"
-                className="font-display text-3xl uppercase leading-none text-text-primary drop-shadow-[2px_2px_0_#000] sm:text-4xl"
+                variant="h3"
+                className="font-display"
+                sx={{ textTransform: "uppercase", lineHeight: 1 }}
               >
                 <AnimeTitle
                   titles={{
@@ -100,37 +117,39 @@ export default async function AnimeDetailPage({
                   }}
                   furiganaHtml={furiganaHtml}
                 />
-              </h1>
+              </Typography>
               {anime.anidbRating ? (
-                <span
-                  className="jump-badge flex items-center gap-1 bg-jump-yellow px-2 py-1 text-xs font-bold text-ink"
+                <Chip
+                  label={`AniDB ${anime.anidbRating.toFixed(1)}`}
                   title={`Nota da AniDB${anime.anidbVotes ? ` — ${anime.anidbVotes} votos` : ""}`}
-                >
-                  AniDB {anime.anidbRating.toFixed(1)}
-                </span>
+                  size="small"
+                  sx={{ bgcolor: "secondary.main", color: "#0b0b0d", fontWeight: 700 }}
+                />
               ) : anime.averageScore ? (
-                <span
-                  className="jump-badge flex items-center gap-1 bg-jump-yellow px-2 py-1 text-xs font-bold text-ink"
+                <Chip
+                  label={`AniList ${(anime.averageScore / 10).toFixed(1)}`}
                   title="Nota média da comunidade AniList"
-                >
-                  AniList {(anime.averageScore / 10).toFixed(1)}
-                </span>
+                  size="small"
+                  sx={{ bgcolor: "secondary.main", color: "#0b0b0d", fontWeight: 700 }}
+                />
               ) : null}
-            </div>
+            </Stack>
             {anime.titleNative && (
-              <p className="font-jp mt-1 text-lg text-text-muted">
+              <Typography className="font-jp" variant="h6" sx={{ mt: 0.5, color: "text.secondary" }}>
                 {anime.titleNative}
-              </p>
+              </Typography>
             )}
             {anime.titleEnglish && anime.titleEnglish !== anime.titleRomaji && (
-              <p className="text-sm text-text-muted">{anime.titleEnglish}</p>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                {anime.titleEnglish}
+              </Typography>
             )}
-            <div className="mt-1">
+            <Box sx={{ mt: 0.5 }}>
               <OtherTitles titlesJson={anime.anidbTitles} />
-            </div>
-          </div>
+            </Box>
+          </Box>
 
-          <div className="flex flex-col gap-2">
+          <Stack spacing={1} sx={{ alignItems: "flex-start" }}>
             <SeasonSwitcher currentId={anime.id} seasons={seasons} />
             <SeriesGroupEditor
               animeId={anime.id}
@@ -141,60 +160,59 @@ export default async function AnimeDetailPage({
             <AnidbIdEditor animeId={anime.id} anidbId={anime.anidbId} />
             <RefreshDataButton animeId={anime.id} />
             {anime.lastRefreshedAt && (
-              <p className="text-[10px] text-text-muted">
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
                 Atualizado em {anime.lastRefreshedAt.toLocaleDateString("pt-BR")}
-              </p>
+              </Typography>
             )}
-          </div>
+          </Stack>
 
           {genres.length > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
               {genres.map((g) => (
-                <span
-                  key={g}
-                  className="jump-badge bg-surface-raised px-3 py-1 text-xs font-bold uppercase tracking-wide text-text-body"
-                >
-                  {g}
-                </span>
+                <Chip key={g} label={g} size="small" sx={{ fontWeight: 700, textTransform: "uppercase" }} />
               ))}
-            </div>
+            </Stack>
           )}
 
           {anime.description && (
-            <p
-              className="max-w-2xl text-sm leading-relaxed text-text-body"
+            <Typography
+              variant="body2"
+              sx={{ maxWidth: 672, lineHeight: 1.7, color: "text.secondary" }}
               dangerouslySetInnerHTML={{ __html: anime.description }}
             />
           )}
 
           {(anime.anidbAwards || anime.anidbResources) && (
-            <div className="flex flex-col gap-2 border-l-2 border-jump-yellow bg-surface p-3 text-sm">
-              <p className="font-display text-[10px] uppercase tracking-wide text-text-muted">
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1, borderLeft: 2, borderColor: "secondary.main", bgcolor: "background.paper", p: 2 }}>
+              <Typography variant="overline" sx={{ color: "text.secondary" }}>
                 Dados da AniDB
-              </p>
+              </Typography>
               {anime.anidbAwards && (
-                <p className="text-text-body">
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>
                   🏆 {anime.anidbAwards.split(",").filter(Boolean).join(" · ")}
-                </p>
+                </Typography>
               )}
               {anime.anidbResources && (
-                <div className="flex flex-wrap gap-2">
+                <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
                   {Object.entries(JSON.parse(anime.anidbResources) as Record<string, string>).map(
                     ([label, url]) => (
-                      <a
+                      <Chip
                         key={label}
+                        component="a"
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="jump-badge border border-border bg-surface-raised px-2 py-1 text-xs uppercase text-text-muted hover:border-jump-red hover:text-text-body"
-                      >
-                        {label} ↗
-                      </a>
+                        clickable
+                        label={`${label} ↗`}
+                        size="small"
+                        variant="outlined"
+                        sx={{ textTransform: "uppercase" }}
+                      />
                     )
                   )}
-                </div>
+                </Stack>
               )}
-            </div>
+            </Box>
           )}
 
           <ProgressEditor
@@ -205,35 +223,35 @@ export default async function AnimeDetailPage({
             initialScore={anime.progress?.score ?? null}
           />
 
-          <div>
-            <h2 className="font-display mb-2 text-sm uppercase tracking-wide text-text-body">
+          <Box>
+            <Typography variant="body2" className="font-display" sx={{ mb: 1, textTransform: "uppercase", color: "text.secondary" }}>
               Onde assistir
-            </h2>
+            </Typography>
             <PlatformLinksManager
               animeId={anime.id}
               initialLinks={anime.platformLinks}
             />
-          </div>
-        </div>
-      </div>
+          </Box>
+        </Box>
+      </Box>
 
-      <div className="mt-8 px-6 sm:px-10">
-        <div className="mb-3 flex items-center gap-2">
-          <span className="h-4 w-1.5 -skew-x-12 bg-jump-red" />
-          <h2 className="font-display text-lg uppercase tracking-wide text-text-primary">
+      <Box sx={{ mt: 4, px: { xs: 3, sm: 5 } }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 2 }}>
+          <Box sx={{ width: 6, height: 16, bgcolor: "primary.main", transform: "skewX(-12deg)" }} />
+          <Typography variant="h6" component="h2" sx={{ textTransform: "uppercase" }}>
             Episódios
-          </h2>
-        </div>
+          </Typography>
+        </Stack>
         {episodesResult.episodes.length > 0 ? (
           <EpisodeGrid episodes={episodesResult.episodes} />
         ) : (
-          <p className="text-sm text-text-muted">
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
             {episodesResult.error
               ? `Não foi possível carregar os episódios (${episodesResult.error}).`
               : "Nenhum episódio encontrado para este anime."}
-          </p>
+          </Typography>
         )}
-      </div>
+      </Box>
     </div>
   );
 }

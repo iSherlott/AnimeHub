@@ -1,4 +1,7 @@
-import Link from "next/link";
+"use client";
+
+import NextLink from "next/link";
+import { Chip, Stack } from "@mui/material";
 
 export type SeasonEntry = {
   id: string;
@@ -16,20 +19,19 @@ export function SeasonSwitcher({
   if (seasons.length <= 1) return null;
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
       {seasons.map((s) => (
-        <Link
+        <Chip
           key={s.id}
+          component={NextLink}
           href={`/anime/${s.id}`}
-          className={`jump-badge px-3 py-1.5 font-display text-xs uppercase tracking-wide transition ${
-            s.id === currentId
-              ? "bg-jump-red text-text-primary"
-              : "bg-surface-raised text-text-muted hover:bg-surface"
-          }`}
-        >
-          Temporada {s.seasonNumber}
-        </Link>
+          clickable
+          label={`Temporada ${s.seasonNumber}`}
+          color={s.id === currentId ? "primary" : "default"}
+          size="small"
+          sx={{ fontWeight: 700, textTransform: "uppercase" }}
+        />
       ))}
-    </div>
+    </Stack>
   );
 }

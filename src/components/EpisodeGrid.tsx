@@ -1,34 +1,35 @@
 import Image from "next/image";
+import { Box, Chip, Typography } from "@mui/material";
 import type { Episode } from "@prisma/client";
 
 function EpisodeTile({ ep }: { ep: Episode }) {
   const title = ep.titleRomaji ?? `Episódio ${ep.number}`;
 
   return (
-    <div
-      className="group overflow-hidden border border-border bg-surface transition-colors duration-150 hover:border-jump-red"
+    <Box
       title={ep.titleJapanese ? `${title} — ${ep.titleJapanese}` : title}
+      sx={{ overflow: "hidden", border: 1, borderColor: "divider", bgcolor: "background.paper" }}
     >
-      <div className="relative aspect-video w-full overflow-hidden bg-surface-raised">
+      <Box sx={{ position: "relative", aspectRatio: "16 / 9", width: "100%", overflow: "hidden", bgcolor: "background.default" }}>
         {ep.thumbnail ? (
-          <Image
-            src={ep.thumbnail}
-            alt={title}
-            fill
-            sizes="240px"
-            className="object-cover"
-          />
+          <Image src={ep.thumbnail} alt={title} fill sizes="240px" style={{ objectFit: "cover" }} />
         ) : (
-          <div className="font-display flex h-full w-full items-center justify-center text-2xl text-text-muted">
-            {ep.number}
-          </div>
+          <Box sx={{ display: "flex", height: "100%", width: "100%", alignItems: "center", justifyContent: "center" }}>
+            <Typography className="font-display" sx={{ fontSize: 28, color: "text.secondary" }}>
+              {ep.number}
+            </Typography>
+          </Box>
         )}
-        <span className="absolute left-1.5 top-1.5 bg-ink/85 px-1.5 py-0.5 text-[10px] font-bold uppercase text-jump-red">
-          EP {ep.number}
-        </span>
-      </div>
-      <p className="truncate p-2 text-xs font-medium text-text-primary">{title}</p>
-    </div>
+        <Chip
+          label={`EP ${ep.number}`}
+          size="small"
+          sx={{ position: "absolute", left: 6, top: 6, height: 20, fontSize: 10, fontWeight: 700, bgcolor: "rgba(11,11,13,0.85)", color: "primary.main" }}
+        />
+      </Box>
+      <Typography noWrap variant="body2" sx={{ p: 1, fontWeight: 500 }}>
+        {title}
+      </Typography>
+    </Box>
   );
 }
 
@@ -39,35 +40,41 @@ export function EpisodeGrid({ episodes }: { episodes: Episode[] }) {
     (a, b) => a - b
   );
 
+  const gridSx = {
+    display: "grid",
+    gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(3, 1fr)", md: "repeat(4, 1fr)", lg: "repeat(5, 1fr)" },
+    gap: 1.5,
+  } as const;
+
   if (seasonNumbers.length <= 1) {
     return (
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+      <Box sx={gridSx}>
         {episodes.map((ep) => (
           <EpisodeTile key={ep.id} ep={ep} />
         ))}
-      </div>
+      </Box>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       {seasonNumbers.map((seasonNumber) => (
-        <div key={seasonNumber}>
-          <div className="mb-3 flex items-center gap-2">
-            <span className="h-3 w-1 -skew-x-12 bg-jump-red" />
-            <h3 className="font-display text-sm uppercase tracking-wide text-text-body">
+        <Box key={seasonNumber}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+            <Box sx={{ width: 4, height: 12, bgcolor: "primary.main", transform: "skewX(-12deg)" }} />
+            <Typography variant="body2" className="font-display" sx={{ textTransform: "uppercase", color: "text.secondary" }}>
               Temporada {seasonNumber}
-            </h3>
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            </Typography>
+          </Box>
+          <Box sx={gridSx}>
             {episodes
               .filter((ep) => ep.seasonNumber === seasonNumber)
               .map((ep) => (
                 <EpisodeTile key={ep.id} ep={ep} />
               ))}
-          </div>
-        </div>
+          </Box>
+        </Box>
       ))}
-    </div>
+    </Box>
   );
 }

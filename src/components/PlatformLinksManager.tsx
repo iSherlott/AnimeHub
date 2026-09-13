@@ -1,7 +1,19 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type SelectHTMLAttributes } from "react";
+import AddIcon from "@mui/icons-material/Add";
+import CloseIcon from "@mui/icons-material/Close";
+import {
+  Box,
+  Button,
+  IconButton,
+  Link as MuiLink,
+  NativeSelect,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { KNOWN_PLATFORMS } from "@/lib/types";
 
 type Link = { id: string; platform: string; url: string };
@@ -44,90 +56,100 @@ export function PlatformLinksManager({
   }
 
   return (
-    <div className="space-y-3" data-testid="platform-links">
-      <div className="flex flex-wrap items-center gap-2">
+    <Box data-testid="platform-links" sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+      <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", alignItems: "center" }}>
         {initialLinks.map((link) => (
-          <div
+          <Stack
             key={link.id}
+            direction="row"
             data-testid={`platform-link-${link.platform}`}
-            className="jump-badge flex items-center gap-2 bg-jump-red py-1 pl-3 pr-1 text-sm"
+            sx={{
+              alignItems: "center",
+              gap: 0.5,
+              bgcolor: "primary.main",
+              borderRadius: 5,
+              py: 0.5,
+              pl: 1.5,
+              pr: 0.5,
+            }}
           >
-            <a
+            <MuiLink
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"
               data-testid={`platform-link-open-${link.platform}`}
-              className="font-display uppercase tracking-wide text-text-primary hover:underline"
+              className="font-display"
+              underline="hover"
+              sx={{ fontSize: 13, textTransform: "uppercase", color: "primary.contrastText" }}
             >
               Assistir na {link.platform}
-            </a>
-            <button
+            </MuiLink>
+            <IconButton
               onClick={() => removeLink(link.id)}
               data-testid={`platform-link-remove-${link.platform}`}
-              className="flex h-5 w-5 items-center justify-center rounded-full text-xs text-text-primary/80 hover:bg-black/30 hover:text-text-primary"
-              title="Remover link"
+              size="small"
+              aria-label={`Remover link da ${link.platform}`}
+              sx={{ color: "primary.contrastText", opacity: 0.8, "&:hover": { opacity: 1, bgcolor: "rgba(0,0,0,0.2)" } }}
             >
-              ×
-            </button>
-          </div>
+              <CloseIcon sx={{ fontSize: 14 }} />
+            </IconButton>
+          </Stack>
         ))}
 
         {initialLinks.length === 0 && (
-          <p className="text-sm text-text-muted">
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
             Nenhuma plataforma vinculada ainda.
-          </p>
+          </Typography>
         )}
 
         {!formOpen && (
-          <button
+          <IconButton
             onClick={() => setFormOpen(true)}
             data-testid="platform-link-add-toggle"
-            className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-surface text-lg font-bold text-text-body transition hover:border-jump-red hover:text-jump-red"
-            title="Vincular plataforma"
+            size="small"
+            aria-label="Vincular plataforma"
+            sx={{ border: 1, borderColor: "divider" }}
           >
-            +
-          </button>
+            <AddIcon fontSize="small" />
+          </IconButton>
         )}
-      </div>
+      </Stack>
 
       {formOpen && (
-        <div className="flex flex-wrap items-center gap-2">
-          <select
+        <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", alignItems: "center" }}>
+          <NativeSelect
             value={platform}
             onChange={(e) => setPlatform(e.target.value)}
-            data-testid="platform-select"
-            className="border border-border bg-surface-raised px-2 py-1.5 text-sm text-text-primary"
+            // TypeScript's SelectHTMLAttributes has no data-* index signature,
+            // even though React forwards arbitrary data attributes fine at runtime.
+            inputProps={
+              { "data-testid": "platform-select", "aria-label": "Plataforma de streaming" } as SelectHTMLAttributes<HTMLSelectElement>
+            }
+            size="small"
           >
             {KNOWN_PLATFORMS.map((p) => (
               <option key={p} value={p}>
                 {p}
               </option>
             ))}
-          </select>
-          <input
+          </NativeSelect>
+          <TextField
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://..."
-            data-testid="platform-url-input"
+            slotProps={{ htmlInput: { "data-testid": "platform-url-input" } }}
             autoFocus
-            className="w-64 border border-border bg-surface-raised px-2 py-1.5 text-sm text-text-primary placeholder:text-text-muted"
+            size="small"
+            sx={{ width: 256 }}
           />
-          <button
-            onClick={addLink}
-            disabled={saving}
-            data-testid="platform-link-submit"
-            className="border border-border-strong bg-surface-raised px-3 py-1.5 font-display text-sm uppercase tracking-wide text-text-primary hover:bg-surface disabled:opacity-50"
-          >
+          <Button onClick={addLink} disabled={saving} data-testid="platform-link-submit" variant="outlined" size="small">
             {saving ? "Salvando..." : "Vincular"}
-          </button>
-          <button
-            onClick={() => setFormOpen(false)}
-            className="text-xs text-text-muted hover:text-text-body"
-          >
+          </Button>
+          <Button onClick={() => setFormOpen(false)} size="small" color="inherit">
             cancelar
-          </button>
-        </div>
+          </Button>
+        </Stack>
       )}
-    </div>
+    </Box>
   );
 }

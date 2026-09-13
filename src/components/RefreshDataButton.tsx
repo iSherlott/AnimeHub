@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import { Box, Button, Typography } from "@mui/material";
 
 const SOURCE_LABELS: Record<string, string> = {
   anilist: "AniList",
@@ -30,23 +32,26 @@ export function RefreshDataButton({ animeId }: { animeId: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-1">
-      <button
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+      <Button
         onClick={refresh}
-        disabled={loading}
-        className="jump-badge flex w-fit items-center gap-1.5 border border-border bg-surface px-2.5 py-1.5 text-xs font-bold uppercase tracking-wide text-text-body transition hover:border-jump-red disabled:opacity-50"
+        loading={loading}
+        loadingPosition="start"
+        startIcon={<RefreshIcon fontSize="small" />}
+        size="small"
+        variant="outlined"
+        sx={{ width: "fit-content" }}
         title="Busca dados atualizados na AniList, Kitsu, Jikan (MyAnimeList), Shikimori e AniDB (se configurada)"
       >
-        <span className={loading ? "animate-spin" : ""}>⟳</span>
         {loading ? "Atualizando..." : "Atualizar dados"}
-      </button>
+      </Button>
       {result && (
-        <p className="text-[10px] text-text-muted">
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
           {Object.entries(result)
             .map(([source, s]) => `${SOURCE_LABELS[source] ?? source}: ${s}`)
             .join(" · ")}
-        </p>
+        </Typography>
       )}
-    </div>
+    </Box>
   );
 }
