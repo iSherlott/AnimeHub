@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAiringSchedule } from "@/lib/anilist";
-import { cacheAiringSchedule, getCachedAiringSchedule } from "@/lib/airingCache";
-import { calendarItemFromAniList, calendarItemFromCache } from "@/lib/calendarItem";
+import { getCachedAiringSchedule } from "@/lib/airingCache";
+import { calendarItemFromCache } from "@/lib/calendarItem";
 import { getCurrentUser } from "@/lib/auth/session";
 
 const MAX_WEEK_OFFSET = 8;
@@ -21,9 +20,12 @@ function serverWeekStart(weekOffset: number): number {
 }
 
 /**
- * Calendário de lançamentos (equivalente ao simulcast calendar), alimentado
- * pela AiringSchedule pública da AniList. Busca ao vivo e cacheia; se a
- * AniList estiver fora do ar, cai pro que já foi salvo localmente.
+ * Calendário de lançamentos (equivalente ao simulcast calendar). Só lê do
+ * banco (AiringScheduleEntry) — quem busca na AniList e mantém o cache
+ * quente é o serviço separado `services/calendar-loader` (roda a cada 30min,
+ * ver docker-compose.yml). Rodando só `npm run dev` sem esse serviço em pé
+ * (`docker compose up -d calendar-loader`), o calendário fica vazio até a
+ * primeira rodada dele.
  *
  * `weekOffset` desloca a semana fixa exibida (0 = semana atual, 1 = próxima
  * semana, -1 = semana anterior), limitado a +-8 semanas para evitar
@@ -75,25 +77,8 @@ export async function GET(request: NextRequest) {
     : [];
   const myAnimeByAnilistId = new Map(myAnime.map((a) => [a.anilistId, a.id]));
 
-  try {
-    const entries = await getAiringSchedule(from, to);
-    await cacheAiringSchedule(entries);
-    return NextResponse.json({
-      results: entries.map((e) => calendarItemFromAniList(e, myAnimeByAnilistId)),
-      cached: false,
-    });
-  } catch (error) {
-    console.error(error);
-    const cached = await getCachedAiringSchedule(new Date(from * 1000), new Date(to * 1000));
-    if (cached.length > 0) {
-      return NextResponse.json({
-        results: cached.map((e) => calendarItemFromCache(e, myAnimeByAnilistId)),
-        cached: true,
-      });
-    }
-    return NextResponse.json(
-      { error: "Falha ao buscar o calendário de lançamentos" },
-      { status: 502 }
-    );
-  }
+  const entries = await getCachedAiringSchedule(new Date(from * 1000), new Date(to * 1000));
+  return NextResponse.json({
+    results: entries.map((e) => calendarItemFromCache(e, myAnimeByAnilistId)),
+  });
 }

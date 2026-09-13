@@ -49,6 +49,32 @@ services:
     ports:
       - "3000:3000"
     depends_on:
+      # Só espera o migrate — nenhum dos serviços abaixo é obrigatório pro
+      # `web` subir: cada rota que dependeria deles tem fallback pro código
+      # local (ver Epic 13 no roadmap), então a ordem de início entre eles
+      # não importa.
+      migrate:
+        condition: service_completed_successfully
+
+  # Mantém AiringScheduleEntry quente sozinho (a cada 30min) — o `web` só lê
+  # essa tabela agora (src/app/api/calendar/route.ts), nunca busca na AniList
+  # direto. Sem HTTP API própria além de /health (nada chama esse serviço
+  # sob demanda, é um escritor de fundo puro).
+  calendar-loader:
+    build:
+      context: .
+      dockerfile: services/calendar-loader/Dockerfile
+    restart: unless-stopped
+    environment:
+      ANIME_HUB_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4001/health', r => process.exit(r.statusCode===200?0:1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      postgres:
+        condition: service_healthy
       migrate:
         condition: service_completed_successfully
 

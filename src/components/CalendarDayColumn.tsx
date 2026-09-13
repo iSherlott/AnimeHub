@@ -12,13 +12,11 @@ export function CalendarDayColumn({
   day,
   items,
   showAll,
-  cached,
   isToday,
 }: {
   day: Date;
   items: CalendarItem[];
   showAll: boolean;
-  cached: boolean;
   isToday: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -51,7 +49,7 @@ export function CalendarDayColumn({
       {mine.length > 0 ? (
         <div className="flex flex-col gap-2">
           {mine.map((item) => (
-            <CalendarEntryCard key={item.key} item={item} cached={cached} variant="featured" />
+            <CalendarEntryCard key={item.key} item={item} variant="featured" />
           ))}
         </div>
       ) : !showAll ? (
@@ -70,7 +68,7 @@ export function CalendarDayColumn({
             </p>
           )}
           {visibleOthers.map((item) => (
-            <CalendarEntryCard key={item.key} item={item} cached={cached} variant="compact" />
+            <CalendarEntryCard key={item.key} item={item} variant="compact" />
           ))}
           {hiddenCount > 0 && (
             <button

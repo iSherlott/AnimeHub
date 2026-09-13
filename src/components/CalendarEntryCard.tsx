@@ -7,11 +7,10 @@ import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 
 type CalendarEntryCardProps = {
   item: CalendarItem;
-  cached: boolean;
   variant?: "featured" | "compact";
 };
 
-export function CalendarEntryCard({ item, cached, variant = "compact" }: CalendarEntryCardProps) {
+export function CalendarEntryCard({ item, variant = "compact" }: CalendarEntryCardProps) {
   const { preference } = useTitlePreference();
   const title = resolveTitleText(preference, item) || "Sem título";
   const time = new Date(item.airingAt).toLocaleTimeString("pt-BR", {
@@ -61,7 +60,6 @@ export function CalendarEntryCard({ item, cached, variant = "compact" }: Calenda
             </p>
             <p className="mt-0.5 text-[10px] font-bold text-jump-yellow">
               EP {item.episode} · {time}
-              {cached && <span className="ml-1 font-normal text-cache">· cache</span>}
             </p>
           </div>
         </div>
@@ -87,7 +85,6 @@ export function CalendarEntryCard({ item, cached, variant = "compact" }: Calenda
         </p>
         <p className="mt-0.5 text-[10px] text-text-muted">
           EP {item.episode} · {time}
-          {cached && <span className="ml-1 text-cache">· cache</span>}
         </p>
       </div>
     </Link>

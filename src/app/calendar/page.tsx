@@ -28,7 +28,6 @@ function buildWeekDays(weekOffset: number): Date[] {
 export default function CalendarPage() {
   const user = useCurrentUser();
   const [items, setItems] = useState<CalendarItem[]>([]);
-  const [cached, setCached] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -69,7 +68,6 @@ export default function CalendarPage() {
           return;
         }
         setItems(data.results ?? []);
-        setCached(Boolean(data.cached));
       })
       .catch(() => {
         if (!cancelled) setError("Falha ao carregar o calendário");
@@ -182,28 +180,20 @@ export default function CalendarPage() {
         ) : error ? (
           <p className="text-sm text-jump-red-bright">{error}</p>
         ) : (
-          <>
-            {cached && (
-              <p className="mb-4 text-xs text-cache">
-                AniList fora do ar — mostrando o calendário salvo localmente.
-              </p>
-            )}
-            <div
-              key={`${weekOffset}-${showAll}`}
-              className="animate-fade-in grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-4 lg:grid-cols-7"
-            >
-              {weekDays.map((day, i) => (
-                <CalendarDayColumn
-                  key={day.toISOString()}
-                  day={day}
-                  items={itemsByDay[i]}
-                  showAll={showAll}
-                  cached={cached}
-                  isToday={day.toDateString() === todayKey}
-                />
-              ))}
-            </div>
-          </>
+          <div
+            key={`${weekOffset}-${showAll}`}
+            className="animate-fade-in grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-4 lg:grid-cols-7"
+          >
+            {weekDays.map((day, i) => (
+              <CalendarDayColumn
+                key={day.toISOString()}
+                day={day}
+                items={itemsByDay[i]}
+                showAll={showAll}
+                isToday={day.toDateString() === todayKey}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>
