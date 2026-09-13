@@ -49,6 +49,9 @@ services:
       # Não obrigatório — sem isso (ou se a chamada falhar), as rotas caem
       # pro caminho local de sempre (ver src/lib/serviceDelegate.ts).
       CACHE_UPDATER_URL: http://cache-updater:4003
+      # Usado só pelo fallback local de /refresh-anime (src/lib/refreshAnimeData.ts)
+      # quando o cache-updater está fora do ar mas o name-resolver não está.
+      NAME_RESOLVER_URL: http://name-resolver:4002
     ports:
       - "3000:3000"
     depends_on:
@@ -83,8 +86,8 @@ services:
 
   # Computação pura de identidade (série/temporada, fusão de gêneros, título
   # por idioma da AniDB, dedup de catálogo) e furigana — sem banco próprio.
-  # Ainda não é chamado por ninguém (entra quando o cache-updater ganhar o
-  # endpoint refresh-anime).
+  # Chamado pelo endpoint refresh-anime do cache-updater (e pelo fallback
+  # local do `web`, se o cache-updater estiver fora do ar).
   name-resolver:
     build:
       context: .
@@ -99,8 +102,9 @@ services:
   # Endpoints sob demanda que hoje o BFF chamava direto (busca, temporada,
   # resolver anime pra adicionar à lista, garantir episódios, atualizar
   # dados) — cada rota do `web` tenta chamar aqui primeiro e cai pro código
-  # local se este serviço estiver fora do ar (ver serviceDelegate.ts).
-  # /search e /season já migrados; os demais endpoints entram em seguida.
+  # local se este serviço estiver fora do ar (ver serviceDelegate.ts). Os 5
+  # endpoints já estão migrados: search, season, resolve-anime,
+  # ensure-episodes, refresh-anime.
   cache-updater:
     build:
       context: .
@@ -112,6 +116,10 @@ services:
       ANIDB_CLIENT_NAME: ${ANIDB_CLIENT_NAME}
       ANIDB_CLIENT_VERSION: ${ANIDB_CLIENT_VERSION}
       DISABLE_OTHER_SOURCES: ${DISABLE_OTHER_SOURCES}
+      # refresh-anime chama o name-resolver pra fusão de gêneros/escolha de
+      # título; cai pro cálculo local (src/lib/identityResolution.ts) se
+      # este serviço estiver fora do ar.
+      NAME_RESOLVER_URL: http://name-resolver:4002
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:4003/health', r => process.exit(r.statusCode===200?0:1)).on('error', () => process.exit(1))"]
       interval: 30s

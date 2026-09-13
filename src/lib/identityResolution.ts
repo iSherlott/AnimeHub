@@ -1,11 +1,16 @@
 /**
  * Funções puras (sem I/O) que consolidam a lógica de "identidade" hoje
  * espalhada pelo BFF: fusão de gêneros de múltiplas fontes e escolha de
- * título por idioma da AniDB (ambas hoje inline em
- * src/app/api/anime/[id]/refresh/route.ts) e deduplicação por título
- * normalizado (hoje em src/lib/catalogCache.ts). `deriveSeriesInfo`
- * continua em src/lib/series.ts e é reexportada por index.ts — já é pura e
- * já é reaproveitada por import direto, não precisa de cópia aqui.
+ * título por idioma da AniDB (usadas por src/lib/refreshAnimeData.ts) e
+ * deduplicação por título normalizado (equivalente ao `dedupeByTitle` de
+ * src/lib/catalogCache.ts). `deriveSeriesInfo` continua em
+ * src/lib/series.ts, já pura e já reaproveitada por import direto.
+ *
+ * Vive em src/lib (não em services/name-resolver) porque é usada dos dois
+ * lados da mesma chamada: é a implementação por trás do endpoint
+ * /resolve-identity do name-resolver E o fallback local de quem chama esse
+ * endpoint, caso o serviço esteja fora do ar — código compartilhado, não
+ * duplicado nos dois lugares.
  */
 
 /** União sem duplicatas de gêneros de várias fontes com o que já existe. */

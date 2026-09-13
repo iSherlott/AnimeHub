@@ -4,6 +4,7 @@ import { searchAnimeCatalog } from "../../../src/lib/searchAnimeCatalog";
 import { getSeasonalCatalog, type Season } from "../../../src/lib/seasonalCatalog";
 import { resolveAnimeMedia } from "../../../src/lib/resolveAnimeMedia";
 import { ensureEpisodes } from "../../../src/lib/episodes";
+import { refreshAnimeData } from "../../../src/lib/refreshAnimeData";
 
 const PORT = Number(process.env.PORT ?? 4003);
 
@@ -134,6 +135,35 @@ async function handleEnsureEpisodes(req: IncomingMessage, res: ServerResponse) {
   }
 }
 
+async function handleRefreshAnime(req: IncomingMessage, res: ServerResponse) {
+  let body: Record<string, unknown>;
+  try {
+    body = await readJsonBody(req);
+  } catch (error) {
+    sendJson(res, 400, { error: error instanceof Error ? error.message : "Corpo inválido" });
+    return;
+  }
+
+  const animeId = typeof body.animeId === "string" ? body.animeId : null;
+  if (!animeId) {
+    sendJson(res, 400, { error: "animeId é obrigatório" });
+    return;
+  }
+
+  try {
+    const anime = await prisma.anime.findUnique({ where: { id: animeId } });
+    if (!anime) {
+      sendJson(res, 404, { error: "Anime não encontrado" });
+      return;
+    }
+    const result = await refreshAnimeData(anime);
+    sendJson(res, 200, result);
+  } catch (error) {
+    console.error("[cache-updater] refresh-anime falhou:", error);
+    sendJson(res, 502, { error: "Falha ao atualizar dados do anime" });
+  }
+}
+
 createServer((req, res) => {
   if (req.method === "GET" && req.url === "/health") {
     sendJson(res, 200, { status: "ok" });
@@ -153,6 +183,10 @@ createServer((req, res) => {
   }
   if (req.method === "POST" && req.url === "/ensure-episodes") {
     void handleEnsureEpisodes(req, res);
+    return;
+  }
+  if (req.method === "POST" && req.url === "/refresh-anime") {
+    void handleRefreshAnime(req, res);
     return;
   }
   res.writeHead(404);

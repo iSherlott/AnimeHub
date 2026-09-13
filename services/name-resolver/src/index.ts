@@ -7,7 +7,7 @@ import {
   dedupeByNormalizedTitle,
   type AnidbTitleCandidate,
   type DedupeCandidate,
-} from "./identity";
+} from "../../../src/lib/identityResolution";
 
 const PORT = Number(process.env.PORT ?? 4002);
 

@@ -1,8 +1,11 @@
 # Build context é a raiz do repo (docker-compose.yml usa `context: .`).
 # Mesmo padrão do calendar-loader pro Prisma: gera na raiz (onde a CLI
-# espera) e copia o client pronto pra /app/node_modules — ancestral comum de
-# /app/src/lib (que faz `@/lib/prisma`, `@/lib/anilist` etc.) e
-# /app/services/cache-updater/src.
+# espera). Copia o node_modules INTEIRO pro runner (não só .prisma/@prisma
+# client) — cache-updater importa cada vez mais de src/lib (anidb.ts usa
+# fast-xml-parser, por exemplo) e cherry-picking pacote por pacote quebra
+# silenciosamente toda vez que um novo import aparece. Já pagamos o custo
+# do `npm ci` completo pra gerar o Prisma Client mesmo, então copiar tudo
+# não tem custo extra de build, só de tamanho de imagem — aceitável aqui.
 FROM node:20-slim AS prisma-deps
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -23,8 +26,7 @@ WORKDIR /app
 # `tsx caminho/relativo/longo` com CWD em /app (isso NÃO funciona: tsx não
 # acharia nenhum tsconfig a partir de /app e todo import "@/..." quebra).
 COPY src ./src
-COPY --from=prisma-deps /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=prisma-deps /app/node_modules/@prisma/client ./node_modules/@prisma/client
+COPY --from=prisma-deps /app/node_modules ./node_modules
 
 WORKDIR /app/services/cache-updater
 COPY services/cache-updater/package.json ./

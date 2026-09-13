@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dedupeByNormalizedTitle, mergeGenres, pickAnidbTitles } from "./identity";
+import { dedupeByNormalizedTitle, mergeGenres, pickAnidbTitles } from "./identityResolution";
 
 describe("mergeGenres", () => {
   it("une gêneros de várias fontes sem duplicar", () => {
