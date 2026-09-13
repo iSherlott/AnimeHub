@@ -15,6 +15,7 @@ export type HeroBannerData = {
   description: string | null;
   bannerImage: string | null;
   coverImage: string | null;
+  accentColor?: string | null;
   genres: string[];
   primaryLink?: { platform: string; url: string } | null;
 };
@@ -29,6 +30,7 @@ export function HeroBanner({
   description,
   bannerImage,
   coverImage,
+  accentColor,
   genres,
   primaryLink,
 }: HeroBannerData) {
@@ -63,7 +65,9 @@ export function HeroBanner({
         sx={{
           position: "absolute",
           inset: 0,
-          background: "linear-gradient(to top, #0b0b0d, rgba(11,11,13,0.55), transparent)",
+          background: accentColor
+            ? `linear-gradient(to top, #0b0b0d, ${accentColor}88, transparent)`
+            : "linear-gradient(to top, #0b0b0d, rgba(11,11,13,0.55), transparent)",
         }}
       />
 

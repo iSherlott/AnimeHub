@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { Header } from "@/components/Header";
 import { Row } from "@/components/Row";
 import { AnimeCard } from "@/components/AnimeCard";
-import { HeroBanner } from "@/components/HeroBanner";
+import { HeroBannerRotator } from "@/components/HeroBannerRotator";
+import type { HeroBannerData } from "@/components/HeroBanner";
 import { LinkButton } from "@/components/LinkButton";
 import { ensureTitleFurigana } from "@/lib/ensureFurigana";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -76,30 +77,40 @@ export default async function Home() {
     animes.find((a) => a.bannerImage || a.coverImage) ??
     animes[0];
 
-  const featuredPrimaryLink = featured.platformLinks[0] ?? null;
-  const featuredFurigana = await ensureTitleFurigana(featured);
+  // O hero gira entre os favoritos (curadoria manual, ver FavoriteToggle) —
+  // sem nenhum favorito ainda, cai pro pick único de sempre (só não gira).
+  const favoriteAnimes = animes
+    .filter((a) => a.isFavorite)
+    .sort((a, b) => (b.favoritedAt?.getTime() ?? 0) - (a.favoritedAt?.getTime() ?? 0))
+    .slice(0, 6);
+  const heroSourceAnimes = favoriteAnimes.length > 0 ? favoriteAnimes : [featured];
+
+  const heroItems: HeroBannerData[] = await Promise.all(
+    heroSourceAnimes.map(async (anime) => {
+      const primaryLink = anime.platformLinks[0] ?? null;
+      const furiganaHtml = await ensureTitleFurigana(anime);
+      return {
+        id: anime.id,
+        titleRomaji: anime.titleRomaji,
+        titleEnglish: anime.titleEnglish,
+        titleNative: anime.titleNative,
+        titlePortuguese: anime.titlePortuguese,
+        titleFurigana: furiganaHtml,
+        description: anime.description,
+        bannerImage: anime.bannerImage,
+        coverImage: anime.coverImage,
+        accentColor: anime.accentColor,
+        genres: anime.genres ? anime.genres.split(",").filter(Boolean) : [],
+        primaryLink: primaryLink ? { platform: primaryLink.platform, url: primaryLink.url } : null,
+      };
+    })
+  );
 
   return (
     <div className="min-h-screen bg-ink pb-16">
       <Header />
 
-      <HeroBanner
-        id={featured.id}
-        titleRomaji={featured.titleRomaji}
-        titleEnglish={featured.titleEnglish}
-        titleNative={featured.titleNative}
-        titlePortuguese={featured.titlePortuguese}
-        titleFurigana={featuredFurigana}
-        description={featured.description}
-        bannerImage={featured.bannerImage}
-        coverImage={featured.coverImage}
-        genres={featured.genres ? featured.genres.split(",").filter(Boolean) : []}
-        primaryLink={
-          featuredPrimaryLink
-            ? { platform: featuredPrimaryLink.platform, url: featuredPrimaryLink.url }
-            : null
-        }
-      />
+      <HeroBannerRotator items={heroItems} />
 
       <div className="flex flex-col gap-2">
         {STATUS_ROWS.map(({ status, title }) => {
