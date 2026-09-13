@@ -14,6 +14,7 @@ import { TitleEditor } from "@/components/TitleEditor";
 import { RefreshDataButton } from "@/components/RefreshDataButton";
 import { AnidbIdEditor } from "@/components/AnidbIdEditor";
 import { OtherTitles } from "@/components/OtherTitles";
+import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { ensureEpisodes, type EpisodesResult } from "@/lib/episodes";
 import { ensureTitleFurigana } from "@/lib/ensureFurigana";
 import { callInternalService } from "@/lib/serviceDelegate";
@@ -74,7 +75,9 @@ export default async function AnimeDetailPage({
           sx={{
             position: "absolute",
             inset: 0,
-            background: "linear-gradient(to top, #0b0b0d, rgba(11,11,13,0.4), transparent)",
+            background: anime.accentColor
+              ? `linear-gradient(to top, #0b0b0d, ${anime.accentColor}66, transparent)`
+              : "linear-gradient(to top, #0b0b0d, rgba(11,11,13,0.4), transparent)",
           }}
         />
       </Box>
@@ -133,6 +136,7 @@ export default async function AnimeDetailPage({
                   sx={{ bgcolor: "secondary.main", color: "#0b0b0d", fontWeight: 700 }}
                 />
               ) : null}
+              <FavoriteToggle animeId={anime.id} initialFavorite={anime.isFavorite} />
             </Stack>
             {anime.titleNative && (
               <Typography className="font-jp" variant="h6" sx={{ mt: 0.5, color: "text.secondary" }}>
