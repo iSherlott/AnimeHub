@@ -46,6 +46,9 @@ services:
       ANIDB_CLIENT_NAME: ${ANIDB_CLIENT_NAME}
       ANIDB_CLIENT_VERSION: ${ANIDB_CLIENT_VERSION}
       DISABLE_OTHER_SOURCES: ${DISABLE_OTHER_SOURCES}
+      # Não obrigatório — sem isso (ou se a chamada falhar), as rotas caem
+      # pro caminho local de sempre (ver src/lib/serviceDelegate.ts).
+      CACHE_UPDATER_URL: http://cache-updater:4003
     ports:
       - "3000:3000"
     depends_on:
@@ -79,9 +82,9 @@ services:
         condition: service_completed_successfully
 
   # Computação pura de identidade (série/temporada, fusão de gêneros, título
-  # por idioma da AniDB, dedup de catálogo) e furigana — sem banco próprio,
-  # chamado sob demanda pelo cache-updater (ainda não existe; entra na
-  # próxima fatia). Só /health por enquanto, service ainda não é consumido.
+  # por idioma da AniDB, dedup de catálogo) e furigana — sem banco próprio.
+  # Ainda não é chamado por ninguém (entra quando o cache-updater ganhar o
+  # endpoint refresh-anime).
   name-resolver:
     build:
       context: .
@@ -92,6 +95,33 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+  # Endpoints sob demanda que hoje o BFF chamava direto (busca, temporada,
+  # resolver anime pra adicionar à lista, garantir episódios, atualizar
+  # dados) — cada rota do `web` tenta chamar aqui primeiro e cai pro código
+  # local se este serviço estiver fora do ar (ver serviceDelegate.ts).
+  # /search e /season já migrados; os demais endpoints entram em seguida.
+  cache-updater:
+    build:
+      context: .
+      dockerfile: services/cache-updater/Dockerfile
+    restart: unless-stopped
+    environment:
+      ANIME_HUB_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      KITSU_API_BASE_URL: ${KITSU_API_BASE_URL}
+      ANIDB_CLIENT_NAME: ${ANIDB_CLIENT_NAME}
+      ANIDB_CLIENT_VERSION: ${ANIDB_CLIENT_VERSION}
+      DISABLE_OTHER_SOURCES: ${DISABLE_OTHER_SOURCES}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4003/health', r => process.exit(r.statusCode===200?0:1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   postgres_data:

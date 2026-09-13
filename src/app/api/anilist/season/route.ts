@@ -1,52 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { currentSeason, getSeasonalAnime } from "@/lib/anilist";
-import { cacheAniListMedia, getCachedSeason } from "@/lib/catalogCache";
-import {
-  discoverItemFromAniList,
-  discoverItemFromCatalogEntry,
-} from "@/lib/discoverItem";
-
-const OTHER_SOURCES_DISABLED = process.env.DISABLE_OTHER_SOURCES === "true";
+import { getSeasonalCatalog, type Season, type SeasonalResult } from "@/lib/seasonalCatalog";
+import { callInternalService } from "@/lib/serviceDelegate";
 
 export async function GET(request: NextRequest) {
-  const seasonParam = request.nextUrl.searchParams.get("season");
+  const seasonParam = request.nextUrl.searchParams.get("season") as Season | null;
   const yearParam = request.nextUrl.searchParams.get("year");
+  const seasonYear = yearParam ? parseInt(yearParam, 10) : null;
 
-  const fallback = currentSeason();
-  const season = (seasonParam as typeof fallback.season) || fallback.season;
-  const seasonYear = yearParam ? parseInt(yearParam, 10) : fallback.seasonYear;
-
-  if (OTHER_SOURCES_DISABLED) {
-    const cached = await getCachedSeason(season, seasonYear);
-    return NextResponse.json({
-      season,
-      seasonYear,
-      results: cached.map(discoverItemFromCatalogEntry),
-      cached: true,
-      disabled: true,
-    });
-  }
+  const delegated = await callInternalService<SeasonalResult>(
+    process.env.CACHE_UPDATER_URL,
+    "/season",
+    { season: seasonParam, seasonYear }
+  );
+  if (delegated) return NextResponse.json(delegated);
 
   try {
-    const media = await getSeasonalAnime(season, seasonYear);
-    await cacheAniListMedia(media, { rankFromOrder: true });
-    return NextResponse.json({
-      season,
-      seasonYear,
-      results: media.map(discoverItemFromAniList),
-      cached: false,
-    });
-  } catch (error) {
-    console.error(error);
-    const cached = await getCachedSeason(season, seasonYear);
-    if (cached.length > 0) {
-      return NextResponse.json({
-        season,
-        seasonYear,
-        results: cached.map(discoverItemFromCatalogEntry),
-        cached: true,
-      });
-    }
+    const result = await getSeasonalCatalog(seasonParam, seasonYear);
+    return NextResponse.json(result);
+  } catch {
     return NextResponse.json(
       { error: "Falha ao buscar lançamentos da temporada" },
       { status: 502 }
