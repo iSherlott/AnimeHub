@@ -181,27 +181,29 @@ export function DiscoverCard({ item, rank }: { item: DiscoverItem; rank?: number
         )}
       </Box>
 
-      <Button
-        onClick={() => setShowInfo(true)}
-        className="font-display"
-        sx={{
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
-          overflow: "hidden",
-          mt: 1,
-          px: 0,
-          minWidth: 0,
-          textAlign: "left",
-          textTransform: "uppercase",
-          fontSize: 12,
-          lineHeight: 1.3,
-          color: "text.primary",
-          "&:hover": { color: "primary.light", bgcolor: "transparent", textDecoration: "underline" },
-        }}
-      >
-        {title}
-      </Button>
+      <Tooltip title={title}>
+        <Button
+          onClick={() => setShowInfo(true)}
+          className="font-display"
+          sx={{
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+            mt: 1,
+            px: 0,
+            minWidth: 0,
+            textAlign: "left",
+            textTransform: "uppercase",
+            fontSize: 12,
+            lineHeight: 1.3,
+            color: "text.primary",
+            "&:hover": { color: "primary.light", bgcolor: "transparent", textDecoration: "underline" },
+          }}
+        >
+          {title}
+        </Button>
+      </Tooltip>
       {item.episodes ? (
         <Typography variant="caption" sx={{ color: "text.secondary" }}>
           {item.episodes} eps

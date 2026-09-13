@@ -46,28 +46,26 @@ export function CalendarEntryCard({ item, variant = "compact" }: CalendarEntryCa
             background: "linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.1), transparent)",
           }}
         />
-        <Tooltip title="Já está na sua lista">
-          <Box
-            role="img"
-            aria-label="Já está na sua lista"
-            sx={{
-              position: "absolute",
-              right: 4,
-              top: 4,
-              display: "flex",
-              height: 20,
-              width: 20,
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: "50%",
-              bgcolor: "rgba(0,0,0,0.7)",
-              color: "secondary.main",
-              fontSize: 12,
-            }}
-          >
-            ★
-          </Box>
-        </Tooltip>
+        <Box
+          role="img"
+          aria-label="Já está na sua lista"
+          sx={{
+            position: "absolute",
+            right: 4,
+            top: 4,
+            display: "flex",
+            height: 20,
+            width: 20,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: "50%",
+            bgcolor: "rgba(0,0,0,0.7)",
+            color: "secondary.main",
+            fontSize: 12,
+          }}
+        >
+          ★
+        </Box>
         <Box sx={{ position: "absolute", insetInline: 0, bottom: 0, p: 0.75 }}>
           <Typography
             className="font-display"
@@ -94,13 +92,17 @@ export function CalendarEntryCard({ item, variant = "compact" }: CalendarEntryCa
     return (
       <Card sx={{ position: "relative" }}>
         {isInternal ? (
-          <CardActionArea component={NextLink} href={`/anime/${item.animeId}`}>
-            {content}
-          </CardActionArea>
+          <Tooltip title={title}>
+            <CardActionArea component={NextLink} href={`/anime/${item.animeId}`}>
+              {content}
+            </CardActionArea>
+          </Tooltip>
         ) : (
-          <CardActionArea component="a" href={`https://anilist.co/anime/${item.anilistId}`} target="_blank" rel="noopener noreferrer">
-            {content}
-          </CardActionArea>
+          <Tooltip title={title}>
+            <CardActionArea component="a" href={`https://anilist.co/anime/${item.anilistId}`} target="_blank" rel="noopener noreferrer">
+              {content}
+            </CardActionArea>
+          </Tooltip>
         )}
       </Card>
     );
@@ -135,19 +137,23 @@ export function CalendarEntryCard({ item, variant = "compact" }: CalendarEntryCa
     "&:hover": { bgcolor: "background.default", borderColor: "primary.main" },
   } as const;
 
-  return isInternal ? (
-    <Box component={NextLink} href={`/anime/${item.animeId}`} sx={compactSx}>
-      {compactContent}
-    </Box>
-  ) : (
-    <Box
-      component="a"
-      href={`https://anilist.co/anime/${item.anilistId}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      sx={compactSx}
-    >
-      {compactContent}
-    </Box>
+  return (
+    <Tooltip title={title}>
+      {isInternal ? (
+        <Box component={NextLink} href={`/anime/${item.animeId}`} sx={compactSx}>
+          {compactContent}
+        </Box>
+      ) : (
+        <Box
+          component="a"
+          href={`https://anilist.co/anime/${item.anilistId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          sx={compactSx}
+        >
+          {compactContent}
+        </Box>
+      )}
+    </Tooltip>
   );
 }
