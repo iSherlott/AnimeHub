@@ -1,8 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useState, type MouseEvent } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import NextLink from "next/link";
+import NotificationsIcon from "@mui/icons-material/Notifications";
+import {
+  Badge,
+  Box,
+  IconButton,
+  Menu,
+  MenuItem,
+  Typography,
+} from "@mui/material";
 import type { PublicUser } from "@/lib/auth/session";
 
 type AiringAlertItem = {
@@ -26,8 +35,10 @@ const POLL_INTERVAL_MS = 60 * 1000;
  */
 export function NotificationBell({ user }: { user: PublicUser | null | undefined }) {
   const [alerts, setAlerts] = useState<AiringAlertItem[]>([]);
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const open = Boolean(anchorEl);
+  const buttonId = useId();
+  const menuId = useId();
 
   useEffect(() => {
     if (!user) return;
@@ -52,17 +63,6 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
     };
   }, [user]);
 
-  useEffect(() => {
-    if (!open) return;
-    function onMouseDown(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", onMouseDown);
-    return () => document.removeEventListener("mousedown", onMouseDown);
-  }, [open]);
-
   if (!user) return null;
 
   const unseenCount = alerts.filter((a) => !a.seenAt).length;
@@ -79,97 +79,86 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
     }
   }
 
-  return (
-    <div ref={containerRef} className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="relative flex h-8 w-8 items-center justify-center text-text-muted transition hover:text-text-primary"
-        aria-label="Notificações"
-        aria-expanded={open}
-      >
-        <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden>
-          <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2Zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4a1.5 1.5 0 0 0-3 0v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2Z" />
-        </svg>
-        {unseenCount > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-jump-red px-1 text-[10px] font-bold text-white">
-            {unseenCount}
-          </span>
-        )}
-      </button>
+  function handleClose() {
+    setAnchorEl(null);
+  }
 
-      {open && (
-        <div className="jump-corner absolute right-0 top-10 z-40 w-72 border-2 border-border bg-surface shadow-lg">
-          <p className="border-b border-border px-3 py-2 text-[10px] uppercase tracking-wide text-text-muted">
-            No ar agora
-          </p>
-          {alerts.length === 0 ? (
-            <p className="px-3 py-4 text-center text-xs text-text-muted">
-              Nada da sua lista no ar agora.
-            </p>
-          ) : (
-            <ul className="max-h-80 overflow-y-auto">
-              {alerts.map((alert) => {
-                const time = new Date(alert.airingAt).toLocaleTimeString("pt-BR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                });
-                const content = (
-                  <div
-                    className={`flex items-center gap-2 px-3 py-2 text-xs transition hover:bg-surface-raised ${
-                      alert.seenAt ? "opacity-60" : ""
-                    }`}
-                  >
-                    <div className="relative h-10 w-7 flex-shrink-0 overflow-hidden bg-surface-raised">
-                      {alert.coverImage && (
-                        <Image
-                          src={alert.coverImage}
-                          alt=""
-                          fill
-                          sizes="28px"
-                          className="object-cover"
-                        />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="line-clamp-1 text-text-body">
-                        {alert.titleRomaji ?? "Anime"}
-                      </p>
-                      <p className="text-text-muted">
-                        EP {alert.episode} · {time}
-                      </p>
-                    </div>
-                  </div>
-                );
-                return (
-                  <li key={alert.id}>
-                    {alert.animeId ? (
-                      <Link
-                        href={`/anime/${alert.animeId}`}
-                        onClick={() => {
-                          setOpen(false);
-                          if (!alert.seenAt) void markSeen(alert.id);
-                        }}
-                      >
-                        {content}
-                      </Link>
-                    ) : (
-                      <button
-                        type="button"
-                        className="w-full text-left"
-                        onClick={() => {
-                          if (!alert.seenAt) void markSeen(alert.id);
-                        }}
-                      >
-                        {content}
-                      </button>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      )}
-    </div>
+  return (
+    <>
+      <IconButton
+        id={buttonId}
+        onClick={(e: MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget)}
+        size="small"
+        aria-label="Notificações"
+        aria-haspopup="true"
+        aria-controls={open ? menuId : undefined}
+        aria-expanded={open ? "true" : undefined}
+      >
+        <Badge badgeContent={unseenCount} color="error">
+          <NotificationsIcon fontSize="small" />
+        </Badge>
+      </IconButton>
+
+      <Menu
+        id={menuId}
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        slotProps={{
+          paper: { sx: { width: 300 } },
+          list: { "aria-labelledby": buttonId },
+        }}
+      >
+        <Typography variant="overline" sx={{ px: 2, color: "text.secondary" }}>
+          No ar agora
+        </Typography>
+        {alerts.length === 0 ? (
+          <Typography variant="body2" sx={{ px: 2, py: 2, textAlign: "center", color: "text.secondary" }}>
+            Nada da sua lista no ar agora.
+          </Typography>
+        ) : (
+          alerts.map((alert) => {
+            const time = new Date(alert.airingAt).toLocaleTimeString("pt-BR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+            return (
+              <MenuItem
+                key={alert.id}
+                component={alert.animeId ? NextLink : "div"}
+                href={alert.animeId ? `/anime/${alert.animeId}` : undefined}
+                onClick={() => {
+                  handleClose();
+                  if (!alert.seenAt) void markSeen(alert.id);
+                }}
+                sx={{ opacity: alert.seenAt ? 0.6 : 1, gap: 1.5 }}
+              >
+                <Box
+                  sx={{
+                    position: "relative",
+                    width: 28,
+                    height: 40,
+                    flexShrink: 0,
+                    bgcolor: "background.paper",
+                  }}
+                >
+                  {alert.coverImage && (
+                    <Image src={alert.coverImage} alt="" fill sizes="28px" className="object-cover" />
+                  )}
+                </Box>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography variant="body2" noWrap>
+                    {alert.titleRomaji ?? "Anime"}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                    EP {alert.episode} · {time}
+                  </Typography>
+                </Box>
+              </MenuItem>
+            );
+          })
+        )}
+      </Menu>
+    </>
   );
 }

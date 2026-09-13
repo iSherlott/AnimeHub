@@ -1,8 +1,9 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import Link from "next/link";
+import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Box, Button, Alert, Link as MuiLink, TextField, Typography } from "@mui/material";
 import { Header } from "@/components/Header";
 
 function SignupForm() {
@@ -38,61 +39,64 @@ function SignupForm() {
   }
 
   return (
-    <div className="mx-auto max-w-sm px-6 py-16">
-      <h1 className="font-display mb-1 text-2xl uppercase text-text-primary">Criar conta</h1>
-      <p className="mb-6 text-xs text-text-muted">
+    <Box sx={{ maxWidth: 384, mx: "auto", px: 3, py: 8 }}>
+      <Typography variant="h4" component="h1" sx={{ mb: 0.5 }}>
+        Criar conta
+      </Typography>
+      <Typography variant="caption" sx={{ display: "block", mb: 3, color: "text.secondary" }}>
         Cadastro é só por convite — peça o código a um administrador. (A
         primeiríssima conta do sistema não precisa de convite.)
-      </p>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <input
+      </Typography>
+      <Box
+        component="form"
+        onSubmit={handleSubmit}
+        sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+      >
+        <TextField
           type="text"
-          placeholder="Código de convite (deixe em branco se for a primeira conta)"
+          label="Código de convite (opcional)"
+          helperText="Deixe em branco se for a primeira conta do sistema"
           value={inviteCode}
           onChange={(e) => setInviteCode(e.target.value)}
-          className="border border-border bg-surface p-2 text-sm text-text-primary placeholder:text-text-muted"
+          fullWidth
         />
-        <input
+        <TextField
           type="text"
           required
-          placeholder="Nome de exibição"
+          label="Nome de exibição"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
-          className="border border-border bg-surface p-2 text-sm text-text-primary placeholder:text-text-muted"
+          fullWidth
         />
-        <input
+        <TextField
           type="email"
           required
-          placeholder="E-mail"
+          label="E-mail"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="border border-border bg-surface p-2 text-sm text-text-primary placeholder:text-text-muted"
+          fullWidth
         />
-        <input
+        <TextField
           type="password"
           required
-          minLength={8}
-          placeholder="Senha (mín. 8 caracteres)"
+          slotProps={{ htmlInput: { minLength: 8 } }}
+          label="Senha (mín. 8 caracteres)"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="border border-border bg-surface p-2 text-sm text-text-primary placeholder:text-text-muted"
+          fullWidth
         />
-        {error && <p className="text-sm text-jump-red-bright">{error}</p>}
-        <button
-          type="submit"
-          disabled={loading}
-          className="jump-shadow mt-2 border-2 border-border-strong bg-jump-red py-2 font-display uppercase tracking-wide text-text-primary transition hover:bg-jump-red-bright disabled:opacity-50"
-        >
-          {loading ? "Criando..." : "Criar conta"}
-        </button>
-      </form>
-      <p className="mt-4 text-sm text-text-muted">
+        {error && <Alert severity="error">{error}</Alert>}
+        <Button type="submit" variant="contained" loading={loading} sx={{ mt: 1 }}>
+          Criar conta
+        </Button>
+      </Box>
+      <Typography variant="body2" sx={{ mt: 3, color: "text.secondary" }}>
         Já tem conta?{" "}
-        <Link href="/login" className="text-text-primary underline-offset-2 hover:underline">
+        <MuiLink component={NextLink} href="/login" color="inherit">
           Entrar
-        </Link>
-      </p>
-    </div>
+        </MuiLink>
+      </Typography>
+    </Box>
   );
 }
 

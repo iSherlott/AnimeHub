@@ -1,8 +1,22 @@
 "use client";
 
-import Link from "next/link";
+import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import MenuIcon from "@mui/icons-material/Menu";
+import CloseIcon from "@mui/icons-material/Close";
+import {
+  AppBar,
+  Box,
+  Button,
+  Collapse,
+  Divider,
+  IconButton,
+  Link as MuiLink,
+  Stack,
+  Toolbar,
+  Typography,
+} from "@mui/material";
 import { TitleLanguageMenu } from "@/components/TitleLanguageMenu";
 import { NotificationBell } from "@/components/NotificationBell";
 import type { PublicUser } from "@/lib/auth/session";
@@ -11,54 +25,71 @@ function NavLinks({
   pathname,
   user,
   onNavigate,
+  direction = "row",
 }: {
   pathname: string;
   user: PublicUser | null | undefined;
   onNavigate?: () => void;
+  direction?: "row" | "column";
 }) {
+  const linkSx = (href: string) => ({
+    fontWeight: 600,
+    textTransform: "uppercase" as const,
+    fontSize: 14,
+    color: pathname === href ? "text.primary" : "text.secondary",
+  });
+
   return (
-    <>
+    <Stack
+      direction={direction}
+      spacing={direction === "row" ? 3 : 2}
+      sx={{ alignItems: direction === "row" ? "center" : "flex-start" }}
+    >
       {user && (
-        <Link
+        <MuiLink
+          component={NextLink}
           href="/"
           onClick={onNavigate}
-          className={`transition hover:text-text-primary ${
-            pathname === "/" ? "text-text-primary" : "text-text-muted"
-          }`}
+          underline="hover"
+          sx={linkSx("/")}
+          aria-current={pathname === "/" ? "page" : undefined}
         >
           Minha lista
-        </Link>
+        </MuiLink>
       )}
-      <Link
+      <MuiLink
+        component={NextLink}
         href="/discover"
         onClick={onNavigate}
-        className={`transition hover:text-text-primary ${
-          pathname === "/discover" ? "text-text-primary" : "text-text-muted"
-        }`}
+        underline="hover"
+        sx={linkSx("/discover")}
+        aria-current={pathname === "/discover" ? "page" : undefined}
       >
         Descobrir
-      </Link>
-      <Link
+      </MuiLink>
+      <MuiLink
+        component={NextLink}
         href="/calendar"
         onClick={onNavigate}
-        className={`transition hover:text-text-primary ${
-          pathname === "/calendar" ? "text-text-primary" : "text-text-muted"
-        }`}
+        underline="hover"
+        sx={linkSx("/calendar")}
+        aria-current={pathname === "/calendar" ? "page" : undefined}
       >
         Calendário
-      </Link>
+      </MuiLink>
       {user?.role === "ADMIN" && (
-        <Link
+        <MuiLink
+          component={NextLink}
           href="/admin"
           onClick={onNavigate}
-          className={`transition hover:text-text-primary ${
-            pathname === "/admin" ? "text-text-primary" : "text-text-muted"
-          }`}
+          underline="hover"
+          sx={linkSx("/admin")}
+          aria-current={pathname === "/admin" ? "page" : undefined}
         >
           Administração
-        </Link>
+        </MuiLink>
       )}
-    </>
+    </Stack>
   );
 }
 
@@ -105,94 +136,118 @@ export function Header() {
   }
 
   return (
-    <header
-      className={`sticky top-0 z-30 transition-colors duration-300 ${
-        scrolled
-          ? "bg-ink/95 shadow-lg shadow-black/40 backdrop-blur-sm border-b border-border"
-          : "bg-gradient-to-b from-black/90 via-black/40 to-transparent"
-      }`}
-    >
-      <div className="flex items-center gap-8 px-6 py-4 sm:px-10">
-        <Link
-          href="/"
-          className="font-display text-2xl uppercase tracking-wide text-jump-red drop-shadow-[2px_2px_0_#000]"
-        >
-          Anime Hub
-        </Link>
+    <>
+      <AppBar
+        position="sticky"
+        elevation={scrolled ? 4 : 0}
+        sx={{
+          bgcolor: scrolled ? "rgba(11,11,13,0.95)" : "transparent",
+          backgroundImage: scrolled
+            ? "none"
+            : "linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(0,0,0,0.4), transparent)",
+          borderBottom: scrolled ? "1px solid" : "none",
+          borderColor: "divider",
+          transition: "background-color .3s ease, border-color .3s ease",
+        }}
+      >
+        <Toolbar sx={{ gap: 4, px: { xs: 3, sm: 5 } }}>
+          <MuiLink
+            component={NextLink}
+            href="/"
+            underline="none"
+            className="font-display"
+            sx={{ fontSize: 24, textTransform: "uppercase", letterSpacing: 1, color: "primary.main" }}
+          >
+            Anime Hub
+          </MuiLink>
 
-        <nav className="hidden gap-6 text-sm font-semibold uppercase tracking-wide sm:flex">
-          <NavLinks pathname={pathname} user={user} />
-        </nav>
+          <Box sx={{ display: { xs: "none", sm: "block" } }}>
+            <NavLinks pathname={pathname} user={user} />
+          </Box>
 
-        <div className="ml-auto hidden items-center gap-3 text-sm sm:flex">
-          <TitleLanguageMenu />
-          <NotificationBell user={user} />
-          {user === undefined ? null : user ? (
-            <>
-              <span className="hidden text-text-muted md:inline">{user.displayName}</span>
-              <button
-                onClick={handleLogout}
-                className="font-semibold uppercase tracking-wide text-text-muted transition hover:text-text-primary"
-              >
-                Sair
-              </button>
-            </>
-          ) : (
-            <Link
-              href="/login"
-              className="font-semibold uppercase tracking-wide text-text-muted transition hover:text-text-primary"
-            >
-              Entrar
-            </Link>
-          )}
-        </div>
-
-        <button
-          onClick={() => setMobileOpen((v) => !v)}
-          className="ml-auto flex h-9 w-9 items-center justify-center border border-border bg-surface text-text-body sm:hidden"
-          aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
-          aria-expanded={mobileOpen}
-        >
-          <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden>
-            {mobileOpen ? (
-              <path d="M6.4 19 5 17.6l5.6-5.6L5 6.4 6.4 5l5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6Z" />
-            ) : (
-              <path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" />
-            )}
-          </svg>
-        </button>
-      </div>
-
-      {mobileOpen && (
-        <div className="flex flex-col gap-4 border-t border-border bg-ink px-6 py-4 text-sm font-semibold uppercase tracking-wide sm:hidden">
-          <NavLinks pathname={pathname} user={user} onNavigate={() => setMobileOpen(false)} />
-          <div className="flex items-center justify-between border-t border-border pt-4">
-            <div className="flex items-center gap-3">
-              <TitleLanguageMenu />
-              <NotificationBell user={user} />
-            </div>
+          <Stack
+            direction="row"
+            spacing={1.5}
+            sx={{ ml: "auto", display: { xs: "none", sm: "flex" }, alignItems: "center" }}
+          >
+            <TitleLanguageMenu />
+            <NotificationBell user={user} />
             {user === undefined ? null : user ? (
-              <div className="flex items-center gap-3">
-                <span className="text-text-muted">{user.displayName}</span>
-                <button
-                  onClick={handleLogout}
-                  className="text-text-muted transition hover:text-text-primary"
+              <>
+                <Typography
+                  variant="body2"
+                  noWrap
+                  sx={{ display: { xs: "none", md: "inline" }, color: "text.secondary", maxWidth: 140 }}
                 >
+                  {user.displayName}
+                </Typography>
+                <Button onClick={handleLogout} color="inherit" size="small">
                   Sair
-                </button>
-              </div>
+                </Button>
+              </>
             ) : (
-              <Link
-                href="/login"
-                onClick={() => setMobileOpen(false)}
-                className="text-text-muted transition hover:text-text-primary"
-              >
+              <Button component={NextLink} href="/login" color="inherit" size="small">
                 Entrar
-              </Link>
+              </Button>
             )}
-          </div>
-        </div>
-      )}
-    </header>
+          </Stack>
+
+          <IconButton
+            onClick={() => setMobileOpen((v) => !v)}
+            sx={{ ml: "auto", display: { xs: "inline-flex", sm: "none" } }}
+            aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
+          >
+            {mobileOpen ? <CloseIcon /> : <MenuIcon />}
+          </IconButton>
+        </Toolbar>
+
+        <Collapse in={mobileOpen} unmountOnExit>
+          <Box
+            sx={{
+              bgcolor: "background.default",
+              borderTop: 1,
+              borderColor: "divider",
+              p: 3,
+              display: "flex",
+              flexDirection: "column",
+              gap: 3,
+            }}
+          >
+            <NavLinks
+              pathname={pathname}
+              user={user}
+              onNavigate={() => setMobileOpen(false)}
+              direction="column"
+            />
+            <Divider />
+            <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>
+              <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                <TitleLanguageMenu />
+                <NotificationBell user={user} />
+              </Stack>
+              {user === undefined ? null : user ? (
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+                  <Typography variant="body2" noWrap sx={{ color: "text.secondary", maxWidth: 140 }}>
+                    {user.displayName}
+                  </Typography>
+                  <Button onClick={handleLogout} size="small">
+                    Sair
+                  </Button>
+                </Stack>
+              ) : (
+                <Button
+                  component={NextLink}
+                  href="/login"
+                  onClick={() => setMobileOpen(false)}
+                  size="small"
+                >
+                  Entrar
+                </Button>
+              )}
+            </Stack>
+          </Box>
+        </Collapse>
+      </AppBar>
+    </>
   );
 }

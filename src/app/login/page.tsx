@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import NextLink from "next/link";
 import { useRouter } from "next/navigation";
+import { Box, Button, Alert, Link as MuiLink, TextField, Typography } from "@mui/material";
 import { Header } from "@/components/Header";
 
 export default function LoginPage() {
@@ -37,41 +38,43 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-ink">
       <Header />
-      <div className="mx-auto max-w-sm px-6 py-16">
-        <h1 className="font-display mb-6 text-2xl uppercase text-text-primary">Entrar</h1>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <input
+      <Box sx={{ maxWidth: 384, mx: "auto", px: 3, py: 8 }}>
+        <Typography variant="h4" component="h1" sx={{ mb: 3 }}>
+          Entrar
+        </Typography>
+        <Box
+          component="form"
+          onSubmit={handleSubmit}
+          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+        >
+          <TextField
             type="email"
             required
-            placeholder="E-mail"
+            label="E-mail"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="border border-border bg-surface p-2 text-sm text-text-primary placeholder:text-text-muted"
+            fullWidth
           />
-          <input
+          <TextField
             type="password"
             required
-            placeholder="Senha"
+            label="Senha"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="border border-border bg-surface p-2 text-sm text-text-primary placeholder:text-text-muted"
+            fullWidth
           />
-          {error && <p className="text-sm text-jump-red-bright">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="jump-shadow mt-2 border-2 border-border-strong bg-jump-red py-2 font-display uppercase tracking-wide text-text-primary transition hover:bg-jump-red-bright disabled:opacity-50"
-          >
-            {loading ? "Entrando..." : "Entrar"}
-          </button>
-        </form>
-        <p className="mt-4 text-sm text-text-muted">
+          {error && <Alert severity="error">{error}</Alert>}
+          <Button type="submit" variant="contained" loading={loading} sx={{ mt: 1 }}>
+            Entrar
+          </Button>
+        </Box>
+        <Typography variant="body2" sx={{ mt: 3, color: "text.secondary" }}>
           Não tem conta?{" "}
-          <Link href="/signup" className="text-text-primary underline-offset-2 hover:underline">
+          <MuiLink component={NextLink} href="/signup" color="inherit">
             Criar conta
-          </Link>
-        </p>
-      </div>
+          </MuiLink>
+        </Typography>
+      </Box>
     </div>
   );
 }
