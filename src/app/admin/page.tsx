@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Box, Typography } from "@mui/material";
 import { Header } from "@/components/Header";
 import { AdminDashboard } from "@/components/AdminDashboard";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -10,16 +11,21 @@ export default async function AdminPage() {
   return (
     <div className="min-h-screen bg-ink pb-16">
       <Header />
-      <div className="px-6 py-10 sm:px-10">
-        <h1 className="font-display mb-1 text-3xl uppercase text-text-primary drop-shadow-[2px_2px_0_#000]">
+      <Box sx={{ px: { xs: 3, sm: 5 }, py: 5 }}>
+        <Typography
+          variant="h3"
+          component="h1"
+          className="font-display"
+          sx={{ mb: 0.5, textTransform: "uppercase", fontSize: { xs: "2rem", sm: "3rem" } }}
+        >
           Administração
-        </h1>
-        <p className="mb-8 text-sm text-text-muted">
+        </Typography>
+        <Typography variant="body2" sx={{ mb: 4, color: "text.secondary" }}>
           Cadastro é só por convite. Gere um código, compartilhe fora daqui, e
-          quem receber usa em <code className="text-text-body">/signup</code>.
-        </p>
+          quem receber usa em <Box component="code" sx={{ color: "text.primary" }}>/signup</Box>.
+        </Typography>
         <AdminDashboard />
-      </div>
+      </Box>
     </div>
   );
 }

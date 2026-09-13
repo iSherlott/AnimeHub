@@ -1,6 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+} from "@mui/material";
 
 type AdminUser = {
   id: string;
@@ -82,94 +96,119 @@ export function AdminDashboard() {
   }
 
   if (loading) {
-    return <p className="text-sm text-text-muted">Carregando...</p>;
+    return (
+      <Typography variant="body2" sx={{ color: "text.secondary" }}>
+        Carregando...
+      </Typography>
+    );
   }
 
   return (
-    <div className="flex flex-col gap-10">
-      {error && <p className="text-sm text-jump-red-bright">{error}</p>}
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 5 }}>
+      {error && <Alert severity="error">{error}</Alert>}
 
-      <section>
-        <div className="mb-3 flex items-center gap-3">
-          <h2 className="font-display text-lg uppercase text-text-primary">Convites</h2>
-          <button
-            onClick={handleCreateInvite}
-            disabled={creatingInvite}
-            className="jump-shadow border-2 border-border-strong bg-jump-red px-3 py-1.5 font-display text-xs uppercase tracking-wide text-text-primary transition hover:bg-jump-red-bright disabled:opacity-50"
-          >
+      <Box component="section">
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1.5 }}>
+          <Typography variant="h6" component="h2" className="font-display" sx={{ textTransform: "uppercase" }}>
+            Convites
+          </Typography>
+          <Button onClick={handleCreateInvite} disabled={creatingInvite} variant="contained" size="small">
             {creatingInvite ? "Gerando..." : "+ Gerar convite"}
-          </button>
-        </div>
-        <div className="flex flex-col gap-2">
-          {invites.length === 0 && (
-            <p className="text-sm text-text-muted">Nenhum convite gerado ainda.</p>
-          )}
-          {invites.map((invite) => {
-            const expired = invite.expiresAt ? new Date(invite.expiresAt) < new Date() : false;
-            const status = invite.usedBy ? "usado" : expired ? "expirado" : "disponível";
-            return (
-              <div
-                key={invite.id}
-                className="flex flex-wrap items-center gap-3 border border-border bg-surface p-3 text-sm"
-              >
-                <code className="text-text-body">{invite.code}</code>
-                <span
-                  className={`jump-badge px-2 py-0.5 text-[10px] font-bold uppercase ${
-                    status === "disponível"
-                      ? "bg-status-completed text-ink"
-                      : status === "usado"
-                        ? "bg-surface-raised text-text-muted"
-                        : "bg-jump-red text-text-primary"
-                  }`}
-                >
-                  {status}
-                </span>
-                {invite.usedBy && (
-                  <span className="text-text-muted">
-                    por {invite.usedBy.displayName} ({invite.usedBy.email})
-                  </span>
-                )}
-                {!invite.usedBy && invite.expiresAt && (
-                  <span className="text-text-muted">expira em {fmtDate(invite.expiresAt)}</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </section>
+          </Button>
+        </Box>
+        {invites.length === 0 ? (
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            Nenhum convite gerado ainda.
+          </Typography>
+        ) : (
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="small" aria-label="Convites gerados">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Código</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Detalhes</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {invites.map((invite) => {
+                  const expired = invite.expiresAt ? new Date(invite.expiresAt) < new Date() : false;
+                  const status = invite.usedBy ? "usado" : expired ? "expirado" : "disponível";
+                  return (
+                    <TableRow key={invite.id}>
+                      <TableCell>
+                        <Box component="code">{invite.code}</Box>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={status}
+                          size="small"
+                          color={status === "disponível" ? "success" : status === "usado" ? "default" : "error"}
+                          sx={{ fontWeight: 700, textTransform: "uppercase", fontSize: 10 }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ color: "text.secondary" }}>
+                        {invite.usedBy
+                          ? `por ${invite.usedBy.displayName} (${invite.usedBy.email})`
+                          : invite.expiresAt
+                            ? `expira em ${fmtDate(invite.expiresAt)}`
+                            : "—"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Box>
 
-      <section>
-        <h2 className="font-display mb-3 text-lg uppercase text-text-primary">Usuários</h2>
-        <div className="flex flex-col gap-2">
-          {users.map((u) => (
-            <div
-              key={u.id}
-              className="flex flex-wrap items-center gap-3 border border-border bg-surface p-3 text-sm"
-            >
-              <span className="font-semibold text-text-primary">{u.displayName}</span>
-              <span className="text-text-muted">{u.email}</span>
-              {u.role === "ADMIN" && (
-                <span className="jump-badge bg-jump-yellow px-2 py-0.5 text-[10px] font-bold uppercase text-ink">
-                  admin
-                </span>
-              )}
-              <span className="text-text-muted">desde {fmtDate(u.createdAt)}</span>
-              <button
-                onClick={() => handleResetPassword(u.id)}
-                className="ml-auto text-xs text-text-muted underline-offset-2 hover:text-text-body hover:underline"
-              >
-                Resetar senha
-              </button>
-              {resetResult?.userId === u.id && (
-                <div className="w-full border-l-2 border-jump-yellow bg-surface-raised p-2 text-xs text-text-body">
-                  Nova senha temporária (mostrada só uma vez, repasse por
-                  fora): <code className="text-jump-yellow">{resetResult.password}</code>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
-    </div>
+      <Box component="section">
+        <Typography variant="h6" component="h2" className="font-display" sx={{ mb: 1.5, textTransform: "uppercase" }}>
+          Usuários
+        </Typography>
+        <TableContainer component={Paper} variant="outlined">
+          <Table size="small" aria-label="Usuários cadastrados">
+            <TableHead>
+              <TableRow>
+                <TableCell>Nome</TableCell>
+                <TableCell>E-mail</TableCell>
+                <TableCell>Desde</TableCell>
+                <TableCell align="right">Ações</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {users.map((u) => (
+                <TableRow key={u.id}>
+                  <TableCell>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {u.displayName}
+                      </Typography>
+                      {u.role === "ADMIN" && (
+                        <Chip label="admin" size="small" sx={{ bgcolor: "secondary.main", color: "#0b0b0d", fontWeight: 700, fontSize: 10 }} />
+                      )}
+                    </Box>
+                  </TableCell>
+                  <TableCell sx={{ color: "text.secondary" }}>{u.email}</TableCell>
+                  <TableCell sx={{ color: "text.secondary" }}>{fmtDate(u.createdAt)}</TableCell>
+                  <TableCell align="right">
+                    <Button onClick={() => handleResetPassword(u.id)} size="small" color="inherit">
+                      Resetar senha
+                    </Button>
+                    {resetResult?.userId === u.id && (
+                      <Alert severity="warning" sx={{ mt: 1, textAlign: "left" }}>
+                        Nova senha temporária (mostrada só uma vez, repasse por
+                        fora): <Box component="code" sx={{ fontWeight: 700 }}>{resetResult.password}</Box>
+                      </Alert>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+    </Box>
   );
 }
