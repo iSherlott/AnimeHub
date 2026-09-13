@@ -1,0 +1,17 @@
+{
+  "name": "name-resolver",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "kuroshiro": "^1.2.0",
+    "kuroshiro-analyzer-kuromoji": "^1.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.19.2",
+    "typescript": "^5"
+  }
+}
