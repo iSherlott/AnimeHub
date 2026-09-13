@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useId } from "react";
+import CloseIcon from "@mui/icons-material/Close";
 import Image from "next/image";
+import { Box, Chip, Dialog, IconButton, Stack, Typography } from "@mui/material";
 import type { DiscoverItem } from "@/lib/discoverItem";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 
@@ -15,102 +17,104 @@ const STATUS_LABELS: Record<string, string> = {
 
 export function AnimeInfoModal({
   item,
+  open,
   onClose,
 }: {
   item: DiscoverItem;
+  open: boolean;
   onClose: () => void;
 }) {
   const { preference } = useTitlePreference();
   const title = resolveTitleText(preference, item) || "Sem título";
-
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  const titleId = useId();
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-    >
-      <div
-        className="jump-corner jump-shadow-lg relative max-h-[85vh] w-full max-w-2xl overflow-y-auto border-2 border-border-strong bg-surface"
-        onClick={(e) => e.stopPropagation()}
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth aria-labelledby={titleId}>
+      <IconButton
+        onClick={onClose}
+        aria-label="Fechar"
+        size="small"
+        sx={{
+          position: "absolute",
+          right: 12,
+          top: 12,
+          zIndex: 1,
+          bgcolor: "rgba(0,0,0,0.7)",
+          color: "#f7f7f5",
+          "&:hover": { bgcolor: "primary.main" },
+        }}
       >
-        <button
-          onClick={onClose}
-          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-lg text-text-primary transition hover:bg-jump-red"
-          aria-label="Fechar"
-        >
-          ✕
-        </button>
+        <CloseIcon fontSize="small" />
+      </IconButton>
 
-        {item.bannerImage ? (
-          <div className="relative h-40 w-full overflow-hidden">
-            <Image src={item.bannerImage} alt="" fill className="object-cover opacity-50" />
-            <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/50 to-transparent" />
-          </div>
-        ) : (
-          <div className="h-16 w-full" />
-        )}
-
-        <div
-          className={`flex gap-4 px-5 pb-4 ${item.bannerImage ? "-mt-12" : ""}`}
-        >
-          <div className="jump-corner relative h-40 w-28 flex-shrink-0 overflow-hidden border-2 border-border-strong bg-surface-raised">
-            {item.coverImage ? (
-              <Image src={item.coverImage} alt={title} fill className="object-cover" />
-            ) : null}
-          </div>
-          <div className="min-w-0 flex-1 self-end">
-            <h2 className="font-display text-xl uppercase leading-tight text-text-primary drop-shadow-[2px_2px_0_#000]">
-              {title}
-            </h2>
-            {item.titleNative && (
-              <p className="font-jp mt-0.5 text-sm text-text-muted">{item.titleNative}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 px-5 text-xs text-text-muted">
-          {item.episodes ? <span>{item.episodes} episódios</span> : null}
-          {item.status && (
-            <span className="jump-badge bg-surface-raised px-2 py-0.5 font-bold uppercase text-text-body">
-              {STATUS_LABELS[item.status] ?? item.status}
-            </span>
-          )}
-        </div>
-
-        {item.genres.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5 px-5">
-            {item.genres.map((g) => (
-              <span
-                key={g}
-                className="jump-badge bg-surface-raised px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-text-body"
-              >
-                {g}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {item.description ? (
-          <p
-            className="mt-4 px-5 pb-6 text-sm leading-relaxed text-text-body"
-            dangerouslySetInnerHTML={{ __html: item.description }}
+      {item.bannerImage ? (
+        <Box sx={{ position: "relative", height: 160, width: "100%", overflow: "hidden" }}>
+          <Image src={item.bannerImage} alt="" fill style={{ objectFit: "cover", opacity: 0.5 }} />
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(to top, #18171c, rgba(24,23,28,0.5), transparent)",
+            }}
           />
-        ) : (
-          <p className="mt-4 px-5 pb-6 text-sm text-text-muted">
-            Sem sinopse disponível.
-          </p>
+        </Box>
+      ) : (
+        <Box sx={{ height: 64, width: "100%" }} />
+      )}
+
+      <Box sx={{ display: "flex", gap: 2, px: 3, pb: 2, mt: item.bannerImage ? -6 : 0 }}>
+        <Box
+          sx={{
+            position: "relative",
+            height: 160,
+            width: 112,
+            flexShrink: 0,
+            overflow: "hidden",
+            border: 2,
+            borderColor: "divider",
+            bgcolor: "background.default",
+          }}
+        >
+          {item.coverImage ? <Image src={item.coverImage} alt="" fill style={{ objectFit: "cover" }} /> : null}
+        </Box>
+        <Box sx={{ minWidth: 0, flex: 1, alignSelf: "flex-end" }}>
+          <Typography id={titleId} variant="h5" component="h2" className="font-display" sx={{ textTransform: "uppercase", lineHeight: 1.2 }}>
+            {title}
+          </Typography>
+          {item.titleNative && (
+            <Typography className="font-jp" variant="body2" sx={{ mt: 0.5, color: "text.secondary" }}>
+              {item.titleNative}
+            </Typography>
+          )}
+        </Box>
+      </Box>
+
+      <Stack direction="row" spacing={2} sx={{ alignItems: "center", flexWrap: "wrap", px: 3, color: "text.secondary" }}>
+        {item.episodes ? <Typography variant="caption">{item.episodes} episódios</Typography> : null}
+        {item.status && (
+          <Chip label={STATUS_LABELS[item.status] ?? item.status} size="small" sx={{ fontWeight: 700, textTransform: "uppercase" }} />
         )}
-      </div>
-    </div>
+      </Stack>
+
+      {item.genres.length > 0 && (
+        <Stack direction="row" spacing={1} sx={{ mt: 1.5, px: 3, flexWrap: "wrap" }}>
+          {item.genres.map((g) => (
+            <Chip key={g} label={g} size="small" variant="outlined" sx={{ textTransform: "uppercase" }} />
+          ))}
+        </Stack>
+      )}
+
+      {item.description ? (
+        <Typography
+          variant="body2"
+          sx={{ mt: 2, px: 3, pb: 3, color: "text.secondary", lineHeight: 1.6 }}
+          dangerouslySetInnerHTML={{ __html: item.description }}
+        />
+      ) : (
+        <Typography variant="body2" sx={{ mt: 2, px: 3, pb: 3, color: "text.secondary" }}>
+          Sem sinopse disponível.
+        </Typography>
+      )}
+    </Dialog>
   );
 }

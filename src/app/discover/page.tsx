@@ -1,6 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardActionArea,
+  Chip,
+  MenuItem,
+  Select,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { Header } from "@/components/Header";
 import { Row } from "@/components/Row";
 import { DiscoverCard } from "@/components/DiscoverCard";
@@ -194,54 +207,55 @@ export default function DiscoverPage() {
     <div className="min-h-screen bg-ink pb-16">
       <Header />
 
-      <div className="jump-halftone border-b border-border px-6 py-8 sm:px-10">
-        <h1 className="font-display text-3xl uppercase tracking-wide text-text-primary drop-shadow-[3px_3px_0_#000] sm:text-4xl">
+      <Box sx={{ borderBottom: 1, borderColor: "divider", px: { xs: 3, sm: 5 }, py: 4 }}>
+        <Typography variant="h3" component="h1" className="font-display" sx={{ textTransform: "uppercase" }}>
           Descobrir
-        </h1>
-      </div>
+        </Typography>
+      </Box>
 
       {/* Cards de navegação rápida, inspirados no "番剧索引 / 类型风格 / 首播时间"
           do Bilibili — atalhos visuais pras categorias mais usadas. */}
-      <div className="grid grid-cols-1 gap-3 px-6 py-6 sm:grid-cols-3 sm:px-10">
-        <button
-          onClick={() => scrollToRow(genreRowRef)}
-          className="flex items-center justify-between border border-border bg-jump-red/10 p-4 text-left transition hover:border-jump-red"
-        >
-          <div>
-            <p className="font-display uppercase tracking-wide text-text-primary">
-              Por gênero
-            </p>
-            <p className="text-xs text-text-muted">{genres.length} categorias</p>
-          </div>
-          <span className="text-2xl">🎭</span>
-        </button>
-        <button
-          onClick={() => scrollToRow(seasonRowRef)}
-          className="flex items-center justify-between border border-border bg-status-watching/10 p-4 text-left transition hover:border-status-watching"
-        >
-          <div>
-            <p className="font-display uppercase tracking-wide text-text-primary">
-              Por temporada
-            </p>
-            <p className="text-xs text-text-muted">Inverno · Primavera · Verão · Outono</p>
-          </div>
-          <span className="text-2xl">🗓️</span>
-        </button>
-        <button
-          onClick={() => scrollToRow(yearRowRef)}
-          className="flex items-center justify-between border border-border bg-jump-yellow/10 p-4 text-left transition hover:border-jump-yellow"
-        >
-          <div>
-            <p className="font-display uppercase tracking-wide text-text-primary">
-              Por ano
-            </p>
-            <p className="text-xs text-text-muted">
-              {years[years.length - 1] ?? "—"}–{years[0] ?? "—"}
-            </p>
-          </div>
-          <span className="text-2xl">📅</span>
-        </button>
-      </div>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" }, gap: 1.5, px: { xs: 3, sm: 5 }, py: 3 }}>
+        <Card variant="outlined" sx={{ bgcolor: "rgba(228,0,43,0.08)" }}>
+          <CardActionArea onClick={() => scrollToRow(genreRowRef)} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
+            <Box>
+              <Typography className="font-display" sx={{ textTransform: "uppercase" }}>
+                Por gênero
+              </Typography>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                {genres.length} categorias
+              </Typography>
+            </Box>
+            <Typography sx={{ fontSize: 24 }}>🎭</Typography>
+          </CardActionArea>
+        </Card>
+        <Card variant="outlined" sx={{ bgcolor: "rgba(46,111,242,0.08)" }}>
+          <CardActionArea onClick={() => scrollToRow(seasonRowRef)} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
+            <Box>
+              <Typography className="font-display" sx={{ textTransform: "uppercase" }}>
+                Por temporada
+              </Typography>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Inverno · Primavera · Verão · Outono
+              </Typography>
+            </Box>
+            <Typography sx={{ fontSize: 24 }}>🗓️</Typography>
+          </CardActionArea>
+        </Card>
+        <Card variant="outlined" sx={{ bgcolor: "rgba(255,212,0,0.08)" }}>
+          <CardActionArea onClick={() => scrollToRow(yearRowRef)} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
+            <Box>
+              <Typography className="font-display" sx={{ textTransform: "uppercase" }}>
+                Por ano
+              </Typography>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                {years[years.length - 1] ?? "—"}–{years[0] ?? "—"}
+              </Typography>
+            </Box>
+            <Typography sx={{ fontSize: 24 }}>📅</Typography>
+          </CardActionArea>
+        </Card>
+      </Box>
 
       {ranking.length > 0 && (
         <Row title="🔥 Em alta">
@@ -251,12 +265,13 @@ export default function DiscoverPage() {
         </Row>
       )}
 
-      <div className="flex flex-col gap-4 px-6 py-6 sm:px-10">
-        <input
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, px: { xs: 3, sm: 5 }, py: 3 }}>
+        <TextField
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar anime..."
-          className="w-full max-w-md border border-border bg-surface px-4 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-jump-red focus:outline-none"
+          size="small"
+          sx={{ width: "100%", maxWidth: 384 }}
         />
 
         <DiscoverFilters
@@ -278,57 +293,40 @@ export default function DiscoverPage() {
         />
 
         {filtersActive && (
-          <div className="flex flex-wrap items-center gap-2">
-            {query.trim().length >= 2 && (
-              <span className="jump-badge bg-surface-raised px-2.5 py-1 text-xs text-text-body">
-                &ldquo;{query.trim()}&rdquo;
-              </span>
-            )}
-            {selectedGenre && (
-              <span className="jump-badge bg-surface-raised px-2.5 py-1 text-xs uppercase text-text-body">
-                {selectedGenre}
-              </span>
-            )}
+          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", alignItems: "center" }}>
+            {query.trim().length >= 2 && <Chip size="small" label={`"${query.trim()}"`} />}
+            {selectedGenre && <Chip size="small" label={selectedGenre} sx={{ textTransform: "uppercase" }} />}
             {selectedStatus && (
-              <span className="jump-badge bg-surface-raised px-2.5 py-1 text-xs uppercase text-text-body">
-                {CATALOG_STATUS_LABELS[selectedStatus] ?? selectedStatus}
-              </span>
+              <Chip size="small" label={CATALOG_STATUS_LABELS[selectedStatus] ?? selectedStatus} sx={{ textTransform: "uppercase" }} />
             )}
             {selectedSeason && (
-              <span className="jump-badge bg-surface-raised px-2.5 py-1 text-xs uppercase text-text-body">
-                {SEASON_LABELS[selectedSeason] ?? selectedSeason}
-              </span>
+              <Chip size="small" label={SEASON_LABELS[selectedSeason] ?? selectedSeason} sx={{ textTransform: "uppercase" }} />
             )}
-            {selectedYear && (
-              <span className="jump-badge bg-surface-raised px-2.5 py-1 text-xs text-text-body">
-                {selectedYear}
-              </span>
-            )}
-            <button
-              onClick={clearFilters}
-              className="font-display text-xs uppercase tracking-wide text-jump-red hover:text-jump-red-bright"
-            >
+            {selectedYear && <Chip size="small" label={String(selectedYear)} />}
+            <Button onClick={clearFilters} size="small" color="error">
               Limpar filtros
-            </button>
-          </div>
+            </Button>
+          </Stack>
         )}
-      </div>
+      </Box>
 
       {query.trim().length >= 2 && (
-        <section className="mb-2">
+        <Box component="section" sx={{ mb: 1 }}>
           {searchError ? (
-            <div className="px-6 sm:px-10">
-              <h2 className="font-display mb-2 text-lg uppercase tracking-wide text-text-primary">
+            <Box sx={{ px: { xs: 3, sm: 5 } }}>
+              <Typography variant="h6" component="h2" className="font-display" sx={{ mb: 1, textTransform: "uppercase" }}>
                 Resultados da busca
-              </h2>
-              <p className="text-sm text-jump-red-bright">{searchError}</p>
-            </div>
+              </Typography>
+              <Alert severity="error">{searchError}</Alert>
+            </Box>
           ) : (
             <>
               {searchCached && !searching && (
-                <p className="px-6 pb-2 text-xs text-cache sm:px-10">
-                  AniList fora do ar — mostrando resultados salvos localmente.
-                </p>
+                <Box sx={{ px: { xs: 3, sm: 5 }, pb: 1 }}>
+                  <Alert severity="info" variant="outlined">
+                    AniList fora do ar — mostrando resultados salvos localmente.
+                  </Alert>
+                </Box>
               )}
               <Row title={searching ? "Buscando..." : "Resultados da busca (AniList)"}>
                 {searchResults.map((item) => (
@@ -337,74 +335,76 @@ export default function DiscoverPage() {
               </Row>
             </>
           )}
-        </section>
+        </Box>
       )}
 
-      <section>
+      <Box component="section">
         {filtersActive ? (
           filteredCatalog.length > 0 ? (
             <>
-              <div className="flex items-center justify-between px-6 sm:px-10">
-                <div className="flex items-center gap-2">
-                  <span className="h-4 w-1.5 -skew-x-12 bg-jump-red" />
-                  <h2 className="font-display text-lg uppercase tracking-wide text-text-primary">
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: { xs: 3, sm: 5 } }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box sx={{ width: 6, height: 16, bgcolor: "primary.main", transform: "skewX(-12deg)" }} />
+                  <Typography variant="h6" component="h2" sx={{ textTransform: "uppercase" }}>
                     {filteredCatalog.length} resultado
                     {filteredCatalog.length === 1 ? "" : "s"}
-                  </h2>
-                </div>
-                <select
+                  </Typography>
+                </Box>
+                <Select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as SortKey)}
-                  className="border border-border bg-surface px-2 py-1.5 text-xs text-text-primary"
+                  size="small"
                 >
                   {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
-                    <option key={key} value={key}>
+                    <MenuItem key={key} value={key}>
                       Ordenar: {SORT_LABELS[key]}
-                    </option>
+                    </MenuItem>
                   ))}
-                </select>
-              </div>
-              <div className="no-scrollbar flex gap-2 overflow-x-auto px-6 pb-6 pt-4 sm:gap-3 sm:px-10">
+                </Select>
+              </Box>
+              <Box
+                className="no-scrollbar"
+                sx={{ display: "flex", gap: { xs: 1, sm: 1.5 }, overflowX: "auto", px: { xs: 3, sm: 5 }, pb: 3, pt: 2 }}
+              >
                 {filteredCatalog.map((item) => (
                   <DiscoverCard key={item.key} item={item} />
                 ))}
-              </div>
+              </Box>
             </>
           ) : (
-            <div className="flex flex-col items-center gap-4 px-6 py-16 text-center">
-              <p className="font-display -rotate-3 text-3xl uppercase text-text-primary drop-shadow-[3px_3px_0_#e4002b]">
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, px: 3, py: 8, textAlign: "center" }}>
+              <Typography variant="h4" className="font-display" sx={{ textTransform: "uppercase" }}>
                 Página em branco!!
-              </p>
-              <p className="max-w-sm text-sm text-text-body">
+              </Typography>
+              <Typography variant="body2" sx={{ maxWidth: 384, color: "text.secondary" }}>
                 Nenhum anime bate com esses filtros. Tenta remover um deles ou
                 escolher outro ano/gênero.
-              </p>
-              <button
-                onClick={clearFilters}
-                className="jump-shadow border-2 border-border-strong bg-jump-red px-5 py-2 font-display text-sm uppercase tracking-wide text-text-primary transition hover:bg-jump-red-bright"
-              >
+              </Typography>
+              <Button onClick={clearFilters} variant="contained" sx={{ mt: 1 }}>
                 Limpar filtros
-              </button>
-            </div>
+              </Button>
+            </Box>
           )
         ) : seasonError ? (
-          <div className="px-6 sm:px-10">
-            <h2 className="font-display mb-2 text-lg uppercase tracking-wide text-text-primary">
+          <Box sx={{ px: { xs: 3, sm: 5 } }}>
+            <Typography variant="h6" component="h2" className="font-display" sx={{ mb: 1, textTransform: "uppercase" }}>
               Lançamentos da temporada
-            </h2>
-            <p className="text-sm text-jump-red-bright">
+            </Typography>
+            <Alert severity="error">
               {seasonError}. A API pública da AniList pode estar instável —
               tente novamente em alguns minutos.
-            </p>
-          </div>
+            </Alert>
+          </Box>
         ) : (
           <>
             {seasonCached && !loadingSeason && (
-              <p className="px-6 pb-2 text-xs text-cache sm:px-10">
-                {sourcesDisabled
-                  ? "Modo AniDB-only ativo — outras fontes desativadas, mostrando o catálogo salvo localmente."
-                  : "AniList fora do ar — mostrando o catálogo salvo localmente."}
-              </p>
+              <Box sx={{ px: { xs: 3, sm: 5 }, pb: 1 }}>
+                <Alert severity="info" variant="outlined">
+                  {sourcesDisabled
+                    ? "Modo AniDB-only ativo — outras fontes desativadas, mostrando o catálogo salvo localmente."
+                    : "AniList fora do ar — mostrando o catálogo salvo localmente."}
+                </Alert>
+              </Box>
             )}
             <Row
               title={
@@ -417,7 +417,7 @@ export default function DiscoverPage() {
             </Row>
           </>
         )}
-      </section>
+      </Box>
     </div>
   );
 }

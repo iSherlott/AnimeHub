@@ -1,3 +1,4 @@
+import { Box, MenuItem, Select, Typography, type SelectChangeEvent } from "@mui/material";
 import { CATALOG_STATUS_LABELS, SEASON_LABELS } from "@/lib/types";
 import { FilterChipRow } from "@/components/FilterChipRow";
 
@@ -34,16 +35,21 @@ export function DiscoverFilters({
   seasonRowRef?: React.RefObject<HTMLDivElement | null>;
   yearRowRef?: React.RefObject<HTMLDivElement | null>;
 }) {
+  function handleYearChange(e: SelectChangeEvent<number | "">) {
+    const value = e.target.value;
+    onYearChange(value === "" ? null : Number(value));
+  }
+
   return (
-    <div className="flex flex-col gap-3 border border-border bg-surface p-4">
-      <div ref={genreRowRef}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2, border: 1, borderColor: "divider", bgcolor: "background.paper", p: 2 }}>
+      <Box ref={genreRowRef}>
         <FilterChipRow
           label="Gênero"
           options={genres.map((g) => ({ value: g, label: g }))}
           selected={selectedGenre}
           onChange={onGenreChange}
         />
-      </div>
+      </Box>
 
       <FilterChipRow
         label="Status"
@@ -55,7 +61,7 @@ export function DiscoverFilters({
         onChange={onStatusChange}
       />
 
-      <div ref={seasonRowRef}>
+      <Box ref={seasonRowRef}>
         <FilterChipRow
           label="Temporada"
           options={seasons.map((s) => ({
@@ -65,28 +71,30 @@ export function DiscoverFilters({
           selected={selectedSeason}
           onChange={onSeasonChange}
         />
-      </div>
+      </Box>
 
-      <div
+      <Box
         ref={yearRowRef}
-        className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3"
+        sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: { xs: 0.75, sm: 2 }, alignItems: { sm: "center" } }}
       >
-        <span className="font-display w-24 flex-shrink-0 text-xs uppercase tracking-wide text-text-muted">
+        <Typography variant="overline" sx={{ width: 96, flexShrink: 0, color: "text.secondary" }}>
           Ano
-        </span>
-        <select
+        </Typography>
+        <Select
           value={selectedYear ?? ""}
-          onChange={(e) => onYearChange(e.target.value ? Number(e.target.value) : null)}
-          className="w-fit border border-border bg-surface-raised px-3 py-2 text-sm text-text-primary"
+          onChange={handleYearChange}
+          displayEmpty
+          size="small"
+          sx={{ width: "fit-content", minWidth: 160 }}
         >
-          <option value="">Todos os anos</option>
+          <MenuItem value="">Todos os anos</MenuItem>
           {years.map((year) => (
-            <option key={year} value={year}>
+            <MenuItem key={year} value={year}>
               {year}
-            </option>
+            </MenuItem>
           ))}
-        </select>
-      </div>
-    </div>
+        </Select>
+      </Box>
+    </Box>
   );
 }

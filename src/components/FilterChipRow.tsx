@@ -1,3 +1,5 @@
+import { Box, Chip, Typography } from "@mui/material";
+
 export function FilterChipRow({
   label,
   options,
@@ -12,28 +14,30 @@ export function FilterChipRow({
   if (options.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-3">
-      <span className="font-display w-24 flex-shrink-0 pt-1.5 text-xs uppercase tracking-wide text-text-muted">
+    <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: { xs: 0.75, sm: 2 }, alignItems: { sm: "flex-start" } }}>
+      <Typography variant="overline" sx={{ width: 96, flexShrink: 0, color: "text.secondary", pt: { sm: 0.5 } }}>
         {label}
-      </span>
-      <div className="no-scrollbar flex gap-2 overflow-x-auto sm:flex-wrap">
+      </Typography>
+      <Box
+        className="no-scrollbar"
+        sx={{ display: "flex", gap: 1, overflowX: "auto", flexWrap: { sm: "wrap" } }}
+      >
         {options.map((opt) => {
           const active = opt.value === selected;
           return (
-            <button
+            <Chip
               key={opt.value}
+              label={opt.label}
               onClick={() => onChange(active ? null : opt.value)}
-              className={`jump-badge flex-shrink-0 px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
-                active
-                  ? "bg-jump-red text-text-primary"
-                  : "border border-border bg-surface text-text-muted hover:border-text-muted"
-              }`}
-            >
-              {opt.label}
-            </button>
+              color={active ? "primary" : "default"}
+              variant={active ? "filled" : "outlined"}
+              aria-pressed={active}
+              size="small"
+              sx={{ flexShrink: 0, fontWeight: 700, textTransform: "uppercase" }}
+            />
           );
         })}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }
