@@ -1,9 +1,10 @@
-import Link from "next/link";
+import { Box, Typography } from "@mui/material";
 import { prisma } from "@/lib/prisma";
 import { Header } from "@/components/Header";
 import { Row } from "@/components/Row";
 import { AnimeCard } from "@/components/AnimeCard";
 import { HeroBanner } from "@/components/HeroBanner";
+import { LinkButton } from "@/components/LinkButton";
 import { ensureTitleFurigana } from "@/lib/ensureFurigana";
 import { getCurrentUser } from "@/lib/auth/session";
 import { WATCH_STATUS_LABELS, type WatchStatus } from "@/lib/types";
@@ -21,23 +22,20 @@ export default async function Home() {
 
   if (!user) {
     return (
-      <div className="jump-halftone min-h-screen bg-ink">
+      <div className="min-h-screen bg-ink">
         <Header />
-        <div className="flex flex-col items-center gap-4 px-6 py-24 text-center">
-          <p className="font-display -rotate-2 text-2xl uppercase text-text-primary drop-shadow-[3px_3px_0_#000]">
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, px: 3, py: 12, textAlign: "center" }}>
+          <Typography variant="h4" component="p" sx={{ textTransform: "uppercase" }}>
             Faça login para ver sua lista
-          </p>
-          <p className="max-w-md text-sm text-text-muted">
+          </Typography>
+          <Typography variant="body2" sx={{ maxWidth: 448, color: "text.secondary" }}>
             Descobrir e o calendário de lançamentos continuam livres pra
             navegar sem conta — só a sua lista pessoal precisa de login.
-          </p>
-          <Link
-            href="/login"
-            className="jump-shadow border-2 border-border-strong bg-jump-red px-5 py-2 font-display text-sm uppercase tracking-wide text-text-primary transition hover:bg-jump-red-bright"
-          >
+          </Typography>
+          <LinkButton href="/login" variant="contained" sx={{ mt: 1 }}>
             Entrar
-          </Link>
-        </div>
+          </LinkButton>
+        </Box>
       </div>
     );
   }
@@ -50,19 +48,16 @@ export default async function Home() {
 
   if (animes.length === 0) {
     return (
-      <div className="jump-halftone min-h-screen bg-ink">
+      <div className="min-h-screen bg-ink">
         <Header />
-        <div className="flex flex-col items-center gap-4 px-6 py-24 text-center">
-          <p className="font-display -rotate-2 text-2xl uppercase text-text-primary drop-shadow-[3px_3px_0_#000]">
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, px: 3, py: 12, textAlign: "center" }}>
+          <Typography variant="h4" component="p" sx={{ textTransform: "uppercase" }}>
             Sua lista ainda está vazia!
-          </p>
-          <Link
-            href="/discover"
-            className="jump-shadow border-2 border-border-strong bg-jump-red px-5 py-2 font-display text-sm uppercase tracking-wide text-text-primary transition hover:bg-jump-red-bright"
-          >
+          </Typography>
+          <LinkButton href="/discover" variant="contained" sx={{ mt: 1 }}>
             Descobrir animes
-          </Link>
-        </div>
+          </LinkButton>
+        </Box>
       </div>
     );
   }

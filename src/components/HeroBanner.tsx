@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
-import Link from "next/link";
+import NextLink from "next/link";
+import { Box, Button, Chip, Stack, Typography } from "@mui/material";
 import { AnimeTitle } from "@/components/AnimeTitle";
 
 export type HeroBannerData = {
@@ -32,81 +35,99 @@ export function HeroBanner({
   const backdrop = bannerImage ?? coverImage;
 
   return (
-    <section className="relative flex h-[52vh] min-h-[360px] w-full items-end overflow-hidden sm:h-[62vh]">
+    <Box
+      component="section"
+      sx={{
+        position: "relative",
+        display: "flex",
+        alignItems: "flex-end",
+        width: "100%",
+        height: { xs: "52vh", sm: "62vh" },
+        minHeight: 360,
+        overflow: "hidden",
+      }}
+    >
       {backdrop ? (
-        <Image
-          src={backdrop}
-          alt=""
-          fill
-          priority
-          className="object-cover object-top"
-        />
+        <Image src={backdrop} alt="" fill priority style={{ objectFit: "cover", objectPosition: "top" }} />
       ) : (
-        <div className="absolute inset-0 bg-gradient-to-br from-jump-red/40 via-ink to-ink" />
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(to bottom right, rgba(228,0,43,0.4), #0b0b0d, #0b0b0d)",
+          }}
+        />
       )}
 
-      <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/55 to-transparent" />
-      <div className="jump-speedlines absolute inset-0 bg-gradient-to-r from-ink/90 via-ink/20 to-transparent" />
+      <Box
+        sx={{
+          position: "absolute",
+          inset: 0,
+          background: "linear-gradient(to top, #0b0b0d, rgba(11,11,13,0.55), transparent)",
+        }}
+      />
 
-      <div className="relative z-10 max-w-2xl px-6 pb-10 sm:px-10 sm:pb-14">
+      <Box sx={{ position: "relative", zIndex: 1, maxWidth: 672, px: { xs: 3, sm: 5 }, pb: { xs: 5, sm: 7 } }}>
         {titleNative && (
-          <p className="font-jp mb-1 text-sm font-medium text-text-muted">
+          <Typography className="font-jp" variant="body2" sx={{ mb: 0.5, color: "text.secondary" }}>
             {titleNative}
-          </p>
+          </Typography>
         )}
-        <h1 className="font-display text-4xl uppercase leading-none text-text-primary drop-shadow-[3px_3px_0_#000] sm:text-6xl">
+        <Typography
+          variant="h2"
+          component="h1"
+          className="font-display"
+          sx={{ textTransform: "uppercase", lineHeight: 1, fontSize: { xs: "2.5rem", sm: "4rem" } }}
+        >
           <AnimeTitle
             titles={{ titleRomaji, titleEnglish, titleNative, titlePortuguese }}
             furiganaHtml={titleFurigana}
           />
-        </h1>
+        </Typography>
 
         {genres.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <Stack direction="row" spacing={1} sx={{ mt: 2, flexWrap: "wrap" }}>
             {genres.slice(0, 3).map((g) => (
-              <span
+              <Chip
                 key={g}
-                className="jump-badge bg-surface-raised/90 px-3 py-1 text-xs font-bold uppercase tracking-wide text-text-primary backdrop-blur-sm"
-              >
-                {g}
-              </span>
+                label={g}
+                size="small"
+                sx={{ bgcolor: "background.paper", fontWeight: 700, textTransform: "uppercase" }}
+              />
             ))}
-          </div>
+          </Stack>
         )}
 
         {description && (
-          <p
-            className="mt-4 line-clamp-3 text-sm text-text-body sm:text-base"
+          <Typography
+            variant="body1"
+            sx={{
+              mt: 2,
+              color: "text.secondary",
+              display: "-webkit-box",
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
             dangerouslySetInnerHTML={{ __html: description }}
           />
         )}
 
-        <div className="mt-6 flex flex-wrap gap-4">
+        <Stack direction="row" spacing={2} sx={{ mt: 3, flexWrap: "wrap" }}>
           {primaryLink ? (
-            <a
-              href={primaryLink.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="jump-shadow flex items-center gap-2 border-2 border-border-strong bg-jump-red px-5 py-2.5 font-display text-sm uppercase tracking-wide text-text-primary transition-transform hover:-translate-y-0.5 hover:bg-jump-red-bright active:translate-y-0"
-            >
+            <Button component="a" href={primaryLink.url} target="_blank" rel="noopener noreferrer" variant="contained" size="large">
               ▶ Assistir na {primaryLink.platform}
-            </a>
+            </Button>
           ) : (
-            <Link
-              href={`/anime/${id}`}
-              className="jump-shadow flex items-center gap-2 border-2 border-border-strong bg-jump-red px-5 py-2.5 font-display text-sm uppercase tracking-wide text-text-primary transition-transform hover:-translate-y-0.5 hover:bg-jump-red-bright"
-            >
+            <Button component={NextLink} href={`/anime/${id}`} variant="contained" size="large">
               ▶ Vincular plataforma
-            </Link>
+            </Button>
           )}
-          <Link
-            href={`/anime/${id}`}
-            className="flex items-center gap-2 border-2 border-border bg-ink/60 px-5 py-2.5 font-display text-sm uppercase tracking-wide text-text-primary backdrop-blur-sm transition hover:border-text-primary"
-          >
+          <Button component={NextLink} href={`/anime/${id}`} variant="outlined" color="inherit" size="large">
             ⓘ Mais informações
-          </Link>
-        </div>
-      </div>
-    </section>
+          </Button>
+        </Stack>
+      </Box>
+    </Box>
   );
 }
