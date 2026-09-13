@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { searchAnimeCatalog } from "../../../src/lib/searchAnimeCatalog";
 import { getSeasonalCatalog, type Season } from "../../../src/lib/seasonalCatalog";
+import { resolveAnimeMedia } from "../../../src/lib/resolveAnimeMedia";
 
 const PORT = Number(process.env.PORT ?? 4003);
 
@@ -72,6 +73,30 @@ async function handleSeason(req: IncomingMessage, res: ServerResponse) {
   }
 }
 
+async function handleResolveAnime(req: IncomingMessage, res: ServerResponse) {
+  let body: Record<string, unknown>;
+  try {
+    body = await readJsonBody(req);
+  } catch (error) {
+    sendJson(res, 400, { error: error instanceof Error ? error.message : "Corpo inválido" });
+    return;
+  }
+
+  const anilistId = Number(body.anilistId);
+  if (!anilistId) {
+    sendJson(res, 400, { error: "anilistId é obrigatório" });
+    return;
+  }
+
+  try {
+    const media = await resolveAnimeMedia(anilistId);
+    sendJson(res, 200, media);
+  } catch (error) {
+    console.error("[cache-updater] resolve-anime falhou:", error);
+    sendJson(res, 502, { error: "Falha ao buscar dados do anime" });
+  }
+}
+
 createServer((req, res) => {
   if (req.method === "GET" && req.url === "/health") {
     sendJson(res, 200, { status: "ok" });
@@ -83,6 +108,10 @@ createServer((req, res) => {
   }
   if (req.method === "POST" && req.url === "/season") {
     void handleSeason(req, res);
+    return;
+  }
+  if (req.method === "POST" && req.url === "/resolve-anime") {
+    void handleResolveAnime(req, res);
     return;
   }
   res.writeHead(404);

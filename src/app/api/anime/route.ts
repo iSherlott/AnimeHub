@@ -1,63 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAnimeById } from "@/lib/anilist";
 import { deriveSeriesInfo } from "@/lib/series";
 import { requireUser } from "@/lib/auth/session";
-
-type NormalizedMedia = {
-  id: number;
-  titleRomaji: string;
-  titleEnglish: string | null;
-  titleNative: string | null;
-  coverImage: string | null;
-  bannerImage: string | null;
-  description: string | null;
-  episodes: number | null;
-  status: string | null;
-  season: string | null;
-  seasonYear: number | null;
-  genres: string;
-  averageScore: number | null;
-};
-
-async function resolveMedia(anilistId: number): Promise<NormalizedMedia> {
-  try {
-    const media = await getAnimeById(anilistId);
-    return {
-      id: media.id,
-      titleRomaji: media.title.romaji,
-      titleEnglish: media.title.english,
-      titleNative: media.title.native,
-      coverImage: media.coverImage.large,
-      bannerImage: media.bannerImage,
-      description: media.description,
-      episodes: media.episodes,
-      status: media.status,
-      season: media.season,
-      seasonYear: media.seasonYear,
-      genres: media.genres.join(","),
-      averageScore: media.averageScore,
-    };
-  } catch (error) {
-    const cached = await prisma.catalogEntry.findUnique({ where: { anilistId } });
-    if (!cached) throw error;
-    return {
-      id: anilistId,
-      titleRomaji: cached.titleRomaji,
-      titleEnglish: cached.titleEnglish,
-      titleNative: cached.titleNative,
-      coverImage: cached.coverImage,
-      bannerImage: cached.bannerImage,
-      description: cached.description,
-      episodes: cached.episodes,
-      status: cached.status,
-      season: cached.season,
-      seasonYear: cached.seasonYear,
-      genres: cached.genres ?? "",
-      averageScore: cached.averageScore,
-    };
-  }
-}
+import { resolveAnimeMedia, type NormalizedMedia } from "@/lib/resolveAnimeMedia";
+import { callInternalService } from "@/lib/serviceDelegate";
 
 export async function GET() {
   const { user, response } = await requireUser();
@@ -94,15 +40,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Anime já está na sua lista" }, { status: 409 });
   }
 
+  const delegated = await callInternalService<NormalizedMedia>(
+    process.env.CACHE_UPDATER_URL,
+    "/resolve-anime",
+    { anilistId }
+  );
+
   let media: NormalizedMedia;
-  try {
-    media = await resolveMedia(anilistId);
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json(
-      { error: "Falha ao buscar dados do anime (AniList fora do ar e sem cache local)" },
-      { status: 502 }
-    );
+  if (delegated) {
+    media = delegated;
+  } else {
+    try {
+      media = await resolveAnimeMedia(anilistId);
+    } catch (error) {
+      console.error(error);
+      return NextResponse.json(
+        { error: "Falha ao buscar dados do anime (AniList fora do ar e sem cache local)" },
+        { status: 502 }
+      );
+    }
   }
 
   const platform: string | undefined = body.platform;
