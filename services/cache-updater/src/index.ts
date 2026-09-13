@@ -1,7 +1,9 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { prisma } from "../../../src/lib/prisma";
 import { searchAnimeCatalog } from "../../../src/lib/searchAnimeCatalog";
 import { getSeasonalCatalog, type Season } from "../../../src/lib/seasonalCatalog";
 import { resolveAnimeMedia } from "../../../src/lib/resolveAnimeMedia";
+import { ensureEpisodes } from "../../../src/lib/episodes";
 
 const PORT = Number(process.env.PORT ?? 4003);
 
@@ -97,6 +99,41 @@ async function handleResolveAnime(req: IncomingMessage, res: ServerResponse) {
   }
 }
 
+async function handleEnsureEpisodes(req: IncomingMessage, res: ServerResponse) {
+  let body: Record<string, unknown>;
+  try {
+    body = await readJsonBody(req);
+  } catch (error) {
+    sendJson(res, 400, { error: error instanceof Error ? error.message : "Corpo inválido" });
+    return;
+  }
+
+  const animeId = typeof body.animeId === "string" ? body.animeId : null;
+  if (!animeId) {
+    sendJson(res, 400, { error: "animeId é obrigatório" });
+    return;
+  }
+
+  // ensureEpisodes só protege sua própria busca na Kitsu — a leitura de
+  // cache que ela faz antes disso (e o findUnique abaixo) não são
+  // garantidos contra erro de banco; sem este try/catch, uma falha aqui
+  // rejeitaria a Promise dentro do `void handleEnsureEpisodes(...)` do
+  // listener e derrubaria o processo inteiro (sem handler global de
+  // unhandledRejection), tirando do ar os outros 3 endpoints também.
+  try {
+    const anime = await prisma.anime.findUnique({ where: { id: animeId } });
+    if (!anime) {
+      sendJson(res, 404, { error: "Anime não encontrado" });
+      return;
+    }
+    const result = await ensureEpisodes(anime);
+    sendJson(res, 200, result);
+  } catch (error) {
+    console.error("[cache-updater] ensure-episodes falhou:", error);
+    sendJson(res, 502, { error: "Falha ao garantir episódios" });
+  }
+}
+
 createServer((req, res) => {
   if (req.method === "GET" && req.url === "/health") {
     sendJson(res, 200, { status: "ok" });
@@ -112,6 +149,10 @@ createServer((req, res) => {
   }
   if (req.method === "POST" && req.url === "/resolve-anime") {
     void handleResolveAnime(req, res);
+    return;
+  }
+  if (req.method === "POST" && req.url === "/ensure-episodes") {
+    void handleEnsureEpisodes(req, res);
     return;
   }
   res.writeHead(404);

@@ -13,8 +13,9 @@ import { TitleEditor } from "@/components/TitleEditor";
 import { RefreshDataButton } from "@/components/RefreshDataButton";
 import { AnidbIdEditor } from "@/components/AnidbIdEditor";
 import { OtherTitles } from "@/components/OtherTitles";
-import { ensureEpisodes } from "@/lib/episodes";
+import { ensureEpisodes, type EpisodesResult } from "@/lib/episodes";
 import { ensureTitleFurigana } from "@/lib/ensureFurigana";
+import { callInternalService } from "@/lib/serviceDelegate";
 import type { WatchStatus } from "@/lib/types";
 
 export default async function AnimeDetailPage({
@@ -43,7 +44,13 @@ export default async function AnimeDetailPage({
           select: { id: true, seasonNumber: true, titleRomaji: true },
         })
       : Promise.resolve([]),
-    ensureEpisodes(anime),
+    // Nota: quando delegado, episodesResult.episodes[].airDate volta como
+    // string ISO (round-trip por JSON), não Date — diferente do caminho
+    // local. EpisodeGrid não usa airDate hoje, então é inofensivo, mas
+    // qualquer novo uso desse campo precisa tratar os dois formatos.
+    callInternalService<EpisodesResult>(process.env.CACHE_UPDATER_URL, "/ensure-episodes", {
+      animeId: anime.id,
+    }).then((delegated) => delegated ?? ensureEpisodes(anime)),
     ensureTitleFurigana(anime),
   ]);
 
