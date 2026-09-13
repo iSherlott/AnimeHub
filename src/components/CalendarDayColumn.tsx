@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Box, Button, Stack, Typography } from "@mui/material";
 import { CalendarEntryCard } from "@/components/CalendarEntryCard";
 import type { CalendarItem } from "@/lib/calendarItem";
 
@@ -28,72 +29,77 @@ export function CalendarDayColumn({
   const totalCount = mine.length + others.length;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div
-        className={`flex items-baseline gap-2 border-b-2 pb-2 ${
-          isToday ? "border-jump-red" : "border-border"
-        }`}
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: "baseline",
+          borderBottom: 2,
+          borderColor: isToday ? "primary.main" : "divider",
+          pb: 1,
+        }}
       >
-        <span
-          className={`font-display text-base uppercase ${
-            isToday ? "text-jump-red" : "text-text-body"
-          }`}
-        >
+        <Typography variant="body2" className="font-display" sx={{ textTransform: "uppercase", color: isToday ? "primary.main" : "text.secondary" }}>
           {DAY_LABELS[day.getDay()]}
-        </span>
-        <span className="text-xs text-text-muted">
+        </Typography>
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
           {day.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
-        </span>
-      </div>
+        </Typography>
+      </Stack>
 
       {mine.length > 0 ? (
-        <div className="flex flex-col gap-2">
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
           {mine.map((item) => (
             <CalendarEntryCard key={item.key} item={item} variant="featured" />
           ))}
-        </div>
+        </Box>
       ) : !showAll ? (
-        <p className="jump-halftone border border-dashed border-border bg-surface/40 px-2 py-4 text-center text-[11px] leading-relaxed text-text-muted">
-          Nada da sua lista
-          <br />
-          por aqui
-        </p>
+        <Box sx={{ border: 1, borderStyle: "dashed", borderColor: "divider", bgcolor: "background.paper", px: 1, py: 2 }}>
+          <Typography variant="caption" sx={{ display: "block", textAlign: "center", lineHeight: 1.6, color: "text.secondary" }}>
+            Nada da sua lista
+            <br />
+            por aqui
+          </Typography>
+        </Box>
       ) : null}
 
       {showAll && others.length > 0 && (
-        <div className="flex flex-col gap-1.5">
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
           {mine.length > 0 && (
-            <p className="font-display mt-1 text-[10px] uppercase tracking-wide text-text-muted">
+            <Typography variant="caption" className="font-display" sx={{ mt: 0.5, textTransform: "uppercase", color: "text.secondary" }}>
               Outros lançamentos
-            </p>
+            </Typography>
           )}
           {visibleOthers.map((item) => (
             <CalendarEntryCard key={item.key} item={item} variant="compact" />
           ))}
           {hiddenCount > 0 && (
-            <button
-              type="button"
+            <Button
               onClick={() => setExpanded(true)}
-              className="text-left text-[10px] text-text-muted underline-offset-2 hover:text-text-body hover:underline"
+              size="small"
+              sx={{ justifyContent: "flex-start", px: 0, minWidth: 0, fontSize: 10, color: "text.secondary" }}
             >
               + {hiddenCount} mais
-            </button>
+            </Button>
           )}
           {expanded && others.length > OTHERS_PREVIEW_COUNT && (
-            <button
-              type="button"
+            <Button
               onClick={() => setExpanded(false)}
-              className="text-left text-[10px] text-text-muted underline-offset-2 hover:text-text-body hover:underline"
+              size="small"
+              sx={{ justifyContent: "flex-start", px: 0, minWidth: 0, fontSize: 10, color: "text.secondary" }}
             >
               Mostrar menos
-            </button>
+            </Button>
           )}
-        </div>
+        </Box>
       )}
 
       {showAll && totalCount === 0 && (
-        <p className="text-xs text-text-muted">Nada previsto</p>
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          Nada previsto
+        </Typography>
       )}
-    </div>
+    </Box>
   );
 }

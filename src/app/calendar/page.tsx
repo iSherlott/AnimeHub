@@ -1,6 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import {
+  Alert,
+  Box,
+  Button,
+  IconButton,
+  Stack,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+} from "@mui/material";
 import { Header } from "@/components/Header";
 import { CalendarDayColumn } from "@/components/CalendarDayColumn";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
@@ -105,80 +117,66 @@ export default function CalendarPage() {
     <div className="min-h-screen bg-ink pb-16">
       <Header />
 
-      <div className="jump-halftone border-b border-border px-6 py-8 sm:px-10">
-        <h1 className="font-display text-3xl uppercase tracking-wide text-text-primary drop-shadow-[3px_3px_0_#000] sm:text-4xl">
+      <Box sx={{ borderBottom: 1, borderColor: "divider", px: { xs: 3, sm: 5 }, py: 4 }}>
+        <Typography variant="h3" component="h1" className="font-display" sx={{ textTransform: "uppercase" }}>
           Calendário
-        </h1>
-        <p className="mt-1 text-sm text-text-muted">
+        </Typography>
+        <Typography variant="body2" sx={{ mt: 0.5, color: "text.secondary" }}>
           {myListCountThisWeek > 0
             ? `${myListCountThisWeek} lançamento${myListCountThisWeek > 1 ? "s" : ""} da sua lista nesta semana.`
             : "Episódios com data e horário de exibição confirmados."}
-        </p>
+        </Typography>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
+        <Stack direction="row" spacing={2} sx={{ mt: 2, flexWrap: "wrap", alignItems: "center" }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <IconButton
               onClick={() => setWeekOffset((w) => Math.max(-MAX_WEEK_OFFSET, w - 1))}
               disabled={weekOffset <= -MAX_WEEK_OFFSET || loading}
-              className="jump-badge border border-border bg-surface px-3 py-1.5 text-xs font-bold uppercase text-text-body transition hover:border-jump-red disabled:cursor-not-allowed disabled:opacity-40"
+              size="small"
+              aria-label="Semana anterior"
             >
-              ← Semana anterior
-            </button>
-            <span className="font-display min-w-24 text-center text-sm uppercase text-text-muted">
+              <ArrowBackIcon fontSize="small" />
+            </IconButton>
+            <Typography variant="body2" className="font-display" sx={{ minWidth: 96, textAlign: "center", textTransform: "uppercase", color: "text.secondary" }}>
               {weekOffset === 0 ? "Esta semana" : weekRangeLabel}
-            </span>
-            <button
-              type="button"
+            </Typography>
+            <IconButton
               onClick={() => setWeekOffset((w) => Math.min(MAX_WEEK_OFFSET, w + 1))}
               disabled={weekOffset >= MAX_WEEK_OFFSET || loading}
-              className="jump-badge border border-border bg-surface px-3 py-1.5 text-xs font-bold uppercase text-text-body transition hover:border-jump-red disabled:cursor-not-allowed disabled:opacity-40"
+              size="small"
+              aria-label="Próxima semana"
             >
-              Próxima semana →
-            </button>
+              <ArrowForwardIcon fontSize="small" />
+            </IconButton>
             {weekOffset !== 0 && (
-              <button
-                type="button"
-                onClick={() => setWeekOffset(0)}
-                className="text-xs text-text-muted underline-offset-2 hover:text-text-body hover:underline"
-              >
+              <Button onClick={() => setWeekOffset(0)} size="small" color="inherit">
                 Voltar para hoje
-              </button>
+              </Button>
             )}
-          </div>
+          </Stack>
 
-          <div className="ml-0 flex border-2 border-border-strong sm:ml-auto">
-            <button
-              type="button"
-              onClick={() => setShowAll(false)}
-              className={`jump-badge px-3 py-1.5 text-xs font-bold uppercase transition ${
-                !showAll
-                  ? "bg-jump-yellow text-ink"
-                  : "bg-surface text-text-muted hover:text-text-body"
-              }`}
-            >
-              ★ Minha lista
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowAll(true)}
-              className={`px-3 py-1.5 text-xs font-bold uppercase transition ${
-                showAll
-                  ? "bg-jump-yellow text-ink"
-                  : "bg-surface text-text-muted hover:text-text-body"
-              }`}
-            >
-              Todos os lançamentos
-            </button>
-          </div>
-        </div>
-      </div>
+          <ToggleButtonGroup
+            value={showAll ? "all" : "mine"}
+            exclusive
+            onChange={(_, value) => {
+              if (value !== null) setShowAll(value === "all");
+            }}
+            size="small"
+            sx={{ ml: { sm: "auto" } }}
+          >
+            <ToggleButton value="mine">★ Minha lista</ToggleButton>
+            <ToggleButton value="all">Todos os lançamentos</ToggleButton>
+          </ToggleButtonGroup>
+        </Stack>
+      </Box>
 
-      <div className="px-6 py-6 sm:px-10">
+      <Box sx={{ px: { xs: 3, sm: 5 }, py: 3 }}>
         {loading ? (
-          <p className="text-sm text-text-muted">Carregando calendário...</p>
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            Carregando calendário...
+          </Typography>
         ) : error ? (
-          <p className="text-sm text-jump-red-bright">{error}</p>
+          <Alert severity="error">{error}</Alert>
         ) : (
           <div
             key={`${weekOffset}-${showAll}`}
@@ -195,7 +193,7 @@ export default function CalendarPage() {
             ))}
           </div>
         )}
-      </div>
+      </Box>
     </div>
   );
 }
