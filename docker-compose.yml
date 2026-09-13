@@ -131,5 +131,28 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Detecta favoritos no ar agora (Epic 10) — a cada ~2min, junta Anime x
+  # AiringScheduleEntry por anilistId dentro de uma janela de exibição e
+  # grava em AiringAlert. O `web` só lê essa tabela (GET /api/notifications),
+  # nunca chama este serviço sob demanda — escritor de fundo puro, como o
+  # calendar-loader.
+  notifier:
+    build:
+      context: .
+      dockerfile: services/notifier/Dockerfile
+    restart: unless-stopped
+    environment:
+      ANIME_HUB_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4004/health', r => process.exit(r.statusCode===200?0:1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
 volumes:
   postgres_data:

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { TitleLanguageMenu } from "@/components/TitleLanguageMenu";
+import { NotificationBell } from "@/components/NotificationBell";
 import type { PublicUser } from "@/lib/auth/session";
 
 function NavLinks({
@@ -125,6 +126,7 @@ export function Header() {
 
         <div className="ml-auto hidden items-center gap-3 text-sm sm:flex">
           <TitleLanguageMenu />
+          <NotificationBell user={user} />
           {user === undefined ? null : user ? (
             <>
               <span className="hidden text-text-muted md:inline">{user.displayName}</span>
@@ -165,7 +167,10 @@ export function Header() {
         <div className="flex flex-col gap-4 border-t border-border bg-ink px-6 py-4 text-sm font-semibold uppercase tracking-wide sm:hidden">
           <NavLinks pathname={pathname} user={user} onNavigate={() => setMobileOpen(false)} />
           <div className="flex items-center justify-between border-t border-border pt-4">
-            <TitleLanguageMenu />
+            <div className="flex items-center gap-3">
+              <TitleLanguageMenu />
+              <NotificationBell user={user} />
+            </div>
             {user === undefined ? null : user ? (
               <div className="flex items-center gap-3">
                 <span className="text-text-muted">{user.displayName}</span>

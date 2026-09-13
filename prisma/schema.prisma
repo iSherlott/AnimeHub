@@ -29,6 +29,7 @@ model User {
   animeList      Anime[]
   invitesCreated Invite[] @relation("InvitesCreated")
   inviteUsed     Invite?  @relation("InviteUsed")
+  airingAlerts   AiringAlert[]
 
   @@index([email])
 }
@@ -235,4 +236,24 @@ model WatchProgress {
   startedAt       DateTime?
   completedAt     DateTime?
   updatedAt       DateTime  @updatedAt
+}
+
+/**
+ * Alerta de "favorito no ar agora" (Epic 10) — escrito só pelo serviço
+ * `services/notifier` (a cada ~2min, junção de Anime x AiringScheduleEntry
+ * por anilistId dentro de uma janela de exibição). O BFF só lê esta tabela
+ * (GET /api/notifications) e marca `seenAt` quando a pessoa vê o alerta.
+ */
+model AiringAlert {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anilistId Int
+  episode   Int
+  airingAt  DateTime
+  seenAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, anilistId, episode])
+  @@index([userId, seenAt])
 }
