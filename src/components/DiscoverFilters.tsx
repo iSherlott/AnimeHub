@@ -1,4 +1,6 @@
-import { Box, MenuItem, Select, Typography, type SelectChangeEvent } from "@mui/material";
+import { Badge, Box, Button, Collapse, MenuItem, Select, Typography, type SelectChangeEvent } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { CATALOG_STATUS_LABELS, SEASON_LABELS } from "@/lib/types";
 import { FilterChipRow } from "@/components/FilterChipRow";
 
@@ -18,6 +20,9 @@ export function DiscoverFilters({
   genreRowRef,
   seasonRowRef,
   yearRowRef,
+  expanded,
+  onExpandedChange,
+  onExtraFiltersEntered,
 }: {
   genres: string[];
   statuses: string[];
@@ -34,11 +39,16 @@ export function DiscoverFilters({
   genreRowRef?: React.RefObject<HTMLDivElement | null>;
   seasonRowRef?: React.RefObject<HTMLDivElement | null>;
   yearRowRef?: React.RefObject<HTMLDivElement | null>;
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
+  onExtraFiltersEntered?: () => void;
 }) {
   function handleYearChange(e: SelectChangeEvent<number | "">) {
     const value = e.target.value;
     onYearChange(value === "" ? null : Number(value));
   }
+
+  const hiddenActiveCount = (selectedSeason ? 1 : 0) + (selectedYear ? 1 : 0);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2, border: 1, borderColor: "divider", bgcolor: "background.paper", p: 2 }}>
@@ -61,40 +71,60 @@ export function DiscoverFilters({
         onChange={onStatusChange}
       />
 
-      <Box ref={seasonRowRef}>
-        <FilterChipRow
-          label="Temporada"
-          options={seasons.map((s) => ({
-            value: s,
-            label: SEASON_LABELS[s] ?? s,
-          }))}
-          selected={selectedSeason}
-          onChange={onSeasonChange}
-        />
-      </Box>
+      <Collapse in={expanded} timeout="auto" onEntered={onExtraFiltersEntered}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Box ref={seasonRowRef}>
+            <FilterChipRow
+              label="Temporada"
+              options={seasons.map((s) => ({
+                value: s,
+                label: SEASON_LABELS[s] ?? s,
+              }))}
+              selected={selectedSeason}
+              onChange={onSeasonChange}
+            />
+          </Box>
 
-      <Box
-        ref={yearRowRef}
-        sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: { xs: 0.75, sm: 2 }, alignItems: { sm: "center" } }}
+          <Box
+            ref={yearRowRef}
+            sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: { xs: 0.75, sm: 2 }, alignItems: { sm: "center" } }}
+          >
+            <Typography variant="overline" sx={{ width: 96, flexShrink: 0, color: "text.secondary" }}>
+              Ano
+            </Typography>
+            <Select
+              value={selectedYear ?? ""}
+              onChange={handleYearChange}
+              displayEmpty
+              size="small"
+              sx={{ width: "fit-content", minWidth: 160 }}
+            >
+              <MenuItem value="">Todos os anos</MenuItem>
+              {years.map((year) => (
+                <MenuItem key={year} value={year}>
+                  {year}
+                </MenuItem>
+              ))}
+            </Select>
+          </Box>
+        </Box>
+      </Collapse>
+
+      <Button
+        onClick={() => onExpandedChange(!expanded)}
+        size="small"
+        aria-expanded={expanded}
+        startIcon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        sx={{ alignSelf: "flex-start", color: "text.secondary" }}
       >
-        <Typography variant="overline" sx={{ width: 96, flexShrink: 0, color: "text.secondary" }}>
-          Ano
-        </Typography>
-        <Select
-          value={selectedYear ?? ""}
-          onChange={handleYearChange}
-          displayEmpty
-          size="small"
-          sx={{ width: "fit-content", minWidth: 160 }}
-        >
-          <MenuItem value="">Todos os anos</MenuItem>
-          {years.map((year) => (
-            <MenuItem key={year} value={year}>
-              {year}
-            </MenuItem>
-          ))}
-        </Select>
-      </Box>
+        {expanded ? (
+          "Menos filtros"
+        ) : (
+          <Badge badgeContent={hiddenActiveCount} color="primary" sx={{ "& .MuiBadge-badge": { right: -10 } }}>
+            Mais filtros
+          </Badge>
+        )}
+      </Button>
     </Box>
   );
 }

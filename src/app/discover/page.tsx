@@ -79,6 +79,34 @@ export default function DiscoverPage() {
   const genreRowRef = useRef<HTMLDivElement>(null);
   const seasonRowRef = useRef<HTMLDivElement>(null);
   const yearRowRef = useRef<HTMLDivElement>(null);
+  const pendingScrollRef = useRef<React.RefObject<HTMLDivElement | null> | null>(null);
+  const expandingRef = useRef(false);
+
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("discover-filters-expanded") === "1") {
+        setFiltersExpanded(true);
+      }
+    } catch {
+      // localStorage indisponível (modo privado, etc.) — fica colapsado.
+    }
+  }, []);
+
+  function updateFiltersExpanded(next: boolean) {
+    setFiltersExpanded(next);
+    try {
+      localStorage.setItem("discover-filters-expanded", next ? "1" : "0");
+    } catch {
+      // idem — falha silenciosa, é só a conveniência de lembrar a preferência.
+    }
+  }
+
+  function handleFiltersToggle(next: boolean) {
+    pendingScrollRef.current = null;
+    updateFiltersExpanded(next);
+  }
 
   useEffect(() => {
     fetch("/api/anilist/season")
@@ -199,8 +227,29 @@ export default function DiscoverPage() {
     setSelectedYear(null);
   }
 
-  function scrollToRow(ref: React.RefObject<HTMLDivElement | null>) {
+  function scrollToRow(ref: React.RefObject<HTMLDivElement | null>, requiresExpand = false) {
+    // Enquanto a transição de expandir ainda está em andamento (ex.: clicar
+    // em "Por temporada" e, antes dela terminar, clicar em "Por ano"), a
+    // linha-alvo ainda não está no layout final — atualiza o alvo pendente
+    // e deixa o onEntered da transição já em curso resolver o scroll,
+    // em vez de rolar pra uma posição intermediária que vai ficar errada
+    // assim que o layout terminar de crescer.
+    if (requiresExpand && (!filtersExpanded || expandingRef.current)) {
+      pendingScrollRef.current = ref;
+      if (!filtersExpanded) {
+        expandingRef.current = true;
+        updateFiltersExpanded(true);
+      }
+      return;
+    }
+    pendingScrollRef.current = null;
     ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function handleExtraFiltersEntered() {
+    expandingRef.current = false;
+    pendingScrollRef.current?.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    pendingScrollRef.current = null;
   }
 
   return (
@@ -230,7 +279,7 @@ export default function DiscoverPage() {
           </CardActionArea>
         </Card>
         <Card variant="outlined" sx={{ bgcolor: "rgba(46,111,242,0.08)" }}>
-          <CardActionArea onClick={() => scrollToRow(seasonRowRef)} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
+          <CardActionArea onClick={() => scrollToRow(seasonRowRef, true)} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
             <Box>
               <Typography className="font-display" sx={{ textTransform: "uppercase" }}>
                 Por temporada
@@ -243,7 +292,7 @@ export default function DiscoverPage() {
           </CardActionArea>
         </Card>
         <Card variant="outlined" sx={{ bgcolor: "rgba(255,212,0,0.08)" }}>
-          <CardActionArea onClick={() => scrollToRow(yearRowRef)} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
+          <CardActionArea onClick={() => scrollToRow(yearRowRef, true)} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
             <Box>
               <Typography className="font-display" sx={{ textTransform: "uppercase" }}>
                 Por ano
@@ -290,6 +339,9 @@ export default function DiscoverPage() {
           genreRowRef={genreRowRef}
           seasonRowRef={seasonRowRef}
           yearRowRef={yearRowRef}
+          expanded={filtersExpanded}
+          onExpandedChange={handleFiltersToggle}
+          onExtraFiltersEntered={handleExtraFiltersEntered}
         />
 
         {filtersActive && (
