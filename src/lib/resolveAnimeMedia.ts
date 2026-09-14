@@ -16,6 +16,10 @@ export type NormalizedMedia = {
   genres: string;
   averageScore: number | null;
   officialSite: string | null;
+  trailerId: string | null;
+  trailerSite: string | null;
+  castJson: string | null;
+  recommendationsJson: string | null;
 };
 
 /**
@@ -42,6 +46,12 @@ export async function resolveAnimeMedia(anilistId: number): Promise<NormalizedMe
       genres: media.genres.join(","),
       averageScore: media.averageScore,
       officialSite: getOfficialSiteUrl(media),
+      trailerId: media.trailer?.id ?? null,
+      trailerSite: media.trailer?.site ?? null,
+      castJson: media.cast.length ? JSON.stringify(media.cast) : null,
+      recommendationsJson: media.recommendations.length
+        ? JSON.stringify(media.recommendations)
+        : null,
     };
   } catch (error) {
     const cached = await prisma.catalogEntry.findUnique({ where: { anilistId } });
@@ -60,9 +70,14 @@ export async function resolveAnimeMedia(anilistId: number): Promise<NormalizedMe
       seasonYear: cached.seasonYear,
       genres: cached.genres ?? "",
       averageScore: cached.averageScore,
-      // CatalogEntry (o cache local) não guarda o site oficial — só entra
-      // quando a AniList responde ao vivo, no caminho de cima.
+      // CatalogEntry (o cache local) não guarda site oficial, trailer,
+      // elenco nem recomendações — só entram quando a AniList responde ao
+      // vivo, no caminho de cima. Ficam vazios até o 1º "Atualizar dados".
       officialSite: null,
+      trailerId: null,
+      trailerSite: null,
+      castJson: null,
+      recommendationsJson: null,
     };
   }
 }

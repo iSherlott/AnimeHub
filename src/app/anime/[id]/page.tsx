@@ -17,10 +17,15 @@ import { AnidbIdEditor } from "@/components/AnidbIdEditor";
 import { OtherTitles } from "@/components/OtherTitles";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { CommentSection } from "@/components/CommentSection";
+import { CastSection } from "@/components/CastSection";
+import { TrailerEmbed } from "@/components/TrailerEmbed";
+import { Row } from "@/components/Row";
+import { RecommendationCard, type RecommendationData } from "@/components/RecommendationCard";
 import { ensureEpisodes, type EpisodesResult } from "@/lib/episodes";
 import { ensureTitleFurigana } from "@/lib/ensureFurigana";
 import { callInternalService } from "@/lib/serviceDelegate";
 import type { WatchStatus } from "@/lib/types";
+import type { AniListCharacterEntry, AniListRecommendation } from "@/lib/anilist";
 
 export default async function AnimeDetailPage({
   params,
@@ -39,8 +44,12 @@ export default async function AnimeDetailPage({
   if (!anime || anime.userId !== user.id) notFound();
 
   const genres = anime.genres ? anime.genres.split(",").filter(Boolean) : [];
+  const cast: AniListCharacterEntry[] = anime.castJson ? JSON.parse(anime.castJson) : [];
+  const rawRecommendations: AniListRecommendation[] = anime.recommendationsJson
+    ? JSON.parse(anime.recommendationsJson)
+    : [];
 
-  const [seasons, episodesResult, furiganaHtml] = await Promise.all([
+  const [seasons, episodesResult, furiganaHtml, ownedRecommendedAnime] = await Promise.all([
     anime.seriesKey
       ? prisma.anime.findMany({
           where: { seriesKey: anime.seriesKey, userId: user.id },
@@ -56,7 +65,27 @@ export default async function AnimeDetailPage({
       animeId: anime.id,
     }).then((delegated) => delegated ?? ensureEpisodes(anime)),
     ensureTitleFurigana(anime),
+    // Recomendações (Epic 14) apontam pra outros anilistId — resolvidas
+    // contra a própria lista do usuário aqui, na hora de renderizar (não
+    // gravadas assim), pra linkar internamente quando o anime recomendado
+    // já estiver na lista, e pra AniList quando não estiver.
+    rawRecommendations.length
+      ? prisma.anime.findMany({
+          where: { userId: user.id, anilistId: { in: rawRecommendations.map((r) => r.anilistId) } },
+          select: { id: true, anilistId: true },
+        })
+      : Promise.resolve([]),
   ]);
+
+  const animeIdByAnilistId = new Map(ownedRecommendedAnime.map((a) => [a.anilistId, a.id]));
+  const recommendations: RecommendationData[] = rawRecommendations.map((rec) => {
+    const ownAnimeId = animeIdByAnilistId.get(rec.anilistId);
+    return {
+      ...rec,
+      isInternal: Boolean(ownAnimeId),
+      href: ownAnimeId ? `/anime/${ownAnimeId}` : `https://anilist.co/anime/${rec.anilistId}`,
+    };
+  });
 
   return (
     <div className="min-h-screen bg-ink pb-16">
@@ -254,6 +283,30 @@ export default async function AnimeDetailPage({
         </Box>
       </Box>
 
+      {anime.trailerSite?.toLowerCase() === "youtube" && anime.trailerId && (
+        <Box sx={{ mt: 4, px: { xs: 3, sm: 5 } }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 2 }}>
+            <Box sx={{ width: 6, height: 16, bgcolor: "primary.main", transform: "skewX(-12deg)" }} />
+            <Typography variant="h6" component="h2" sx={{ textTransform: "uppercase" }}>
+              Trailer
+            </Typography>
+          </Stack>
+          <TrailerEmbed id={anime.trailerId} />
+        </Box>
+      )}
+
+      {cast.length > 0 && (
+        <Box sx={{ mt: 4, px: { xs: 3, sm: 5 } }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 2 }}>
+            <Box sx={{ width: 6, height: 16, bgcolor: "primary.main", transform: "skewX(-12deg)" }} />
+            <Typography variant="h6" component="h2" sx={{ textTransform: "uppercase" }}>
+              Elenco
+            </Typography>
+          </Stack>
+          <CastSection cast={cast} />
+        </Box>
+      )}
+
       <Box sx={{ mt: 4, px: { xs: 3, sm: 5 } }}>
         <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 2 }}>
           <Box sx={{ width: 6, height: 16, bgcolor: "primary.main", transform: "skewX(-12deg)" }} />
@@ -281,6 +334,14 @@ export default async function AnimeDetailPage({
         </Stack>
         <CommentSection animeId={anime.id} />
       </Box>
+
+      {recommendations.length > 0 && (
+        <Row title="Recomendados">
+          {recommendations.map((rec) => (
+            <RecommendationCard key={rec.anilistId} rec={rec} />
+          ))}
+        </Row>
+      )}
     </div>
   );
 }

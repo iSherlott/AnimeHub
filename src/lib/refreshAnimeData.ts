@@ -71,6 +71,12 @@ export async function refreshAnimeData(initialAnime: Anime): Promise<RefreshResu
           genres: media.genres.length ? media.genres.join(",") : anime.genres,
           averageScore: media.averageScore ?? anime.averageScore,
           officialSite: getOfficialSiteUrl(media) ?? anime.officialSite,
+          trailerId: media.trailer?.id ?? anime.trailerId,
+          trailerSite: media.trailer?.site ?? anime.trailerSite,
+          castJson: media.cast.length ? JSON.stringify(media.cast) : anime.castJson,
+          recommendationsJson: media.recommendations.length
+            ? JSON.stringify(media.recommendations)
+            : anime.recommendationsJson,
         },
       });
       status.anilist = "ok";

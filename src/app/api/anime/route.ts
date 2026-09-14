@@ -85,6 +85,10 @@ export async function POST(request: NextRequest) {
         genres: media.genres,
         averageScore: media.averageScore,
         officialSite: media.officialSite,
+        trailerId: media.trailerId,
+        trailerSite: media.trailerSite,
+        castJson: media.castJson,
+        recommendationsJson: media.recommendationsJson,
         seriesKey,
         seasonNumber,
         progress: {

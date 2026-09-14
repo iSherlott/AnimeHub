@@ -114,6 +114,22 @@ model Anime {
   /// "Official Site"). Ao contrário dos links de anidbResources, não exige
   /// vincular um anidbId manualmente — vem automático pra qualquer anime.
   officialSite    String?
+  /// Trailer do YouTube vindo da AniList (campo `trailer`). Só o id do
+  /// vídeo + o site — se não for "youtube" (raro), não tem como embutir e o
+  /// campo fica sem uso na UI.
+  trailerId       String?
+  trailerSite     String?
+  /// Elenco de dublagem (Epic 14) — JSON [{role, name, image, voiceActors:
+  /// [{name, image, language}]}], todas as línguas de dublagem que a
+  /// AniList conhece de uma vez, pra trocar de idioma no cliente sem nova
+  /// requisição. Mesmo padrão já usado por anidbTitles/anidbResources —
+  /// não precisa de tabela própria.
+  castJson        String?
+  /// Recomendações da AniList (Epic 14) — JSON [{anilistId, titleRomaji,
+  /// titleEnglish, coverImage}]. Resolvidas contra a lista do próprio
+  /// usuário na hora de renderizar (não aqui), pra linkar internamente
+  /// quando o anime recomendado já estiver na lista.
+  recommendationsJson String?
   /// Cor de destaque extraída da capa/banner (ver src/lib/accentColor.ts),
   /// recalculada a cada refresh — usada como tonalidade de fundo na página
   /// de detalhe e no hero da home.

@@ -165,18 +165,147 @@ export async function getSeasonalAnime(
   return data.Page.media.map(normalizeMedia);
 }
 
-export async function getAnimeById(anilistId: number): Promise<AniListMedia> {
+export type AniListTrailer = { id: string; site: string } | null;
+
+export type AniListVoiceActor = { name: string; image: string | null; language: string };
+
+export type AniListCharacterEntry = {
+  role: string;
+  name: string;
+  image: string | null;
+  voiceActors: AniListVoiceActor[];
+};
+
+export type AniListRecommendation = {
+  anilistId: number;
+  titleRomaji: string;
+  titleEnglish: string | null;
+  coverImage: string | null;
+};
+
+/** Só usado pela página de detalhe (getAnimeById) — deixado fora de
+ * MEDIA_FIELDS pra não pesar as buscas de lista (searchAnime,
+ * getSeasonalAnime), que nunca precisam de elenco/trailer/recomendação. */
+export type AniListMediaDetail = AniListMedia & {
+  trailer: AniListTrailer;
+  cast: AniListCharacterEntry[];
+  recommendations: AniListRecommendation[];
+};
+
+const DETAIL_FIELDS = `
+  trailer {
+    id
+    site
+  }
+  characters(sort: [ROLE, RELEVANCE], perPage: 12) {
+    edges {
+      role
+      voiceActors {
+        name {
+          full
+        }
+        image {
+          medium
+        }
+        languageV2
+      }
+      node {
+        name {
+          full
+        }
+        image {
+          medium
+        }
+      }
+    }
+  }
+  recommendations(sort: RATING_DESC, perPage: 8) {
+    nodes {
+      mediaRecommendation {
+        id
+        title {
+          romaji
+          english
+        }
+        coverImage {
+          extraLarge
+        }
+      }
+    }
+  }
+`;
+
+type RawDetailFields = {
+  trailer: { id: string | null; site: string | null } | null;
+  characters: {
+    edges: Array<{
+      role: string;
+      voiceActors: Array<{
+        name: { full: string | null };
+        image: { medium: string | null } | null;
+        languageV2: string | null;
+      }>;
+      node: { name: { full: string | null }; image: { medium: string | null } | null } | null;
+    }>;
+  };
+  recommendations: {
+    nodes: Array<{
+      mediaRecommendation: {
+        id: number;
+        title: { romaji: string; english: string | null };
+        coverImage: { extraLarge: string | null };
+      } | null;
+    }>;
+  };
+};
+
+/** AniList já manda o trailer com uma quebra de linha sobrando no id em
+ * alguns casos (confirmado ao vivo) — sem o trim, a URL do embed do
+ * YouTube fica quebrada. */
+function normalizeDetailFields(raw: RawDetailFields): Pick<AniListMediaDetail, "trailer" | "cast" | "recommendations"> {
+  return {
+    trailer:
+      raw.trailer?.id && raw.trailer.site
+        ? { id: raw.trailer.id.trim(), site: raw.trailer.site }
+        : null,
+    cast: raw.characters.edges
+      .filter((edge) => edge.node)
+      .map((edge) => ({
+        role: edge.role,
+        name: edge.node!.name.full ?? "?",
+        image: edge.node!.image?.medium ?? null,
+        voiceActors: edge.voiceActors
+          .filter((va) => va.name.full && va.languageV2)
+          .map((va) => ({
+            name: va.name.full!,
+            image: va.image?.medium ?? null,
+            language: va.languageV2!,
+          })),
+      })),
+    recommendations: raw.recommendations.nodes
+      .filter((n) => n.mediaRecommendation)
+      .map((n) => ({
+        anilistId: n.mediaRecommendation!.id,
+        titleRomaji: n.mediaRecommendation!.title.romaji,
+        titleEnglish: n.mediaRecommendation!.title.english,
+        coverImage: n.mediaRecommendation!.coverImage.extraLarge,
+      })),
+  };
+}
+
+export async function getAnimeById(anilistId: number): Promise<AniListMediaDetail> {
   const query = `
     query ($id: Int) {
       Media(id: $id, type: ANIME) {
         ${MEDIA_FIELDS}
+        ${DETAIL_FIELDS}
       }
     }
   `;
-  const data = await anilistRequest<{ Media: AniListMedia }>(query, {
+  const data = await anilistRequest<{ Media: AniListMedia & RawDetailFields }>(query, {
     id: anilistId,
   });
-  return normalizeMedia(data.Media);
+  return { ...normalizeMedia(data.Media), ...normalizeDetailFields(data.Media) };
 }
 
 export type AniListAiringEntry = {

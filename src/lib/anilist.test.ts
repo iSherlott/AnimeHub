@@ -39,6 +39,18 @@ function makeMedia(overrides: Partial<AniListMedia> = {}): AniListMedia {
   };
 }
 
+/** Só getAnimeById busca esses campos (ver DETAIL_FIELDS em anilist.ts) —
+ * searchAnime/getSeasonalAnime nunca precisam deles, então ficam de fora
+ * de makeMedia() e só entram nos testes de getAnimeById. */
+function makeDetailFields(overrides: Record<string, unknown> = {}) {
+  return {
+    trailer: null,
+    characters: { edges: [] },
+    recommendations: { nodes: [] },
+    ...overrides,
+  };
+}
+
 describe("fuzzyDateToISO", () => {
   it("returns null for a null date", () => {
     expect(fuzzyDateToISO(null)).toBeNull();
@@ -87,7 +99,7 @@ describe("AniList GraphQL requests", () => {
 
   it("posts the query/variables as JSON and returns the unwrapped data", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
-      jsonResponse({ data: { Media: makeMedia({ id: 113415 }) } })
+      jsonResponse({ data: { Media: { ...makeMedia({ id: 113415 }), ...makeDetailFields() } } })
     );
 
     const result = await getAnimeById(113415);
@@ -142,12 +154,85 @@ describe("AniList GraphQL requests", () => {
   // lista fechada.
   it("getAnimeById normalizes genres to the closed taxonomy, dropping unmapped terms", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
-      jsonResponse({ data: { Media: makeMedia({ genres: ["Sci-Fi", "Action", "Isekai"] }) } })
+      jsonResponse({
+        data: {
+          Media: {
+            ...makeMedia({ genres: ["Sci-Fi", "Action", "Isekai"] }),
+            ...makeDetailFields(),
+          },
+        },
+      })
     );
 
     const result = await getAnimeById(1);
 
     expect(result.genres).toEqual(["Sci-fi", "Isekai"]);
+  });
+
+  it("getAnimeById maps trailer, cast, and recommendations", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({
+        data: {
+          Media: {
+            ...makeMedia(),
+            ...makeDetailFields({
+              trailer: { id: "abc123\n", site: "youtube" },
+              characters: {
+                edges: [
+                  {
+                    role: "MAIN",
+                    voiceActors: [
+                      { name: { full: "Yuuki Kaji" }, image: { medium: "va.jpg" }, languageV2: "Japanese" },
+                      { name: { full: null }, image: null, languageV2: "Korean" },
+                    ],
+                    node: { name: { full: "Eren Yeager" }, image: { medium: "char.jpg" } },
+                  },
+                  {
+                    role: "SUPPORTING",
+                    voiceActors: [],
+                    node: null,
+                  },
+                ],
+              },
+              recommendations: {
+                nodes: [
+                  {
+                    mediaRecommendation: {
+                      id: 101348,
+                      title: { romaji: "VINLAND SAGA", english: "Vinland Saga" },
+                      coverImage: { extraLarge: "cover.jpg" },
+                    },
+                  },
+                  { mediaRecommendation: null },
+                ],
+              },
+            }),
+          },
+        },
+      })
+    );
+
+    const result = await getAnimeById(1);
+
+    // Trailer: id chega com espaço/quebra de linha sobrando às vezes — trim().
+    expect(result.trailer).toEqual({ id: "abc123", site: "youtube" });
+
+    // Cast: personagem sem `node` (raro, mas a API permite) é descartado;
+    // dublador sem nome é descartado, mas não derruba o personagem inteiro.
+    expect(result.cast).toEqual([
+      {
+        role: "MAIN",
+        name: "Eren Yeager",
+        image: "char.jpg",
+        voiceActors: [{ name: "Yuuki Kaji", image: "va.jpg", language: "Japanese" }],
+      },
+    ]);
+
+    // Recomendações: entrada sem mediaRecommendation (anime removido da
+    // AniList) é descartada.
+    expect(result.recommendations).toEqual([
+      { anilistId: 101348, titleRomaji: "VINLAND SAGA", titleEnglish: "Vinland Saga", coverImage: "cover.jpg" },
+    ]);
   });
 
   it("searchAnime normalizes genres for every result in the page", async () => {
