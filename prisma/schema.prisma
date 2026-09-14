@@ -162,6 +162,10 @@ model Episode {
   /// em entradas de catálogo distintas).
   seasonNumber  Int       @default(1)
   titleRomaji   String?
+  /// Adicionado no Epic 2 — sem isso, a grade de episódios não tinha nada
+  /// pra mostrar quando a preferência de idioma era "inglês", diferente do
+  /// título do anime (que sempre tem titleEnglish vindo da AniList).
+  titleEnglish  String?
   titleJapanese String?
   thumbnail     String?
   airDate       DateTime?

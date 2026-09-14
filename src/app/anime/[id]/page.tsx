@@ -66,7 +66,7 @@ export default async function AnimeDetailPage({
         {anime.bannerImage ? (
           <Image
             src={anime.bannerImage}
-            alt={anime.titleRomaji}
+            alt=""
             fill
             style={{ objectFit: "cover", opacity: 0.4 }}
           />
@@ -99,7 +99,7 @@ export default async function AnimeDetailPage({
           }}
         >
           {anime.coverImage ? (
-            <Image src={anime.coverImage} alt={anime.titleRomaji} fill style={{ objectFit: "cover" }} />
+            <Image src={anime.coverImage} alt="" fill style={{ objectFit: "cover" }} />
           ) : null}
         </Box>
 

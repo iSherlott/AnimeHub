@@ -200,14 +200,14 @@ describe("getKitsuEpisodes", () => {
     expect(result[0].number).toBe(1);
   });
 
-  it("defaults seasonNumber to 1 and falls back titleRomaji to the English title", async () => {
+  it("defaults seasonNumber to 1 and keeps titleRomaji/titleEnglish separate", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       jsonResponse({
         data: [
           {
             attributes: {
               number: 1,
-              titles: { en: "English Title" },
+              titles: { en_jp: "Romaji Title", en: "English Title" },
               thumbnail: { medium: "thumb-medium.jpg" },
               airdate: "2024-01-01",
             },
@@ -222,11 +222,34 @@ describe("getKitsuEpisodes", () => {
     expect(result[0]).toEqual({
       number: 1,
       seasonNumber: 1,
-      titleRomaji: "English Title",
+      titleRomaji: "Romaji Title",
+      titleEnglish: "English Title",
       titleJapanese: null,
       thumbnail: "thumb-medium.jpg",
       airDate: "2024-01-01",
     });
+  });
+
+  it("falls back titleRomaji to canonicalTitle when en_jp is missing, without borrowing the English title", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({
+        data: [
+          {
+            attributes: {
+              number: 1,
+              canonicalTitle: "Canonical Title",
+              titles: { en: "English Title" },
+            },
+          },
+        ],
+        links: {},
+      })
+    );
+
+    const result = await getKitsuEpisodes(42);
+
+    expect(result[0].titleRomaji).toBe("Canonical Title");
+    expect(result[0].titleEnglish).toBe("English Title");
   });
 
   it("stops after the safety guard even if the API keeps returning a next link", async () => {

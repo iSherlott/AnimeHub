@@ -184,10 +184,12 @@ export async function refreshAnimeData(initialAnime: Anime): Promise<RefreshResu
             return {
               animeId: id,
               number: num,
-              titleRomaji:
-                ep.titles.find((t) => t.language === "x-jat")?.title ??
-                ep.titles.find((t) => t.language === "en")?.title ??
-                null,
+              // "x-jat" (transliterado do japonês) é o romaji de verdade —
+              // sem cair pra "en" aqui, que agora tem seu próprio campo
+              // (titleEnglish), em vez de ser confundido com romaji quando
+              // a AniDB não tem x-jat pra esse episódio.
+              titleRomaji: ep.titles.find((t) => t.language === "x-jat")?.title ?? null,
+              titleEnglish: ep.titles.find((t) => t.language === "en")?.title ?? null,
               titleJapanese: ep.titles.find((t) => t.language === "ja")?.title ?? null,
               airDate: ep.airDate ? new Date(ep.airDate) : null,
             };

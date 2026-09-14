@@ -23,7 +23,15 @@ export async function GET() {
     (
       await prisma.anime.findMany({
         where: { userId: user.id, anilistId: { in: anilistIds } },
-        select: { id: true, anilistId: true, titleRomaji: true, coverImage: true },
+        select: {
+          id: true,
+          anilistId: true,
+          titleRomaji: true,
+          titleEnglish: true,
+          titleNative: true,
+          titlePortuguese: true,
+          coverImage: true,
+        },
       })
     ).map((a) => [a.anilistId, a])
   );
@@ -38,6 +46,9 @@ export async function GET() {
       seenAt: alert.seenAt ? alert.seenAt.toISOString() : null,
       animeId: anime?.id ?? null,
       titleRomaji: anime?.titleRomaji ?? null,
+      titleEnglish: anime?.titleEnglish ?? null,
+      titleNative: anime?.titleNative ?? null,
+      titlePortuguese: anime?.titlePortuguese ?? null,
       coverImage: anime?.coverImage ?? null,
     };
   });

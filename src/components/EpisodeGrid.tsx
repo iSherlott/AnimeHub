@@ -1,9 +1,24 @@
+"use client";
+
 import Image from "next/image";
 import { Box, Chip, Typography } from "@mui/material";
 import type { Episode } from "@prisma/client";
+import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 
 function EpisodeTile({ ep, fallbackImage }: { ep: Episode; fallbackImage?: string | null }) {
-  const title = ep.titleRomaji ?? `Episódio ${ep.number}`;
+  const { preference } = useTitlePreference();
+  // Ao contrário do Anime, nem todo episódio tem os 3 campos preenchidos
+  // (Kitsu/AniDB às vezes só trazem um) — usa o que existir como base do
+  // "romaji" que resolveTitleText espera, em vez de cair direto pro
+  // placeholder "Episódio N" quando só falta especificamente titleRomaji.
+  const bestAvailableTitle = ep.titleRomaji ?? ep.titleEnglish ?? ep.titleJapanese;
+  const title = bestAvailableTitle
+    ? resolveTitleText(preference, {
+        titleRomaji: bestAvailableTitle,
+        titleEnglish: ep.titleEnglish,
+        titleNative: ep.titleJapanese,
+      })
+    : `Episódio ${ep.number}`;
   const image = ep.thumbnail ?? fallbackImage;
 
   return (

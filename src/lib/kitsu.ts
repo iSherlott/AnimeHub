@@ -31,6 +31,7 @@ export type KitsuEpisode = {
   number: number;
   seasonNumber: number;
   titleRomaji: string | null;
+  titleEnglish: string | null;
   titleJapanese: string | null;
   thumbnail: string | null;
   airDate: string | null;
@@ -141,7 +142,13 @@ export async function getKitsuEpisodes(
       episodes.push({
         number: attrs.number,
         seasonNumber: attrs.seasonNumber ?? 1,
-        titleRomaji: attrs.canonicalTitle ?? titles.en ?? null,
+        // `en_jp` é o romaji de verdade (inglês transliterado do japonês);
+        // `canonicalTitle` como último recurso ainda é melhor que nada
+        // quando nem isso a Kitsu tem pra esse episódio específico. Antes
+        // isso caía direto pra `titles.en` (o título em inglês de fato),
+        // confundindo os dois campos.
+        titleRomaji: titles.en_jp ?? attrs.canonicalTitle ?? null,
+        titleEnglish: titles.en ?? null,
         titleJapanese: titles.ja_jp ?? null,
         thumbnail: thumb.original ?? thumb.large ?? thumb.medium ?? null,
         airDate: attrs.airdate ?? null,

@@ -13,6 +13,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { PublicUser } from "@/lib/auth/session";
+import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 
 type AiringAlertItem = {
   id: string;
@@ -22,8 +23,29 @@ type AiringAlertItem = {
   seenAt: string | null;
   animeId: string | null;
   titleRomaji: string | null;
+  titleEnglish: string | null;
+  titleNative: string | null;
+  titlePortuguese: string | null;
   coverImage: string | null;
 };
+
+/** Igual ao de EpisodeGrid — o anime do alerta pode, em teoria, não ter mais
+ * nenhum título carregado se já saiu da lista; usa o que existir como base
+ * do "romaji" que resolveTitleText espera, e só cai pro placeholder se não
+ * sobrar nada mesmo. */
+function resolveAlertTitle(
+  preference: Parameters<typeof resolveTitleText>[0],
+  alert: AiringAlertItem
+): string {
+  const bestAvailableTitle = alert.titleRomaji ?? alert.titleEnglish ?? alert.titleNative;
+  if (!bestAvailableTitle) return "Anime";
+  return resolveTitleText(preference, {
+    titleRomaji: bestAvailableTitle,
+    titleEnglish: alert.titleEnglish,
+    titleNative: alert.titleNative,
+    titlePortuguese: alert.titlePortuguese,
+  });
+}
 
 const POLL_INTERVAL_MS = 60 * 1000;
 
@@ -34,6 +56,7 @@ const POLL_INTERVAL_MS = 60 * 1000;
  * mesmo motivo do calendário: servidor e navegador podem discordar de fuso.
  */
 export function NotificationBell({ user }: { user: PublicUser | null | undefined }) {
+  const { preference } = useTitlePreference();
   const [alerts, setAlerts] = useState<AiringAlertItem[]>([]);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const open = Boolean(anchorEl);
@@ -148,7 +171,7 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
                 </Box>
                 <Box sx={{ minWidth: 0, flex: 1 }}>
                   <Typography variant="body2" noWrap>
-                    {alert.titleRomaji ?? "Anime"}
+                    {resolveAlertTitle(preference, alert)}
                   </Typography>
                   <Typography variant="caption" sx={{ color: "text.secondary" }}>
                     EP {alert.episode} · {time}
