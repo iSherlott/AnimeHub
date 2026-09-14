@@ -14,6 +14,49 @@ const KITSU_BASE = process.env.KITSU_API_BASE_URL || "https://kitsu.io/api/edge"
 // do .env na raiz do projeto sozinha, igual o resto do app.
 const prisma = new PrismaClient();
 
+// Duplicado de src/lib/genreTaxonomy.ts (Epic 3) — este script roda com
+// `node` puro (sem tsx), não dá pra importar TS direto daqui. Manter em
+// sincronia com o original se a taxonomia mudar. Sem isso, categorias cruas
+// da Kitsu ("Japan", "Coming Of Age", "Super Power" etc., nunca mapeadas
+// pra nenhuma das 18 categorias fechadas) vazavam sem filtro pro cache do
+// catálogo — achado real da 2ª auditoria de UX/UI (Epic 20).
+function normalizeKey(raw) {
+  return raw.trim().toLowerCase().replace(/[\s_-]+/g, " ");
+}
+const GENRE_SYNONYMS = new Map();
+function registerGenre(genre, ...synonyms) {
+  for (const term of [genre, ...synonyms]) {
+    GENRE_SYNONYMS.set(normalizeKey(term), genre);
+  }
+}
+registerGenre("Comedy");
+registerGenre("Romance");
+registerGenre("Supernatural");
+registerGenre("Slice of Life");
+registerGenre("Mecha", "Mechs");
+registerGenre("Shounen", "Shonen");
+registerGenre("Shoujo", "Shojo");
+registerGenre("Shounen-ai", "Shounen Ai", "Shonen Ai", "Boys Love", "BL");
+registerGenre("Shoujo-ai", "Shoujo Ai", "Shojo Ai", "Girls Love", "GL");
+registerGenre("Yuri");
+registerGenre("Yaoi");
+registerGenre("Adventure");
+registerGenre("Isekai");
+registerGenre("Ecchi");
+registerGenre("Hentai");
+registerGenre("Parody");
+registerGenre("Sci-fi", "Sci-Fi", "Sci Fi", "SciFi", "Science Fiction");
+registerGenre("Seinen");
+
+function normalizeGenres(rawGenres) {
+  const seen = new Set();
+  for (const term of rawGenres) {
+    const mapped = GENRE_SYNONYMS.get(normalizeKey(term));
+    if (mapped) seen.add(mapped);
+  }
+  return Array.from(seen);
+}
+
 const FAVORITE_TITLES = [
   "The 100 Girlfriends Who Really Really Really Really Really Love You",
   "Kaiju No. 8",
@@ -84,7 +127,7 @@ async function mapEntry(entry, popularityRank) {
     status: normalizeStatus(attrs.status),
     season,
     seasonYear,
-    genres: genres.join(","),
+    genres: normalizeGenres(genres).join(","),
     startDate: attrs.startDate ? new Date(attrs.startDate) : null,
     endDate: attrs.endDate ? new Date(attrs.endDate) : null,
     // Kitsu não expõe previsão de próximo episódio como a AniList

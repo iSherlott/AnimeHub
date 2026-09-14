@@ -148,6 +148,7 @@ export default async function Home() {
                   episodes={anime.episodes}
                   status={anime.progress?.status as WatchStatus | undefined}
                   episodeProgress={anime.progress?.episodeProgress}
+                  isFavorite={anime.isFavorite}
                 />
               ))}
             </Row>
@@ -170,6 +171,7 @@ export default async function Home() {
               episodes={anime.episodes}
               status={anime.progress?.status as WatchStatus | undefined}
               episodeProgress={anime.progress?.episodeProgress}
+              isFavorite={anime.isFavorite}
             />
           ))}
         </Row>

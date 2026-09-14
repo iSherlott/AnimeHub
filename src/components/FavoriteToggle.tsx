@@ -4,20 +4,35 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
-import { IconButton, Tooltip } from "@mui/material";
+import { IconButton, Tooltip, type SxProps, type Theme } from "@mui/material";
 
 export function FavoriteToggle({
   animeId,
   initialFavorite,
+  size = "medium",
+  sx,
 }: {
   animeId: string;
   initialFavorite: boolean;
+  /** "small" pro selo sobreposto num card compacto (ver AnimeCard, que
+   * usa o mesmo tamanho do selo de "adicionar" do DiscoverCard) — o botão
+   * solto da página de detalhe continua "medium". */
+  size?: "small" | "medium";
+  /** Pra reuso como selo sobreposto num card (ver AnimeCard) — sobrescreve
+   * o posicionamento/fundo padrão do botão solto da página de detalhe. */
+  sx?: SxProps<Theme>;
 }) {
   const router = useRouter();
   const [isFavorite, setIsFavorite] = useState(initialFavorite);
   const [saving, setSaving] = useState(false);
 
-  async function toggle() {
+  async function toggle(e: React.MouseEvent) {
+    // Defensivo: se algum dia FavoriteToggle for usado aninhado dentro de
+    // um link/CardActionArea clicável (hoje o AnimeCard o coloca como
+    // irmão, não filho, então não é estritamente necessário ali), isso
+    // evita que o clique também dispare a navegação do ancestral.
+    e.preventDefault();
+    e.stopPropagation();
     const next = !isFavorite;
     setIsFavorite(next);
     setSaving(true);
@@ -42,9 +57,19 @@ export function FavoriteToggle({
           onClick={toggle}
           disabled={saving}
           aria-label={label}
-          sx={{ color: isFavorite ? "secondary.main" : "text.secondary" }}
+          size={size}
+          sx={
+            [
+              { color: isFavorite ? "secondary.main" : "text.secondary" },
+              ...(sx ? [sx] : []),
+            ] as SxProps<Theme>
+          }
         >
-          {isFavorite ? <StarIcon /> : <StarBorderIcon />}
+          {isFavorite ? (
+            <StarIcon fontSize={size} />
+          ) : (
+            <StarBorderIcon fontSize={size} />
+          )}
         </IconButton>
       </span>
     </Tooltip>

@@ -324,7 +324,11 @@ export default async function AnimeDetailPage({
           </Typography>
         </Stack>
         {episodesResult.episodes.length > 0 ? (
-          <EpisodeGrid episodes={episodesResult.episodes} fallbackImage={anime.coverImage} />
+          <EpisodeGrid
+            episodes={episodesResult.episodes}
+            fallbackImage={anime.coverImage}
+            watchedCount={anime.progress?.episodeProgress}
+          />
         ) : (
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
             {episodesResult.error

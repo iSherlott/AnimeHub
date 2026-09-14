@@ -9,6 +9,7 @@ import {
   type WatchStatus,
 } from "@/lib/types";
 import { resolveTitleText, useTitlePreference, type TitleSet } from "@/lib/titlePreference";
+import { FavoriteToggle } from "@/components/FavoriteToggle";
 
 export type AnimeCardData = {
   id: string | number;
@@ -18,6 +19,7 @@ export type AnimeCardData = {
   episodes?: number | null;
   status?: WatchStatus;
   episodeProgress?: number;
+  isFavorite?: boolean;
 };
 
 const STATUS_COLOR_KEY: Record<WatchStatus, keyof typeof statusColors> = {
@@ -36,6 +38,7 @@ export function AnimeCard({
   episodes,
   status,
   episodeProgress,
+  isFavorite,
 }: AnimeCardData) {
   const { preference } = useTitlePreference();
   const title = resolveTitleText(preference, titles);
@@ -46,7 +49,7 @@ export function AnimeCard({
       : null;
 
   return (
-    <Card data-testid={`anime-card-${id}`} sx={{ width: { xs: 144, sm: 176 }, flexShrink: 0 }}>
+    <Card data-testid={`anime-card-${id}`} sx={{ position: "relative", width: { xs: 144, sm: 176 }, flexShrink: 0 }}>
       <Tooltip title={title}>
         <CardActionArea component={NextLink} href={href}>
           <Box sx={{ position: "relative", aspectRatio: "2 / 3", width: "100%", overflow: "hidden" }}>
@@ -117,6 +120,20 @@ export function AnimeCard({
           </Box>
         </CardActionArea>
       </Tooltip>
+      {typeof isFavorite === "boolean" && (
+        <FavoriteToggle
+          animeId={String(id)}
+          initialFavorite={isFavorite}
+          size="small"
+          sx={{
+            position: "absolute",
+            top: 4,
+            right: 4,
+            bgcolor: "rgba(0,0,0,0.7)",
+            "&:hover": { bgcolor: "rgba(0,0,0,0.85)" },
+          }}
+        />
+      )}
     </Card>
   );
 }

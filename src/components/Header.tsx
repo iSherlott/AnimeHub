@@ -20,6 +20,7 @@ import {
 } from "@mui/material";
 import { TitleLanguageMenu } from "@/components/TitleLanguageMenu";
 import { NotificationBell } from "@/components/NotificationBell";
+import { useCurrentUser, useSetCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { PublicUser } from "@/lib/auth/session";
 
 function NavLinks({
@@ -38,6 +39,10 @@ function NavLinks({
     textTransform: "uppercase" as const,
     fontSize: 14,
     color: pathname === href ? "text.primary" : "text.secondary",
+    // Mesmo problema do logo "Anime Hub" (Epic 20) — "Minha lista" quebrava
+    // em 2 linhas exatamente nos 768px de tablet quando logado (link mais
+    // longo que "Entrar", que sozinho nunca quebrava).
+    whiteSpace: "nowrap" as const,
   });
 
   return (
@@ -99,7 +104,8 @@ export function Header() {
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [user, setUser] = useState<PublicUser | null | undefined>(undefined);
+  const user = useCurrentUser();
+  const setUser = useSetCurrentUser();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -107,21 +113,6 @@ export function Header() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/auth/me")
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled) setUser(data.user);
-      })
-      .catch(() => {
-        if (!cancelled) setUser(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [pathname]);
 
   // Fecha o menu mobile sempre que a rota muda. A receita oficial do React
   // pra "resetar estado quando um valor muda" seria ajustar isso durante a
@@ -163,7 +154,14 @@ export function Header() {
             href="/"
             underline="none"
             className="font-display"
-            sx={{ fontSize: 24, textTransform: "uppercase", letterSpacing: 1, color: "primary.main" }}
+            sx={{
+              fontSize: 24,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+              color: "primary.main",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
           >
             Anime Hub
           </MuiLink>

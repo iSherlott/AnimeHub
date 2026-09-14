@@ -35,6 +35,32 @@ export const muiTheme = createTheme({
   shape: {
     borderRadius: 6,
   },
+  components: {
+    // O anel de foco padrão do MUI é sutil demais em cima dos cards
+    // tingidos do Descobrir (atalhos "Por gênero" etc.) e dos IconButton
+    // com fundo escuro semitransparente (selo de favorito, adicionar à
+    // lista) — foco por teclado ficava quase invisível neles (achado real
+    // da 2ª auditoria de UX/UI, Epic 20). Aplicado em ButtonBase, a base de
+    // Button/IconButton/CardActionArea, pra cobrir todo esse tipo de
+    // componente de uma vez, não card por card.
+    MuiButtonBase: {
+      styleOverrides: {
+        root: {
+          "&.Mui-focusVisible": {
+            // Offset negativo (pra dentro), não positivo — MuiCard tem
+            // overflow:hidden por padrão pra cortar cantos arredondados
+            // em cima de imagem, e um outline com offset positivo (pra
+            // fora) fica cortado pelo Card ancestral, invisível de
+            // verdade apesar da classe Mui-focusVisible estar aplicada
+            // (só descoberto testando foco de teclado ao vivo, não só
+            // lendo o CSS).
+            outline: "2px solid #ffd400",
+            outlineOffset: -2,
+          },
+        },
+      },
+    },
+  },
 });
 
 /**

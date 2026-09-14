@@ -3,6 +3,7 @@ import { Anton, Inter, Noto_Sans_JP } from "next/font/google";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import { MuiProviders } from "@/components/MuiProviders";
 import { TitlePreferenceProvider } from "@/lib/titlePreference";
+import { CurrentUserProvider } from "@/lib/auth/useCurrentUser";
 import "./globals.css";
 
 const anton = Anton({
@@ -37,7 +38,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col bg-ink">
         <AppRouterCacheProvider>
           <MuiProviders>
-            <TitlePreferenceProvider>{children}</TitlePreferenceProvider>
+            <CurrentUserProvider>
+              <TitlePreferenceProvider>{children}</TitlePreferenceProvider>
+            </CurrentUserProvider>
           </MuiProviders>
         </AppRouterCacheProvider>
       </body>
