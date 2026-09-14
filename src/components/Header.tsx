@@ -63,6 +63,18 @@ function NavLinks({
           Minha lista
         </MuiLink>
       )}
+      {user && (
+        <MuiLink
+          component={NextLink}
+          href="/feed"
+          onClick={onNavigate}
+          underline="hover"
+          sx={linkSx("/feed")}
+          aria-current={pathname === "/feed" ? "page" : undefined}
+        >
+          Feed
+        </MuiLink>
+      )}
       <MuiLink
         component={NextLink}
         href="/discover"

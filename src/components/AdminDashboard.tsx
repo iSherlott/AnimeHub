@@ -45,6 +45,17 @@ type AdminCommentReport = {
   reporters: { displayName: string; email: string }[];
 };
 
+type AdminPostReport = {
+  postId: string;
+  animeTitleRomaji: string;
+  body: string;
+  postCreatedAt: string;
+  postDeleted: boolean;
+  author: { displayName: string; email: string };
+  reportCount: number;
+  reporters: { displayName: string; email: string }[];
+};
+
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR");
 }
@@ -53,9 +64,11 @@ export function AdminDashboard() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [invites, setInvites] = useState<AdminInvite[]>([]);
   const [commentReports, setCommentReports] = useState<AdminCommentReport[]>([]);
+  const [postReports, setPostReports] = useState<AdminPostReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [creatingInvite, setCreatingInvite] = useState(false);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const [resolvingPostId, setResolvingPostId] = useState<string | null>(null);
   const [resetResult, setResetResult] = useState<{ userId: string; password: string } | null>(
     null
   );
@@ -64,17 +77,20 @@ export function AdminDashboard() {
   async function loadAll() {
     setLoading(true);
     try {
-      const [usersRes, invitesRes, reportsRes] = await Promise.all([
+      const [usersRes, invitesRes, reportsRes, postReportsRes] = await Promise.all([
         fetch("/api/admin/users"),
         fetch("/api/admin/invites"),
         fetch("/api/admin/comment-reports"),
+        fetch("/api/admin/post-reports"),
       ]);
       const usersData = await usersRes.json();
       const invitesData = await invitesRes.json();
       const reportsData = await reportsRes.json();
+      const postReportsData = await postReportsRes.json();
       setUsers(usersData.users ?? []);
       setInvites(invitesData.invites ?? []);
       setCommentReports(reportsData.reports ?? []);
+      setPostReports(postReportsData.reports ?? []);
     } finally {
       setLoading(false);
     }
@@ -97,6 +113,26 @@ export function AdminDashboard() {
       setCommentReports((prev) => prev.filter((r) => r.commentId !== commentId));
     } finally {
       setResolvingId(null);
+    }
+  }
+
+  async function handleResolvePostReport(postId: string, action: "keep" | "remove") {
+    setResolvingPostId(postId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/post-reports/${postId}/resolve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Falha ao resolver denúncia");
+        return;
+      }
+      setPostReports((prev) => prev.filter((r) => r.postId !== postId));
+    } finally {
+      setResolvingPostId(null);
     }
   }
 
@@ -210,6 +246,84 @@ export function AdminDashboard() {
                           <Button
                             onClick={() => handleResolveReport(r.commentId, "remove")}
                             disabled={resolvingId === r.commentId}
+                            size="small"
+                            color="error"
+                          >
+                            Remover
+                          </Button>
+                        </Box>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Box>
+
+      <Box component="section">
+        <Typography variant="h6" component="h2" className="font-display" sx={{ mb: 1.5, textTransform: "uppercase" }}>
+          Denúncias de post
+        </Typography>
+        {postReports.length === 0 ? (
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            Nenhuma denúncia pendente.
+          </Typography>
+        ) : (
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="small" aria-label="Denúncias de post pendentes">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Anime</TableCell>
+                  <TableCell>Autor</TableCell>
+                  <TableCell>Post</TableCell>
+                  <TableCell align="right">Denúncias</TableCell>
+                  <TableCell align="right">Ações</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {postReports.map((r) => (
+                  <TableRow key={r.postId}>
+                    <TableCell sx={{ color: "text.secondary" }}>{r.animeTitleRomaji}</TableCell>
+                    <TableCell sx={{ color: "text.secondary" }}>{r.author.displayName}</TableCell>
+                    <TableCell sx={{ maxWidth: 320 }}>
+                      {r.postDeleted ? (
+                        <Typography variant="body2" sx={{ fontStyle: "italic", color: "text.secondary" }}>
+                          (já apagado pelo autor)
+                        </Typography>
+                      ) : (
+                        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                          {r.body}
+                        </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell align="right">
+                      <Chip label={r.reportCount} size="small" color="error" />
+                    </TableCell>
+                    <TableCell align="right">
+                      {r.postDeleted ? (
+                        <Button
+                          onClick={() => handleResolvePostReport(r.postId, "keep")}
+                          disabled={resolvingPostId === r.postId}
+                          size="small"
+                          color="inherit"
+                        >
+                          Marcar resolvido
+                        </Button>
+                      ) : (
+                        <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+                          <Button
+                            onClick={() => handleResolvePostReport(r.postId, "keep")}
+                            disabled={resolvingPostId === r.postId}
+                            size="small"
+                            color="inherit"
+                          >
+                            Manter
+                          </Button>
+                          <Button
+                            onClick={() => handleResolvePostReport(r.postId, "remove")}
+                            disabled={resolvingPostId === r.postId}
                             size="small"
                             color="error"
                           >

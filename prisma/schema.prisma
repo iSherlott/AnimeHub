@@ -33,6 +33,12 @@ model User {
   comments         Comment[]
   commentReports   CommentReport[] @relation("CommentReporter")
   reportsResolved  CommentReport[] @relation("CommentResolver")
+  posts               Post[]
+  postLikes           PostLike[]
+  postReports         PostReport[] @relation("PostReporter")
+  postReportsResolved PostReport[] @relation("PostResolver")
+  following           Follow[]     @relation("Following")
+  followers           Follow[]     @relation("Followers")
 
   @@index([email])
 }
@@ -338,4 +344,91 @@ model AiringAlert {
 
   @@unique([userId, anilistId, episode])
   @@index([userId, seenAt])
+}
+
+/**
+ * Post do feed global (Epic 22) — sempre vinculado a um anime, como uma
+ * opinião/review curta (não texto solto). Ao contrário de Comment (visível
+ * só pra quem também tem esse anilistId na própria lista), Post precisa
+ * aparecer no feed global pra qualquer pessoa logada, então o
+ * título/capa do anime são congelados (snapshot) aqui na criação a partir
+ * da própria linha de Anime do autor — o feed nunca depende do *viewer*
+ * também ter esse anime na lista.
+ */
+model Post {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anilistId         Int
+  animeTitleRomaji  String
+  animeTitleEnglish String?
+  animeCoverImage   String?
+  body              String
+  /// URL colada pela pessoa (meme/imagem) — sem infraestrutura de upload
+  /// (nenhum campo de imagem no app tem uma hoje, nem User.avatarUrl).
+  /// Renderizado como <img> simples com onError, não passa pelo
+  /// next/image (fora do allowlist de remotePatterns).
+  imageUrl          String?
+  createdAt         DateTime  @default(now())
+  /// Soft delete pelo autor ou por admin via fila de denúncia — mesmo
+  /// padrão do Comment (Epic 15).
+  deletedAt         DateTime?
+
+  likes   PostLike[]
+  reports PostReport[]
+
+  @@index([anilistId])
+  @@index([userId])
+  @@index([deletedAt, createdAt])
+}
+
+/// Curtida — par único (postId, userId), mesmo idioma de toggle otimista
+/// já usado por FavoriteToggle, estendido de boolean pra {liked, likeCount}.
+model PostLike {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+}
+
+/**
+ * Denúncia de post (Epic 22) — fila do administrador, mesmo padrão de
+ * CommentReport (Epic 15): upsert idempotente, reabre em resolvedAt/
+ * resolvedById quando denunciado de novo depois de resolvido.
+ */
+model PostReport {
+  id           String    @id @default(cuid())
+  postId       String
+  post         Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reporterId   String
+  reporter     User      @relation("PostReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolvedBy   User?     @relation("PostResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@unique([postId, reporterId])
+  @@index([postId])
+}
+
+/// Segue-outra-pessoa (Epic 22) — alimenta a aba "Seguindo" do feed.
+/// followerId != followingId é validado na camada de rota (Prisma não
+/// tem check constraint declarativa nesta versão do schema), não aqui.
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  follower    User     @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   User     @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
 }
