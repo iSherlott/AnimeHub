@@ -1,15 +1,21 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import NextLink from "next/link";
 import Image from "next/image";
 import { Box, Card, CardActionArea, Tooltip, Typography } from "@mui/material";
 import type { CalendarItem } from "@/lib/calendarItem";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
+import { isAiringNow } from "@/lib/airingWindow";
 
 type CalendarEntryCardProps = {
   item: CalendarItem;
   variant?: "featured" | "compact";
 };
+
+/** Reavalia a cada minuto — sem isso, um card aberto numa aba esquecida
+ * ficaria com o selo "NO AR" preso muito depois da janela real ter passado. */
+const RECHECK_INTERVAL_MS = 60 * 1000;
 
 export function CalendarEntryCard({ item, variant = "compact" }: CalendarEntryCardProps) {
   const { preference } = useTitlePreference();
@@ -18,6 +24,18 @@ export function CalendarEntryCard({ item, variant = "compact" }: CalendarEntryCa
     hour: "2-digit",
     minute: "2-digit",
   });
+
+  // Começa false (em vez de calcular já no useState) e só decide de verdade
+  // dentro do efeito — esse componente é renderizado no servidor também, e
+  // o relógio do servidor pode discordar do navegador bem na borda da
+  // janela, o que causaria um mismatch de hidratação.
+  const [airingNow, setAiringNow] = useState(false);
+  useEffect(() => {
+    const check = () => setAiringNow(isAiringNow(item.airingAt));
+    check();
+    const interval = setInterval(check, RECHECK_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [item.airingAt]);
 
   const isInternal = Boolean(item.inMyList && item.animeId);
 
@@ -46,6 +64,29 @@ export function CalendarEntryCard({ item, variant = "compact" }: CalendarEntryCa
             background: "linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.1), transparent)",
           }}
         />
+        {airingNow && (
+          <Box
+            role="status"
+            aria-label="No ar agora"
+            sx={{
+              position: "absolute",
+              left: 4,
+              top: 4,
+              px: 0.6,
+              height: 16,
+              display: "flex",
+              alignItems: "center",
+              bgcolor: "error.main",
+              color: "#fff",
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+            }}
+          >
+            No ar
+          </Box>
+        )}
         <Box
           role="img"
           aria-label="Já está na sua lista"
@@ -119,6 +160,16 @@ export function CalendarEntryCard({ item, variant = "compact" }: CalendarEntryCa
         </Typography>
         <Typography sx={{ mt: 0.25, fontSize: 10, color: "text.secondary" }}>
           EP {item.episode} · {time}
+          {airingNow && (
+            <Box
+              component="span"
+              role="status"
+              aria-label="No ar agora"
+              sx={{ ml: 0.5, fontWeight: 700, color: "error.main" }}
+            >
+              · NO AR
+            </Box>
+          )}
         </Typography>
       </Box>
     </>

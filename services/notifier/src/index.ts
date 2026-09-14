@@ -1,14 +1,9 @@
 import { createServer } from "node:http";
 import { prisma } from "../../../src/lib/prisma";
+import { airingAtRangeForNow } from "../../../src/lib/airingWindow";
 
 const PORT = Number(process.env.PORT ?? 4004);
 const TICK_INTERVAL_MS = 2 * 60 * 1000;
-
-// Janela de "no ar agora": um pouco antes (episódio recém-começou) até bem
-// depois (dá tempo da pessoa ver o alerta mesmo sem estar olhando no
-// instante exato) do horário de exibição confirmado pela AniList.
-const AIRING_WINDOW_BEFORE_MS = 5 * 60 * 1000;
-const AIRING_WINDOW_AFTER_MS = 30 * 60 * 1000;
 
 // A AniList reagenda episódio com frequência — se o horário salvo mudar
 // mais que isso desde o alerta já criado, trata como um adiamento de
@@ -21,8 +16,7 @@ const RETENTION_MS = 7 * 24 * 3600 * 1000;
 async function tick(): Promise<void> {
   try {
     const now = new Date();
-    const from = new Date(now.getTime() - AIRING_WINDOW_BEFORE_MS);
-    const to = new Date(now.getTime() + AIRING_WINDOW_AFTER_MS);
+    const { from, to } = airingAtRangeForNow(now);
 
     const airingNow = await prisma.airingScheduleEntry.findMany({
       where: { airingAt: { gte: from, lte: to } },
