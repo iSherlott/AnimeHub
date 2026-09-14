@@ -20,7 +20,12 @@ type CommentItem = {
   createdAt: string;
   author: { id: string; displayName: string };
   isMine: boolean;
+  reportedByMe: boolean;
 };
+
+function byCreatedAt(a: CommentItem, b: CommentItem): number {
+  return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+}
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleString("pt-BR", {
@@ -43,7 +48,6 @@ export function CommentSection({ animeId }: { animeId: string }) {
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -84,21 +88,37 @@ export function CommentSection({ animeId }: { animeId: string }) {
   }
 
   async function handleDelete(id: string) {
+    const removed = comments.find((c) => c.id === id);
+    setError(null);
     setComments((prev) => prev.filter((c) => c.id !== id));
     try {
-      await fetch(`/api/comments/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/comments/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        // Rollback — sem isso o comentário sumia da tela mesmo quando o
+        // apagar falhou de verdade no servidor, sem nenhum aviso.
+        if (removed) setComments((prev) => [...prev, removed].sort(byCreatedAt));
+        const data = await res.json().catch(() => null);
+        setError(data?.error ?? "Falha ao apagar comentário");
+      }
     } catch {
-      // sem rollback visual — na pior das hipóteses reaparece no próximo
-      // carregamento da página, quando o servidor volta a ser a fonte real.
+      if (removed) setComments((prev) => [...prev, removed].sort(byCreatedAt));
+      setError("Falha ao apagar comentário");
     }
   }
 
   async function handleReport(id: string) {
-    setReportedIds((prev) => new Set(prev).add(id));
+    setError(null);
+    setComments((prev) => prev.map((c) => (c.id === id ? { ...c, reportedByMe: true } : c)));
     try {
-      await fetch(`/api/comments/${id}/report`, { method: "POST" });
+      const res = await fetch(`/api/comments/${id}/report`, { method: "POST" });
+      if (!res.ok) {
+        setComments((prev) => prev.map((c) => (c.id === id ? { ...c, reportedByMe: false } : c)));
+        const data = await res.json().catch(() => null);
+        setError(data?.error ?? "Falha ao denunciar comentário");
+      }
     } catch {
-      // idem — o botão já reflete "denunciado" otimisticamente.
+      setComments((prev) => prev.map((c) => (c.id === id ? { ...c, reportedByMe: false } : c)));
+      setError("Falha ao denunciar comentário");
     }
   }
 
@@ -168,13 +188,13 @@ export function CommentSection({ animeId }: { animeId: string }) {
                   </IconButton>
                 </Tooltip>
               ) : (
-                <Tooltip title={reportedIds.has(c.id) ? "Denunciado" : "Denunciar comentário"}>
+                <Tooltip title={c.reportedByMe ? "Denunciado" : "Denunciar comentário"}>
                   <span>
                     <IconButton
                       onClick={() => handleReport(c.id)}
-                      disabled={reportedIds.has(c.id)}
+                      disabled={c.reportedByMe}
                       size="small"
-                      aria-label={reportedIds.has(c.id) ? "Denunciado" : "Denunciar comentário"}
+                      aria-label={c.reportedByMe ? "Denunciado" : "Denunciar comentário"}
                     >
                       <FlagIcon fontSize="small" />
                     </IconButton>

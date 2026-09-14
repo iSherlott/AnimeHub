@@ -155,6 +155,54 @@ test.describe("Comentários por anime (Epic 15)", () => {
     expect(stillThereData.comments.some((c: { id: string }) => c.id === commentId)).toBe(true);
   });
 
+  test("reportedByMe reflete uma denúncia própria em aberto, e some quando resolvida", async ({
+    request,
+  }) => {
+    const afterResolve = await request.get(`/api/anime/${adminAnimeId}/comments`, {
+      headers: { Cookie: `${SESSION_COOKIE_NAME}=${TEST_ADMIN_SESSION_TOKEN}` },
+    });
+    const afterResolveData = await afterResolve.json();
+    expect(
+      afterResolveData.comments.find((c: { id: string }) => c.id === commentId).reportedByMe
+    ).toBe(false);
+  });
+
+  test("denunciar de novo depois de resolvido reabre a entrada na fila do admin", async ({
+    request,
+  }) => {
+    // Regressão: o upsert de denúncia fazia um no-op em cima da linha já
+    // resolvida (resolvedAt continuava setado), então a mesma pessoa nunca
+    // mais conseguia reabrir a fila pra esse comentário depois da 1ª
+    // resolução — mesmo a API respondendo 201 como se tivesse funcionado.
+    const reReport = await request.post(`/api/comments/${commentId}/report`, {
+      headers: { Cookie: `${SESSION_COOKIE_NAME}=${TEST_ADMIN_SESSION_TOKEN}` },
+    });
+    expect(reReport.status()).toBe(201);
+
+    const queue = await request.get("/api/admin/comment-reports", {
+      headers: { Cookie: `${SESSION_COOKIE_NAME}=${TEST_ADMIN_SESSION_TOKEN}` },
+    });
+    const queueData = await queue.json();
+    const entry = queueData.reports.find((r: { commentId: string }) => r.commentId === commentId);
+    expect(entry).toBeTruthy();
+    expect(entry.reportCount).toBe(1);
+
+    const list = await request.get(`/api/anime/${adminAnimeId}/comments`, {
+      headers: { Cookie: `${SESSION_COOKIE_NAME}=${TEST_ADMIN_SESSION_TOKEN}` },
+    });
+    const listData = await list.json();
+    expect(listData.comments.find((c: { id: string }) => c.id === commentId).reportedByMe).toBe(
+      true
+    );
+
+    // Deixa resolvido de novo pra não vazar denúncia pendente pros
+    // próximos testes deste arquivo.
+    await request.post(`/api/admin/comment-reports/${commentId}/resolve`, {
+      headers: { Cookie: `${SESSION_COOKIE_NAME}=${TEST_ADMIN_SESSION_TOKEN}` },
+      data: { action: "keep" },
+    });
+  });
+
   test("autor apaga o próprio comentário", async ({ request }) => {
     const del = await request.delete(`/api/comments/${commentId}`);
     expect(del.status()).toBe(200);

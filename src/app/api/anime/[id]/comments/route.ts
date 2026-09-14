@@ -39,6 +39,16 @@ export async function GET(request: Request, { params }: Params) {
     include: { user: { select: { id: true, displayName: true } } },
   });
 
+  // Denúncia própria ainda em aberto (não resolvida) — vira o estado
+  // "Denunciado" no cliente. Consultado do servidor, não guardado só em
+  // estado local, pra não ficar desatualizado quando a denúncia anterior já
+  // foi resolvida (nesse caso a pessoa pode denunciar de novo).
+  const myOpenReports = await prisma.commentReport.findMany({
+    where: { reporterId: user.id, resolvedAt: null, commentId: { in: comments.map((c) => c.id) } },
+    select: { commentId: true },
+  });
+  const reportedByMe = new Set(myOpenReports.map((r) => r.commentId));
+
   return NextResponse.json({
     comments: comments.map((c) => ({
       id: c.id,
@@ -46,6 +56,7 @@ export async function GET(request: Request, { params }: Params) {
       createdAt: c.createdAt.toISOString(),
       author: { id: c.user.id, displayName: c.user.displayName },
       isMine: c.user.id === user.id,
+      reportedByMe: reportedByMe.has(c.id),
     })),
   });
 }
@@ -91,6 +102,7 @@ export async function POST(request: Request, { params }: Params) {
         createdAt: comment.createdAt.toISOString(),
         author: { id: comment.user.id, displayName: comment.user.displayName },
         isMine: true,
+        reportedByMe: false,
       },
     },
     { status: 201 }

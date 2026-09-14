@@ -32,14 +32,18 @@ export async function POST(request: Request, { params }: Params) {
   }
 
   const now = new Date();
-  await prisma.commentReport.updateMany({
-    where: { commentId, resolvedAt: null },
-    data: { resolvedAt: now, resolvedById: user.id },
-  });
-
-  if (action === "remove") {
-    await prisma.comment.update({ where: { id: commentId }, data: { deletedAt: now } });
-  }
+  // As duas escritas precisam ser atômicas — sem transação, um crash entre
+  // elas deixaria denúncias marcadas como resolvidas com o comentário ainda
+  // de pé (ação "remove" que na prática não removeu nada).
+  await prisma.$transaction([
+    prisma.commentReport.updateMany({
+      where: { commentId, resolvedAt: null },
+      data: { resolvedAt: now, resolvedById: user.id },
+    }),
+    ...(action === "remove"
+      ? [prisma.comment.update({ where: { id: commentId }, data: { deletedAt: now } })]
+      : []),
+  ]);
 
   return NextResponse.json({ ok: true });
 }

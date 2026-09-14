@@ -32,11 +32,15 @@ export async function POST(request: Request, { params }: Params) {
   }
 
   // Idempotente — denunciar de novo algo que a mesma pessoa já denunciou não
-  // é erro, só não duplica a entrada na fila do admin.
+  // é erro, só não duplica a entrada na fila do admin. Reabre a denúncia
+  // (limpa resolvedAt/resolvedById) se ela já tinha sido resolvida antes:
+  // sem isso, denunciar de novo um comentário que o admin já tinha revisado
+  // (e mantido) nunca mais reaparecia na fila pra essa pessoa, porque o
+  // upsert só encontrava a linha antiga e não fazia nada com ela.
   const report = await prisma.commentReport.upsert({
     where: { commentId_reporterId: { commentId, reporterId: user.id } },
     create: { commentId, reporterId: user.id },
-    update: {},
+    update: { resolvedAt: null, resolvedById: null },
   });
 
   return NextResponse.json({ report: { id: report.id } }, { status: 201 });
