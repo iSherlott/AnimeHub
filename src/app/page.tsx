@@ -77,13 +77,28 @@ export default async function Home() {
     animes.find((a) => a.bannerImage || a.coverImage) ??
     animes[0];
 
-  // O hero gira entre os favoritos (curadoria manual, ver FavoriteToggle) —
-  // sem nenhum favorito ainda, cai pro pick único de sempre (só não gira).
+  // O hero prioriza os favoritos (curadoria manual, ver FavoriteToggle),
+  // mas gira entre pelo menos 3 animes da lista quando existirem (Epic 16)
+  // — não só entre favoritos. Com poucos (ou nenhum) favorito, completa a
+  // rotação com o resto da lista: o pick único de sempre primeiro, depois
+  // o restante priorizando quem tem imagem — sempre banner/capa já
+  // licenciados via AniList/Kitsu (Anime.bannerImage/coverImage já
+  // persistidos), nunca uma imagem de terceiros buscada à parte.
   const favoriteAnimes = animes
     .filter((a) => a.isFavorite)
     .sort((a, b) => (b.favoritedAt?.getTime() ?? 0) - (a.favoritedAt?.getTime() ?? 0))
     .slice(0, 6);
-  const heroSourceAnimes = favoriteAnimes.length > 0 ? favoriteAnimes : [featured];
+  const favoriteIds = new Set(favoriteAnimes.map((a) => a.id));
+  const rest = animes
+    .filter((a) => !favoriteIds.has(a.id))
+    .sort((a, b) => {
+      if (a.id === featured.id) return -1;
+      if (b.id === featured.id) return 1;
+      const aHasImage = a.bannerImage || a.coverImage ? 1 : 0;
+      const bHasImage = b.bannerImage || b.coverImage ? 1 : 0;
+      return bHasImage - aHasImage;
+    });
+  const heroSourceAnimes = [...favoriteAnimes, ...rest].slice(0, 6);
 
   const heroItems: HeroBannerData[] = await Promise.all(
     heroSourceAnimes.map(async (anime) => {
