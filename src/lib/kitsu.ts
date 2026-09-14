@@ -1,3 +1,5 @@
+import { normalizeGenres } from "@/lib/genreTaxonomy";
+
 const KITSU_API_BASE_URL =
   process.env.KITSU_API_BASE_URL ?? "https://kitsu.io/api/edge";
 
@@ -104,7 +106,11 @@ export async function searchKitsuAnime(
   const titles: KitsuTitles = attrs.titles ?? {};
   const poster: KitsuImage = attrs.posterImage ?? {};
   const cover: KitsuImage = attrs.coverImage ?? {};
-  const genres = await getKitsuGenres(Number(entry.id)).catch(() => []);
+  // getKitsuGenres devolve as categorias cruas da Kitsu (uma taxonomia bem
+  // mais granular que gênero de verdade — dezenas de tags de nicho);
+  // normalizado aqui pra vocabulário fechado (ver src/lib/genreTaxonomy.ts)
+  // antes de virar o campo "genres" que os chamadores dessa lib recebem.
+  const genres = normalizeGenres(await getKitsuGenres(Number(entry.id)).catch(() => []));
 
   return {
     kitsuId: Number(entry.id),

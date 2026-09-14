@@ -1,3 +1,5 @@
+import { normalizeGenres } from "@/lib/genreTaxonomy";
+
 // Jikan (jikan.moe) é uma API REST gratuita e pública que espelha os dados
 // abertos do MyAnimeList — não é scraping: é a forma padrão da comunidade
 // de acessar dados do MAL sem precisar de OAuth. Tem rate limit generoso
@@ -41,7 +43,7 @@ export async function searchJikanAnime(title: string): Promise<JikanAnimeMatch |
   return {
     malId: entry.mal_id,
     synopsis: entry.synopsis ?? null,
-    genres: [...(entry.genres ?? []), ...(entry.themes ?? [])].map((g) => g.name),
+    genres: normalizeGenres([...(entry.genres ?? []), ...(entry.themes ?? [])].map((g) => g.name)),
     score: entry.score ?? null,
     episodes: entry.episodes ?? null,
   };

@@ -34,8 +34,8 @@ describe("searchJikanAnime", () => {
           {
             mal_id: 12345,
             synopsis: "A great story.",
-            genres: [{ name: "Action" }, { name: "Drama" }],
-            themes: [{ name: "School" }],
+            genres: [{ name: "Comedy" }, { name: "Drama" }],
+            themes: [{ name: "Isekai" }],
             score: 8.4,
             episodes: 24,
           },
@@ -45,10 +45,12 @@ describe("searchJikanAnime", () => {
 
     const result = await searchJikanAnime("Some Anime");
 
+    // "Drama" não tem mapeamento na taxonomia fechada (Epic 3, confirmado
+    // com o usuário) e é descartado — só Comedy/Isekai sobrevivem.
     expect(result).toEqual({
       malId: 12345,
       synopsis: "A great story.",
-      genres: ["Action", "Drama", "School"],
+      genres: ["Comedy", "Isekai"],
       score: 8.4,
       episodes: 24,
     });

@@ -3,12 +3,25 @@ import { dedupeByNormalizedTitle, mergeGenres, pickAnidbTitles } from "./identit
 
 describe("mergeGenres", () => {
   it("une gêneros de várias fontes sem duplicar", () => {
-    const result = mergeGenres(["Action"], [["Action", "Comedy"], ["Comedy", "Drama"]]);
-    expect(result.sort()).toEqual(["Action", "Comedy", "Drama"]);
+    const result = mergeGenres(["Isekai"], [["Isekai", "Comedy"], ["Comedy", "Mecha"]]);
+    expect(result.sort()).toEqual(["Comedy", "Isekai", "Mecha"]);
   });
 
   it("retorna só os existentes quando não há fontes novas", () => {
     expect(mergeGenres(["Isekai"], [])).toEqual(["Isekai"]);
+  });
+
+  // Epic 3: normaliza pro vocabulário fechado, então (1) termos sem
+  // mapeamento somem mesmo vindo de `existing` (autocura de dado gravado
+  // antes da taxonomia existir) e (2) sinônimos de fontes diferentes pro
+  // mesmo conceito não viram duas entradas.
+  it("descarta termos sem mapeamento, inclusive os que já estavam salvos", () => {
+    expect(mergeGenres(["Action", "Isekai"], [["Drama"]])).toEqual(["Isekai"]);
+  });
+
+  it("não duplica quando duas fontes mandam sinônimos do mesmo gênero", () => {
+    const result = mergeGenres([], [["Sci-Fi"], ["Science Fiction"]]);
+    expect(result).toEqual(["Sci-fi"]);
   });
 });
 

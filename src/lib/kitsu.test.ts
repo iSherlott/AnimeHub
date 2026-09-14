@@ -77,7 +77,7 @@ describe("searchKitsuAnime", () => {
         })
       )
       .mockResolvedValueOnce(
-        jsonResponse({ data: [{ attributes: { title: "Action" } }] })
+        jsonResponse({ data: [{ attributes: { title: "Isekai" } }] })
       );
 
     const result = await searchKitsuAnime("Some Anime");
@@ -92,7 +92,7 @@ describe("searchKitsuAnime", () => {
       episodeCount: 12,
       startDate: "2024-01-01",
       endDate: null,
-      genres: ["Action"],
+      genres: ["Isekai"],
     });
   });
 

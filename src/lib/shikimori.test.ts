@@ -36,20 +36,22 @@ describe("searchShikimoriAnime", () => {
           image: { original: "/detail.jpg" },
           episodes: 24,
           score: "8.12",
-          genres: [{ name: "Action" }, { name: "Fantasy" }],
+          genres: [{ name: "Isekai" }, { name: "Fantasy" }],
           description: "Full synopsis.",
         })
       );
 
     const result = await searchShikimoriAnime("Some Anime");
 
+    // "Fantasy" não tem mapeamento na taxonomia fechada (Epic 3, confirmado
+    // com o usuário) e é descartado — só Isekai sobrevive.
     expect(result).toEqual({
       shikimoriId: 42,
       name: "Some Anime (Full)",
       imageUrl: "https://shikimori.one/detail.jpg",
       episodes: 24,
       score: 8.12,
-      genres: ["Action", "Fantasy"],
+      genres: ["Isekai"],
       description: "Full synopsis.",
     });
     expect(fetch).toHaveBeenNthCalledWith(

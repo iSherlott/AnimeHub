@@ -135,6 +135,39 @@ describe("AniList GraphQL requests", () => {
     const body = JSON.parse((init as RequestInit).body as string);
     expect(body.variables).toEqual({ season: "FALL", seasonYear: 2026 });
   });
+
+  // Epic 3: gêneros crus da AniList são normalizados pro vocabulário
+  // fechado (src/lib/genreTaxonomy.ts) antes de sair desta lib, pra todo
+  // consumidor (cache do catálogo, criação de anime, etc.) já receber a
+  // lista fechada.
+  it("getAnimeById normalizes genres to the closed taxonomy, dropping unmapped terms", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ data: { Media: makeMedia({ genres: ["Sci-Fi", "Action", "Isekai"] }) } })
+    );
+
+    const result = await getAnimeById(1);
+
+    expect(result.genres).toEqual(["Sci-fi", "Isekai"]);
+  });
+
+  it("searchAnime normalizes genres for every result in the page", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({
+        data: {
+          Page: {
+            media: [
+              makeMedia({ id: 1, genres: ["Science Fiction"] }),
+              makeMedia({ id: 2, genres: ["Drama"] }),
+            ],
+          },
+        },
+      })
+    );
+
+    const result = await searchAnime("some query");
+
+    expect(result.map((m) => m.genres)).toEqual([["Sci-fi"], []]);
+  });
 });
 
 describe("getAiringSchedule", () => {
@@ -220,6 +253,23 @@ describe("getAiringSchedule", () => {
     const result = await getAiringSchedule(0, 100);
 
     expect(result.map((e) => e.anilistId)).toEqual([2, 3, 4]);
+  });
+
+  it("normalizes genres to the closed taxonomy (Epic 3)", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({
+        data: {
+          Page: {
+            pageInfo: { hasNextPage: false },
+            airingSchedules: [scheduleEntry({ genres: ["Sci-Fi", "Horror"] })],
+          },
+        },
+      })
+    );
+
+    const result = await getAiringSchedule(0, 100);
+
+    expect(result[0].genres).toEqual(["Sci-fi"]);
   });
 
   it("stops after MAX_PAGES even if the API keeps claiming there's a next page", async () => {

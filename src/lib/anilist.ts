@@ -1,3 +1,5 @@
+import { normalizeGenres } from "@/lib/genreTaxonomy";
+
 const ANILIST_ENDPOINT = "https://graphql.anilist.co";
 
 export type AniListFuzzyDate = {
@@ -112,6 +114,14 @@ async function anilistRequest<T>(
   return json.data as T;
 }
 
+/** Gêneros da AniList (e de toda outra fonte, ver src/lib/genreTaxonomy.ts)
+ * chegam crus da API — normalizados aqui, no ponto em que saem desta lib,
+ * pra todo consumidor (cache do catálogo, criação de anime, refresh, etc.)
+ * já receber a lista fechada, sem precisar normalizar de novo. */
+function normalizeMedia(media: AniListMedia): AniListMedia {
+  return { ...media, genres: normalizeGenres(media.genres) };
+}
+
 export async function searchAnime(search: string): Promise<AniListMedia[]> {
   const query = `
     query ($search: String) {
@@ -126,7 +136,7 @@ export async function searchAnime(search: string): Promise<AniListMedia[]> {
     query,
     { search }
   );
-  return data.Page.media;
+  return data.Page.media.map(normalizeMedia);
 }
 
 export async function getSeasonalAnime(
@@ -152,7 +162,7 @@ export async function getSeasonalAnime(
     query,
     { season, seasonYear }
   );
-  return data.Page.media;
+  return data.Page.media.map(normalizeMedia);
 }
 
 export async function getAnimeById(anilistId: number): Promise<AniListMedia> {
@@ -166,7 +176,7 @@ export async function getAnimeById(anilistId: number): Promise<AniListMedia> {
   const data = await anilistRequest<{ Media: AniListMedia }>(query, {
     id: anilistId,
   });
-  return data.Media;
+  return normalizeMedia(data.Media);
 }
 
 export type AniListAiringEntry = {
@@ -261,7 +271,7 @@ export async function getAiringSchedule(
         title: entry.media.title,
         coverImage: entry.media.coverImage.extraLarge,
         bannerImage: entry.media.bannerImage,
-        genres: entry.media.genres,
+        genres: normalizeGenres(entry.media.genres),
       });
     }
 

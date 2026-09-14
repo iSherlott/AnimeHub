@@ -1,3 +1,5 @@
+import { normalizeGenres } from "@/lib/genreTaxonomy";
+
 // Shikimori — API pública REST, sem chave/cadastro. Baseado só na
 // documentação oficial (não deu pra testar ao vivo: o site bloqueia o
 // ambiente onde este projeto foi desenvolvido com um geoblock da proteção
@@ -63,7 +65,7 @@ export async function searchShikimoriAnime(title: string): Promise<ShikimoriMatc
     imageUrl: imagePath ? `https://shikimori.one${imagePath}` : null,
     episodes: source.episodes ?? null,
     score: source.score != null ? Number(source.score) : null,
-    genres: (source.genres ?? []).map((g) => g.name),
+    genres: normalizeGenres((source.genres ?? []).map((g) => g.name)),
     description: source.description ?? null,
   };
 }

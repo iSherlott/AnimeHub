@@ -1,3 +1,5 @@
+import { normalizeGenres } from "@/lib/genreTaxonomy";
+
 /**
  * Funções puras (sem I/O) que consolidam a lógica de "identidade" hoje
  * espalhada pelo BFF: fusão de gêneros de múltiplas fontes e escolha de
@@ -13,13 +15,20 @@
  * duplicado nos dois lugares.
  */
 
-/** União sem duplicatas de gêneros de várias fontes com o que já existe. */
+/**
+ * União sem duplicatas de gêneros de várias fontes com o que já existe.
+ * Também normaliza pro vocabulário fechado (src/lib/genreTaxonomy.ts) — as
+ * fontes (jikanMatch.genres etc.) já chegam normalizadas, mas `existing`
+ * pode ser uma linha do banco gravada antes do Epic 3 existir; rodar por
+ * aqui de novo a cada refresh vai limpando esse dado antigo sozinho, sem
+ * precisar de uma migração de backfill à parte.
+ */
 export function mergeGenres(existing: string[], incoming: string[][]): string[] {
   const set = new Set(existing);
   for (const list of incoming) {
     for (const genre of list) set.add(genre);
   }
-  return Array.from(set);
+  return normalizeGenres(Array.from(set));
 }
 
 export type AnidbTitleCandidate = { language: string; title: string };
