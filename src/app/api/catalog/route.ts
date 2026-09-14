@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { discoverItemFromCatalogEntry } from "@/lib/discoverItem";
+import { getCurrentUser } from "@/lib/auth/session";
+import { annotateOwnership, discoverItemFromCatalogEntry } from "@/lib/discoverItem";
 
 /**
  * Todo o catálogo já salvo localmente (CatalogEntry) — usado pela tela
@@ -8,8 +9,13 @@ import { discoverItemFromCatalogEntry } from "@/lib/discoverItem";
  * depender da AniList estar no ar.
  */
 export async function GET() {
+  const user = await getCurrentUser();
   const entries = await prisma.catalogEntry.findMany({
     orderBy: { titleRomaji: "asc" },
   });
-  return NextResponse.json({ results: entries.map(discoverItemFromCatalogEntry) });
+  const results = await annotateOwnership(
+    entries.map(discoverItemFromCatalogEntry),
+    user?.id ?? null
+  );
+  return NextResponse.json({ results });
 }

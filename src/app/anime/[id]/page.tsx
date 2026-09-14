@@ -213,8 +213,17 @@ export default async function AnimeDetailPage({
                   target="_blank"
                   rel="noopener noreferrer"
                   clickable
-                  icon={<LanguageIcon fontSize="small" />}
-                  label="Site oficial"
+                  // O prop `icon` do Chip some da 1ª renderização do servidor
+                  // (fica só depois da hidratação) quando combinado com
+                  // clickable+component="a" — causa um mismatch de
+                  // hidratação real. Compor o ícone dentro do label evita o
+                  // caminho de clonagem de ícone do Chip que tem o bug.
+                  label={
+                    <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
+                      <LanguageIcon fontSize="small" />
+                      <span>Site oficial</span>
+                    </Stack>
+                  }
                   size="small"
                   variant="outlined"
                 />

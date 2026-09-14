@@ -101,6 +101,10 @@ export function AdminDashboard() {
   }
 
   useEffect(() => {
+    // loadAll também é reusada pelo botão de gerar convite (linha 117) pra
+    // recarregar a lista depois — precisa poder setar loading=true sozinha.
+    // Mesmo caso canônico de "buscar dados num efeito" dos docs do React.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadAll();
   }, []);
 

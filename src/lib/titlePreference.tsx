@@ -44,7 +44,13 @@ export function TitlePreferenceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setPreferenceState(JSON.parse(raw));
+      if (raw) {
+        // Mesma exceção de hidratação de discover/page.tsx: SSR nunca vê
+        // localStorage, então precisa hidratar aqui (pós-montagem), não no
+        // inicializador do useState — o lint não modela isso, falso positivo.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setPreferenceState(JSON.parse(raw));
+      }
     } catch {
       // localStorage indisponível (aba privada etc.) — fica no padrão.
     }

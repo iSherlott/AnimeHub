@@ -1,9 +1,9 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import CloseIcon from "@mui/icons-material/Close";
 import Image from "next/image";
-import { Box, Chip, Dialog, IconButton, Stack, Typography } from "@mui/material";
+import { Box, Chip, Dialog, IconButton, Skeleton, Stack, Typography } from "@mui/material";
 import type { DiscoverItem } from "@/lib/discoverItem";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 
@@ -27,6 +27,7 @@ export function AnimeInfoModal({
   const { preference } = useTitlePreference();
   const title = resolveTitleText(preference, item) || "Sem título";
   const titleId = useId();
+  const [coverLoaded, setCoverLoaded] = useState(false);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth aria-labelledby={titleId}>
@@ -75,7 +76,20 @@ export function AnimeInfoModal({
             bgcolor: "background.default",
           }}
         >
-          {item.coverImage ? <Image src={item.coverImage} alt="" fill style={{ objectFit: "cover" }} /> : null}
+          {item.coverImage ? (
+            <>
+              {!coverLoaded && (
+                <Skeleton variant="rectangular" sx={{ position: "absolute", inset: 0 }} />
+              )}
+              <Image
+                src={item.coverImage}
+                alt=""
+                fill
+                style={{ objectFit: "cover" }}
+                onLoad={() => setCoverLoaded(true)}
+              />
+            </>
+          ) : null}
         </Box>
         <Box sx={{ minWidth: 0, flex: 1, alignSelf: "flex-end" }}>
           <Typography id={titleId} variant="h5" component="h2" className="font-display" sx={{ textTransform: "uppercase", lineHeight: 1.2 }}>

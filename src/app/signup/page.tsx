@@ -39,7 +39,7 @@ function SignupForm() {
   }
 
   return (
-    <Box sx={{ maxWidth: 384, mx: "auto", px: 3, py: 8 }}>
+    <Box sx={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", maxWidth: 384, width: "100%", mx: "auto", px: 3, py: 8 }}>
       <Typography variant="h4" component="h1" sx={{ mb: 0.5 }}>
         Criar conta
       </Typography>
@@ -102,11 +102,11 @@ function SignupForm() {
 
 export default function SignupPage() {
   return (
-    <div className="min-h-screen bg-ink">
+    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", display: "flex", flexDirection: "column" }}>
       <Header />
       <Suspense fallback={null}>
         <SignupForm />
       </Suspense>
-    </div>
+    </Box>
   );
 }

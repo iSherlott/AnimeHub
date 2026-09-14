@@ -13,6 +13,7 @@ import {
   Divider,
   IconButton,
   Link as MuiLink,
+  Skeleton,
   Stack,
   Toolbar,
   Typography,
@@ -122,8 +123,14 @@ export function Header() {
     };
   }, [pathname]);
 
-  // Fecha o menu mobile sempre que a rota muda.
+  // Fecha o menu mobile sempre que a rota muda. A receita oficial do React
+  // pra "resetar estado quando um valor muda" seria ajustar isso durante a
+  // renderização via ref — mas o lint react-hooks/refs deste projeto (mira
+  // compatibilidade com o React Compiler) proíbe acessar ref.current fora
+  // de efeito/handler, então essa receita não se aplica aqui. Um efeito
+  // reagindo à mudança de pathname continua sendo a forma correta.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileOpen(false);
   }, [pathname]);
 
@@ -172,7 +179,9 @@ export function Header() {
           >
             <TitleLanguageMenu />
             <NotificationBell user={user} />
-            {user === undefined ? null : user ? (
+            {user === undefined ? (
+              <Skeleton variant="rounded" width={64} height={30} />
+            ) : user ? (
               <>
                 <Typography
                   variant="body2"
@@ -225,7 +234,9 @@ export function Header() {
                 <TitleLanguageMenu />
                 <NotificationBell user={user} />
               </Stack>
-              {user === undefined ? null : user ? (
+              {user === undefined ? (
+                <Skeleton variant="rounded" width={64} height={30} />
+              ) : user ? (
                 <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
                   <Typography variant="body2" noWrap sx={{ color: "text.secondary", maxWidth: 140 }}>
                     {user.displayName}

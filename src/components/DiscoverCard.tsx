@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import NextLink from "next/link";
 import Image from "next/image";
 import AddIcon from "@mui/icons-material/Add";
 import CheckIcon from "@mui/icons-material/Check";
@@ -44,14 +45,20 @@ export function DiscoverCard({ item, rank }: { item: DiscoverItem; rank?: number
   const [url, setUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+  const [addedAnimeId, setAddedAnimeId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const { preference } = useTitlePreference();
   const title = resolveTitleText(preference, item) || "Sem título";
   const nextEpisodeLabel = formatNextEpisode(item.nextEpisodeAt, item.nextEpisodeNumber);
   const canAdd = item.anilistId != null;
-  const addButtonLabel = done
-    ? "Adicionado"
+  // "Já na lista" cobre 2 casos: já estava lá antes desta página carregar
+  // (item.inMyList, anotado pelo BFF) ou acabou de ser adicionado nesta
+  // sessão (done, via handleAdd) — mesmo card, sem precisar recarregar.
+  const owned = item.inMyList || done;
+  const ownedAnimeId = item.animeId ?? addedAnimeId;
+  const addButtonLabel = owned
+    ? "Já está na sua lista — ver"
     : !canAdd
       ? "Disponível quando a AniList voltar ao ar"
       : user === undefined
@@ -61,6 +68,10 @@ export function DiscoverCard({ item, rank }: { item: DiscoverItem; rank?: number
           : "Faça login para adicionar";
 
   function handleAddButtonClick(e: React.MouseEvent<HTMLElement>) {
+    if (owned) {
+      if (ownedAnimeId) router.push(`/anime/${ownedAnimeId}`);
+      return;
+    }
     if (!canAdd || user === undefined) return; // ainda checando se está logado
     if (!user) {
       router.push("/login");
@@ -89,6 +100,7 @@ export function DiscoverCard({ item, rank }: { item: DiscoverItem; rank?: number
         return;
       }
       setDone(true);
+      setAddedAnimeId(data.anime?.id ?? null);
       setAnchorEl(null);
     } finally {
       setSaving(false);
@@ -140,17 +152,17 @@ export function DiscoverCard({ item, rank }: { item: DiscoverItem; rank?: number
           <span style={{ position: "absolute", top: 4, right: 4 }}>
             <IconButton
               onClick={handleAddButtonClick}
-              disabled={done || !canAdd}
+              disabled={owned ? !ownedAnimeId : !canAdd}
               size="small"
               aria-label={addButtonLabel}
               sx={{
-                bgcolor: done ? "success.main" : "rgba(0,0,0,0.7)",
-                color: done ? "#0b0b0d" : "#f7f7f5",
-                "&:hover": { bgcolor: done ? "success.main" : "primary.main" },
+                bgcolor: owned ? "success.main" : "rgba(0,0,0,0.7)",
+                color: owned ? "#0b0b0d" : "#f7f7f5",
+                "&:hover": { bgcolor: owned ? "success.main" : "primary.main" },
                 "&.Mui-disabled": { opacity: 0.5 },
               }}
             >
-              {done ? <CheckIcon fontSize="small" /> : <AddIcon fontSize="small" />}
+              {owned ? <CheckIcon fontSize="small" /> : <AddIcon fontSize="small" />}
             </IconButton>
           </span>
         </Tooltip>
@@ -183,7 +195,9 @@ export function DiscoverCard({ item, rank }: { item: DiscoverItem; rank?: number
 
       <Tooltip title={title}>
         <Button
-          onClick={() => setShowInfo(true)}
+          {...(owned && ownedAnimeId
+            ? { component: NextLink, href: `/anime/${ownedAnimeId}` }
+            : { onClick: () => setShowInfo(true) })}
           className="font-display"
           sx={{
             display: "-webkit-box",

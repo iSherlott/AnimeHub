@@ -2,6 +2,7 @@
 
 import NextLink from "next/link";
 import Image from "next/image";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { Box, Tooltip, Typography } from "@mui/material";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 
@@ -46,6 +47,26 @@ export function RecommendationCard({ rec }: { rec: RecommendationData }) {
         >
           {rec.coverImage && (
             <Image src={rec.coverImage} alt="" fill sizes="128px" style={{ objectFit: "cover" }} />
+          )}
+          {!rec.isInternal && (
+            <Box
+              aria-hidden="true"
+              sx={{
+                position: "absolute",
+                right: 4,
+                top: 4,
+                display: "flex",
+                height: 20,
+                width: 20,
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "50%",
+                bgcolor: "rgba(0,0,0,0.7)",
+                color: "text.primary",
+              }}
+            >
+              <OpenInNewIcon sx={{ fontSize: 13 }} />
+            </Box>
           )}
         </Box>
         <Typography variant="caption" noWrap sx={{ display: "block", mt: 0.5 }}>

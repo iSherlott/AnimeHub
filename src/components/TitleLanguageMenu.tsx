@@ -47,6 +47,7 @@ export function TitleLanguageMenu() {
         aria-haspopup="true"
         aria-controls={open ? menuId : undefined}
         aria-expanded={open ? "true" : undefined}
+        sx={{ width: 44, height: 44 }}
       >
         <SettingsIcon fontSize="small" />
       </IconButton>

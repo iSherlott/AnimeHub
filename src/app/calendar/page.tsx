@@ -54,9 +54,15 @@ export default function CalendarPage() {
   useEffect(() => {
     // Sem login não existe "minha lista" pra mostrar — evita a tela ficar
     // sempre vazia por padrão pra quem não está logado. Se a pessoa já
-    // mexeu no toggle manualmente, não sobrescreve a escolha dela.
+    // mexeu no toggle manualmente, não sobrescreve a escolha dela. A receita
+    // de ajustar isso durante a renderização via ref não se aplica aqui —
+    // o lint react-hooks/refs deste projeto (mira compatibilidade com o
+    // React Compiler) proíbe acessar ref.current fora de efeito/handler.
     if (userTouchedToggle.current) return;
-    if (user === null) setShowAllRaw(true);
+    if (user === null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShowAllRaw(true);
+    }
   }, [user]);
 
   const weekDays = useMemo(() => buildWeekDays(weekOffset), [weekOffset]);
@@ -64,6 +70,12 @@ export default function CalendarPage() {
 
   useEffect(() => {
     let cancelled = false;
+    // Mostra "carregando" de novo assim que a semana muda, antes mesmo da
+    // busca terminar — o exemplo canônico de "buscar dados num efeito" dos
+    // docs do React (react.dev/learn/you-might-not-need-an-effect) já é
+    // exatamente essa forma; sem adotar uma lib de fetch, não tem como
+    // sinalizar "comecei a carregar" sem chamar setState aqui.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setError(null);
     // O início da semana (domingo 00:00 no fuso do navegador) é enviado como

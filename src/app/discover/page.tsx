@@ -87,6 +87,13 @@ export default function DiscoverPage() {
   useEffect(() => {
     try {
       if (localStorage.getItem("discover-filters-expanded") === "1") {
+        // Só dá pra ler localStorage depois de montar — inicializar o
+        // estado direto no useState causaria mismatch de hidratação real
+        // (SSR nunca vê localStorage, então sempre renderiza recolhido;
+        // hidratar aqui, não no inicializador, é o padrão já usado em
+        // titlePreference.tsx). O lint react-hooks/set-state-in-effect
+        // não modela essa exceção de hidratação — falso positivo aqui.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setFiltersExpanded(true);
       }
     } catch {
@@ -137,6 +144,11 @@ export default function DiscoverPage() {
 
   useEffect(() => {
     if (query.trim().length < 2) {
+      // Zera resultado/erro da busca anterior — sem isso, a próxima vez que
+      // a query voltar a ter 2+ caracteres mostraria por um instante (até o
+      // debounce de 400ms abaixo resolver) um erro ou resultado desatualizado
+      // de uma busca antiga sem relação com o texto atual.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSearchResults([]);
       setSearchError(null);
       return;

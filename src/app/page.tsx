@@ -23,10 +23,10 @@ export default async function Home() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-ink">
+      <Box sx={{ minHeight: "100vh", bgcolor: "background.default", display: "flex", flexDirection: "column" }}>
         <Header />
-        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, px: 3, py: 12, textAlign: "center" }}>
-          <Typography variant="h4" component="p" sx={{ textTransform: "uppercase" }}>
+        <Box sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, px: 3, py: 8, textAlign: "center" }}>
+          <Typography variant="h4" component="h1" sx={{ textTransform: "uppercase" }}>
             Faça login para ver sua lista
           </Typography>
           <Typography variant="body2" sx={{ maxWidth: 448, color: "text.secondary" }}>
@@ -37,7 +37,7 @@ export default async function Home() {
             Entrar
           </LinkButton>
         </Box>
-      </div>
+      </Box>
     );
   }
 
@@ -49,17 +49,17 @@ export default async function Home() {
 
   if (animes.length === 0) {
     return (
-      <div className="min-h-screen bg-ink">
+      <Box sx={{ minHeight: "100vh", bgcolor: "background.default", display: "flex", flexDirection: "column" }}>
         <Header />
-        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, px: 3, py: 12, textAlign: "center" }}>
-          <Typography variant="h4" component="p" sx={{ textTransform: "uppercase" }}>
+        <Box sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, px: 3, py: 8, textAlign: "center" }}>
+          <Typography variant="h4" component="h1" sx={{ textTransform: "uppercase" }}>
             Sua lista ainda está vazia!
           </Typography>
           <LinkButton href="/discover" variant="contained" sx={{ mt: 1 }}>
             Descobrir animes
           </LinkButton>
         </Box>
-      </div>
+      </Box>
     );
   }
 
