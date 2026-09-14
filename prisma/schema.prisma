@@ -25,11 +25,14 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  sessions       Session[]
-  animeList      Anime[]
-  invitesCreated Invite[] @relation("InvitesCreated")
-  inviteUsed     Invite?  @relation("InviteUsed")
-  airingAlerts   AiringAlert[]
+  sessions         Session[]
+  animeList        Anime[]
+  invitesCreated   Invite[]        @relation("InvitesCreated")
+  inviteUsed       Invite?         @relation("InviteUsed")
+  airingAlerts     AiringAlert[]
+  comments         Comment[]
+  commentReports   CommentReport[] @relation("CommentReporter")
+  reportsResolved  CommentReport[] @relation("CommentResolver")
 
   @@index([email])
 }
@@ -176,6 +179,49 @@ model PlatformLink {
   createdAt DateTime @default(now())
 
   @@unique([animeId, platform])
+}
+
+/**
+ * Comentário por anime (Epic 15) — chave por anilistId, não por Anime.id:
+ * cada usuário tem sua própria linha de Anime por anilistId (isolamento do
+ * Epic 11), então o comentário precisa aparecer pra qualquer um que tenha
+ * esse mesmo anime na lista, não só pra quem comentou.
+ */
+model Comment {
+  id        String    @id @default(cuid())
+  anilistId Int
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime  @default(now())
+  /// Soft delete (pelo autor ou por um admin via fila de denúncia) — mantém
+  /// o histórico de CommentReport íntegro em vez de um hard-delete que
+  /// quebraria a referência.
+  deletedAt DateTime?
+
+  reports CommentReport[]
+
+  @@index([anilistId])
+  @@index([userId])
+}
+
+/**
+ * Denúncia de comentário (Epic 15) — fila que o administrador revisa;
+ * denunciar não remove o comentário automaticamente.
+ */
+model CommentReport {
+  id           String    @id @default(cuid())
+  commentId    String
+  comment      Comment   @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reporterId   String
+  reporter     User      @relation("CommentReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolvedBy   User?     @relation("CommentResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@unique([commentId, reporterId])
+  @@index([commentId])
 }
 
 /**

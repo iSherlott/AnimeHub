@@ -16,6 +16,7 @@ import { RefreshDataButton } from "@/components/RefreshDataButton";
 import { AnidbIdEditor } from "@/components/AnidbIdEditor";
 import { OtherTitles } from "@/components/OtherTitles";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
+import { CommentSection } from "@/components/CommentSection";
 import { ensureEpisodes, type EpisodesResult } from "@/lib/episodes";
 import { ensureTitleFurigana } from "@/lib/ensureFurigana";
 import { callInternalService } from "@/lib/serviceDelegate";
@@ -269,6 +270,16 @@ export default async function AnimeDetailPage({
               : "Nenhum episódio encontrado para este anime."}
           </Typography>
         )}
+      </Box>
+
+      <Box sx={{ mt: 4, px: { xs: 3, sm: 5 } }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 2 }}>
+          <Box sx={{ width: 6, height: 16, bgcolor: "primary.main", transform: "skewX(-12deg)" }} />
+          <Typography variant="h6" component="h2" sx={{ textTransform: "uppercase" }}>
+            Comentários
+          </Typography>
+        </Stack>
+        <CommentSection animeId={anime.id} />
       </Box>
     </div>
   );

@@ -33,6 +33,18 @@ type AdminInvite = {
   usedBy: { email: string; displayName: string } | null;
 };
 
+type AdminCommentReport = {
+  commentId: string;
+  anilistId: number;
+  animeTitle: string;
+  body: string;
+  commentCreatedAt: string;
+  commentDeleted: boolean;
+  author: { displayName: string; email: string };
+  reportCount: number;
+  reporters: { displayName: string; email: string }[];
+};
+
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR");
 }
@@ -40,8 +52,10 @@ function fmtDate(iso: string): string {
 export function AdminDashboard() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [invites, setInvites] = useState<AdminInvite[]>([]);
+  const [commentReports, setCommentReports] = useState<AdminCommentReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [creatingInvite, setCreatingInvite] = useState(false);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [resetResult, setResetResult] = useState<{ userId: string; password: string } | null>(
     null
   );
@@ -50,16 +64,39 @@ export function AdminDashboard() {
   async function loadAll() {
     setLoading(true);
     try {
-      const [usersRes, invitesRes] = await Promise.all([
+      const [usersRes, invitesRes, reportsRes] = await Promise.all([
         fetch("/api/admin/users"),
         fetch("/api/admin/invites"),
+        fetch("/api/admin/comment-reports"),
       ]);
       const usersData = await usersRes.json();
       const invitesData = await invitesRes.json();
+      const reportsData = await reportsRes.json();
       setUsers(usersData.users ?? []);
       setInvites(invitesData.invites ?? []);
+      setCommentReports(reportsData.reports ?? []);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResolveReport(commentId: string, action: "keep" | "remove") {
+    setResolvingId(commentId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/comment-reports/${commentId}/resolve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Falha ao resolver denúncia");
+        return;
+      }
+      setCommentReports((prev) => prev.filter((r) => r.commentId !== commentId));
+    } finally {
+      setResolvingId(null);
     }
   }
 
@@ -106,6 +143,84 @@ export function AdminDashboard() {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 5 }}>
       {error && <Alert severity="error">{error}</Alert>}
+
+      <Box component="section">
+        <Typography variant="h6" component="h2" className="font-display" sx={{ mb: 1.5, textTransform: "uppercase" }}>
+          Denúncias de comentário
+        </Typography>
+        {commentReports.length === 0 ? (
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            Nenhuma denúncia pendente.
+          </Typography>
+        ) : (
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="small" aria-label="Denúncias de comentário pendentes">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Anime</TableCell>
+                  <TableCell>Autor</TableCell>
+                  <TableCell>Comentário</TableCell>
+                  <TableCell align="right">Denúncias</TableCell>
+                  <TableCell align="right">Ações</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {commentReports.map((r) => (
+                  <TableRow key={r.commentId}>
+                    <TableCell sx={{ color: "text.secondary" }}>{r.animeTitle}</TableCell>
+                    <TableCell sx={{ color: "text.secondary" }}>{r.author.displayName}</TableCell>
+                    <TableCell sx={{ maxWidth: 320 }}>
+                      {r.commentDeleted ? (
+                        <Typography variant="body2" sx={{ fontStyle: "italic", color: "text.secondary" }}>
+                          (já apagado pelo autor)
+                        </Typography>
+                      ) : (
+                        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                          {r.body}
+                        </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell align="right">
+                      <Chip label={r.reportCount} size="small" color="error" />
+                    </TableCell>
+                    <TableCell align="right">
+                      {r.commentDeleted ? (
+                        <Button
+                          onClick={() => handleResolveReport(r.commentId, "keep")}
+                          disabled={resolvingId === r.commentId}
+                          size="small"
+                          color="inherit"
+                        >
+                          Marcar resolvido
+                        </Button>
+                      ) : (
+                        <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+                          <Button
+                            onClick={() => handleResolveReport(r.commentId, "keep")}
+                            disabled={resolvingId === r.commentId}
+                            size="small"
+                            color="inherit"
+                          >
+                            Manter
+                          </Button>
+                          <Button
+                            onClick={() => handleResolveReport(r.commentId, "remove")}
+                            disabled={resolvingId === r.commentId}
+                            size="small"
+                            color="error"
+                          >
+                            Remover
+                          </Button>
+                        </Box>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Box>
 
       <Box component="section">
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1.5 }}>
