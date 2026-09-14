@@ -38,6 +38,11 @@ export function CalendarEntryCard({ item, variant = "compact" }: CalendarEntryCa
   }, [item.airingAt]);
 
   const isInternal = Boolean(item.inMyList && item.animeId);
+  // Anúncio de leitor de tela pra role="status" dispara fora do contexto de
+  // onde o usuário está navegando — sem nomear o anime/episódio, um selo
+  // genérico "No ar agora" fica sem sentido quando escutado sozinho, ainda
+  // mais com vários cards podendo entrar na janela por perto um do outro.
+  const airingNowLabel = `${title}, episódio ${item.episode}, no ar agora`;
 
   if (variant === "featured") {
     const content = (
@@ -67,7 +72,7 @@ export function CalendarEntryCard({ item, variant = "compact" }: CalendarEntryCa
         {airingNow && (
           <Box
             role="status"
-            aria-label="No ar agora"
+            aria-label={airingNowLabel}
             sx={{
               position: "absolute",
               left: 4,
@@ -164,7 +169,7 @@ export function CalendarEntryCard({ item, variant = "compact" }: CalendarEntryCa
             <Box
               component="span"
               role="status"
-              aria-label="No ar agora"
+              aria-label={airingNowLabel}
               sx={{ ml: 0.5, fontWeight: 700, color: "error.main" }}
             >
               · NO AR
