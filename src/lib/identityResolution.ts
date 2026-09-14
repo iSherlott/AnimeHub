@@ -24,11 +24,9 @@ import { normalizeGenres } from "@/lib/genreTaxonomy";
  * precisar de uma migração de backfill à parte.
  */
 export function mergeGenres(existing: string[], incoming: string[][]): string[] {
-  const set = new Set(existing);
-  for (const list of incoming) {
-    for (const genre of list) set.add(genre);
-  }
-  return normalizeGenres(Array.from(set));
+  // normalizeGenres já deduplica a saída — não precisa de um Set próprio
+  // só pra juntar as listas primeiro.
+  return normalizeGenres([existing, ...incoming].flat());
 }
 
 export type AnidbTitleCandidate = { language: string; title: string };

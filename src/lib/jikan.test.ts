@@ -56,6 +56,30 @@ describe("searchJikanAnime", () => {
     });
   });
 
+  // Regressão: MAL/Jikan mudou pra separar demografia (Shounen/Shoujo/Seinen)
+  // e conteúdo explícito (Hentai/Yaoi/Yuri) em arrays próprios, fora de
+  // `genres`/`themes` — sem ler esses dois campos, 3 das 18 categorias da
+  // taxonomia fechada nunca chegavam a ser vistas vindo dessa fonte.
+  it("also merges demographics and explicit_genres into the genre list", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({
+        data: [
+          {
+            mal_id: 1,
+            genres: [{ name: "Action" }],
+            themes: [],
+            demographics: [{ name: "Shounen" }],
+            explicit_genres: [{ name: "Yaoi" }],
+          },
+        ],
+      })
+    );
+
+    const result = await searchJikanAnime("Some Anime");
+
+    expect(result?.genres).toEqual(["Shounen", "Yaoi"]);
+  });
+
   it("defaults missing optional fields to null and empty genres", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       jsonResponse({ data: [{ mal_id: 1 }] })

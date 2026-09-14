@@ -20,6 +20,14 @@ type JikanSearchResponse = {
     synopsis?: string | null;
     genres?: { name: string }[];
     themes?: { name: string }[];
+    // MAL's 2021 taxonomy restructuring split these into their own
+    // top-level arrays — "demographics" is where Shounen/Shoujo/Seinen
+    // actually live (never in `genres` or `themes`), and "explicit_genres"
+    // is where Hentai/Yaoi/Yuri live. Confirmed live against the real API
+    // (One Piece: demographics: [{name: "Shounen"}]) — missing these meant
+    // 3 of the 18 taxonomy categories could never be reached via Jikan.
+    demographics?: { name: string }[];
+    explicit_genres?: { name: string }[];
     score?: number | null;
     episodes?: number | null;
   }>;
@@ -43,7 +51,14 @@ export async function searchJikanAnime(title: string): Promise<JikanAnimeMatch |
   return {
     malId: entry.mal_id,
     synopsis: entry.synopsis ?? null,
-    genres: normalizeGenres([...(entry.genres ?? []), ...(entry.themes ?? [])].map((g) => g.name)),
+    genres: normalizeGenres(
+      [
+        ...(entry.genres ?? []),
+        ...(entry.themes ?? []),
+        ...(entry.demographics ?? []),
+        ...(entry.explicit_genres ?? []),
+      ].map((g) => g.name)
+    ),
     score: entry.score ?? null,
     episodes: entry.episodes ?? null,
   };
