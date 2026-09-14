@@ -17,6 +17,15 @@ export type TitleSet = {
   titlePortuguese?: string | null;
 };
 
+/** Como TitleSet, mas sem nenhum campo garantido — episódios e alertas não
+ * têm o mesmo lastro de dado que Anime.titleRomaji (sempre preenchido). */
+export type PartialTitleSet = {
+  titleRomaji?: string | null;
+  titleEnglish?: string | null;
+  titleNative?: string | null;
+  titlePortuguese?: string | null;
+};
+
 const DEFAULT_PREFERENCE: TitlePreference = {
   language: "en",
   japaneseScript: "romaji",
@@ -80,4 +89,42 @@ export function resolveTitleText(preference: TitlePreference, titles: TitleSet):
   // "romaji" e "furigana" caem pro romaji em contexto de texto puro —
   // a versão com <ruby> só é usada pelo componente <AnimeTitle>.
   return titles.titleRomaji;
+}
+
+/**
+ * Como resolveTitleText, mas pra quando nenhum campo é garantido (grade de
+ * episódios, alertas de "no ar agora") — em vez de forjar um TitleSet
+ * colocando o que sobrar (às vezes texto em japonês) no slot de
+ * titleRomaji pra satisfazer o tipo, o que já causou um bug real (esse
+ * texto vazando pro branch errado quando o campo realmente preferido
+ * também está vazio, exibindo japonês cru como se fosse o título em
+ * inglês), percorre só os campos compatíveis com a preferência e cai pro
+ * placeholder quando nenhum deles existir — nunca atravessa de "quero
+ * script latino" pra "só tenho nativo" ou vice-versa em silêncio.
+ */
+export function resolveTitleTextLenient(
+  preference: TitlePreference,
+  titles: PartialTitleSet,
+  placeholder: string
+): string {
+  // "en"/"pt" e o script romaji/furigana de "ja" pedem texto em escrita
+  // latina — degradam entre si (afinal um título em inglês ainda é uma
+  // informação válida se não tiver tradução em português, etc.), mas nunca
+  // caem pro nativo (kanji/kana), que seria trocar script sem avisar.
+  // "kanji" é o único caso que efetivamente quer o nativo — aí sim cair pro
+  // romaji faz sentido (ainda é "o título em japonês", só noutra escrita).
+  const order: (keyof PartialTitleSet)[] =
+    preference.language === "pt"
+      ? ["titlePortuguese", "titleEnglish", "titleRomaji"]
+      : preference.language === "en"
+        ? ["titleEnglish", "titleRomaji"]
+        : preference.japaneseScript === "kanji"
+          ? ["titleNative", "titleRomaji", "titleEnglish", "titlePortuguese"]
+          : ["titleRomaji", "titleNative", "titleEnglish", "titlePortuguese"];
+
+  for (const key of order) {
+    const value = titles[key];
+    if (value) return value;
+  }
+  return placeholder;
 }

@@ -13,7 +13,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { PublicUser } from "@/lib/auth/session";
-import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
+import { resolveTitleTextLenient, useTitlePreference } from "@/lib/titlePreference";
 
 type AiringAlertItem = {
   id: string;
@@ -30,21 +30,22 @@ type AiringAlertItem = {
 };
 
 /** Igual ao de EpisodeGrid — o anime do alerta pode, em teoria, não ter mais
- * nenhum título carregado se já saiu da lista; usa o que existir como base
- * do "romaji" que resolveTitleText espera, e só cai pro placeholder se não
- * sobrar nada mesmo. */
+ * nenhum título carregado se já saiu da lista; resolveTitleTextLenient
+ * degrada pelos campos de verdade, em vez de fingir que um deles é romaji. */
 function resolveAlertTitle(
-  preference: Parameters<typeof resolveTitleText>[0],
+  preference: Parameters<typeof resolveTitleTextLenient>[0],
   alert: AiringAlertItem
 ): string {
-  const bestAvailableTitle = alert.titleRomaji ?? alert.titleEnglish ?? alert.titleNative;
-  if (!bestAvailableTitle) return "Anime";
-  return resolveTitleText(preference, {
-    titleRomaji: bestAvailableTitle,
-    titleEnglish: alert.titleEnglish,
-    titleNative: alert.titleNative,
-    titlePortuguese: alert.titlePortuguese,
-  });
+  return resolveTitleTextLenient(
+    preference,
+    {
+      titleRomaji: alert.titleRomaji,
+      titleEnglish: alert.titleEnglish,
+      titleNative: alert.titleNative,
+      titlePortuguese: alert.titlePortuguese,
+    },
+    "Anime"
+  );
 }
 
 const POLL_INTERVAL_MS = 60 * 1000;
