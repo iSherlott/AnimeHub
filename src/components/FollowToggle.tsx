@@ -14,8 +14,13 @@ export function FollowToggle({
   /** Pra viewer deslogado — evita a chamada (que voltaria 401) em vez de
    * só deixar o rollback lidar com a falha. */
   disabled?: boolean;
-  /** Pra quem mantém um contador de seguidores local (ex.: página de
-   * perfil) ajustar otimisticamente junto com o toggle. */
+  /** Chamado só depois do servidor confirmar o follow/unfollow (sucesso
+   * ou rollback em falha) — nunca antes. Um FollowToggle que dispara
+   * isso ainda no clique, otimista, fazia quem escuta (ex.: refetch do
+   * feed "Seguindo" nas sugestões) correr na frente do PATCH de verdade
+   * e buscar o estado antigo do servidor (achado real da 4ª rodada de
+   * auditoria, Epic 18) — o próprio label do botão continua trocando na
+   * hora via `following`, só o callback externo espera a confirmação. */
   onChange?: (following: boolean) => void;
 }) {
   const [following, setFollowing] = useState(initialFollowing);
@@ -24,7 +29,6 @@ export function FollowToggle({
   async function toggle() {
     const next = !following;
     setFollowing(next);
-    onChange?.(next);
     setSaving(true);
     try {
       const res = await fetch(`/api/users/${userId}/follow`, {
@@ -37,7 +41,9 @@ export function FollowToggle({
         // ficava "seguindo" na tela mesmo quando a chamada falhava.
         setFollowing(!next);
         onChange?.(!next);
+        return;
       }
+      onChange?.(next);
     } catch {
       setFollowing(!next);
       onChange?.(!next);
