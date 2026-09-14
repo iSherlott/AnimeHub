@@ -6,6 +6,11 @@ import {
   Box,
   Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Paper,
   Table,
   TableBody,
@@ -429,12 +434,6 @@ export function AdminDashboard() {
                     <Button onClick={() => handleResetPassword(u.id)} size="small" color="inherit">
                       Resetar senha
                     </Button>
-                    {resetResult?.userId === u.id && (
-                      <Alert severity="warning" sx={{ mt: 1, textAlign: "left" }}>
-                        Nova senha temporária (mostrada só uma vez, repasse por
-                        fora): <Box component="code" sx={{ fontWeight: 700 }}>{resetResult.password}</Box>
-                      </Alert>
-                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -442,6 +441,25 @@ export function AdminDashboard() {
           </Table>
         </TableContainer>
       </Box>
+
+      {/* Diálogo em vez de revelar inline na tabela — o Alert inline
+          (mt: 1 dentro da célula) visualmente sobrepunha a linha de baixo
+          em vez de empurrá-la (achado real da 3ª rodada de auditoria,
+          Epic 18); um Dialog nunca colide com o conteúdo ao redor. */}
+      <Dialog open={resetResult !== null} onClose={() => setResetResult(null)}>
+        <DialogTitle>Nova senha temporária</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Mostrada só uma vez — repasse pra pessoa por fora deste painel:
+          </DialogContentText>
+          <Box component="code" sx={{ display: "block", mt: 2, fontWeight: 700, fontSize: 16 }}>
+            {resetResult?.password}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setResetResult(null)}>Fechar</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

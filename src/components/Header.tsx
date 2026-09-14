@@ -178,14 +178,48 @@ export function Header() {
             Anime Hub
           </MuiLink>
 
-          <Box sx={{ display: { xs: "none", sm: "block" } }}>
+          {/* O breakpoint pra virar menu hambúrguer era "sm" (600px), mas o
+              nav completo (logo + até 5 links + gear/sino/nome/Sair, mais
+              ainda pra admin com "Administração") só cabe de verdade bem
+              mais tarde — sobrava uma faixa real de largura (achado da 3ª
+              rodada de auditoria, Epic 18) onde o nav não quebrava pro
+              hambúrguer nem cabia inteiro, empurrando sino/config/Sair pra
+              fora da tela sem nenhuma pista visual.
+
+              Um breakpoint fixo do MUI ("lg", 1200px) medido ao vivo ficou
+              em ~0px de folga no pior caso real (admin, nome no limite de
+              140px, página com scrollbar) — troca de fonte, hinting de
+              sub-pixel ou zoom já bastavam pra reabrir o mesmo bug em
+              silêncio. A primeira correção só subiu o breakpoint pra
+              1300px, mas isso regrediu o caso comum: 1280px é a largura
+              padrão da suíte de teste (device "Desktop Chrome" do
+              Playwright) e também uma largura real de navegador/laptop
+              bem comum — nesses 1280px o nav completo já cabia de sobra
+              antes desta mudança. Em vez de só empurrar o breakpoint pra
+              cima (o que sempre existe risco de ultrapassar alguma largura
+              comum de verdade), a correção reduz também o pior caso:
+              maxWidth do nome caiu de 140 pra 100px (link acima). Com as
+              duas mudanças juntas, 1240px (customizado, não um token do
+              MUI) fica com folga real acima do pior caso e ainda abaixo
+              dos 1280px comuns. */}
+          <Box
+            sx={{
+              display: "none",
+              "@media (min-width:1240px)": { display: "block" },
+            }}
+          >
             <NavLinks pathname={pathname} user={user} />
           </Box>
 
           <Stack
             direction="row"
             spacing={1.5}
-            sx={{ ml: "auto", display: { xs: "none", sm: "flex" }, alignItems: "center" }}
+            sx={{
+              ml: "auto",
+              display: "none",
+              "@media (min-width:1240px)": { display: "flex" },
+              alignItems: "center",
+            }}
           >
             <TitleLanguageMenu />
             <NotificationBell user={user} />
@@ -196,7 +230,7 @@ export function Header() {
                 <Typography
                   variant="body2"
                   noWrap
-                  sx={{ display: { xs: "none", md: "inline" }, color: "text.secondary", maxWidth: 140 }}
+                  sx={{ display: { xs: "none", md: "inline" }, color: "text.secondary", maxWidth: 100 }}
                 >
                   {user.displayName}
                 </Typography>
@@ -213,7 +247,11 @@ export function Header() {
 
           <IconButton
             onClick={() => setMobileOpen((v) => !v)}
-            sx={{ ml: "auto", display: { xs: "inline-flex", sm: "none" } }}
+            sx={{
+              ml: "auto",
+              display: "inline-flex",
+              "@media (min-width:1240px)": { display: "none" },
+            }}
             aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
           >
             {mobileOpen ? <CloseIcon /> : <MenuIcon />}

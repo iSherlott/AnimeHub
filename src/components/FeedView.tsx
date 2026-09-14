@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import NextLink from "next/link";
 import {
   Alert,
   Box,
   Button,
+  Link as MuiLink,
   MenuItem,
   Stack,
   Tab,
@@ -250,7 +252,9 @@ export function FeedView() {
                   spacing={1.5}
                   sx={{ alignItems: "center", justifyContent: "space-between" }}
                 >
-                  <Typography variant="body2">{s.displayName}</Typography>
+                  <MuiLink component={NextLink} href={`/users/${s.id}`} underline="hover" sx={{ color: "text.primary" }}>
+                    {s.displayName}
+                  </MuiLink>
                   <FollowToggle
                     userId={s.id}
                     initialFollowing={false}

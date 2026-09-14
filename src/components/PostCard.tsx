@@ -4,7 +4,8 @@ import { useState } from "react";
 import Image from "next/image";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FlagIcon from "@mui/icons-material/Flag";
-import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import NextLink from "next/link";
+import { Box, IconButton, Link as MuiLink, Stack, Tooltip, Typography } from "@mui/material";
 import { LikeToggle } from "@/components/LikeToggle";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { PostDTO } from "@/lib/postDto";
@@ -90,9 +91,14 @@ export function PostCard({
           >
             <Box sx={{ minWidth: 0 }}>
               <Stack direction="row" spacing={1} sx={{ alignItems: "baseline", flexWrap: "wrap" }}>
-                <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                <MuiLink
+                  component={NextLink}
+                  href={`/users/${post.author.id}`}
+                  underline="hover"
+                  sx={{ fontWeight: 700, fontSize: 14, color: "text.primary" }}
+                >
                   {post.author.displayName}
-                </Typography>
+                </MuiLink>
                 <Typography variant="caption" sx={{ color: "text.secondary" }}>
                   {fmtDate(post.createdAt)}
                 </Typography>

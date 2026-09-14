@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
-import { Box, Stack, Tooltip, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 import { Header } from "@/components/Header";
-import { FollowToggle } from "@/components/FollowToggle";
+import { ProfileHeader } from "@/components/ProfileHeader";
 import { UserPostList } from "@/components/UserPostList";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -34,28 +34,16 @@ export default async function UserProfilePage({ params }: Params) {
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
       <Header />
       <Box sx={{ maxWidth: 640, mx: "auto", px: { xs: 2, sm: 3 }, py: 4 }}>
-        <Stack
-          direction="row"
-          spacing={2}
-          sx={{ alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", mb: 1 }}
-        >
-          <Typography variant="h4" component="h1" sx={{ textTransform: "uppercase" }}>
-            {target.displayName}
-          </Typography>
-          {!isOwnProfile &&
-            (viewer ? (
-              <FollowToggle userId={id} initialFollowing={isFollowedByMe} />
-            ) : (
-              <Tooltip title="Entre para seguir">
-                <span>
-                  <FollowToggle userId={id} initialFollowing={false} disabled />
-                </span>
-              </Tooltip>
-            ))}
-        </Stack>
-        <Typography variant="body2" sx={{ color: "text.secondary", mb: 3 }}>
-          {postCount} posts · {followerCount} seguidores · {followingCount} seguindo
-        </Typography>
+        <ProfileHeader
+          userId={id}
+          displayName={target.displayName}
+          postCount={postCount}
+          initialFollowerCount={followerCount}
+          followingCount={followingCount}
+          isOwnProfile={isOwnProfile}
+          viewerLoggedIn={Boolean(viewer)}
+          initialFollowing={isFollowedByMe}
+        />
         <UserPostList userId={id} />
       </Box>
     </Box>
