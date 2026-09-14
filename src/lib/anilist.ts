@@ -14,7 +14,9 @@ export type AniListMedia = {
     native: string | null;
   };
   coverImage: {
-    large: string | null;
+    /** Maior variante disponível — a própria AniList já cai pra `large` no
+     * servidor se um anime específico não tiver uma imagem extraLarge. */
+    extraLarge: string | null;
   };
   bannerImage: string | null;
   description: string | null;
@@ -28,7 +30,14 @@ export type AniListMedia = {
   startDate: AniListFuzzyDate | null;
   endDate: AniListFuzzyDate | null;
   nextAiringEpisode: { episode: number; airingAt: number } | null;
+  externalLinks: { site: string; url: string | null }[];
 };
+
+/** A própria AniList usa esse nome de site como convenção pro link do site
+ * oficial dentro de externalLinks — não tem um `type` dedicado pra isso. */
+export function getOfficialSiteUrl(media: Pick<AniListMedia, "externalLinks">): string | null {
+  return media.externalLinks.find((link) => link.site === "Official Site")?.url ?? null;
+}
 
 const MEDIA_FIELDS = `
   id
@@ -38,7 +47,7 @@ const MEDIA_FIELDS = `
     native
   }
   coverImage {
-    large
+    extraLarge
   }
   bannerImage
   description(asHtml: false)
@@ -61,6 +70,10 @@ const MEDIA_FIELDS = `
   nextAiringEpisode {
     episode
     airingAt
+  }
+  externalLinks {
+    site
+    url
   }
 `;
 
@@ -202,7 +215,7 @@ export async function getAiringSchedule(
               native
             }
             coverImage {
-              large
+              extraLarge
             }
             bannerImage
             genres
@@ -228,7 +241,7 @@ export async function getAiringSchedule(
           media: {
             id: number;
             title: { romaji: string; english: string | null; native: string | null };
-            coverImage: { large: string | null };
+            coverImage: { extraLarge: string | null };
             bannerImage: string | null;
             genres: string[];
             format: string | null;
@@ -246,7 +259,7 @@ export async function getAiringSchedule(
         episode: entry.episode,
         airingAt: entry.airingAt,
         title: entry.media.title,
-        coverImage: entry.media.coverImage.large,
+        coverImage: entry.media.coverImage.extraLarge,
         bannerImage: entry.media.bannerImage,
         genres: entry.media.genres,
       });

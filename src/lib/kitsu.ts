@@ -109,8 +109,11 @@ export async function searchKitsuAnime(
     kitsuId: Number(entry.id),
     canonicalTitle: attrs.canonicalTitle,
     titleJapanese: titles.ja_jp ?? null,
-    posterImage: poster.large ?? poster.medium ?? poster.original ?? null,
-    coverImage: cover.large ?? cover.original ?? null,
+    // `original` é a maior variante que a Kitsu expõe — igual já era feito
+    // pra thumbnail de episódio logo abaixo, mas aqui a ordem estava
+    // invertida (pegava `large` mesmo quando `original` existia).
+    posterImage: poster.original ?? poster.large ?? poster.medium ?? null,
+    coverImage: cover.original ?? cover.large ?? cover.medium ?? null,
     synopsis: attrs.synopsis ?? null,
     episodeCount: attrs.episodeCount ?? null,
     startDate: attrs.startDate ?? null,

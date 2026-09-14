@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { getAnimeById } from "@/lib/anilist";
+import { getAnimeById, getOfficialSiteUrl } from "@/lib/anilist";
 
 export type NormalizedMedia = {
   id: number;
@@ -15,6 +15,7 @@ export type NormalizedMedia = {
   seasonYear: number | null;
   genres: string;
   averageScore: number | null;
+  officialSite: string | null;
 };
 
 /**
@@ -31,7 +32,7 @@ export async function resolveAnimeMedia(anilistId: number): Promise<NormalizedMe
       titleRomaji: media.title.romaji,
       titleEnglish: media.title.english,
       titleNative: media.title.native,
-      coverImage: media.coverImage.large,
+      coverImage: media.coverImage.extraLarge,
       bannerImage: media.bannerImage,
       description: media.description,
       episodes: media.episodes,
@@ -40,6 +41,7 @@ export async function resolveAnimeMedia(anilistId: number): Promise<NormalizedMe
       seasonYear: media.seasonYear,
       genres: media.genres.join(","),
       averageScore: media.averageScore,
+      officialSite: getOfficialSiteUrl(media),
     };
   } catch (error) {
     const cached = await prisma.catalogEntry.findUnique({ where: { anilistId } });
@@ -58,6 +60,9 @@ export async function resolveAnimeMedia(anilistId: number): Promise<NormalizedMe
       seasonYear: cached.seasonYear,
       genres: cached.genres ?? "",
       averageScore: cached.averageScore,
+      // CatalogEntry (o cache local) não guarda o site oficial — só entra
+      // quando a AniList responde ao vivo, no caminho de cima.
+      officialSite: null,
     };
   }
 }

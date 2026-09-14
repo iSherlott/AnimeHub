@@ -47,6 +47,7 @@ function makeAnime(overrides: Partial<Anime> = {}): Anime {
     titleFurigana: null,
     coverImage: null,
     bannerImage: null,
+    officialSite: null,
     accentColor: null,
     description: null,
     episodes: null,

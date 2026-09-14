@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { getAnimeById } from "@/lib/anilist";
+import { getAnimeById, getOfficialSiteUrl } from "@/lib/anilist";
 import { refetchEpisodes } from "@/lib/episodes";
 import { searchJikanAnime } from "@/lib/jikan";
 import { searchShikimoriAnime } from "@/lib/shikimori";
@@ -61,7 +61,7 @@ export async function refreshAnimeData(initialAnime: Anime): Promise<RefreshResu
         data: {
           titleEnglish: media.title.english ?? anime.titleEnglish,
           titleNative: media.title.native ?? anime.titleNative,
-          coverImage: media.coverImage.large ?? anime.coverImage,
+          coverImage: media.coverImage.extraLarge ?? anime.coverImage,
           bannerImage: media.bannerImage ?? anime.bannerImage,
           description: media.description ?? anime.description,
           episodes: media.episodes ?? anime.episodes,
@@ -70,6 +70,7 @@ export async function refreshAnimeData(initialAnime: Anime): Promise<RefreshResu
           seasonYear: media.seasonYear ?? anime.seasonYear,
           genres: media.genres.length ? media.genres.join(",") : anime.genres,
           averageScore: media.averageScore ?? anime.averageScore,
+          officialSite: getOfficialSiteUrl(media) ?? anime.officialSite,
         },
       });
       status.anilist = "ok";

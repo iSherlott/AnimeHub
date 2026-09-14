@@ -11,7 +11,7 @@ function anilistToCatalogData(media: AniListMedia, popularityRank: number | null
     titleRomaji: media.title.romaji,
     titleEnglish: media.title.english,
     titleNative: media.title.native,
-    coverImage: media.coverImage.large,
+    coverImage: media.coverImage.extraLarge,
     bannerImage: media.bannerImage,
     description: media.description,
     episodes: media.episodes,

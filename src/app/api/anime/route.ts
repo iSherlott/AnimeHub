@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
         seasonYear: media.seasonYear,
         genres: media.genres,
         averageScore: media.averageScore,
+        officialSite: media.officialSite,
         seriesKey,
         seasonNumber,
         progress: {

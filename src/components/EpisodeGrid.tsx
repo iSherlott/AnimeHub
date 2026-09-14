@@ -2,8 +2,9 @@ import Image from "next/image";
 import { Box, Chip, Typography } from "@mui/material";
 import type { Episode } from "@prisma/client";
 
-function EpisodeTile({ ep }: { ep: Episode }) {
+function EpisodeTile({ ep, fallbackImage }: { ep: Episode; fallbackImage?: string | null }) {
   const title = ep.titleRomaji ?? `Episódio ${ep.number}`;
+  const image = ep.thumbnail ?? fallbackImage;
 
   return (
     <Box
@@ -11,8 +12,8 @@ function EpisodeTile({ ep }: { ep: Episode }) {
       sx={{ overflow: "hidden", border: 1, borderColor: "divider", bgcolor: "background.paper" }}
     >
       <Box sx={{ position: "relative", aspectRatio: "16 / 9", width: "100%", overflow: "hidden", bgcolor: "background.default" }}>
-        {ep.thumbnail ? (
-          <Image src={ep.thumbnail} alt={title} fill sizes="240px" style={{ objectFit: "cover" }} />
+        {image ? (
+          <Image src={image} alt={title} fill sizes="240px" style={{ objectFit: "cover" }} />
         ) : (
           <Box sx={{ display: "flex", height: "100%", width: "100%", alignItems: "center", justifyContent: "center" }}>
             <Typography className="font-display" sx={{ fontSize: 28, color: "text.secondary" }}>
@@ -33,7 +34,15 @@ function EpisodeTile({ ep }: { ep: Episode }) {
   );
 }
 
-export function EpisodeGrid({ episodes }: { episodes: Episode[] }) {
+export function EpisodeGrid({
+  episodes,
+  fallbackImage,
+}: {
+  episodes: Episode[];
+  /** Capa do anime — mostrada no lugar da miniatura quando a fonte não traz
+   * uma imagem por episódio (em vez de deixar o quadro vazio). */
+  fallbackImage?: string | null;
+}) {
   if (episodes.length === 0) return null;
 
   const seasonNumbers = Array.from(new Set(episodes.map((ep) => ep.seasonNumber))).sort(
@@ -50,7 +59,7 @@ export function EpisodeGrid({ episodes }: { episodes: Episode[] }) {
     return (
       <Box sx={gridSx}>
         {episodes.map((ep) => (
-          <EpisodeTile key={ep.id} ep={ep} />
+          <EpisodeTile key={ep.id} ep={ep} fallbackImage={fallbackImage} />
         ))}
       </Box>
     );
@@ -70,7 +79,7 @@ export function EpisodeGrid({ episodes }: { episodes: Episode[] }) {
             {episodes
               .filter((ep) => ep.seasonNumber === seasonNumber)
               .map((ep) => (
-                <EpisodeTile key={ep.id} ep={ep} />
+                <EpisodeTile key={ep.id} ep={ep} fallbackImage={fallbackImage} />
               ))}
           </Box>
         </Box>

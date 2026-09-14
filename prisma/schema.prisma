@@ -107,6 +107,10 @@ model Anime {
   titleFurigana   String?
   coverImage      String?
   bannerImage     String?
+  /// Link do site oficial, vindo do externalLinks da AniList (site ===
+  /// "Official Site"). Ao contrário dos links de anidbResources, não exige
+  /// vincular um anidbId manualmente — vem automático pra qualquer anime.
+  officialSite    String?
   /// Cor de destaque extraída da capa/banner (ver src/lib/accentColor.ts),
   /// recalculada a cada refresh — usada como tonalidade de fundo na página
   /// de detalhe e no hero da home.

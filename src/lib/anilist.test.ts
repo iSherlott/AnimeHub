@@ -22,7 +22,7 @@ function makeMedia(overrides: Partial<AniListMedia> = {}): AniListMedia {
   return {
     id: 1,
     title: { romaji: "Some Anime", english: null, native: null },
-    coverImage: { large: null },
+    coverImage: { extraLarge: null },
     bannerImage: null,
     description: null,
     episodes: null,
@@ -34,6 +34,7 @@ function makeMedia(overrides: Partial<AniListMedia> = {}): AniListMedia {
     startDate: null,
     endDate: null,
     nextAiringEpisode: null,
+    externalLinks: [],
     ...overrides,
   };
 }
@@ -152,7 +153,7 @@ describe("getAiringSchedule", () => {
       media: {
         id: 1,
         title: { romaji: "Some Anime", english: null, native: null },
-        coverImage: { large: null },
+        coverImage: { extraLarge: null },
         bannerImage: null,
         genres: [],
         format: "TV",

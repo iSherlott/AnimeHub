@@ -55,7 +55,7 @@ describe("searchKitsuAnime", () => {
     expect(await searchKitsuAnime("Nonexistent")).toBeNull();
   });
 
-  it("maps titles/images/genres, using the large image and falling back through the chain", async () => {
+  it("maps titles/images/genres, preferring original over large and falling back through the chain", async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(
         jsonResponse({
@@ -87,7 +87,7 @@ describe("searchKitsuAnime", () => {
       canonicalTitle: "Some Anime",
       titleJapanese: "何かアニメ",
       posterImage: "poster-large.jpg",
-      coverImage: "cover-large.jpg",
+      coverImage: "cover-original.jpg",
       synopsis: "A synopsis.",
       episodeCount: 12,
       startDate: "2024-01-01",

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Box, Chip, Stack, Typography } from "@mui/material";
+import LanguageIcon from "@mui/icons-material/Language";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { Header } from "@/components/Header";
@@ -170,11 +171,24 @@ export default async function AnimeDetailPage({
             )}
           </Stack>
 
-          {genres.length > 0 && (
-            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+          {(genres.length > 0 || anime.officialSite) && (
+            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", alignItems: "center" }}>
               {genres.map((g) => (
                 <Chip key={g} label={g} size="small" sx={{ fontWeight: 700, textTransform: "uppercase" }} />
               ))}
+              {anime.officialSite && (
+                <Chip
+                  component="a"
+                  href={anime.officialSite}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  clickable
+                  icon={<LanguageIcon fontSize="small" />}
+                  label="Site oficial"
+                  size="small"
+                  variant="outlined"
+                />
+              )}
             </Stack>
           )}
 
@@ -247,7 +261,7 @@ export default async function AnimeDetailPage({
           </Typography>
         </Stack>
         {episodesResult.episodes.length > 0 ? (
-          <EpisodeGrid episodes={episodesResult.episodes} />
+          <EpisodeGrid episodes={episodesResult.episodes} fallbackImage={anime.coverImage} />
         ) : (
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
             {episodesResult.error
