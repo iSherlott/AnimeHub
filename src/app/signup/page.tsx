@@ -1,20 +1,30 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Box, Button, Alert, Link as MuiLink, TextField, Typography } from "@mui/material";
 import { Header } from "@/components/Header";
+import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const user = useCurrentUser();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [inviteCode, setInviteCode] = useState(searchParams.get("invite") ?? "");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Já logado não tem o que fazer aqui — manda pra home em vez de deixar o
+  // formulário reaparecer (achado real da auditoria: item baixo do Epic 21).
+  useEffect(() => {
+    if (user) router.replace("/");
+  }, [user, router]);
+
+  if (user) return null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

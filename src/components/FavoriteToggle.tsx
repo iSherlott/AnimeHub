@@ -61,6 +61,15 @@ export function FavoriteToggle({
           sx={
             [
               { color: isFavorite ? "secondary.main" : "text.secondary" },
+              // No selo pequeno sobreposto ao card, o anel de foco global
+              // (#ffd400, muiTheme.ts) fica quase indistinguível da própria
+              // estrela dourada já favoritada — achado real da auditoria
+              // (Epic 20/21). Só nesse tamanho, branco no lugar de dourado;
+              // o botão solto "medium" da página de detalhe tem contexto de
+              // sobra e continua usando o anel padrão do tema.
+              ...(size === "small"
+                ? [{ "&.Mui-focusVisible": { outline: "2px solid #f7f7f5" } }]
+                : []),
               ...(sx ? [sx] : []),
             ] as SxProps<Theme>
           }

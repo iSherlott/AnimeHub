@@ -70,6 +70,7 @@ export default function DiscoverPage() {
   const [ranking, setRanking] = useState<DiscoverItem[]>([]);
 
   const [catalogAll, setCatalogAll] = useState<DiscoverItem[]>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(true);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedSeason, setSelectedSeason] = useState<string | null>(null);
@@ -134,7 +135,8 @@ export default function DiscoverPage() {
     fetch("/api/catalog")
       .then((res) => res.json())
       .then((data) => setCatalogAll(data.results ?? []))
-      .catch(() => setCatalogAll([]));
+      .catch(() => setCatalogAll([]))
+      .finally(() => setLoadingCatalog(false));
 
     fetch("/api/catalog/ranking")
       .then((res) => res.json())
@@ -284,7 +286,7 @@ export default function DiscoverPage() {
                 Por gênero
               </Typography>
               <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                {genres.length} categorias
+                {loadingCatalog ? "Carregando..." : `${genres.length} categorias`}
               </Typography>
             </Box>
             <Typography sx={{ fontSize: 24 }}>🎭</Typography>

@@ -1,17 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import { Box, Button, Alert, Link as MuiLink, TextField, Typography } from "@mui/material";
 import { Header } from "@/components/Header";
+import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 
 export default function LoginPage() {
   const router = useRouter();
+  const user = useCurrentUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Já logado não tem o que fazer aqui — manda pra home em vez de deixar o
+  // formulário reaparecer (achado real da auditoria: item baixo do Epic 21).
+  useEffect(() => {
+    if (user) router.replace("/");
+  }, [user, router]);
+
+  if (user) return null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
