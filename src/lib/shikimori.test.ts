@@ -81,6 +81,18 @@ describe("searchShikimoriAnime", () => {
     });
   });
 
+  // Mesma proteção do Kitsu (ver identityResolution.test.ts) — a busca da
+  // Shikimori também quase sempre devolve algum resultado, relevante ou
+  // não.
+  it("rejects the top result when its name doesn't match what was searched, without fetching detail", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse([{ id: 1, name: "Completely Unrelated Anime" }])
+    );
+
+    expect(await searchShikimoriAnime("My Test Anime")).toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("sends the required User-Agent header", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse([]));
 

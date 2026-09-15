@@ -47,6 +47,9 @@ export function DiscoverCard({ item, rank }: { item: DiscoverItem; rank?: number
   const [done, setDone] = useState(false);
   const [addedAnimeId, setAddedAnimeId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Ver AnimeCard — mesma correção pro ícone quebrado cru numa URL de capa
+  // que 404 (achado real da 6ª rodada de auditoria, Epic 18).
+  const [coverBroken, setCoverBroken] = useState(false);
 
   const { preference } = useTitlePreference();
   const title = resolveTitleText(preference, item) || "Sem título";
@@ -120,8 +123,15 @@ export function DiscoverCard({ item, rank }: { item: DiscoverItem; rank?: number
           bgcolor: "background.paper",
         }}
       >
-        {item.coverImage ? (
-          <Image src={item.coverImage} alt="" fill sizes="192px" style={{ objectFit: "cover" }} />
+        {item.coverImage && !coverBroken ? (
+          <Image
+            src={item.coverImage}
+            alt=""
+            fill
+            sizes="192px"
+            style={{ objectFit: "cover" }}
+            onError={() => setCoverBroken(true)}
+          />
         ) : (
           <Box sx={{ display: "flex", height: "100%", width: "100%", alignItems: "center", justifyContent: "center", px: 1, textAlign: "center" }}>
             <Typography variant="caption" sx={{ color: "text.secondary" }}>

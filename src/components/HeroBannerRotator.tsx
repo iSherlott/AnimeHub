@@ -62,7 +62,10 @@ export function HeroBannerRotator({
       onMouseLeave={() => setHovered(false)}
     >
       <Box aria-live="polite">
-        <HeroBanner {...current} />
+        {/* key força remontar ao trocar de item — sem isso, o estado
+            `broken` do onError de imagem (Epic 18, 6ª rodada) vazaria do
+            item anterior e esconderia o backdrop válido do próximo. */}
+        <HeroBanner key={current.id} {...current} />
       </Box>
       {canToggle && (
         <Tooltip title={userPaused ? "Retomar rotação" : "Pausar rotação"}>

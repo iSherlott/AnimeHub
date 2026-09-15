@@ -1,4 +1,5 @@
 import { normalizeGenres } from "@/lib/genreTaxonomy";
+import { titlesLikelyMatch } from "@/lib/identityResolution";
 
 const KITSU_API_BASE_URL =
   process.env.KITSU_API_BASE_URL ?? "https://kitsu.io/api/edge";
@@ -104,6 +105,20 @@ export async function searchKitsuAnime(
 
   const attrs = entry.attributes;
   const titles: KitsuTitles = attrs.titles ?? {};
+
+  // A busca por texto da Kitsu quase sempre devolve *algum* resultado,
+  // mesmo sem nenhum parecido de verdade — sem checar se o 1º resultado é
+  // plausivelmente o mesmo anime buscado, um título sem correspondência
+  // real (nome de teste, anime obscuro) podia "casar" com um anime
+  // completamente diferente e corromper capa/banner/sinopse em silêncio
+  // (achado real da 6ª rodada de auditoria, Epic 18). Confere antes de
+  // gastar a chamada extra de getKitsuGenres.
+  if (
+    !titlesLikelyMatch(title, [attrs.canonicalTitle, titles.en, titles.en_jp, titles.ja_jp])
+  ) {
+    return null;
+  }
+
   const poster: KitsuImage = attrs.posterImage ?? {};
   const cover: KitsuImage = attrs.coverImage ?? {};
   // getKitsuGenres devolve as categorias cruas da Kitsu (uma taxonomia bem

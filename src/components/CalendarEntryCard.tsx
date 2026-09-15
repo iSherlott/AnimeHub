@@ -30,6 +30,9 @@ export function CalendarEntryCard({ item, variant = "compact" }: CalendarEntryCa
   // o relógio do servidor pode discordar do navegador bem na borda da
   // janela, o que causaria um mismatch de hidratação.
   const [airingNow, setAiringNow] = useState(false);
+  // Ver AnimeCard — mesma correção pro ícone quebrado cru numa URL de capa
+  // que 404 (achado real da 6ª rodada de auditoria, Epic 18).
+  const [coverBroken, setCoverBroken] = useState(false);
   useEffect(() => {
     const check = () => setAiringNow(isAiringNow(item.airingAt));
     check();
@@ -47,13 +50,14 @@ export function CalendarEntryCard({ item, variant = "compact" }: CalendarEntryCa
   if (variant === "featured") {
     const content = (
       <Box sx={{ position: "relative", aspectRatio: "3 / 4", width: "100%", overflow: "hidden", bgcolor: "background.paper" }}>
-        {item.coverImage ? (
+        {item.coverImage && !coverBroken ? (
           <Image
             src={item.coverImage}
             alt=""
             fill
             sizes="(min-width: 1024px) 140px, 45vw"
             style={{ objectFit: "cover" }}
+            onError={() => setCoverBroken(true)}
           />
         ) : (
           <Box sx={{ display: "flex", height: "100%", width: "100%", alignItems: "center", justifyContent: "center", px: 1, textAlign: "center" }}>
@@ -157,7 +161,16 @@ export function CalendarEntryCard({ item, variant = "compact" }: CalendarEntryCa
   const compactContent = (
     <>
       <Box sx={{ position: "relative", height: 44, width: 32, flexShrink: 0, overflow: "hidden", bgcolor: "background.default" }}>
-        {item.coverImage ? <Image src={item.coverImage} alt="" fill sizes="32px" style={{ objectFit: "cover" }} /> : null}
+        {item.coverImage && !coverBroken ? (
+          <Image
+            src={item.coverImage}
+            alt=""
+            fill
+            sizes="32px"
+            style={{ objectFit: "cover" }}
+            onError={() => setCoverBroken(true)}
+          />
+        ) : null}
       </Box>
       <Box sx={{ minWidth: 0, flex: 1 }}>
         <Typography noWrap sx={{ fontSize: 10, lineHeight: 1.3, color: "text.secondary" }}>

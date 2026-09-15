@@ -1,4 +1,5 @@
 import { normalizeGenres } from "@/lib/genreTaxonomy";
+import { titlesLikelyMatch } from "@/lib/identityResolution";
 
 // Shikimori — API pública REST, sem chave/cadastro. Baseado só na
 // documentação oficial (não deu pra testar ao vivo: o site bloqueia o
@@ -49,6 +50,10 @@ export async function searchShikimoriAnime(title: string): Promise<ShikimoriMatc
   );
   const entry = list?.[0];
   if (!entry) return null;
+
+  // Mesma proteção do Kitsu (ver titlesLikelyMatch) — confere antes de
+  // gastar a chamada extra de detalhe.
+  if (!titlesLikelyMatch(title, [entry.name])) return null;
 
   // busca os detalhes completos (a listagem não traz sinopse)
   const detail = await shikimoriFetch<ShikimoriAnimeEntry>(`/animes/${entry.id}`).catch(

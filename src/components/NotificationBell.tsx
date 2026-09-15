@@ -59,6 +59,10 @@ const POLL_INTERVAL_MS = 60 * 1000;
 export function NotificationBell({ user }: { user: PublicUser | null | undefined }) {
   const { preference } = useTitlePreference();
   const [alerts, setAlerts] = useState<AiringAlertItem[]>([]);
+  // Ver AnimeCard — mesma correção pro ícone quebrado cru numa URL de capa
+  // que 404 (achado real da 6ª rodada de auditoria, Epic 18). Chave por
+  // alert.id porque o menu lista várias capas ao mesmo tempo.
+  const [brokenCovers, setBrokenCovers] = useState<Record<string, boolean>>({});
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const open = Boolean(anchorEl);
   const buttonId = useId();
@@ -166,8 +170,17 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
                     bgcolor: "background.paper",
                   }}
                 >
-                  {alert.coverImage && (
-                    <Image src={alert.coverImage} alt="" fill sizes="28px" className="object-cover" />
+                  {alert.coverImage && !brokenCovers[alert.id] && (
+                    <Image
+                      src={alert.coverImage}
+                      alt=""
+                      fill
+                      sizes="28px"
+                      className="object-cover"
+                      onError={() =>
+                        setBrokenCovers((prev) => ({ ...prev, [alert.id]: true }))
+                      }
+                    />
                   )}
                 </Box>
                 <Box sx={{ minWidth: 0, flex: 1 }}>

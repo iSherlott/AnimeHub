@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Box, Chip, Stack, Typography } from "@mui/material";
 import LanguageIcon from "@mui/icons-material/Language";
@@ -21,6 +20,7 @@ import { CastSection } from "@/components/CastSection";
 import { TrailerEmbed } from "@/components/TrailerEmbed";
 import { Row } from "@/components/Row";
 import { RecommendationCard, type RecommendationData } from "@/components/RecommendationCard";
+import { CoverImage, BackdropImage } from "@/components/CoverImage";
 import { ensureEpisodes, type EpisodesResult } from "@/lib/episodes";
 import { ensureTitleFurigana } from "@/lib/ensureFurigana";
 import { callInternalService } from "@/lib/serviceDelegate";
@@ -93,12 +93,7 @@ export default async function AnimeDetailPage({
 
       <Box sx={{ position: "relative", height: { xs: 256, sm: 320 }, width: "100%", overflow: "hidden" }}>
         {anime.bannerImage ? (
-          <Image
-            src={anime.bannerImage}
-            alt=""
-            fill
-            style={{ objectFit: "cover", opacity: 0.4 }}
-          />
+          <BackdropImage src={anime.bannerImage} />
         ) : (
           <Box sx={{ height: "100%", width: "100%", bgcolor: "background.paper" }} />
         )}
@@ -127,9 +122,7 @@ export default async function AnimeDetailPage({
             bgcolor: "background.paper",
           }}
         >
-          {anime.coverImage ? (
-            <Image src={anime.coverImage} alt="" fill style={{ objectFit: "cover" }} />
-          ) : null}
+          {anime.coverImage ? <CoverImage src={anime.coverImage} sizes="192px" /> : null}
         </Box>
 
         <Box sx={{ display: "flex", flex: 1, flexDirection: "column", gap: 3 }}>
@@ -204,7 +197,15 @@ export default async function AnimeDetailPage({
           {(genres.length > 0 || anime.officialSite) && (
             <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", alignItems: "center" }}>
               {genres.map((g) => (
-                <Chip key={g} label={g} size="small" sx={{ fontWeight: 700, textTransform: "uppercase" }} />
+                <Chip
+                  key={g}
+                  component="a"
+                  href={`/discover?genre=${encodeURIComponent(g)}`}
+                  clickable
+                  label={g}
+                  size="small"
+                  sx={{ fontWeight: 700, textTransform: "uppercase" }}
+                />
               ))}
               {anime.officialSite && (
                 <Chip

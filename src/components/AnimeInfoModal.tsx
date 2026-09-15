@@ -28,6 +28,11 @@ export function AnimeInfoModal({
   const title = resolveTitleText(preference, item) || "Sem título";
   const titleId = useId();
   const [coverLoaded, setCoverLoaded] = useState(false);
+  // Ver AnimeCard — mesma correção pro ícone quebrado cru numa URL de capa/
+  // banner que 404 (achado real da 6ª rodada de auditoria, Epic 18).
+  const [coverBroken, setCoverBroken] = useState(false);
+  const [bannerBroken, setBannerBroken] = useState(false);
+  const showBanner = Boolean(item.bannerImage) && !bannerBroken;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth aria-labelledby={titleId}>
@@ -48,9 +53,15 @@ export function AnimeInfoModal({
         <CloseIcon fontSize="small" />
       </IconButton>
 
-      {item.bannerImage ? (
+      {item.bannerImage && !bannerBroken ? (
         <Box sx={{ position: "relative", height: 160, width: "100%", overflow: "hidden" }}>
-          <Image src={item.bannerImage} alt="" fill style={{ objectFit: "cover", opacity: 0.5 }} />
+          <Image
+            src={item.bannerImage}
+            alt=""
+            fill
+            style={{ objectFit: "cover", opacity: 0.5 }}
+            onError={() => setBannerBroken(true)}
+          />
           <Box
             sx={{
               position: "absolute",
@@ -63,7 +74,7 @@ export function AnimeInfoModal({
         <Box sx={{ height: 64, width: "100%" }} />
       )}
 
-      <Box sx={{ display: "flex", gap: 2, px: 3, pb: 2, mt: item.bannerImage ? -6 : 0 }}>
+      <Box sx={{ display: "flex", gap: 2, px: 3, pb: 2, mt: showBanner ? -6 : 0 }}>
         <Box
           sx={{
             position: "relative",
@@ -76,7 +87,7 @@ export function AnimeInfoModal({
             bgcolor: "background.default",
           }}
         >
-          {item.coverImage ? (
+          {item.coverImage && !coverBroken ? (
             <>
               {!coverLoaded && (
                 <Skeleton variant="rectangular" sx={{ position: "absolute", inset: 0 }} />
@@ -87,6 +98,7 @@ export function AnimeInfoModal({
                 fill
                 style={{ objectFit: "cover" }}
                 onLoad={() => setCoverLoaded(true)}
+                onError={() => setCoverBroken(true)}
               />
             </>
           ) : null}

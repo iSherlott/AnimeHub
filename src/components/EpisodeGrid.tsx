@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { Box, Chip, Typography } from "@mui/material";
@@ -25,6 +26,9 @@ function EpisodeTile({
     `Episódio ${ep.number}`
   );
   const image = ep.thumbnail ?? fallbackImage;
+  // Ver AnimeCard — mesma correção pro ícone quebrado cru numa URL de
+  // imagem que 404 (achado real da 6ª rodada de auditoria, Epic 18).
+  const [broken, setBroken] = useState(false);
 
   return (
     <Box
@@ -33,13 +37,14 @@ function EpisodeTile({
       sx={{ overflow: "hidden", border: 1, borderColor: "divider", bgcolor: "background.paper" }}
     >
       <Box sx={{ position: "relative", aspectRatio: "16 / 9", width: "100%", overflow: "hidden", bgcolor: "background.default" }}>
-        {image ? (
+        {image && !broken ? (
           <Image
             src={image}
             alt={title}
             fill
             sizes="240px"
             style={{ objectFit: "cover", opacity: watched ? 0.45 : 1 }}
+            onError={() => setBroken(true)}
           />
         ) : (
           <Box sx={{ display: "flex", height: "100%", width: "100%", alignItems: "center", justifyContent: "center", opacity: watched ? 0.45 : 1 }}>

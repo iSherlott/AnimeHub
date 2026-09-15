@@ -33,6 +33,7 @@ describe("searchJikanAnime", () => {
         data: [
           {
             mal_id: 12345,
+            title: "Some Anime",
             synopsis: "A great story.",
             genres: [{ name: "Comedy" }, { name: "Drama" }],
             themes: [{ name: "Isekai" }],
@@ -66,6 +67,7 @@ describe("searchJikanAnime", () => {
         data: [
           {
             mal_id: 1,
+            title: "Some Anime",
             genres: [{ name: "Action" }],
             themes: [],
             demographics: [{ name: "Shounen" }],
@@ -82,7 +84,7 @@ describe("searchJikanAnime", () => {
 
   it("defaults missing optional fields to null and empty genres", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
-      jsonResponse({ data: [{ mal_id: 1 }] })
+      jsonResponse({ data: [{ mal_id: 1, title: "Some Anime" }] })
     );
 
     const result = await searchJikanAnime("Some Anime");
@@ -94,6 +96,18 @@ describe("searchJikanAnime", () => {
       score: null,
       episodes: null,
     });
+  });
+
+  // Mesma proteção do Kitsu (ver identityResolution.test.ts) — a busca da
+  // Jikan também quase sempre devolve algum resultado, relevante ou não.
+  it("rejects the top result when its title doesn't match what was searched", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({
+        data: [{ mal_id: 1, title: "Completely Unrelated Anime" }],
+      })
+    );
+
+    expect(await searchJikanAnime("My Test Anime")).toBeNull();
   });
 
   it("URL-encodes the search title", async () => {

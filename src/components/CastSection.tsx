@@ -7,6 +7,22 @@ import type { AniListCharacterEntry } from "@/lib/anilist";
 
 type CastMember = AniListCharacterEntry;
 
+/**
+ * Componente próprio (não só um <Image> inline) pra poder ter seu próprio
+ * estado de "quebrou" por avatar — a grade inteira de elenco é 1 só
+ * instância de CastSection, então um useState ali seria compartilhado por
+ * todo mundo. `key={src}` na chamada abaixo garante que trocar de idioma de
+ * dublagem (que reordena/filtra `visibleCast`) nunca deixa o estado
+ * "quebrado" de um avatar vazar pra outra pessoa que caia na mesma posição
+ * da lista — mesma classe de bug do HeroBannerRotator (achado real da 6ª
+ * rodada de auditoria, Epic 18).
+ */
+function CastAvatar({ src }: { src: string | null }) {
+  const [broken, setBroken] = useState(false);
+  if (!src || broken) return null;
+  return <Image src={src} alt="" fill sizes="44px" style={{ objectFit: "cover" }} onError={() => setBroken(true)} />;
+}
+
 /** Ordena japonês primeiro (dublagem original, quase sempre a mais
  * completa), depois o resto em ordem alfabética. */
 function sortLanguages(languages: string[]): string[] {
@@ -79,9 +95,7 @@ export function CastSection({ cast }: { cast: CastMember[] }) {
                   bgcolor: "background.paper",
                 }}
               >
-                {member.image && (
-                  <Image src={member.image} alt="" fill sizes="44px" style={{ objectFit: "cover" }} />
-                )}
+                <CastAvatar key={member.image ?? `${member.role}-${member.name}`} src={member.image} />
               </Box>
               <Box sx={{ minWidth: 0 }}>
                 <Typography variant="body2" noWrap>

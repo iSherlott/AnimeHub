@@ -2,6 +2,7 @@
 
 import NextLink from "next/link";
 import Image from "next/image";
+import { useState } from "react";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { Box, Tooltip, Typography } from "@mui/material";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
@@ -24,6 +25,9 @@ export function RecommendationCard({ rec }: { rec: RecommendationData }) {
     titleRomaji: rec.titleRomaji,
     titleEnglish: rec.titleEnglish,
   });
+  // Ver AnimeCard — mesma correção pro ícone quebrado cru numa URL de capa
+  // que 404 (achado real da 6ª rodada de auditoria, Epic 18).
+  const [coverBroken, setCoverBroken] = useState(false);
 
   return (
     <Tooltip title={title}>
@@ -45,8 +49,15 @@ export function RecommendationCard({ rec }: { rec: RecommendationData }) {
             bgcolor: "background.paper",
           }}
         >
-          {rec.coverImage && (
-            <Image src={rec.coverImage} alt="" fill sizes="128px" style={{ objectFit: "cover" }} />
+          {rec.coverImage && !coverBroken && (
+            <Image
+              src={rec.coverImage}
+              alt=""
+              fill
+              sizes="128px"
+              style={{ objectFit: "cover" }}
+              onError={() => setCoverBroken(true)}
+            />
           )}
           {!rec.isInternal && (
             <Box

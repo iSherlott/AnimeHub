@@ -1,4 +1,5 @@
 import { normalizeGenres } from "@/lib/genreTaxonomy";
+import { titlesLikelyMatch } from "@/lib/identityResolution";
 
 // Jikan (jikan.moe) é uma API REST gratuita e pública que espelha os dados
 // abertos do MyAnimeList — não é scraping: é a forma padrão da comunidade
@@ -17,6 +18,9 @@ export type JikanAnimeMatch = {
 type JikanSearchResponse = {
   data?: Array<{
     mal_id: number;
+    title?: string | null;
+    title_english?: string | null;
+    title_japanese?: string | null;
     synopsis?: string | null;
     genres?: { name: string }[];
     themes?: { name: string }[];
@@ -47,6 +51,12 @@ export async function searchJikanAnime(title: string): Promise<JikanAnimeMatch |
   );
   const entry = json.data?.[0];
   if (!entry) return null;
+
+  // Mesma proteção do Kitsu (ver titlesLikelyMatch) — a busca da Jikan
+  // também quase sempre devolve algum resultado, relevante ou não.
+  if (!titlesLikelyMatch(title, [entry.title, entry.title_english, entry.title_japanese])) {
+    return null;
+  }
 
   return {
     malId: entry.mal_id,

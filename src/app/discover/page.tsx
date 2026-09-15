@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Alert,
   Box,
@@ -54,7 +55,13 @@ function sortItems(items: DiscoverItem[], sortBy: SortKey): DiscoverItem[] {
   }
 }
 
-export default function DiscoverPage() {
+function DiscoverPageContent() {
+  // Link "por gênero" que sai da página de detalhe do anime (achado real da
+  // 6ª rodada de auditoria, Epic 18) — chips de gênero lá eram só texto
+  // estático, sem levar a lugar nenhum. Servidor e cliente enxergam a mesma
+  // URL, então dá pra ler direto no inicializador do state (diferente do
+  // localStorage de filtersExpanded logo abaixo, que só existe no cliente).
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<DiscoverItem[]>([]);
   const [searchCached, setSearchCached] = useState(false);
@@ -71,7 +78,7 @@ export default function DiscoverPage() {
 
   const [catalogAll, setCatalogAll] = useState<DiscoverItem[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
-  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+  const [selectedGenre, setSelectedGenre] = useState<string | null>(() => searchParams.get("genre"));
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedSeason, setSelectedSeason] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
@@ -485,5 +492,13 @@ export default function DiscoverPage() {
         )}
       </Box>
     </div>
+  );
+}
+
+export default function DiscoverPage() {
+  return (
+    <Suspense fallback={null}>
+      <DiscoverPageContent />
+    </Suspense>
   );
 }

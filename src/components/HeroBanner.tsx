@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import NextLink from "next/link";
 import { Box, Button, Chip, Stack, Typography } from "@mui/material";
@@ -35,6 +36,12 @@ export function HeroBanner({
   primaryLink,
 }: HeroBannerData) {
   const backdrop = bannerImage ?? coverImage;
+  // Mesma correção de AnimeCard/RecommendationCard/CoverImage — um backdrop
+  // que 404 (dado sujo de fonte externa) renderizava o ícone quebrado cru
+  // do navegador espalhado pela hero inteira (achado ao vivo durante a
+  // verificação da 6ª rodada de auditoria, Epic 18, mesmo bug encontrado
+  // originalmente noutros componentes).
+  const [broken, setBroken] = useState(false);
 
   return (
     <Box
@@ -49,8 +56,15 @@ export function HeroBanner({
         overflow: "hidden",
       }}
     >
-      {backdrop ? (
-        <Image src={backdrop} alt="" fill priority style={{ objectFit: "cover", objectPosition: "top" }} />
+      {backdrop && !broken ? (
+        <Image
+          src={backdrop}
+          alt=""
+          fill
+          priority
+          style={{ objectFit: "cover", objectPosition: "top" }}
+          onError={() => setBroken(true)}
+        />
       ) : (
         <Box
           sx={{

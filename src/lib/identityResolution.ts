@@ -44,6 +44,75 @@ export function pickAnidbTitles(titles: AnidbTitleCandidate[]): {
   };
 }
 
+function normalizeForComparison(title: string): string {
+  return title
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // remove acentos (marcas de combinacao Unicode)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function titleTokens(title: string): Set<string> {
+  return new Set(normalizeForComparison(title).split(" ").filter(Boolean));
+}
+
+/**
+ * Confere se um resultado de busca por título (Kitsu/Jikan/Shikimori — as
+ * 3 fontes que fazem "busca por texto" e usam só o 1º resultado, sem
+ * nenhum ID estável de referência) é plausivelmente o mesmo anime que foi
+ * buscado, não só o resultado mais popular/melhor-rankeado da API pra uma
+ * busca que não achou nada parecido de verdade.
+ *
+ * Sem isso, um título sem correspondência real na fonte (ex.: um nome
+ * fictício de teste, ou um anime obscuro demais) podia "casar" com um
+ * anime completamente diferente — a API de busca quase sempre devolve
+ * *algum* resultado, só não necessariamente relevante — e esse resultado
+ * errado era gravado por cima de capa/banner/sinopse do anime certo,
+ * corrompendo silenciosamente o registro (achado real da 6ª rodada de
+ * auditoria, Epic 18: abrir a página de um anime sem capa acabava
+ * mostrando a arte e a sinopse de outro anime qualquer).
+ *
+ * Heurística proporcional (sem dependência nova): match exato normalizado,
+ * ou um título contém o outro por inteiro (cobre subtítulos/temporadas,
+ * ex. "Attack on Titan" vs "Attack on Titan: Final Season"), ou pelo menos
+ * 60% de sobreposição de palavras (cobre pequena variação de romanização/
+ * pontuação). Não precisa ser perfeito — só precisa rejeitar os casos
+ * claramente errados.
+ */
+export function titlesLikelyMatch(
+  query: string,
+  candidates: (string | null | undefined)[]
+): boolean {
+  const queryNorm = normalizeForComparison(query);
+  const queryTokens = titleTokens(query);
+  if (!queryNorm || queryTokens.size === 0) return false;
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const candidateNorm = normalizeForComparison(candidate);
+    if (!candidateNorm) continue;
+
+    if (queryNorm === candidateNorm) return true;
+    // Contido "por inteiro" precisa respeitar fronteira de palavra — um
+    // includes() cru em string crua deixava um título curto de verdade
+    // (ex.: "Air", "K") "casar" com qualquer título mais longo que só por
+    // acaso contivesse essas letras em sequência (ex.: "Fair Game"),
+    // exatamente o tipo de falso positivo que essa função existe pra
+    // evitar. Preenchendo com espaço nas pontas, o includes() só bate numa
+    // sequência de palavras inteiras, nunca no meio de uma palavra.
+    const paddedQuery = ` ${queryNorm} `;
+    const paddedCandidate = ` ${candidateNorm} `;
+    if (paddedQuery.includes(paddedCandidate) || paddedCandidate.includes(paddedQuery)) return true;
+
+    const candidateTokens = titleTokens(candidate);
+    const overlap = [...queryTokens].filter((t) => candidateTokens.has(t)).length;
+    const ratio = overlap / Math.max(queryTokens.size, candidateTokens.size);
+    if (ratio >= 0.6) return true;
+  }
+  return false;
+}
+
 export type DedupeCandidate = { key: string; title: string; hasAnilistId: boolean };
 
 /**

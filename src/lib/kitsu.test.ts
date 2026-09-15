@@ -141,6 +141,27 @@ describe("searchKitsuAnime", () => {
     });
   });
 
+  // Achado real da 6ª rodada de auditoria (Epic 18): a busca por texto da
+  // Kitsu sempre devolve *algum* resultado, mesmo sem nada parecido de
+  // verdade — aceitar o 1º cego corrompia capa/banner/sinopse do anime
+  // certo com dados de um anime completamente diferente.
+  it("rejeita o 1º resultado quando o título não bate com o que foi buscado", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({
+        data: [
+          {
+            id: "1",
+            attributes: { canonicalTitle: "Totalmente Sem Relação Nenhuma" },
+          },
+        ],
+      })
+    );
+
+    expect(await searchKitsuAnime("Meu Anime De Teste")).toBeNull();
+    // Nem chega a gastar a chamada extra de getKitsuGenres.
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("swallows a genre-fetch failure and returns an empty genre list instead of throwing", async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(

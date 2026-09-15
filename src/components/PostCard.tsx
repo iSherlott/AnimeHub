@@ -8,6 +8,7 @@ import NextLink from "next/link";
 import { Box, IconButton, Link as MuiLink, Stack, Tooltip, Typography } from "@mui/material";
 import { LikeToggle } from "@/components/LikeToggle";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
+import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 import type { PostDTO } from "@/lib/postDto";
 
 function fmtDate(iso: string): string {
@@ -28,8 +29,21 @@ export function PostCard({
 }) {
   const user = useCurrentUser();
   const loggedOut = user === null;
+  const { preference } = useTitlePreference();
+  // Post só congela romaji/inglês na criação (Epic 22 — sem nativo/
+  // português), mas o card ainda ignorava a preferência de idioma por
+  // completo, sempre mostrando romaji cru mesmo com "Inglês" selecionado
+  // (achado real da 6ª rodada de auditoria, Epic 18).
+  const animeTitle = resolveTitleText(preference, {
+    titleRomaji: post.animeTitleRomaji,
+    titleEnglish: post.animeTitleEnglish,
+  });
   const [reportedByMe, setReportedByMe] = useState(post.reportedByMe);
   const [imageBroken, setImageBroken] = useState(false);
+  // Ver AnimeCard — mesma correção pro ícone quebrado cru numa URL de capa
+  // que 404 (achado real da 6ª rodada de auditoria, Epic 18). Campo
+  // diferente de `imageBroken` acima, que é só da imagem colada pelo autor.
+  const [coverBroken, setCoverBroken] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleDelete() {
@@ -78,8 +92,15 @@ export function PostCard({
             bgcolor: "background.paper",
           }}
         >
-          {post.animeCoverImage && (
-            <Image src={post.animeCoverImage} alt="" fill sizes="48px" style={{ objectFit: "cover" }} />
+          {post.animeCoverImage && !coverBroken && (
+            <Image
+              src={post.animeCoverImage}
+              alt=""
+              fill
+              sizes="48px"
+              style={{ objectFit: "cover" }}
+              onError={() => setCoverBroken(true)}
+            />
           )}
         </Box>
 
@@ -104,7 +125,7 @@ export function PostCard({
                 </Typography>
               </Stack>
               <Typography variant="caption" sx={{ color: "text.secondary" }} noWrap>
-                {post.animeTitleRomaji}
+                {animeTitle}
               </Typography>
             </Box>
 

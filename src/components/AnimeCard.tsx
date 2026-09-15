@@ -2,6 +2,7 @@
 
 import NextLink from "next/link";
 import Image from "next/image";
+import { useState } from "react";
 import { Box, Card, CardActionArea, Chip, LinearProgress, Tooltip, Typography } from "@mui/material";
 import { statusColors } from "@/lib/muiTheme";
 import {
@@ -42,6 +43,10 @@ export function AnimeCard({
 }: AnimeCardData) {
   const { preference } = useTitlePreference();
   const title = resolveTitleText(preference, titles);
+  // Uma URL de capa que 404 (dado sujo vindo de fonte externa) renderizava
+  // o ícone quebrado cru do navegador em vez do mesmo placeholder já usado
+  // pra "sem capa nenhuma" — achado real da 6ª rodada de auditoria, Epic 18.
+  const [coverBroken, setCoverBroken] = useState(false);
 
   const progressPct =
     status === "WATCHING" && episodes && episodes > 0
@@ -53,8 +58,15 @@ export function AnimeCard({
       <Tooltip title={title}>
         <CardActionArea component={NextLink} href={href}>
           <Box sx={{ position: "relative", aspectRatio: "2 / 3", width: "100%", overflow: "hidden" }}>
-            {coverImage ? (
-              <Image src={coverImage} alt="" fill sizes="192px" style={{ objectFit: "cover" }} />
+            {coverImage && !coverBroken ? (
+              <Image
+                src={coverImage}
+                alt=""
+                fill
+                sizes="192px"
+                style={{ objectFit: "cover" }}
+                onError={() => setCoverBroken(true)}
+              />
             ) : (
               <Box
                 sx={{
