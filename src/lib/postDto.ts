@@ -14,6 +14,7 @@ export type PostDTO = {
   likeCount: number;
   likedByMe: boolean;
   reportedByMe: boolean;
+  commentCount: number;
 };
 
 type PostWithAuthor = Post & { user: { id: string; displayName: string } };
@@ -26,7 +27,13 @@ type PostWithAuthor = Post & { user: { id: string; displayName: string } };
  */
 export function toPostDto(
   post: PostWithAuthor,
-  opts: { viewerId: string | null; likeCount: number; likedByMe: boolean; reportedByMe: boolean }
+  opts: {
+    viewerId: string | null;
+    likeCount: number;
+    likedByMe: boolean;
+    reportedByMe: boolean;
+    commentCount: number;
+  }
 ): PostDTO {
   return {
     id: post.id,
@@ -42,5 +49,6 @@ export function toPostDto(
     likeCount: opts.likeCount,
     likedByMe: opts.likedByMe,
     reportedByMe: opts.reportedByMe,
+    commentCount: opts.commentCount,
   };
 }

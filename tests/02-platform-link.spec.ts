@@ -6,7 +6,7 @@ test.describe("Criação de link de plataforma (Crunchyroll)", () => {
     test(`cria e persiste o link da Crunchyroll para "${anime.titleRomaji}"`, async ({
       page,
     }) => {
-      await page.goto("/");
+      await page.goto("/minha-lista");
       await page.getByRole("link", { name: anime.titleRomaji }).first().click();
       await expect(page.getByTestId("anime-title")).toHaveText(
         anime.titleRomaji
@@ -43,7 +43,7 @@ test.describe("Criação de link de plataforma (Crunchyroll)", () => {
 
   test("remove um link vinculado", async ({ page }) => {
     const anime = UTILITY_FIXTURE;
-    await page.goto("/");
+    await page.goto("/minha-lista");
     await page.getByRole("link", { name: anime.titleRomaji }).first().click();
 
     const linksSection = page.getByTestId("platform-links");
@@ -66,7 +66,7 @@ test.describe("Criação de link de plataforma (Crunchyroll)", () => {
 
   test("rejeita vincular sem preencher a URL", async ({ page }) => {
     const anime = UTILITY_FIXTURE;
-    await page.goto("/");
+    await page.goto("/minha-lista");
     await page.getByRole("link", { name: anime.titleRomaji }).first().click();
 
     const linksSection = page.getByTestId("platform-links");

@@ -35,6 +35,7 @@ model User {
   reportsResolved  CommentReport[] @relation("CommentResolver")
   posts               Post[]
   postLikes           PostLike[]
+  postComments        PostComment[]
   postReports         PostReport[] @relation("PostReporter")
   postReportsResolved PostReport[] @relation("PostResolver")
   following           Follow[]     @relation("Following")
@@ -383,8 +384,9 @@ model Post {
   /// padrão do Comment (Epic 15).
   deletedAt         DateTime?
 
-  likes   PostLike[]
-  reports PostReport[]
+  likes    PostLike[]
+  reports  PostReport[]
+  comments PostComment[]
 
   @@index([anilistId])
   @@index([userId])
@@ -402,6 +404,27 @@ model PostLike {
   createdAt DateTime @default(now())
 
   @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+}
+
+/**
+ * Comentário por post (Epic 24) — distinto de Comment (Epic 15, por
+ * anilistId, só pra quem também tem o anime na própria lista): aqui é por
+ * post específico, público, sem exigir o anime na lista de quem comenta.
+ * Sem fila de denúncia própria (fora do escopo pedido) — só soft delete
+ * pelo autor, mesmo padrão de Comment.
+ */
+model PostComment {
+  id        String    @id @default(cuid())
+  postId    String
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
   @@index([postId])
   @@index([userId])
 }

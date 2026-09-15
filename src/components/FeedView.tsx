@@ -16,6 +16,8 @@ import {
 } from "@mui/material";
 import { PostCard } from "@/components/PostCard";
 import { FollowToggle } from "@/components/FollowToggle";
+import { LinkButton } from "@/components/LinkButton";
+import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { PostDTO } from "@/lib/postDto";
 
 type FeedTab = "recommended" | "following";
@@ -25,6 +27,8 @@ type Suggestion = { id: string; displayName: string };
 const MAX_BODY_LENGTH = 500;
 
 export function FeedView() {
+  const user = useCurrentUser();
+  const loggedOut = user === null;
   const [tab, setTab] = useState<FeedTab>("recommended");
   const [posts, setPosts] = useState<PostDTO[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -69,10 +73,23 @@ export function FeedView() {
   const postingRef = useRef(false);
 
   useEffect(() => {
+    // Deslogado não tem lista própria (a chamada só voltaria 401) — o
+    // composer vira um CTA de login em vez de buscar nada.
+    if (!user) return;
     fetch("/api/anime")
       .then((res) => res.json())
       .then((data) => setMyAnime(data.animes ?? []));
-  }, []);
+  }, [user]);
+
+  // "Seguindo" não existe sem conta — se a sessão cair (ou nunca existiu)
+  // enquanto essa aba está selecionada, volta pra "Recomendado", a única
+  // leitura pública do feed.
+  useEffect(() => {
+    if (loggedOut && tab === "following") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTab("recommended");
+    }
+  }, [loggedOut, tab]);
 
   const loadFollowingSuggestions = useCallback(() => {
     fetch("/api/users/suggestions")
@@ -199,11 +216,29 @@ export function FeedView() {
     <Box>
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
         <Tab label="Recomendado" value="recommended" />
-        <Tab label="Seguindo" value="following" />
+        {user && <Tab label="Seguindo" value="following" />}
       </Tabs>
 
       <Box sx={{ mb: 3, p: 2, border: 1, borderColor: "divider", borderRadius: 1 }}>
-        {myAnime.length === 0 ? (
+        {loggedOut ? (
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", justifyContent: "space-between" }}>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              Entre pra publicar no feed.
+            </Typography>
+            <LinkButton href="/login" variant="contained" size="small">
+              Entrar
+            </LinkButton>
+          </Stack>
+        ) : user === undefined ? (
+          // Ainda carregando /api/auth/me (nem logado nem deslogado
+          // confirmado ainda) — sem esse estado à parte, um visitante
+          // deslogado via um flash rápido de "adicione um anime" (o
+          // mesmo texto de quem está logado mas sem lista) antes do
+          // fetch confirmar e trocar pro CTA de login correto.
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            Carregando...
+          </Typography>
+        ) : myAnime.length === 0 ? (
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
             Adicione um anime à sua lista pra poder postar no feed.
           </Typography>

@@ -43,7 +43,7 @@ test.describe("Epic 20 — 2ª rodada de auditoria de UX/UI", () => {
   });
 
   test("estrela de favorito no card da home alterna sem navegar pra outra página", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/minha-lista");
     const card = page.getByTestId(`anime-card-${animeId}`);
     await expect(card).toBeVisible();
 
@@ -55,9 +55,9 @@ test.describe("Epic 20 — 2ª rodada de auditoria de UX/UI", () => {
     ]);
     expect(patchResponse.ok()).toBe(true);
 
-    // Continua na home (o clique na estrela não deve disparar a navegação
-    // do CardActionArea que cobre o resto do card).
-    await expect(page).toHaveURL("/");
+    // Continua na mesma página (o clique na estrela não deve disparar a
+    // navegação do CardActionArea que cobre o resto do card).
+    await expect(page).toHaveURL("/minha-lista");
     await expect(card.getByRole("button", { name: "Remover dos favoritos" })).toBeVisible();
 
     const res = await page.request.get("/api/anime");
@@ -86,7 +86,7 @@ test.describe("Epic 20 — 2ª rodada de auditoria de UX/UI", () => {
   test("botão de pausar a rotação do hero é alcançável por teclado e alterna o rótulo", async ({ page }) => {
     // Precisa de pelo menos 3 animes na lista pra rotator armar o timer —
     // as fixtures padrão do usuário de teste (global-setup.ts) já bastam.
-    await page.goto("/");
+    await page.goto("/minha-lista");
 
     const pauseButton = page.getByRole("button", { name: "Pausar rotação do destaque" });
     await expect(pauseButton).toBeVisible();

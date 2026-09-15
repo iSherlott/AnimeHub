@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/auth/session";
+import { getCurrentUser, requireUser } from "@/lib/auth/session";
 import { toPostDto, type PostDTO } from "@/lib/postDto";
 import { computeRecommendedScore, RANKED_WINDOW_SIZE } from "@/lib/feedRanking";
 
@@ -14,18 +14,22 @@ type PostWithCount = Awaited<ReturnType<typeof loadFollowingPage>>["page"][numbe
  * viewer pra essa página — mesma lógica de evitar N+1 usada em
  * myOpenReports na rota de comentários.
  */
-async function toDtoPage(page: PostWithCount[], viewerId: string): Promise<PostDTO[]> {
+async function toDtoPage(page: PostWithCount[], viewerId: string | null): Promise<PostDTO[]> {
   const postIds = page.map((p) => p.id);
-  const [myLikes, myOpenReports] = await Promise.all([
-    prisma.postLike.findMany({
-      where: { userId: viewerId, postId: { in: postIds } },
-      select: { postId: true },
-    }),
-    prisma.postReport.findMany({
-      where: { reporterId: viewerId, resolvedAt: null, postId: { in: postIds } },
-      select: { postId: true },
-    }),
-  ]);
+  // Leitura pública (viewer deslogado) não tem "minhas curtidas"/"minhas
+  // denúncias" — pula as 2 consultas em vez de rodar com userId nulo.
+  const [myLikes, myOpenReports] = viewerId
+    ? await Promise.all([
+        prisma.postLike.findMany({
+          where: { userId: viewerId, postId: { in: postIds } },
+          select: { postId: true },
+        }),
+        prisma.postReport.findMany({
+          where: { reporterId: viewerId, resolvedAt: null, postId: { in: postIds } },
+          select: { postId: true },
+        }),
+      ])
+    : [[], []];
   const likedSet = new Set(myLikes.map((l) => l.postId));
   const reportedSet = new Set(myOpenReports.map((r) => r.postId));
 
@@ -35,6 +39,7 @@ async function toDtoPage(page: PostWithCount[], viewerId: string): Promise<PostD
       likeCount: post._count.likes,
       likedByMe: likedSet.has(post.id),
       reportedByMe: reportedSet.has(post.id),
+      commentCount: post._count.comments,
     })
   );
 }
@@ -57,7 +62,11 @@ async function loadFollowingPage(userId: string, cursor: string | null, limit: n
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     include: {
       user: { select: { id: true, displayName: true } },
-      _count: { select: { likes: true } },
+      // PostComment tem soft delete (deletedAt) — contar a relação crua
+      // sem filtro incluía comentários apagados no contador exibido no
+      // card (achado real de verificação ao vivo: um comentário apagado
+      // continuava contando depois de recarregar a página).
+      _count: { select: { likes: true, comments: { where: { deletedAt: null } } } },
     },
   });
 
@@ -74,7 +83,11 @@ async function loadRecommendedPage(offset: number, limit: number, now: Date) {
     take: RANKED_WINDOW_SIZE,
     include: {
       user: { select: { id: true, displayName: true } },
-      _count: { select: { likes: true } },
+      // PostComment tem soft delete (deletedAt) — contar a relação crua
+      // sem filtro incluía comentários apagados no contador exibido no
+      // card (achado real de verificação ao vivo: um comentário apagado
+      // continuava contando depois de recarregar a página).
+      _count: { select: { likes: true, comments: { where: { deletedAt: null } } } },
     },
   });
 
@@ -92,19 +105,22 @@ async function loadRecommendedPage(offset: number, limit: number, now: Date) {
 }
 
 export async function GET(request: Request) {
-  const { user, response } = await requireUser();
-  if (!user) return response;
-
   const { searchParams } = new URL(request.url);
   const tab = searchParams.get("tab") === "following" ? "following" : "recommended";
   const limit = Math.min(MAX_LIMIT, Math.max(1, Number(searchParams.get("limit")) || DEFAULT_LIMIT));
 
+  // "Seguindo" não existe sem conta — só essa aba exige login. "Recomendado"
+  // é a leitura pública do feed (Instagram/Twitter deixam navegar sem
+  // conta; só interagir exige login).
   if (tab === "following") {
+    const { user, response } = await requireUser();
+    if (!user) return response;
     const cursor = searchParams.get("cursor");
     const { page, nextCursor } = await loadFollowingPage(user.id, cursor, limit);
     return NextResponse.json({ posts: await toDtoPage(page, user.id), nextCursor });
   }
 
+  const user = await getCurrentUser();
   const offset = Math.max(0, Number(searchParams.get("offset")) || 0);
   // `since` fixa o instante usado pra calcular a pontuação (gravidade)
   // durante toda uma sessão de rolagem — sem isso, cada página recalculava
@@ -120,5 +136,9 @@ export async function GET(request: Request) {
   const since = sinceParam ? new Date(sinceParam) : null;
   const now = since && !Number.isNaN(since.getTime()) ? since : new Date();
   const { page, nextOffset } = await loadRecommendedPage(offset, limit, now);
-  return NextResponse.json({ posts: await toDtoPage(page, user.id), nextOffset, since: now.toISOString() });
+  return NextResponse.json({
+    posts: await toDtoPage(page, user?.id ?? null),
+    nextOffset,
+    since: now.toISOString(),
+  });
 }

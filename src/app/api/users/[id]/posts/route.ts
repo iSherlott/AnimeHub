@@ -29,7 +29,8 @@ export async function GET(request: Request, { params }: Params) {
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     include: {
       user: { select: { id: true, displayName: true } },
-      _count: { select: { likes: true } },
+      // PostComment tem soft delete — ver src/app/api/posts/route.ts.
+      _count: { select: { likes: true, comments: { where: { deletedAt: null } } } },
     },
   });
 
@@ -61,6 +62,7 @@ export async function GET(request: Request, { params }: Params) {
         likeCount: post._count.likes,
         likedByMe: likedSet.has(post.id),
         reportedByMe: reportedSet.has(post.id),
+        commentCount: post._count.comments,
       })
     ),
     nextCursor,

@@ -16,7 +16,7 @@ test.describe("Epic 18 — 5ª rodada de auditoria de UX/UI — duplo clique nã
 
   test("clicar 'Publicar' duas vezes rápido no Feed cria só 1 post", async ({ page, request }) => {
     const uniqueBody = `Post de teste de duplo clique ${Date.now()}`;
-    await page.goto("/feed");
+    await page.goto("/");
 
     await page.locator('div[role="combobox"]').first().click();
     await page.getByRole("option").first().click();
@@ -213,7 +213,7 @@ test.describe("Epic 18 — 5ª rodada — sessão invalidada em uso", () => {
   });
 
   test("sessão apagada em uso reflete deslogado no cabeçalho sem precisar navegar", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/minha-lista");
     await expect(page.getByText("E2E Round5 Expiring")).toBeVisible();
     const star = page.getByRole("button", { name: "Adicionar aos favoritos" }).first();
     await expect(star).toBeVisible();

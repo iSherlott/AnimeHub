@@ -10,7 +10,7 @@ test.describe("Acesso ao link (sem navegar de verdade para fora)", () => {
     test(`o link de "${anime.titleRomaji}" aponta para a Crunchyroll certa e abre em nova aba`, async ({
       page,
     }) => {
-      await page.goto("/");
+      await page.goto("/minha-lista");
       await page.getByRole("link", { name: anime.titleRomaji }).first().click();
 
       const anchor = page

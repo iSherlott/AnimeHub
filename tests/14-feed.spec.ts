@@ -325,7 +325,7 @@ test.describe("Feed com posts, curtidas e seguir (Epic 22)", () => {
   });
 });
 
-test.describe("Feed exige login pra interagir, mas perfis públicos ficam abertos", () => {
+test.describe("Feed exige login pra interagir, mas leitura e perfis públicos ficam abertos", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
   test("POST /api/anime/:id/posts retorna 401 sem sessão", async ({ request }) => {
@@ -333,8 +333,16 @@ test.describe("Feed exige login pra interagir, mas perfis públicos ficam aberto
     expect(res.status()).toBe(401);
   });
 
-  test("GET /api/posts retorna 401 sem sessão", async ({ request }) => {
+  // Redesenho do Feed (Instagram/Twitter): a leitura de "Recomendado" (a
+  // aba padrão) é pública, igual Descobrir/Calendário já eram — só
+  // "Seguindo" (que não existe sem conta) continua exigindo login.
+  test("GET /api/posts (recommended, padrão) funciona sem sessão", async ({ request }) => {
     const res = await request.get("/api/posts");
+    expect(res.status()).toBe(200);
+  });
+
+  test("GET /api/posts?tab=following retorna 401 sem sessão", async ({ request }) => {
+    const res = await request.get("/api/posts?tab=following");
     expect(res.status()).toBe(401);
   });
 

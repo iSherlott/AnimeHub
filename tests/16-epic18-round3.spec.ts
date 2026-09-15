@@ -76,7 +76,7 @@ test.describe("Epic 18 — 3ª rodada de auditoria de UX/UI", () => {
     expect(create.status()).toBe(201);
     const post = (await create.json()).post;
 
-    await page.goto("/feed");
+    await page.goto("/");
     const card = page.getByTestId(`post-card-${post.id}`);
     await expect(card).toBeVisible();
     const authorLink = card.getByRole("link", { name: post.author.displayName });

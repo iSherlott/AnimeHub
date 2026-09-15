@@ -83,6 +83,7 @@ export async function POST(request: Request, { params }: Params) {
         likeCount: 0,
         likedByMe: false,
         reportedByMe: false,
+        commentCount: 0,
       }),
     },
     { status: 201 }

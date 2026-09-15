@@ -1,23 +1,35 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FlagIcon from "@mui/icons-material/Flag";
 import NextLink from "next/link";
-import { Box, IconButton, Link as MuiLink, Stack, Tooltip, Typography } from "@mui/material";
+import { Avatar, Box, Chip, IconButton, Link as MuiLink, Stack, Tooltip, Typography } from "@mui/material";
 import { LikeToggle } from "@/components/LikeToggle";
+import { PostComments } from "@/components/PostComments";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
+import { formatRelativeTime } from "@/lib/relativeTime";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 import type { PostDTO } from "@/lib/postDto";
 
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+// Sem infra de upload de avatar (decisão do Epic 22 — nenhum campo de
+// imagem no app tem uma hoje, nem User.avatarUrl é usado pra exibir
+// nada). Um card estilo Instagram/Twitter ainda pede um círculo de
+// identidade no cabeçalho — iniciais sobre uma cor determinística por
+// autor cobrem isso sem precisar de infraestrutura nova.
+const AVATAR_COLORS = ["#7C4DFF", "#00BFA5", "#FF6D00", "#2979FF", "#D500F9", "#FFAB00", "#F50057"];
+
+function avatarColor(authorId: string): string {
+  let hash = 0;
+  for (let i = 0; i < authorId.length; i++) hash = (hash * 31 + authorId.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+
+function initials(name: string): string {
+  return name.trim().slice(0, 1).toUpperCase() || "?";
 }
 
 export function PostCard({
@@ -28,6 +40,7 @@ export function PostCard({
   onDeleted: (id: string) => void;
 }) {
   const user = useCurrentUser();
+  const router = useRouter();
   const loggedOut = user === null;
   const { preference } = useTitlePreference();
   // Post só congela romaji/inglês na criação (Epic 22 — sem nativo/
@@ -39,6 +52,8 @@ export function PostCard({
     titleEnglish: post.animeTitleEnglish,
   });
   const [reportedByMe, setReportedByMe] = useState(post.reportedByMe);
+  const [commentCount, setCommentCount] = useState(post.commentCount);
+  const [commentsOpen, setCommentsOpen] = useState(false);
   const [imageBroken, setImageBroken] = useState(false);
   // Ver AnimeCard — mesma correção pro ícone quebrado cru numa URL de capa
   // que 404 (achado real da 6ª rodada de auditoria, Epic 18). Campo
@@ -61,6 +76,13 @@ export function PostCard({
   }
 
   async function handleReport() {
+    // Mesmo padrão do LikeToggle: o ícone continua visível pra quem não
+    // tem conta, o clique é que leva pro login (Feed público estilo
+    // Instagram/Twitter) em vez de ficar `disabled`.
+    if (loggedOut) {
+      router.push("/login");
+      return;
+    }
     setReportedByMe(true);
     try {
       const res = await fetch(`/api/posts/${post.id}/report`, { method: "POST" });
@@ -75,85 +97,74 @@ export function PostCard({
     }
   }
 
+  function handleCommentCountChange(delta: number) {
+    setCommentCount((c) => Math.max(0, c + delta));
+  }
+
   return (
     <Box
       data-testid={`post-card-${post.id}`}
-      sx={{ borderBottom: 1, borderColor: "divider", py: 2.5 }}
+      sx={{
+        border: 1,
+        borderColor: "divider",
+        borderRadius: 2,
+        p: 2,
+        mb: 2,
+        bgcolor: "background.paper",
+      }}
     >
-      <Stack direction="row" spacing={1.5}>
-        <Box
-          sx={{
-            position: "relative",
-            width: 48,
-            height: 64,
-            flexShrink: 0,
-            borderRadius: 1,
-            overflow: "hidden",
-            bgcolor: "background.paper",
-          }}
-        >
-          {post.animeCoverImage && !coverBroken && (
-            <Image
-              src={post.animeCoverImage}
-              alt=""
-              fill
-              sizes="48px"
-              style={{ objectFit: "cover" }}
-              onError={() => setCoverBroken(true)}
-            />
-          )}
-        </Box>
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: "flex-start" }}>
+        <Avatar sx={{ bgcolor: avatarColor(post.author.id), width: 40, height: 40, fontSize: 16, fontWeight: 700 }}>
+          {initials(post.author.displayName)}
+        </Avatar>
 
         <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{ alignItems: "flex-start", justifyContent: "space-between" }}
-          >
-            <Box sx={{ minWidth: 0 }}>
-              <Stack direction="row" spacing={1} sx={{ alignItems: "baseline", flexWrap: "wrap" }}>
-                <MuiLink
-                  component={NextLink}
-                  href={`/users/${post.author.id}`}
-                  underline="hover"
-                  sx={{ fontWeight: 700, fontSize: 14, color: "text.primary" }}
-                >
-                  {post.author.displayName}
-                </MuiLink>
-                <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                  {fmtDate(post.createdAt)}
-                </Typography>
-              </Stack>
-              <Typography variant="caption" sx={{ color: "text.secondary" }} noWrap>
-                {animeTitle}
+          <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start", justifyContent: "space-between" }}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: "baseline", flexWrap: "wrap", minWidth: 0 }}>
+              <MuiLink
+                component={NextLink}
+                href={`/users/${post.author.id}`}
+                underline="hover"
+                sx={{ fontWeight: 700, fontSize: 14, color: "text.primary" }}
+              >
+                {post.author.displayName}
+              </MuiLink>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                · {formatRelativeTime(post.createdAt)}
               </Typography>
-            </Box>
+            </Stack>
 
-            {post.isMine ? (
+            {post.isMine && (
               <Tooltip title="Apagar post">
                 <IconButton onClick={handleDelete} size="small" aria-label="Apagar post">
                   <DeleteIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
-            ) : (
-              <Tooltip
-                title={loggedOut ? "Entre para denunciar" : reportedByMe ? "Denunciado" : "Denunciar post"}
-              >
-                <span>
-                  <IconButton
-                    onClick={handleReport}
-                    disabled={reportedByMe || loggedOut}
-                    size="small"
-                    aria-label={reportedByMe ? "Denunciado" : "Denunciar post"}
-                  >
-                    <FlagIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
             )}
           </Stack>
 
-          <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 0.5 }}>
+          <Chip
+            size="small"
+            variant="outlined"
+            avatar={
+              post.animeCoverImage && !coverBroken ? (
+                <Box sx={{ position: "relative", width: 20, height: 20 }}>
+                  <Image
+                    src={post.animeCoverImage}
+                    alt=""
+                    fill
+                    sizes="20px"
+                    style={{ objectFit: "cover", borderRadius: "50%" }}
+                    onError={() => setCoverBroken(true)}
+                  />
+                </Box>
+              ) : undefined
+            }
+            label={animeTitle}
+            sx={{ mt: 0.5, mb: 1, maxWidth: "100%" }}
+          />
+
+          <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
             {post.body}
           </Typography>
 
@@ -171,9 +182,39 @@ export function PostCard({
             />
           )}
 
-          <Box sx={{ mt: 0.5 }}>
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", mt: 1 }}>
             <LikeToggle postId={post.id} initialLiked={post.likedByMe} initialLikeCount={post.likeCount} />
-          </Box>
+
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
+              <Tooltip title={commentsOpen ? "Fechar comentários" : "Comentários"}>
+                <IconButton onClick={() => setCommentsOpen((v) => !v)} size="small" aria-label="Comentários">
+                  <ChatBubbleOutlineIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Typography variant="caption" sx={{ color: "text.secondary", minWidth: 16 }}>
+                {commentCount}
+              </Typography>
+            </Stack>
+
+            {!post.isMine && (
+              <Tooltip
+                title={loggedOut ? "Entre para denunciar" : reportedByMe ? "Denunciado" : "Denunciar post"}
+              >
+                <span>
+                  <IconButton
+                    onClick={handleReport}
+                    disabled={reportedByMe}
+                    size="small"
+                    aria-label={reportedByMe ? "Denunciado" : "Denunciar post"}
+                  >
+                    <FlagIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            )}
+          </Stack>
+
+          {commentsOpen && <PostComments postId={post.id} onCountChange={handleCommentCountChange} />}
 
           {error && (
             <Typography variant="caption" sx={{ color: "error.main", display: "block", mt: 0.5 }}>

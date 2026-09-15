@@ -26,7 +26,7 @@ test.describe("Hero da home gira entre os animes da lista (Epic 16)", () => {
     page,
   }) => {
     await page.clock.install();
-    await page.goto("/");
+    await page.goto("/minha-lista");
 
     const heroTitle = page.getByRole("heading", { level: 1 });
     const titlesSeen = new Set<string>();

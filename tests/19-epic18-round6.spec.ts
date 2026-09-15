@@ -32,7 +32,7 @@ test.describe("Epic 18 — 6ª rodada de auditoria de UX/UI — preferência de 
 
   test("post no Feed mostra o título em inglês (preferência padrão), não o romaji cru", async ({ page }) => {
     const uniqueBody = `Post de teste de preferência de título ${Date.now()}`;
-    await page.goto("/feed");
+    await page.goto("/");
 
     // O seletor do composer sempre lista por titleRomaji (FeedView.tsx) —
     // é o título exibido no post depois de publicado que precisa respeitar

@@ -133,7 +133,7 @@ test.describe("Epic 18 — 4ª rodada — seguir a partir das sugestões do Feed
   test("seguir alguém pelas sugestões da aba Seguindo já mostra os posts dela, sem precisar recarregar", async ({
     page,
   }) => {
-    await page.goto("/feed");
+    await page.goto("/");
     await page.getByRole("tab", { name: "Seguindo" }).click();
 
     await expect(page.getByText(/ainda não segue ninguém/)).toBeVisible();
