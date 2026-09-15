@@ -23,6 +23,13 @@ type CommentItem = {
   reportedByMe: boolean;
 };
 
+// Mesmo limite de src/app/api/anime/[id]/comments/route.ts — sem eco no
+// cliente, digitar um comentário longo só dava algum retorno depois de
+// clicar "Comentar" e receber "Comentário muito longo" (achado real da 8ª
+// rodada de auditoria, Epic 18); mesmo padrão já usado no compositor do
+// Feed (FeedView.tsx).
+const MAX_BODY_LENGTH = 2000;
+
 function byCreatedAt(a: CommentItem, b: CommentItem): number {
   return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
 }
@@ -142,8 +149,9 @@ export function CommentSection({ animeId }: { animeId: string }) {
       <Stack direction="row" spacing={1} sx={{ mb: 3, alignItems: "flex-start" }}>
         <TextField
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => setDraft(e.target.value.slice(0, MAX_BODY_LENGTH))}
           placeholder="Escreva um comentário..."
+          helperText={`${draft.length}/${MAX_BODY_LENGTH}`}
           size="small"
           fullWidth
           multiline

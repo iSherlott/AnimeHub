@@ -3,17 +3,18 @@ import type { Anime, Episode } from "@prisma/client";
 import type { KitsuAnimeMatch, KitsuEpisode } from "@/lib/kitsu";
 import { ensureEpisodes, refetchEpisodes } from "@/lib/episodes";
 
-const { findMany, deleteMany, createMany, update } = vi.hoisted(() => ({
+const { findMany, deleteMany, createMany, update, animeFindFirst } = vi.hoisted(() => ({
   findMany: vi.fn(),
   deleteMany: vi.fn(),
   createMany: vi.fn(),
   update: vi.fn(),
+  animeFindFirst: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     episode: { findMany, deleteMany, createMany },
-    anime: { update },
+    anime: { update, findFirst: animeFindFirst },
   },
 }));
 
@@ -183,6 +184,47 @@ describe("ensureEpisodes", () => {
     });
   });
 
+  // Regressão: 2 animes com nomes parecidos (ex. "Naruto" / "Naruto
+  // Shippuden") podem resolver pro mesmo kitsuId — sem essa checagem, o 2º
+  // a carregar quebrava com um erro cru do Prisma (achado real da 8ª
+  // rodada de auditoria, Epic 18).
+  it("still fetches episodes, but does not persist kitsuId, when another anime of the same user already claimed it", async () => {
+    findMany.mockResolvedValueOnce([]); // cache check
+    const match = makeKitsuMatch();
+    searchKitsuAnime.mockResolvedValueOnce(match);
+    animeFindFirst.mockResolvedValueOnce({ id: "other-anime" }); // conflito
+    getKitsuEpisodes.mockResolvedValueOnce([makeKitsuEpisode()]);
+    findMany.mockResolvedValueOnce([makeStoredEpisode()]);
+
+    const result = await ensureEpisodes(makeAnime({ userId: "user-1", kitsuId: null }));
+
+    expect(animeFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: "user-1", kitsuId: match.kitsuId, NOT: { id: "anime-1" } },
+      })
+    );
+    const [[updateArgs]] = update.mock.calls;
+    expect(updateArgs.data).not.toHaveProperty("kitsuId");
+    expect(updateArgs.data.coverImage).toBe(match.posterImage);
+    expect(result.source).toBe("kitsu");
+    expect(result.episodes).toHaveLength(1);
+    expect(result.error).toBeUndefined();
+  });
+
+  it("persists kitsuId normally when it isn't claimed by anyone else", async () => {
+    findMany.mockResolvedValueOnce([]);
+    const match = makeKitsuMatch();
+    searchKitsuAnime.mockResolvedValueOnce(match);
+    animeFindFirst.mockResolvedValueOnce(null); // sem conflito
+    getKitsuEpisodes.mockResolvedValueOnce([makeKitsuEpisode()]);
+    findMany.mockResolvedValueOnce([makeStoredEpisode()]);
+
+    await ensureEpisodes(makeAnime({ userId: "user-1", kitsuId: null }));
+
+    const [[updateArgs]] = update.mock.calls;
+    expect(updateArgs.data.kitsuId).toBe(match.kitsuId);
+  });
+
   it("skips the Kitsu search entirely when a kitsuId is already known", async () => {
     findMany.mockResolvedValueOnce([]); // cache check
     getKitsuEpisodes.mockResolvedValueOnce([makeKitsuEpisode()]);
@@ -253,6 +295,21 @@ describe("refetchEpisodes", () => {
         }),
       })
     );
+  });
+
+  it("still fetches episodes, but does not persist kitsuId, when another anime of the same user already claimed it", async () => {
+    const match = makeKitsuMatch();
+    searchKitsuAnime.mockResolvedValueOnce(match);
+    animeFindFirst.mockResolvedValueOnce({ id: "other-anime" });
+    getKitsuEpisodes.mockResolvedValueOnce([makeKitsuEpisode()]);
+    findMany.mockResolvedValueOnce([makeStoredEpisode()]);
+
+    const result = await refetchEpisodes(makeAnime({ userId: "user-1", kitsuId: null }));
+
+    const [[updateArgs]] = update.mock.calls;
+    expect(updateArgs.data).not.toHaveProperty("kitsuId");
+    expect(result.source).toBe("kitsu");
+    expect(result.error).toBeUndefined();
   });
 
   it("falls back to the existing kitsuId when the Kitsu search comes up empty", async () => {

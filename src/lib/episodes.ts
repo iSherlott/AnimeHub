@@ -10,6 +10,29 @@ export type EpisodesResult = {
 
 const OTHER_SOURCES_DISABLED = process.env.DISABLE_OTHER_SOURCES === "true";
 
+/**
+ * `@@unique([userId, kitsuId])` no schema — dois animes de nomes parecidos
+ * (ex.: "Naruto" e "Naruto Shippuden") podem legitimamente resolver pro
+ * mesmo `kitsuId` via `searchKitsuAnime`. Sem essa checagem, o 2º a
+ * carregar quebrava a página inteira com um erro cru do Prisma (achado
+ * real da 8ª rodada de auditoria, Epic 18) — o 1º anime a reivindicar um
+ * kitsuId o mantém; o resto só usa esse id pra buscar episódios (ainda
+ * funciona, graças ao cache em `Episode`), sem tentar gravar no próprio
+ * registro.
+ */
+async function kitsuIdAvailable(
+  userId: string | null,
+  animeId: string,
+  kitsuId: number
+): Promise<boolean> {
+  if (!userId) return true;
+  const conflict = await prisma.anime.findFirst({
+    where: { userId, kitsuId, NOT: { id: animeId } },
+    select: { id: true },
+  });
+  return conflict === null;
+}
+
 async function fetchAndStoreEpisodes(
   animeId: string,
   kitsuId: number
@@ -76,10 +99,11 @@ export async function ensureEpisodes(anime: Anime): Promise<EpisodesResult> {
       }
       kitsuId = match.kitsuId;
 
+      const canClaimKitsuId = await kitsuIdAvailable(anime.userId, anime.id, kitsuId);
       await prisma.anime.update({
         where: { id: anime.id },
         data: {
-          kitsuId,
+          ...(canClaimKitsuId ? { kitsuId } : {}),
           titleNative: anime.titleNative ?? match.titleJapanese,
           coverImage: anime.coverImage ?? match.posterImage,
           bannerImage: anime.bannerImage ?? match.coverImage,
@@ -120,10 +144,11 @@ export async function refetchEpisodes(anime: Anime): Promise<EpisodesResult> {
     }
 
     if (match) {
+      const canClaimKitsuId = await kitsuIdAvailable(anime.userId, anime.id, kitsuId);
       await prisma.anime.update({
         where: { id: anime.id },
         data: {
-          kitsuId,
+          ...(canClaimKitsuId ? { kitsuId } : {}),
           titleNative: anime.titleNative ?? match.titleJapanese,
           coverImage: anime.coverImage ?? match.posterImage,
           bannerImage: anime.bannerImage ?? match.coverImage,
