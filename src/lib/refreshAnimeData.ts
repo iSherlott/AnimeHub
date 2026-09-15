@@ -198,13 +198,27 @@ export async function refreshAnimeData(initialAnime: Anime): Promise<RefreshResu
         // o agrupamento por temporada de qualquer anime multi-season que já
         // tivesse AniDB ID vinculado (achado real da 13ª rodada de
         // auditoria, Epic 18).
+        //
+        // O `number` da AniDB é único por anime, mas o `number` já existente
+        // no banco (gravado pela Kitsu, logo acima) reinicia a cada
+        // temporada — então mais de um episódio existente pode ter o mesmo
+        // `number` (ex.: S1E1 e S2E1, ambos number=1). Casar só por `number`
+        // não dá pra saber qual dos dois é o de verdade; guardar só "o
+        // último visto" nesse caso reintroduzia exatamente o tipo de
+        // atribuição errada e silenciosa que esta correção existe pra
+        // evitar — quando `number` é ambíguo entre temporadas, não herda
+        // nada (cai pro padrão seguro: temporada 1, sem sinopse/miniatura)
+        // em vez de arriscar a temporada errada.
+        const existingEpisodes = await prisma.episode.findMany({
+          where: { animeId: id },
+          select: { number: true, seasonNumber: true, synopsis: true, thumbnail: true },
+        });
+        const numberCounts = new Map<number, number>();
+        for (const ep of existingEpisodes) {
+          numberCounts.set(ep.number, (numberCounts.get(ep.number) ?? 0) + 1);
+        }
         const existingByNumber = new Map(
-          (
-            await prisma.episode.findMany({
-              where: { animeId: id },
-              select: { number: true, seasonNumber: true, synopsis: true, thumbnail: true },
-            })
-          ).map((ep) => [ep.number, ep])
+          existingEpisodes.filter((ep) => numberCounts.get(ep.number) === 1).map((ep) => [ep.number, ep])
         );
 
         await prisma.episode.deleteMany({ where: { animeId: id } });
