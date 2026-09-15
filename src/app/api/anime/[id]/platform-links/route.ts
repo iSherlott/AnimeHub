@@ -1,21 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
+import { isValidHttpUrl } from "@/lib/url";
 
 type Params = { params: Promise<{ id: string }> };
 
 async function assertOwnsAnime(id: string, userId: string) {
   const anime = await prisma.anime.findUnique({ where: { id }, select: { userId: true } });
   return anime?.userId === userId;
-}
-
-function isValidHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
 }
 
 export async function POST(request: NextRequest, { params }: Params) {

@@ -20,7 +20,14 @@ export async function PATCH(request: Request, { params }: Params) {
   } catch {
     return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
   }
-  const isFavorite = Boolean(body.isFavorite);
+  // Boolean(x) aceitava qualquer valor "truthy" (ex.: a string "false", um
+  // array vazio) como true, em vez de rejeitar o que não fosse booleano de
+  // verdade — inconsistente com o padrão já usado por anidbId/progress/
+  // series (achado real da 10ª rodada de auditoria, Epic 18).
+  if (typeof body.isFavorite !== "boolean") {
+    return NextResponse.json({ error: "isFavorite deve ser um booleano" }, { status: 400 });
+  }
+  const isFavorite = body.isFavorite;
 
   const anime = await prisma.anime.update({
     where: { id },

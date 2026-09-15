@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth/session";
 import { resolveAnimeMedia, type NormalizedMedia } from "@/lib/resolveAnimeMedia";
 import { callInternalService } from "@/lib/serviceDelegate";
 import { extractAccentColor } from "@/lib/accentColor";
+import { isValidHttpUrl } from "@/lib/url";
 
 export async function GET() {
   const { user, response } = await requireUser();
@@ -64,6 +65,14 @@ export async function POST(request: NextRequest) {
 
   const platform: string | undefined = body.platform;
   const url: string | undefined = body.url;
+  // Mesma validação da rota dedicada de plataforma (isValidHttpUrl) —
+  // faltava aqui, o 2º caminho de escrita pra PlatformLink (o campo
+  // opcional de "onde assistir" ao adicionar direto do Descobrir), e
+  // qualquer texto virava um link "clicável" quebrado na página do anime
+  // (achado real da 10ª rodada de auditoria, Epic 18).
+  if (url && !isValidHttpUrl(url)) {
+    return NextResponse.json({ error: "URL inválida" }, { status: 400 });
+  }
   const { seriesKey, seasonNumber } = deriveSeriesInfo(media.titleRomaji);
 
   let anime;

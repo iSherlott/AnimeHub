@@ -28,7 +28,12 @@ export async function PATCH(request: Request, { params }: Params) {
   } catch {
     return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
   }
-  const liked = Boolean(body.liked);
+  // Ver src/app/api/anime/[id]/favorite/route.ts — mesma correção pro
+  // mesmo anti-padrão (achado real da 10ª rodada de auditoria, Epic 18).
+  if (typeof body.liked !== "boolean") {
+    return NextResponse.json({ error: "liked deve ser um booleano" }, { status: 400 });
+  }
+  const liked = body.liked;
 
   if (liked) {
     await prisma.postLike.upsert({
