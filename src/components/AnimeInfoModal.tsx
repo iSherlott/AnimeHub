@@ -59,6 +59,7 @@ export function AnimeInfoModal({
             src={item.bannerImage}
             alt=""
             fill
+            sizes="(min-width: 600px) 600px, 100vw"
             style={{ objectFit: "cover", opacity: 0.5 }}
             onError={() => setBannerBroken(true)}
           />
@@ -96,6 +97,7 @@ export function AnimeInfoModal({
                 src={item.coverImage}
                 alt=""
                 fill
+                sizes="112px"
                 style={{ objectFit: "cover" }}
                 onLoad={() => setCoverLoaded(true)}
                 onError={() => setCoverBroken(true)}

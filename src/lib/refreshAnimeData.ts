@@ -189,11 +189,20 @@ export async function refreshAnimeData(initialAnime: Anime): Promise<RefreshResu
         // esse deleteMany+createMany apagava esses 2 campos toda vez que o
         // anime também tinha AniDB ID vinculado (achado real da revisão de
         // código do redesenho da lista de episódios).
+        //
+        // A AniDB também não expõe seasonNumber (a numeração dela é única
+        // por anime, sem o conceito de temporada que a Kitsu/EpisodeGrid
+        // usam) — sem preservar o seasonNumber que já existia pro mesmo
+        // número, esse mesmo deleteMany+createMany gravava toda temporada
+        // com seasonNumber = 1 (default do schema), colapsando em silêncio
+        // o agrupamento por temporada de qualquer anime multi-season que já
+        // tivesse AniDB ID vinculado (achado real da 13ª rodada de
+        // auditoria, Epic 18).
         const existingByNumber = new Map(
           (
             await prisma.episode.findMany({
               where: { animeId: id },
-              select: { number: true, synopsis: true, thumbnail: true },
+              select: { number: true, seasonNumber: true, synopsis: true, thumbnail: true },
             })
           ).map((ep) => [ep.number, ep])
         );
@@ -206,6 +215,7 @@ export async function refreshAnimeData(initialAnime: Anime): Promise<RefreshResu
             return {
               animeId: id,
               number: num,
+              seasonNumber: existing?.seasonNumber ?? 1,
               // "x-jat" (transliterado do japonês) é o romaji de verdade —
               // sem cair pra "en" aqui, que agora tem seu próprio campo
               // (titleEnglish), em vez de ser confundido com romaji quando

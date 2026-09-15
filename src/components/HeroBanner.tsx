@@ -62,6 +62,7 @@ export function HeroBanner({
           alt=""
           fill
           priority
+          sizes="100vw"
           style={{ objectFit: "cover", objectPosition: "top" }}
           onError={() => setBroken(true)}
         />

@@ -40,10 +40,18 @@ async function fetchAndStoreEpisodes(
   const kitsuEpisodes = await getKitsuEpisodes(kitsuId);
   if (kitsuEpisodes.length === 0) return [];
 
-  const seenNumbers = new Set<number>();
+  // Chave composta (seasonNumber + number), não só `number`: o campo
+  // "reinicia a cada temporada" (ver comentário de Episode.number no
+  // schema), então um anime com várias seasonNumber numa única entrada
+  // Kitsu (ex.: One Piece) tem episódios de temporadas diferentes com o
+  // mesmo `number` — dedup só por `number` descartava silenciosamente
+  // toda temporada 2+ sempre que a numeração local colidia com a 1ª
+  // (achado real da 13ª rodada de auditoria, Epic 18).
+  const seenKeys = new Set<string>();
   const uniqueEpisodes = kitsuEpisodes.filter((ep) => {
-    if (seenNumbers.has(ep.number)) return false;
-    seenNumbers.add(ep.number);
+    const key = `${ep.seasonNumber}:${ep.number}`;
+    if (seenKeys.has(key)) return false;
+    seenKeys.add(key);
     return true;
   });
 

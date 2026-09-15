@@ -360,6 +360,37 @@ describe("refetchEpisodes", () => {
     );
   });
 
+  // Regressão (13ª rodada de auditoria, Epic 18): number "reinicia a cada
+  // temporada" (comentário do próprio schema em Episode.number), então um
+  // anime com múltiplas seasonNumber na mesma entrada Kitsu (ex.: One Piece)
+  // tem episódios de temporadas diferentes com o mesmo `number`. O dedup por
+  // `ep.number` sozinho (sem `seasonNumber`) descartava silenciosamente toda
+  // a 2ª temporada em diante sempre que a numeração local colidia com a 1ª —
+  // nem chegava a bater no @@unique do banco, sumia antes disso.
+  it("keeps episodes from different seasons even when their per-season number repeats", async () => {
+    searchKitsuAnime.mockResolvedValueOnce(makeKitsuMatch());
+    getKitsuEpisodes.mockResolvedValueOnce([
+      makeKitsuEpisode({ number: 1, seasonNumber: 1, titleRomaji: "S1E1" }),
+      makeKitsuEpisode({ number: 2, seasonNumber: 1, titleRomaji: "S1E2" }),
+      makeKitsuEpisode({ number: 1, seasonNumber: 2, titleRomaji: "S2E1" }),
+      makeKitsuEpisode({ number: 2, seasonNumber: 2, titleRomaji: "S2E2" }),
+    ]);
+    findMany.mockResolvedValueOnce([]);
+
+    await refetchEpisodes(makeAnime({ kitsuId: 42 }));
+
+    expect(createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: [
+          expect.objectContaining({ number: 1, seasonNumber: 1, titleRomaji: "S1E1" }),
+          expect.objectContaining({ number: 2, seasonNumber: 1, titleRomaji: "S1E2" }),
+          expect.objectContaining({ number: 1, seasonNumber: 2, titleRomaji: "S2E1" }),
+          expect.objectContaining({ number: 2, seasonNumber: 2, titleRomaji: "S2E2" }),
+        ],
+      })
+    );
+  });
+
   it("reports an error when Kitsu has no episodes registered", async () => {
     searchKitsuAnime.mockResolvedValueOnce(makeKitsuMatch());
     getKitsuEpisodes.mockResolvedValueOnce([]);

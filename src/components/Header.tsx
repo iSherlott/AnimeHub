@@ -203,6 +203,8 @@ export function Header() {
               MUI) fica com folga real acima do pior caso e ainda abaixo
               dos 1280px comuns. */}
           <Box
+            component="nav"
+            aria-label="Navegação principal"
             sx={{
               display: "none",
               "@media (min-width:1240px)": { display: "block" },
@@ -270,12 +272,14 @@ export function Header() {
               gap: 3,
             }}
           >
-            <NavLinks
-              pathname={pathname}
-              user={user}
-              onNavigate={() => setMobileOpen(false)}
-              direction="column"
-            />
+            <Box component="nav" aria-label="Navegação principal">
+              <NavLinks
+                pathname={pathname}
+                user={user}
+                onNavigate={() => setMobileOpen(false)}
+                direction="column"
+              />
+            </Box>
             <Divider />
             <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>
               <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>

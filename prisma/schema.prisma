@@ -199,7 +199,10 @@ model Episode {
   airDate       DateTime?
   createdAt     DateTime  @default(now())
 
-  @@unique([animeId, number])
+  /// seasonNumber entra na chave (não só number sozinho): o número reinicia
+  /// a cada temporada dentro do mesmo anime (ver comentário acima), então
+  /// S1E1 e S2E1 são episódios distintos e legítimos, não um conflito.
+  @@unique([animeId, seasonNumber, number])
 }
 
 model PlatformLink {

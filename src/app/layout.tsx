@@ -39,7 +39,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <AppRouterCacheProvider>
           <MuiProviders>
             <CurrentUserProvider>
-              <TitlePreferenceProvider>{children}</TitlePreferenceProvider>
+              <TitlePreferenceProvider>
+                {/* Landmark de leitor de tela — sem isso não havia nenhum
+                    <main>/<nav> em toda a árvore, então "pular pro conteúdo"
+                    não tinha destino nenhum (achado real da 12ª rodada de
+                    auditoria, Epic 18, confirmado e corrigido na 13ª). Cada
+                    página já injeta seu próprio <Header/>, então este <main>
+                    só envolve o restante do conteúdo. */}
+                <main className="flex flex-1 flex-col">{children}</main>
+              </TitlePreferenceProvider>
             </CurrentUserProvider>
           </MuiProviders>
         </AppRouterCacheProvider>
