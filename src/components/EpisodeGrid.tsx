@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import { Box, Chip, Typography } from "@mui/material";
+import { Box, MenuItem, Select, Stack, TextField, Typography, type SelectChangeEvent } from "@mui/material";
 import type { Episode } from "@prisma/client";
 import { resolveTitleTextLenient, useTitlePreference } from "@/lib/titlePreference";
 
-function EpisodeTile({
+function EpisodeRow({
   ep,
   fallbackImage,
   watched,
@@ -31,56 +31,79 @@ function EpisodeTile({
   const [broken, setBroken] = useState(false);
 
   return (
-    <Box
+    <Stack
       data-testid={`episode-tile-${ep.seasonNumber}-${ep.number}`}
-      title={ep.titleJapanese ? `${title} — ${ep.titleJapanese}` : title}
-      sx={{ overflow: "hidden", border: 1, borderColor: "divider", bgcolor: "background.paper" }}
+      direction="row"
+      spacing={1.5}
+      sx={{
+        alignItems: "stretch",
+        border: 1,
+        borderColor: "divider",
+        bgcolor: "background.paper",
+        opacity: watched ? 0.6 : 1,
+      }}
     >
-      <Box sx={{ position: "relative", aspectRatio: "16 / 9", width: "100%", overflow: "hidden", bgcolor: "background.default" }}>
+      <Box
+        sx={{
+          position: "relative",
+          flexShrink: 0,
+          width: { xs: 112, sm: 160 },
+          aspectRatio: "16 / 9",
+          overflow: "hidden",
+          bgcolor: "background.default",
+        }}
+      >
         {image && !broken ? (
           <Image
             src={image}
-            alt={title}
+            alt=""
             fill
-            sizes="240px"
-            style={{ objectFit: "cover", opacity: watched ? 0.45 : 1 }}
+            sizes="160px"
+            style={{ objectFit: "cover" }}
             onError={() => setBroken(true)}
           />
         ) : (
-          <Box sx={{ display: "flex", height: "100%", width: "100%", alignItems: "center", justifyContent: "center", opacity: watched ? 0.45 : 1 }}>
-            <Typography className="font-display" sx={{ fontSize: 28, color: "text.secondary" }}>
+          <Box sx={{ display: "flex", height: "100%", width: "100%", alignItems: "center", justifyContent: "center" }}>
+            <Typography className="font-display" sx={{ fontSize: 22, color: "text.secondary" }}>
               {ep.number}
             </Typography>
           </Box>
         )}
-        <Chip
-          label={`EP ${ep.number}`}
-          size="small"
-          sx={{ position: "absolute", left: 6, top: 6, height: 20, fontSize: 10, fontWeight: 700, bgcolor: "rgba(11,11,13,0.85)", color: "primary.main" }}
-        />
-        {watched && (
-          <Box
-            role="img"
-            aria-label="Já assistido"
+      </Box>
+
+      <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center", py: 1, pr: 1.5, gap: 0.25 }}>
+        <Typography
+          variant="body2"
+          sx={{ fontWeight: 700, color: watched ? "text.secondary" : "text.primary" }}
+        >
+          EP {ep.number} · {title}
+        </Typography>
+        {ep.synopsis && (
+          <Typography
+            variant="caption"
             sx={{
-              position: "absolute",
-              right: 6,
-              top: 6,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: "50%",
-              bgcolor: "rgba(11,11,13,0.85)",
+              color: "text.secondary",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
             }}
           >
-            <CheckCircleIcon sx={{ fontSize: 20, color: "success.main" }} />
-          </Box>
+            {ep.synopsis}
+          </Typography>
         )}
       </Box>
-      <Typography noWrap variant="body2" sx={{ p: 1, fontWeight: 500, color: watched ? "text.secondary" : "text.primary" }}>
-        {title}
-      </Typography>
-    </Box>
+
+      {watched && (
+        <Box
+          role="img"
+          aria-label="Já assistido"
+          sx={{ display: "flex", alignItems: "center", pr: 1.5, flexShrink: 0 }}
+        >
+          <CheckCircleIcon sx={{ fontSize: 20, color: "success.main" }} />
+        </Box>
+      )}
+    </Stack>
   );
 }
 
@@ -101,6 +124,22 @@ export function EpisodeGrid({
    * contra o número bruto do episódio. */
   watchedCount?: number;
 }) {
+  const seasonNumbers = useMemo(
+    () => Array.from(new Set(episodes.map((ep) => ep.seasonNumber))).sort((a, b) => a - b),
+    [episodes]
+  );
+  // `null` = "ainda sigo a temporada mais recente automaticamente" (usuário
+  // não mexeu no seletor) — nunca um `useState` inicializado 1 vez só com a
+  // última temporada de então, que ficava presa nesse valor pra sempre
+  // depois de "Atualizar dados" trazer uma temporada nova, já que esse
+  // componente não remonta nesse fluxo (achado real da revisão de código do
+  // redesenho da lista de episódios). `effectiveSeason` recalcula a cada
+  // render a partir do `seasonNumbers` atual.
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+  const mostRecentSeason = seasonNumbers[seasonNumbers.length - 1];
+  const effectiveSeason = seasonNumbers.length > 1 ? (selectedSeason ?? mostRecentSeason) : null;
+  const [query, setQuery] = useState("");
+
   if (episodes.length === 0) return null;
 
   const ordinalByEpisodeId = new Map<string, number>();
@@ -110,45 +149,55 @@ export function EpisodeGrid({
   const isWatched = (ep: Episode) =>
     typeof watchedCount === "number" && (ordinalByEpisodeId.get(ep.id) ?? Infinity) <= watchedCount;
 
-  const seasonNumbers = Array.from(new Set(episodes.map((ep) => ep.seasonNumber))).sort(
-    (a, b) => a - b
-  );
+  const needle = query.trim().toLowerCase();
+  const visibleEpisodes = episodes
+    .filter((ep) => effectiveSeason === null || ep.seasonNumber === effectiveSeason)
+    .filter((ep) => {
+      if (!needle) return true;
+      const haystack = [ep.titleRomaji, ep.titleEnglish, ep.titleJapanese, String(ep.number)]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(needle);
+    })
+    .sort((a, b) => a.number - b.number);
 
-  const gridSx = {
-    display: "grid",
-    gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(3, 1fr)", md: "repeat(4, 1fr)", lg: "repeat(5, 1fr)" },
-    gap: 1.5,
-  } as const;
-
-  if (seasonNumbers.length <= 1) {
-    return (
-      <Box sx={gridSx}>
-        {episodes.map((ep) => (
-          <EpisodeTile key={ep.id} ep={ep} fallbackImage={fallbackImage} watched={isWatched(ep)} />
-        ))}
-      </Box>
-    );
+  function handleSeasonChange(e: SelectChangeEvent<number>) {
+    setSelectedSeason(Number(e.target.value));
   }
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      {seasonNumbers.map((seasonNumber) => (
-        <Box key={seasonNumber}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-            <Box sx={{ width: 4, height: 12, bgcolor: "primary.main", transform: "skewX(-12deg)" }} />
-            <Typography variant="body2" className="font-display" sx={{ textTransform: "uppercase", color: "text.secondary" }}>
-              Temporada {seasonNumber}
-            </Typography>
-          </Box>
-          <Box sx={gridSx}>
-            {episodes
-              .filter((ep) => ep.seasonNumber === seasonNumber)
-              .map((ep) => (
-                <EpisodeTile key={ep.id} ep={ep} fallbackImage={fallbackImage} watched={isWatched(ep)} />
-              ))}
-          </Box>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap", alignItems: "center" }}>
+        {seasonNumbers.length > 1 && (
+          <Select value={effectiveSeason ?? mostRecentSeason} onChange={handleSeasonChange} size="small" aria-label="Temporada">
+            {seasonNumbers.map((s) => (
+              <MenuItem key={s} value={s}>
+                Temporada {s}
+              </MenuItem>
+            ))}
+          </Select>
+        )}
+        <TextField
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar episódio..."
+          size="small"
+          sx={{ minWidth: 200, flex: { xs: 1, sm: "unset" } }}
+        />
+      </Stack>
+
+      {visibleEpisodes.length === 0 ? (
+        <Typography variant="body2" sx={{ color: "text.secondary" }}>
+          Nenhum episódio bate com essa busca.
+        </Typography>
+      ) : (
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          {visibleEpisodes.map((ep) => (
+            <EpisodeRow key={ep.id} ep={ep} fallbackImage={fallbackImage} watched={isWatched(ep)} />
+          ))}
         </Box>
-      ))}
+      )}
     </Box>
   );
 }

@@ -183,10 +183,26 @@ export async function refreshAnimeData(initialAnime: Anime): Promise<RefreshResu
       });
 
       if (anidbData.episodes.length > 0) {
+        // A AniDB não traz sinopse nem miniatura por episódio — só título e
+        // data. Sem preservar o que o passo da Kitsu (refetchEpisodes, logo
+        // acima) já tinha acabado de gravar pro mesmo número de episódio,
+        // esse deleteMany+createMany apagava esses 2 campos toda vez que o
+        // anime também tinha AniDB ID vinculado (achado real da revisão de
+        // código do redesenho da lista de episódios).
+        const existingByNumber = new Map(
+          (
+            await prisma.episode.findMany({
+              where: { animeId: id },
+              select: { number: true, synopsis: true, thumbnail: true },
+            })
+          ).map((ep) => [ep.number, ep])
+        );
+
         await prisma.episode.deleteMany({ where: { animeId: id } });
         await prisma.episode.createMany({
           data: anidbData.episodes.map((ep) => {
             const num = parseInt(ep.number.replace(/\D/g, ""), 10) || 0;
+            const existing = existingByNumber.get(num);
             return {
               animeId: id,
               number: num,
@@ -197,6 +213,8 @@ export async function refreshAnimeData(initialAnime: Anime): Promise<RefreshResu
               titleRomaji: ep.titles.find((t) => t.language === "x-jat")?.title ?? null,
               titleEnglish: ep.titles.find((t) => t.language === "en")?.title ?? null,
               titleJapanese: ep.titles.find((t) => t.language === "ja")?.title ?? null,
+              synopsis: existing?.synopsis ?? null,
+              thumbnail: existing?.thumbnail ?? null,
               airDate: ep.airDate ? new Date(ep.airDate) : null,
             };
           }),

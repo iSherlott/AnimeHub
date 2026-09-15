@@ -189,6 +189,12 @@ model Episode {
   /// título do anime (que sempre tem titleEnglish vindo da AniList).
   titleEnglish  String?
   titleJapanese String?
+  /// Sinopse curta do episódio — a Kitsu expõe isso no mesmo padrão do
+  /// `synopsis` que já é capturado no nível do anime (KitsuAnimeMatch),
+  /// só que por episódio. Usada na lista de episódios (redesenho inspirado
+  /// em sites de streaming — grade de cards sem contexto nenhum virou uma
+  /// lista com resumo por episódio).
+  synopsis      String?
   thumbnail     String?
   airDate       DateTime?
   createdAt     DateTime  @default(now())

@@ -229,6 +229,7 @@ describe("getKitsuEpisodes", () => {
             attributes: {
               number: 1,
               titles: { en_jp: "Romaji Title", en: "English Title" },
+              synopsis: "Episode synopsis.",
               thumbnail: { medium: "thumb-medium.jpg" },
               airdate: "2024-01-01",
             },
@@ -246,9 +247,30 @@ describe("getKitsuEpisodes", () => {
       titleRomaji: "Romaji Title",
       titleEnglish: "English Title",
       titleJapanese: null,
+      synopsis: "Episode synopsis.",
       thumbnail: "thumb-medium.jpg",
       airDate: "2024-01-01",
     });
+  });
+
+  it("falls back to description when synopsis is missing", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({
+        data: [
+          {
+            attributes: {
+              number: 1,
+              description: "Fallback description.",
+            },
+          },
+        ],
+        links: {},
+      })
+    );
+
+    const result = await getKitsuEpisodes(42);
+
+    expect(result[0].synopsis).toBe("Fallback description.");
   });
 
   it("falls back titleRomaji to canonicalTitle when en_jp is missing, without borrowing the English title", async () => {

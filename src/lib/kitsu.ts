@@ -36,6 +36,7 @@ export type KitsuEpisode = {
   titleRomaji: string | null;
   titleEnglish: string | null;
   titleJapanese: string | null;
+  synopsis: string | null;
   thumbnail: string | null;
   airDate: string | null;
 };
@@ -67,6 +68,8 @@ type KitsuEpisodesResponse = {
       seasonNumber?: number | null;
       canonicalTitle?: string | null;
       titles?: KitsuTitles;
+      synopsis?: string | null;
+      description?: string | null;
       thumbnail?: KitsuImage;
       airdate?: string | null;
     };
@@ -171,6 +174,7 @@ export async function getKitsuEpisodes(
         titleRomaji: titles.en_jp ?? attrs.canonicalTitle ?? null,
         titleEnglish: titles.en ?? null,
         titleJapanese: titles.ja_jp ?? null,
+        synopsis: attrs.synopsis ?? attrs.description ?? null,
         thumbnail: thumb.original ?? thumb.large ?? thumb.medium ?? null,
         airDate: attrs.airdate ?? null,
       });

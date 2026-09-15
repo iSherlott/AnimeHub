@@ -91,40 +91,59 @@ export default async function AnimeDetailPage({
     <div className="min-h-screen bg-ink pb-16">
       <Header />
 
-      <Box sx={{ position: "relative", height: { xs: 256, sm: 320 }, width: "100%", overflow: "hidden" }}>
-        {anime.bannerImage ? (
-          <BackdropImage src={anime.bannerImage} />
-        ) : (
-          <Box sx={{ height: "100%", width: "100%", bgcolor: "background.paper" }} />
-        )}
+      {/* Pôster sobreposto ao banner (não mais empilhado abaixo dele) —
+          mesmo padrão de hero de sites de streaming: a capa "fura" a
+          faixa do banner por baixo, o resto da info fica ao lado dela
+          (desktop) ou abaixo (mobile, onde não cabe lado a lado). */}
+      <Box sx={{ position: "relative", height: { xs: 256, sm: 320 }, width: "100%", overflow: "visible" }}>
+        <Box sx={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+          {anime.bannerImage ? (
+            <BackdropImage src={anime.bannerImage} />
+          ) : (
+            <Box sx={{ height: "100%", width: "100%", bgcolor: "background.paper" }} />
+          )}
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              background: anime.accentColor
+                ? `linear-gradient(to top, #0b0b0d, ${anime.accentColor}66, transparent)`
+                : "linear-gradient(to top, #0b0b0d, rgba(11,11,13,0.4), transparent)",
+            }}
+          />
+        </Box>
+
         <Box
           sx={{
             position: "absolute",
-            inset: 0,
-            background: anime.accentColor
-              ? `linear-gradient(to top, #0b0b0d, ${anime.accentColor}66, transparent)`
-              : "linear-gradient(to top, #0b0b0d, rgba(11,11,13,0.4), transparent)",
-          }}
-        />
-      </Box>
-
-      <Box sx={{ position: "relative", zIndex: 1, mt: -12, display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 3, px: { xs: 3, sm: 5 } }}>
-        <Box
-          sx={{
-            position: "relative",
-            mt: -1,
+            left: { xs: 24, sm: 40 },
+            bottom: { xs: -56, sm: -80 },
+            zIndex: 1,
             height: { xs: 224, sm: 288 },
             width: { xs: 160, sm: 192 },
-            flexShrink: 0,
             overflow: "hidden",
             border: 2,
             borderColor: "divider",
             bgcolor: "background.paper",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
           }}
         >
           {anime.coverImage ? <CoverImage src={anime.coverImage} sizes="192px" /> : null}
         </Box>
+      </Box>
 
+      <Box
+        sx={{
+          position: "relative",
+          zIndex: 1,
+          display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
+          gap: 3,
+          px: { xs: 3, sm: 5 },
+          pt: { xs: "72px", sm: 3 },
+          pl: { sm: `${192 + 40 + 24}px` },
+        }}
+      >
         <Box sx={{ display: "flex", flex: 1, flexDirection: "column", gap: 3 }}>
           <Box>
             <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap", alignItems: "center" }}>

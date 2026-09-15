@@ -56,6 +56,7 @@ async function fetchAndStoreEpisodes(
       titleRomaji: ep.titleRomaji,
       titleEnglish: ep.titleEnglish,
       titleJapanese: ep.titleJapanese,
+      synopsis: ep.synopsis,
       thumbnail: ep.thumbnail,
       airDate: ep.airDate ? new Date(ep.airDate) : null,
     })),
