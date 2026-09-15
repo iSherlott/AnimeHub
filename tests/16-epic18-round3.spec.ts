@@ -135,7 +135,14 @@ test.describe("Epic 18 — 3ª rodada — admin", () => {
   test("resetar senha abre num diálogo, sem sobrepor a tabela", async ({ page }) => {
     await page.goto("/admin");
 
-    const row = page.getByRole("row", { name: new RegExp(TEST_USER_EMAIL) });
+    // Nunca o TEST_USER_EMAIL compartilhado aqui — resetar senha derruba
+    // TODAS as sessões ativas dessa pessoa de propósito (segurança real,
+    // não bug), o que mataria a TEST_SESSION_TOKEN que o resto da suíte
+    // inteira usa como sessão padrão. Usa o terceiro usuário descartável
+    // já criado no beforeAll deste arquivo, cuja sessão nada mais depende
+    // de continuar viva depois deste teste (achado real, causa raiz de
+    // falhas aparentemente aleatórias em arquivos de teste posteriores).
+    const row = page.getByRole("row", { name: new RegExp(THIRD_USER_EMAIL) });
     await row.getByRole("button", { name: "Resetar senha" }).click();
 
     const dialog = page.getByRole("dialog", { name: "Nova senha temporária" });

@@ -19,16 +19,27 @@ export function SeriesGroupEditor({
   const [season, setSeason] = useState(seasonNumber);
 
   async function save() {
-    await fetch(`/api/anime/${animeId}/series`, {
+    const res = await fetch(`/api/anime/${animeId}/series`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ seriesKey: key, seasonNumber: season }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.error ?? "Falha ao salvar");
+    }
     router.refresh();
   }
 
   return (
-    <InlineEditField triggerLabel="Editar agrupamento de temporada" onSave={save}>
+    <InlineEditField
+      triggerLabel="Editar agrupamento de temporada"
+      onSave={save}
+      onCancel={() => {
+        setKey(seriesKey);
+        setSeason(seasonNumber);
+      }}
+    >
       <TextField
         value={key}
         onChange={(e) => setKey(e.target.value)}

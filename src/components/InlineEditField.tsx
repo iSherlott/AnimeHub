@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Button, Stack } from "@mui/material";
+import { Button, Stack, Typography } from "@mui/material";
 
 /**
  * Casca compartilhada do padrão "link de texto → formulário inline com
@@ -11,22 +11,37 @@ import { Button, Stack } from "@mui/material";
 export function InlineEditField({
   triggerLabel,
   onSave,
+  onCancel,
   extraContent,
   children,
 }: {
   triggerLabel: string;
+  /** Deve rejeitar (throw) em caso de validação ou falha de servidor — só
+   * assim o formulário fica aberto mostrando o erro em vez de fechar como
+   * se tivesse salvo (achado real da 5ª rodada de auditoria, Epic 18: o
+   * ID da AniDB inválido era descartado em silêncio, sem nenhum aviso). */
   onSave: () => Promise<void>;
+  /** Restaura o(s) campo(s) do editor pro último valor salvo — sem isso,
+   * "cancelar" só fechava o formulário e deixava o rascunho não salvo lá
+   * dentro; reabrir mostrava o rascunho cancelado, não o valor real, com
+   * risco real de sobrescrever o valor certo num "Salvar" futuro sem
+   * querer (achado real da 5ª rodada de auditoria, Epic 18). */
+  onCancel: () => void;
   extraContent?: ReactNode;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSave() {
     setSaving(true);
+    setError(null);
     try {
       await onSave();
       setOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Falha ao salvar");
     } finally {
       setSaving(false);
     }
@@ -64,9 +79,22 @@ export function InlineEditField({
       <Button onClick={handleSave} disabled={saving} size="small" variant="outlined">
         {saving ? "..." : "Salvar"}
       </Button>
-      <Button onClick={() => setOpen(false)} size="small" color="inherit">
+      <Button
+        onClick={() => {
+          setError(null);
+          onCancel();
+          setOpen(false);
+        }}
+        size="small"
+        color="inherit"
+      >
         cancelar
       </Button>
+      {error && (
+        <Typography variant="caption" color="error" sx={{ width: "100%" }}>
+          {error}
+        </Typography>
+      )}
     </Stack>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -78,6 +78,12 @@ export function AdminDashboard() {
     null
   );
   const [error, setError] = useState<string | null>(null);
+  // Guarda síncrona pra clique duplo/triplo rápido em "+ Gerar convite" —
+  // o `disabled={creatingInvite}` do botão só reflete depois do próximo
+  // render, e um clique real (não sintético) pode disparar de novo antes
+  // disso, gerando convites duplicados (achado real da 5ª rodada de
+  // auditoria, Epic 18).
+  const creatingInviteRef = useRef(false);
 
   async function loadAll() {
     setLoading(true);
@@ -150,6 +156,8 @@ export function AdminDashboard() {
   }, []);
 
   async function handleCreateInvite() {
+    if (creatingInviteRef.current) return;
+    creatingInviteRef.current = true;
     setCreatingInvite(true);
     setError(null);
     try {
@@ -161,6 +169,7 @@ export function AdminDashboard() {
       }
       await loadAll();
     } finally {
+      creatingInviteRef.current = false;
       setCreatingInvite(false);
     }
   }

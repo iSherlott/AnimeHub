@@ -54,6 +54,12 @@ export function FeedView() {
     hasMoreRef.current = hasMore;
     tabRef.current = tab;
   });
+  // Guarda síncrona pra clique duplo/triplo rápido no "Publicar" — o
+  // `disabled={posting}` do botão só reflete depois do próximo render, e
+  // um clique real (não sintético) pode disparar de novo antes disso,
+  // criando posts duplicados (achado real da 5ª rodada de auditoria,
+  // Epic 18). Um ref é síncrono, não espera render nenhum.
+  const postingRef = useRef(false);
 
   useEffect(() => {
     fetch("/api/anime")
@@ -143,6 +149,8 @@ export function FeedView() {
   async function handleSubmit() {
     const text = composerBody.trim();
     if (!composerAnimeId || !text) return;
+    if (postingRef.current) return;
+    postingRef.current = true;
     setPosting(true);
     setError(null);
     try {
@@ -164,6 +172,7 @@ export function FeedView() {
     } catch {
       setError("Falha ao publicar post");
     } finally {
+      postingRef.current = false;
       setPosting(false);
     }
   }

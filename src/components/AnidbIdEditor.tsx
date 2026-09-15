@@ -16,11 +16,23 @@ export function AnidbIdEditor({
   const [value, setValue] = useState(anidbId?.toString() ?? "");
 
   async function save() {
-    await fetch(`/api/anime/${animeId}/anidb`, {
+    const trimmed = value.trim();
+    // Validar aqui, não só confiar no servidor — antes, um valor não
+    // numérico virava NaN, serializava como null no JSON e era aceito em
+    // silêncio como "sem ID vinculado nenhum", sem aviso nenhum pra quem
+    // digitou errado (achado real da 5ª rodada de auditoria, Epic 18).
+    if (trimmed && !/^\d+$/.test(trimmed)) {
+      throw new Error("ID da AniDB deve ser um número inteiro positivo");
+    }
+    const res = await fetch(`/api/anime/${animeId}/anidb`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ anidbId: value.trim() ? Number(value.trim()) : null }),
+      body: JSON.stringify({ anidbId: trimmed ? Number(trimmed) : null }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.error ?? "Falha ao salvar");
+    }
     router.refresh();
   }
 
@@ -28,6 +40,7 @@ export function AnidbIdEditor({
     <InlineEditField
       triggerLabel={anidbId ? `AniDB #${anidbId} · editar` : "Vincular ID da AniDB"}
       onSave={save}
+      onCancel={() => setValue(anidbId?.toString() ?? "")}
       extraContent={
         <MuiLink
           href="https://anidb.net/"

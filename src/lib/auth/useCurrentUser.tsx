@@ -1,7 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import type { PublicUser } from "@/lib/auth/session";
 
 type CurrentUser = PublicUser | null | undefined;
@@ -22,7 +22,12 @@ const SetCurrentUserContext = createContext<(user: CurrentUser) => void>(() => {
  */
 export function CurrentUserProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [user, setUser] = useState<CurrentUser>(undefined);
+  const userRef = useRef(user);
+  useEffect(() => {
+    userRef.current = user;
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -38,6 +43,40 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [pathname]);
+
+  // Detecta sessão invalidada (expirada, deslogada em outra aba, revogada
+  // pelo admin) em QUALQUER requisição da árvore, não só na checagem
+  // periódica acima. Sem isso, uma ação autenticada que volta 401 enquanto
+  // a aba já estava aberta deixava o cabeçalho (ainda "logado", só
+  // reavaliado a cada troca de rota) e o conteúdo da página (que algumas
+  // ações já recarregam via router.refresh() mesmo em erro) em contradição
+  // visível, só se corrigindo na próxima navegação de verdade — achado
+  // real da 5ª rodada de auditoria (Epic 18). As rotas de /api/auth/*
+  // ficam de fora: um 401 de login com senha errada não significa que uma
+  // sessão válida caiu.
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const response = await originalFetch(...args);
+      if (response.status === 401 && userRef.current) {
+        const input = args[0];
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
+        if (!url.includes("/api/auth/")) {
+          setUser(null);
+          router.refresh();
+        }
+      }
+      return response;
+    };
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, [router]);
 
   return (
     <CurrentUserContext.Provider value={user}>

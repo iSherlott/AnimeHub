@@ -9,6 +9,15 @@ async function assertOwnsAnime(id: string, userId: string) {
   return anime?.userId === userId;
 }
 
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: NextRequest, { params }: Params) {
   const { user, response } = await requireUser();
   if (!user) return response;
@@ -32,6 +41,12 @@ export async function POST(request: NextRequest, { params }: Params) {
       { error: "platform e url são obrigatórios" },
       { status: 400 }
     );
+  }
+  // Sem isso, qualquer texto virava um link "clicável" que na prática não
+  // levava a lugar nenhum — nenhuma validação de formato existia, nem
+  // client nem server (achado real da 5ª rodada de auditoria, Epic 18).
+  if (!isValidHttpUrl(url)) {
+    return NextResponse.json({ error: "URL inválida" }, { status: 400 });
   }
 
   const link = await prisma.platformLink.upsert({

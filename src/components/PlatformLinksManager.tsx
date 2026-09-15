@@ -30,16 +30,38 @@ export function PlatformLinksManager({
   const [platform, setPlatform] = useState<string>(KNOWN_PLATFORMS[0]);
   const [url, setUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function addLink() {
-    if (!url.trim()) return;
+    const trimmed = url.trim();
+    if (!trimmed) return;
+    setError(null);
+    // Falha rápido sem round-trip pro servidor pra um erro de formato óbvio
+    // — mesma ideia do AnidbIdEditor. O servidor ainda revalida (defesa em
+    // profundidade), então isto é só uma resposta mais rápida, não a única
+    // barreira.
+    try {
+      const parsed = new URL(trimmed);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        setError("URL inválida");
+        return;
+      }
+    } catch {
+      setError("URL inválida");
+      return;
+    }
     setSaving(true);
     try {
-      await fetch(`/api/anime/${animeId}/platform-links`, {
+      const res = await fetch(`/api/anime/${animeId}/platform-links`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platform, url: url.trim() }),
+        body: JSON.stringify({ platform, url: trimmed }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setError(data?.error ?? "Falha ao vincular");
+        return;
+      }
       setUrl("");
       setFormOpen(false);
       router.refresh();
@@ -117,6 +139,11 @@ export function PlatformLinksManager({
 
       {formOpen && (
         <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", alignItems: "center" }}>
+          {error && (
+            <Typography variant="caption" color="error" sx={{ width: "100%" }}>
+              {error}
+            </Typography>
+          )}
           <NativeSelect
             value={platform}
             onChange={(e) => setPlatform(e.target.value)}
@@ -145,7 +172,14 @@ export function PlatformLinksManager({
           <Button onClick={addLink} disabled={saving} data-testid="platform-link-submit" variant="outlined" size="small">
             {saving ? "Salvando..." : "Vincular"}
           </Button>
-          <Button onClick={() => setFormOpen(false)} size="small" color="inherit">
+          <Button
+            onClick={() => {
+              setError(null);
+              setFormOpen(false);
+            }}
+            size="small"
+            color="inherit"
+          >
             cancelar
           </Button>
         </Stack>

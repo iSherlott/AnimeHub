@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import FlagIcon from "@mui/icons-material/Flag";
 import DeleteIcon from "@mui/icons-material/Delete";
 import {
@@ -48,6 +48,12 @@ export function CommentSection({ animeId }: { animeId: string }) {
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Guarda síncrona pra clique duplo/triplo rápido em "Comentar" — o
+  // `disabled={posting}` do botão só reflete depois do próximo render, e
+  // um clique real (não sintético) pode disparar de novo antes disso,
+  // criando comentários duplicados (achado real da 5ª rodada de
+  // auditoria, Epic 18).
+  const postingRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,6 +73,8 @@ export function CommentSection({ animeId }: { animeId: string }) {
   async function handlePost() {
     const text = draft.trim();
     if (!text) return;
+    if (postingRef.current) return;
+    postingRef.current = true;
     setPosting(true);
     setError(null);
     try {
@@ -83,6 +91,7 @@ export function CommentSection({ animeId }: { animeId: string }) {
       setComments((prev) => [...prev, data.comment]);
       setDraft("");
     } finally {
+      postingRef.current = false;
       setPosting(false);
     }
   }
