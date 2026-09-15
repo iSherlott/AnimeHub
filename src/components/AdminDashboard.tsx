@@ -21,6 +21,19 @@ import {
   Typography,
 } from "@mui/material";
 
+/** A tabela de Usuários rola na horizontal no mobile pra caber Desde/Ações
+ * — sem fixar a 1ª coluna, rolar até "Resetar senha" (ação que derruba
+ * sessões da pessoa) tira "Nome" de vista por completo, deixando quem
+ * administra sem saber em qual usuário está prestes a clicar (achado real
+ * da 7ª rodada de auditoria, Epic 18). `bgcolor` opaco é necessário pra não
+ * deixar o resto da linha "vazar" por baixo da coluna fixa ao rolar. */
+const STICKY_NAME_CELL_SX = {
+  position: "sticky",
+  left: 0,
+  bgcolor: "background.paper",
+  zIndex: 1,
+} as const;
+
 type AdminUser = {
   id: string;
   email: string;
@@ -418,7 +431,7 @@ export function AdminDashboard() {
           <Table size="small" aria-label="Usuários cadastrados">
             <TableHead>
               <TableRow>
-                <TableCell>Nome</TableCell>
+                <TableCell sx={STICKY_NAME_CELL_SX}>Nome</TableCell>
                 <TableCell>E-mail</TableCell>
                 <TableCell>Desde</TableCell>
                 <TableCell align="right">Ações</TableCell>
@@ -427,7 +440,7 @@ export function AdminDashboard() {
             <TableBody>
               {users.map((u) => (
                 <TableRow key={u.id}>
-                  <TableCell>
+                  <TableCell sx={STICKY_NAME_CELL_SX}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
                         {u.displayName}
