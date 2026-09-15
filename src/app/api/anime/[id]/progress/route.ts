@@ -10,7 +10,10 @@ export async function PATCH(request: Request, { params }: Params) {
   if (!user) return response;
 
   const { id } = await params;
-  const anime = await prisma.anime.findUnique({ where: { id }, select: { id: true, userId: true } });
+  const anime = await prisma.anime.findUnique({
+    where: { id },
+    select: { id: true, userId: true, episodes: true },
+  });
   if (!anime || anime.userId !== user.id) {
     return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
   }
@@ -40,22 +43,37 @@ export async function PATCH(request: Request, { params }: Params) {
     if (body.status === "COMPLETED") data.completedAt = new Date();
   }
 
+  // Só a UI (ProgressEditor.tsx) manda valor pra estes 2 campos hoje, e ela
+  // já clampa antes de chamar essa rota — mas a rota em si aceitava
+  // qualquer number, inclusive negativo ou muito acima do total de
+  // episódios, via chamada direta à API (achado real da 9ª rodada de
+  // auditoria, Epic 18: PATCH episodeProgress: 999999999 era salvo e
+  // renderizava assim na tela). Mesmo padrão de validação já usado pela
+  // rota de anidbId — rejeita explicitamente em vez de aceitar em silêncio.
   if (body.episodeProgress !== undefined) {
-    const value = Number(body.episodeProgress);
-    if (Number.isNaN(value)) {
+    const maxEpisode = anime.episodes ?? Number.MAX_SAFE_INTEGER;
+    if (
+      typeof body.episodeProgress !== "number" ||
+      !Number.isInteger(body.episodeProgress) ||
+      body.episodeProgress < 0 ||
+      body.episodeProgress > maxEpisode
+    ) {
       return NextResponse.json({ error: "episodeProgress inválido" }, { status: 400 });
     }
-    data.episodeProgress = value;
+    data.episodeProgress = body.episodeProgress;
   }
   if (body.score !== undefined) {
     if (body.score === null) {
       data.score = null;
+    } else if (
+      typeof body.score !== "number" ||
+      !Number.isInteger(body.score) ||
+      body.score < 0 ||
+      body.score > 10
+    ) {
+      return NextResponse.json({ error: "score inválido" }, { status: 400 });
     } else {
-      const value = Number(body.score);
-      if (Number.isNaN(value)) {
-        return NextResponse.json({ error: "score inválido" }, { status: 400 });
-      }
-      data.score = value;
+      data.score = body.score;
     }
   }
   if (body.notes !== undefined) {

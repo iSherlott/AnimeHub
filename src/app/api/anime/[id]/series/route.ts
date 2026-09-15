@@ -27,6 +27,25 @@ export async function PATCH(request: Request, { params }: Params) {
     );
   }
 
+  // Sem essa checagem, 2 animes do mesmo usuário podiam ficar com o mesmo
+  // seriesKey+seasonNumber ao mesmo tempo — o SeasonSwitcher renderizava 2
+  // chips idênticos de "Temporada N" lado a lado, sem crashar mas
+  // confuso/quebrado visualmente (achado real da 9ª rodada de auditoria,
+  // Epic 18). Checagem prévia (não constraint no banco) porque reorganizar
+  // temporadas manualmente pode legitimamente precisar de um estado
+  // intermediário passageiro — bloquear só a colisão final, não o meio do
+  // caminho.
+  const conflict = await prisma.anime.findFirst({
+    where: { userId: user.id, seriesKey, seasonNumber, NOT: { id } },
+    select: { id: true, titleRomaji: true },
+  });
+  if (conflict) {
+    return NextResponse.json(
+      { error: `"${conflict.titleRomaji}" já está na Temporada ${seasonNumber} desse agrupamento` },
+      { status: 409 }
+    );
+  }
+
   const anime = await prisma.anime.update({
     where: { id },
     data: { seriesKey, seasonNumber },
