@@ -40,6 +40,7 @@ export function TitleEditor({
         placeholder="título em português (opcional)"
         size="small"
         sx={{ width: 256 }}
+        slotProps={{ htmlInput: { maxLength: 200 } }}
       />
     </InlineEditField>
   );

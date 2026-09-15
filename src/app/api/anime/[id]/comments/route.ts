@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
+import { isBlank } from "@/lib/text";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -79,7 +80,10 @@ export async function POST(request: Request, { params }: Params) {
   }
 
   const text = typeof body.body === "string" ? body.body.trim() : "";
-  if (!text) {
+  // isBlank (não só !text) — ver src/lib/text.ts: um comentário só de
+  // zero-width space passava por .trim() como "não vazio" (achado real da
+  // 11ª rodada de auditoria, Epic 18, originalmente visto no título em PT).
+  if (isBlank(text)) {
     return NextResponse.json({ error: "Comentário não pode ser vazio" }, { status: 400 });
   }
   if (text.length > MAX_BODY_LENGTH) {

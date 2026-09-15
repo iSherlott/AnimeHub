@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { deriveSeriesInfo } from "@/lib/series";
 import { requireUser } from "@/lib/auth/session";
@@ -110,6 +111,22 @@ export async function POST(request: NextRequest) {
       include: { platformLinks: true, progress: true },
     });
   } catch (error) {
+    // A checagem de duplicata acima (findUnique) não é atômica com este
+    // create — 2 requisições pro mesmo anilistId quase ao mesmo tempo (ex.:
+    // duplo clique, 2 abas) podem passar as duas pela checagem antes de
+    // qualquer uma terminar de criar, e a 2ª bate na constraint
+    // @@unique([userId, anilistId]) aqui. Sem tratar isso, virava um 500
+    // cru em vez do mesmo 409 amigável que a checagem prévia já devolve
+    // pro caso não-concorrente (achado real da 11ª rodada de auditoria,
+    // Epic 18 — mesma família do achado alto da 8ª rodada, só que sem
+    // corromper dado desta vez: a constraint segura, só a resposta que
+    // ficava feia).
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return NextResponse.json({ error: "Anime já está na sua lista" }, { status: 409 });
+    }
     console.error(error);
     return NextResponse.json(
       { error: "Falha ao salvar o anime no banco de dados" },

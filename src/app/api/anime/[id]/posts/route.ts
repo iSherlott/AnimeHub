@@ -2,19 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { toPostDto } from "@/lib/postDto";
+import { isValidHttpUrl } from "@/lib/url";
+import { isBlank } from "@/lib/text";
 
 type Params = { params: Promise<{ id: string }> };
 
 const MAX_BODY_LENGTH = 500;
-
-function isValidImageUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
 
 /**
  * `[id]` é a linha de Anime do próprio autor (não o anilistId) — o post
@@ -49,7 +42,9 @@ export async function POST(request: Request, { params }: Params) {
   }
 
   const text = typeof body.body === "string" ? body.body.trim() : "";
-  if (!text) {
+  // isBlank (não só !text) — ver src/lib/text.ts (achado real da 11ª
+  // rodada de auditoria, Epic 18).
+  if (isBlank(text)) {
     return NextResponse.json({ error: "Post não pode ser vazio" }, { status: 400 });
   }
   if (text.length > MAX_BODY_LENGTH) {
@@ -62,7 +57,7 @@ export async function POST(request: Request, { params }: Params) {
   let imageUrl: string | null = null;
   if (typeof body.imageUrl === "string" && body.imageUrl.trim()) {
     const trimmed = body.imageUrl.trim();
-    if (!isValidImageUrl(trimmed)) {
+    if (!isValidHttpUrl(trimmed)) {
       return NextResponse.json({ error: "URL de imagem inválida" }, { status: 400 });
     }
     imageUrl = trimmed;
