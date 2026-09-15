@@ -67,7 +67,7 @@ async function loadFollowingPage(userId: string, cursor: string | null, limit: n
   return { page, nextCursor };
 }
 
-async function loadRecommendedPage(offset: number, limit: number) {
+async function loadRecommendedPage(offset: number, limit: number, now: Date) {
   const window = await prisma.post.findMany({
     where: { deletedAt: null },
     orderBy: { createdAt: "desc" },
@@ -78,7 +78,6 @@ async function loadRecommendedPage(offset: number, limit: number) {
     },
   });
 
-  const now = new Date();
   const ranked = [...window].sort((a, b) => {
     const scoreDiff =
       computeRecommendedScore(b._count.likes, b.createdAt, now) -
@@ -107,6 +106,19 @@ export async function GET(request: Request) {
   }
 
   const offset = Math.max(0, Number(searchParams.get("offset")) || 0);
-  const { page, nextOffset } = await loadRecommendedPage(offset, limit);
-  return NextResponse.json({ posts: await toDtoPage(page, user.id), nextOffset });
+  // `since` fixa o instante usado pra calcular a pontuação (gravidade)
+  // durante toda uma sessão de rolagem — sem isso, cada página recalculava
+  // a pontuação com `new Date()` na hora da própria requisição, e como a
+  // taxa de decaimento é diferente por idade de post, 2 posts perto da
+  // borda entre páginas podiam trocar de ordem só pelo tempo passar entre
+  // 1 requisição e a próxima (nenhuma curtida/post novo precisa acontecer)
+  // — um post sumia da sessão de rolagem, outro aparecia duplicado (achado
+  // real da 15ª rodada de auditoria, Epic 18). O cliente manda de volta o
+  // `since` da 1ª página em cada página seguinte; sem ele (1ª página, ou
+  // uma chamada direta à API), cai pro comportamento de sempre.
+  const sinceParam = searchParams.get("since");
+  const since = sinceParam ? new Date(sinceParam) : null;
+  const now = since && !Number.isNaN(since.getTime()) ? since : new Date();
+  const { page, nextOffset } = await loadRecommendedPage(offset, limit, now);
+  return NextResponse.json({ posts: await toDtoPage(page, user.id), nextOffset, since: now.toISOString() });
 }

@@ -26,13 +26,27 @@ export async function DELETE(_request: Request, { params }: Params) {
   if (!user) return response;
 
   const { id } = await params;
-  const existing = await prisma.anime.findUnique({ where: { id }, select: { id: true, userId: true } });
+  const existing = await prisma.anime.findUnique({
+    where: { id },
+    select: { id: true, userId: true, anilistId: true },
+  });
   if (!existing || existing.userId !== user.id) {
     return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
   }
 
   try {
-    await prisma.anime.delete({ where: { id } });
+    // AiringAlert não tem FK pro Anime — é chaveado por (userId, anilistId,
+    // episode), pensado assim de propósito pra sobreviver um anime sendo
+    // removido e re-adicionado (não perde o "já visto"). Mas sem limpar na
+    // hora de remover de vez, um alerta de "no ar agora" ficava órfão
+    // (animeId nulo em tudo que o BFF resolve) até a retenção de 7 dias do
+    // notifier expirar — inflando a contagem de não-vistos com uma entrada
+    // que não leva a lugar nenhum (achado real da 15ª rodada de auditoria,
+    // Epic 18).
+    await prisma.$transaction([
+      prisma.airingAlert.deleteMany({ where: { userId: user.id, anilistId: existing.anilistId } }),
+      prisma.anime.delete({ where: { id } }),
+    ]);
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Falha ao remover o anime" }, { status: 500 });

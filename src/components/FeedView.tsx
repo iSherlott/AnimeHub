@@ -29,6 +29,13 @@ export function FeedView() {
   const [posts, setPosts] = useState<PostDTO[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [offset, setOffset] = useState<number>(0);
+  // Fixa o instante usado pra pontuação da aba "Recomendado" durante toda a
+  // sessão de rolagem — sem isso, cada página recalculava a pontuação com o
+  // relógio da própria requisição, e a ordem podia trocar entre uma página
+  // e a próxima só pelo tempo passar, sem curtida/post novo nenhum,
+  // pulando/repetindo posts (achado real da 15ª rodada de auditoria, Epic
+  // 18). Renovado a cada resetAndLoad (troca de aba, recarregar a 1ª página).
+  const [since, setSince] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -74,10 +81,19 @@ export function FeedView() {
   }, []);
 
   const loadPage = useCallback(
-    async (targetTab: FeedTab, cursorArg: string | null, offsetArg: number, replace: boolean) => {
+    async (
+      targetTab: FeedTab,
+      cursorArg: string | null,
+      offsetArg: number,
+      replace: boolean,
+      sinceArg: string | null
+    ) => {
       const params = new URLSearchParams({ tab: targetTab });
       if (targetTab === "following" && cursorArg) params.set("cursor", cursorArg);
-      if (targetTab === "recommended" && offsetArg) params.set("offset", String(offsetArg));
+      if (targetTab === "recommended") {
+        if (offsetArg) params.set("offset", String(offsetArg));
+        if (sinceArg) params.set("since", sinceArg);
+      }
       const res = await fetch(`/api/posts?${params.toString()}`);
       const data = await res.json();
       // Uma troca de aba pode deixar este fetch "para trás" (ex.: um
@@ -99,6 +115,7 @@ export function FeedView() {
       } else {
         setOffset(typeof data.nextOffset === "number" ? data.nextOffset : offsetArg);
         setHasMore(typeof data.nextOffset === "number");
+        if (typeof data.since === "string") setSince(data.since);
         if (replace) setSuggestions(null);
       }
     },
@@ -116,7 +133,8 @@ export function FeedView() {
       setCursor(null);
       setOffset(0);
       setHasMore(true);
-      loadPage(targetTab, null, 0, true).finally(() => setLoading(false));
+      setSince(null);
+      loadPage(targetTab, null, 0, true, null).finally(() => setLoading(false));
     },
     [loadPage]
   );
@@ -129,8 +147,8 @@ export function FeedView() {
   const loadMore = useCallback(() => {
     if (loadingMoreRef.current || !hasMoreRef.current) return;
     setLoadingMore(true);
-    loadPage(tab, cursor, offset, false).finally(() => setLoadingMore(false));
-  }, [tab, cursor, offset, loadPage]);
+    loadPage(tab, cursor, offset, false, since).finally(() => setLoadingMore(false));
+  }, [tab, cursor, offset, since, loadPage]);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -268,7 +286,7 @@ export function FeedView() {
                     userId={s.id}
                     initialFollowing={false}
                     onChange={(following) => {
-                      if (following) loadPage("following", null, 0, true);
+                      if (following) loadPage("following", null, 0, true, null);
                     }}
                   />
                 </Stack>
