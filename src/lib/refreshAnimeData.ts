@@ -221,29 +221,49 @@ export async function refreshAnimeData(initialAnime: Anime): Promise<RefreshResu
           existingEpisodes.filter((ep) => numberCounts.get(ep.number) === 1).map((ep) => [ep.number, ep])
         );
 
-        await prisma.episode.deleteMany({ where: { animeId: id } });
-        await prisma.episode.createMany({
-          data: anidbData.episodes.map((ep) => {
-            const num = parseInt(ep.number.replace(/\D/g, ""), 10) || 0;
-            const existing = existingByNumber.get(num);
-            return {
+        // upsert por episódio, nunca deleteMany+createMany no anime
+        // inteiro: a AniDB não agrupa por temporada como a Kitsu — um
+        // anidbId cobre só 1 temporada/cour, então `anidbData.episodes` é
+        // só um subconjunto do que o anime pode ter. O deleteMany
+        // anterior apagava TODAS as temporadas do anime antes de recriar
+        // só essa (achado real da 14ª rodada de auditoria, Epic 18:
+        // vincular AniDB num anime de 3 temporadas — 30 episódios — e
+        // rodar "Atualizar dados" com uma AniDB de 12 episódios apagava os
+        // 18 episódios das outras 2 temporadas pra sempre, não só
+        // reagrupava errado). Upsert por (animeId, seasonNumber, number)
+        // só cria/atualiza os episódios que a própria AniDB está
+        // fornecendo dado novo, sem tocar em nenhum episódio de outra
+        // temporada que ela nem menciona.
+        for (const ep of anidbData.episodes) {
+          const num = parseInt(ep.number.replace(/\D/g, ""), 10) || 0;
+          const existing = existingByNumber.get(num);
+          const seasonNumber = existing?.seasonNumber ?? 1;
+          // "x-jat" (transliterado do japonês) é o romaji de verdade — sem
+          // cair pra "en" aqui, que agora tem seu próprio campo
+          // (titleEnglish), em vez de ser confundido com romaji quando a
+          // AniDB não tem x-jat pra esse episódio.
+          const titleRomaji = ep.titles.find((t) => t.language === "x-jat")?.title ?? null;
+          const titleEnglish = ep.titles.find((t) => t.language === "en")?.title ?? null;
+          const titleJapanese = ep.titles.find((t) => t.language === "ja")?.title ?? null;
+          const airDate = ep.airDate ? new Date(ep.airDate) : null;
+
+          await prisma.episode.upsert({
+            where: { animeId_seasonNumber_number: { animeId: id, seasonNumber, number: num } },
+            create: {
               animeId: id,
               number: num,
-              seasonNumber: existing?.seasonNumber ?? 1,
-              // "x-jat" (transliterado do japonês) é o romaji de verdade —
-              // sem cair pra "en" aqui, que agora tem seu próprio campo
-              // (titleEnglish), em vez de ser confundido com romaji quando
-              // a AniDB não tem x-jat pra esse episódio.
-              titleRomaji: ep.titles.find((t) => t.language === "x-jat")?.title ?? null,
-              titleEnglish: ep.titles.find((t) => t.language === "en")?.title ?? null,
-              titleJapanese: ep.titles.find((t) => t.language === "ja")?.title ?? null,
+              seasonNumber,
+              titleRomaji,
+              titleEnglish,
+              titleJapanese,
+              airDate,
               synopsis: existing?.synopsis ?? null,
               thumbnail: existing?.thumbnail ?? null,
-              airDate: ep.airDate ? new Date(ep.airDate) : null,
-            };
-          }),
-        });
-        episodeCount = anidbData.episodes.length;
+            },
+            update: { titleRomaji, titleEnglish, titleJapanese, airDate },
+          });
+        }
+        episodeCount = await prisma.episode.count({ where: { animeId: id } });
       }
 
       status.anidb = "ok";

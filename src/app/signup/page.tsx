@@ -64,8 +64,13 @@ function SignupForm() {
       >
         <TextField
           type="text"
-          label="Código de convite (opcional)"
-          helperText="Deixe em branco se for a primeira conta do sistema"
+          label="Código de convite"
+          // O rótulo dizia "(opcional)" incondicionalmente, mas a rota
+          // (POST /api/auth/signup) só aceita em branco pra primeiríssima
+          // conta do sistema — enganoso pra qualquer pessoa recebendo um
+          // convite de verdade, a esmagadora maioria de quem vê esta tela
+          // (achado real da 14ª rodada de auditoria, Epic 18).
+          helperText="Peça a um administrador — só fica em branco na 1ª conta do sistema"
           value={inviteCode}
           onChange={(e) => setInviteCode(e.target.value)}
           fullWidth
