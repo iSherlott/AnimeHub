@@ -30,8 +30,8 @@ export default async function MinhaListaPage() {
             Faça login para ver sua lista
           </Typography>
           <Typography variant="body2" sx={{ maxWidth: 448, color: "text.secondary" }}>
-            Descobrir e o calendário de lançamentos continuam livres pra
-            navegar sem conta — só a sua lista pessoal precisa de login.
+            O feed, Descobrir e o calendário de lançamentos continuam livres
+            pra navegar sem conta — só a sua lista pessoal precisa de login.
           </Typography>
           <LinkButton href="/login" variant="contained" sx={{ mt: 1 }}>
             Entrar

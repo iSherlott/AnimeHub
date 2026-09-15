@@ -161,6 +161,35 @@ export function FeedView() {
     resetAndLoad(tab);
   }, [tab, resetAndLoad]);
 
+  // Recarrega a página quando login/logout muda de verdade (não a 1ª vez
+  // que `useCurrentUser()` resolve de "carregando" pra um valor conhecido,
+  // que o efeito acima já cobre sozinho) — sem isso, deslogar não invalida
+  // os posts já carregados: `isMine`/`likedByMe`/`reportedByMe` continuam
+  // refletindo a sessão antiga (ex.: o ícone de apagar post ainda aparece
+  // em posts que eram "meus" antes de sair), já que só a árvore de Server
+  // Components é revalidada por `router.refresh()` no logout — o fetch do
+  // próprio FeedView não é. `null` no ref (nunca "já sabíamos que é
+  // true/false") marca "ainda não vi o 1º estado confirmado".
+  const wasLoggedInRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (user === undefined) return;
+    const isLoggedIn = Boolean(user);
+    if (wasLoggedInRef.current !== null && wasLoggedInRef.current !== isLoggedIn) {
+      // Deslogar enquanto em "Seguindo" já vai disparar seu próprio
+      // resetAndLoad (pro "Recomendado") através do efeito acima, que força
+      // a troca de aba nesse caso — recarregar aqui também só gastaria uma
+      // requisição a mais pra "Seguindo" sabendo de antemão que vai 401
+      // (a guarda de `loadPage` descarta a resposta com segurança, mas não
+      // custa evitar o disparo).
+      const willBeForcedOffFollowing = !isLoggedIn && tab === "following";
+      if (!willBeForcedOffFollowing) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        resetAndLoad(tab);
+      }
+    }
+    wasLoggedInRef.current = isLoggedIn;
+  }, [user, tab, resetAndLoad]);
+
   const loadMore = useCallback(() => {
     if (loadingMoreRef.current || !hasMoreRef.current) return;
     setLoadingMore(true);
