@@ -374,20 +374,42 @@ model Post {
   animeTitleEnglish String?
   animeCoverImage   String?
   body              String
-  /// URL colada pela pessoa (meme/imagem) — sem infraestrutura de upload
-  /// (nenhum campo de imagem no app tem uma hoje, nem User.avatarUrl).
-  /// Renderizado como <img> simples com onError, não passa pelo
-  /// next/image (fora do allowlist de remotePatterns).
-  imageUrl          String?
+  /// URLs coladas pela pessoa (meme/imagem, 0+, exibidas em carrossel) —
+  /// sem infraestrutura de upload (nenhum campo de imagem no app tem uma
+  /// hoje, nem User.avatarUrl). Renderizado como <img> simples com
+  /// onError, não passa pelo next/image (fora do allowlist de
+  /// remotePatterns). Sem imagem nenhuma, o corpo do post ocupa esse
+  /// mesmo espaço visual (Epic 25).
+  imageUrls         String[]  @default([])
   createdAt         DateTime  @default(now())
   /// Soft delete pelo autor ou por admin via fila de denúncia — mesmo
   /// padrão do Comment (Epic 15).
   deletedAt         DateTime?
 
+  /// Citação (Epic 25, estilo Twitter) — post novo com texto/imagem
+  /// próprios, embutindo uma pré-visualização só-leitura do citado.
+  /// SetNull: apagar o post citado não derruba quem o citou, só perde a
+  /// referência.
+  quotedPostId String?
+  quotedPost   Post?   @relation("PostQuotes", fields: [quotedPostId], references: [id], onDelete: SetNull)
+  quotedBy     Post[]  @relation("PostQuotes")
+
+  /// Repost (Epic 25) — linha própria (userId = quem repostou), sem
+  /// corpo/imagem próprios; o feed resolve o conteúdo exibido a partir
+  /// do original (repostOf). Curtida/comentário/citação sempre agem
+  /// sobre o ORIGINAL, nunca sobre a linha de repost em si — engajamento
+  /// não se fragmenta entre um post e cada repost dele (mesmo
+  /// comportamento do Twitter de verdade). Repostar um repost/citação
+  /// sempre aponta pro original de verdade (nunca uma cadeia).
+  repostOfId String?
+  repostOf   Post?   @relation("PostReposts", fields: [repostOfId], references: [id], onDelete: SetNull)
+  repostedBy Post[]  @relation("PostReposts")
+
   likes    PostLike[]
   reports  PostReport[]
   comments PostComment[]
 
+  @@unique([userId, repostOfId])
   @@index([anilistId])
   @@index([userId])
   @@index([deletedAt, createdAt])

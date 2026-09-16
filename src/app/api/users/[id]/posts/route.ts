@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
-import { toPostDto } from "@/lib/postDto";
+import { toDtoPage, POST_ROW_INCLUDE } from "@/lib/postFeedDto";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -12,6 +12,8 @@ const MAX_LIMIT = 50;
  * Posts de um autor específico (perfil público) — mesma paginação por
  * cursor da aba "Seguindo" do feed, só que filtrada por um único userId
  * em vez de uma lista de quem o viewer segue. Leitura não exige sessão.
+ * Inclui as linhas-repost dessa pessoa (Epic 25) — resolvidas pro
+ * original com a mesma atribuição "X repostou" do feed global.
  */
 export async function GET(request: Request, { params }: Params) {
   const { id } = await params;
@@ -27,11 +29,7 @@ export async function GET(request: Request, { params }: Params) {
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: limit + 1,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-    include: {
-      user: { select: { id: true, displayName: true } },
-      // PostComment tem soft delete — ver src/app/api/posts/route.ts.
-      _count: { select: { likes: true, comments: { where: { deletedAt: null } } } },
-    },
+    include: POST_ROW_INCLUDE,
   });
 
   const hasMore = rows.length > limit;
@@ -39,32 +37,9 @@ export async function GET(request: Request, { params }: Params) {
   const nextCursor = hasMore ? page[page.length - 1].id : null;
 
   const viewer = await getCurrentUser();
-  const postIds = page.map((p) => p.id);
-  const [myLikes, myOpenReports] = viewer
-    ? await Promise.all([
-        prisma.postLike.findMany({
-          where: { userId: viewer.id, postId: { in: postIds } },
-          select: { postId: true },
-        }),
-        prisma.postReport.findMany({
-          where: { reporterId: viewer.id, resolvedAt: null, postId: { in: postIds } },
-          select: { postId: true },
-        }),
-      ])
-    : [[], []];
-  const likedSet = new Set(myLikes.map((l) => l.postId));
-  const reportedSet = new Set(myOpenReports.map((r) => r.postId));
 
   return NextResponse.json({
-    posts: page.map((post) =>
-      toPostDto(post, {
-        viewerId: viewer?.id ?? null,
-        likeCount: post._count.likes,
-        likedByMe: likedSet.has(post.id),
-        reportedByMe: reportedSet.has(post.id),
-        commentCount: post._count.comments,
-      })
-    ),
+    posts: await toDtoPage(page, viewer?.id ?? null),
     nextCursor,
   });
 }

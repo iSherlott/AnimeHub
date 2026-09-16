@@ -90,18 +90,36 @@ test.describe("Feed com posts, curtidas e seguir (Epic 22)", () => {
     expect(res.status()).toBe(400);
   });
 
-  test("rejeita URL de imagem inválida e aceita uma válida", async ({ request }) => {
+  test("rejeita URL de imagem inválida e aceita uma lista válida (Epic 25 — carrossel)", async ({
+    request,
+  }) => {
     const invalid = await request.post(`/api/anime/${animeId}/posts`, {
-      data: { body: "post com imagem quebrada", imageUrl: "não-é-uma-url" },
+      data: { body: "post com imagem quebrada", imageUrls: ["não-é-uma-url"] },
     });
     expect(invalid.status()).toBe(400);
 
     const valid = await request.post(`/api/anime/${animeId}/posts`, {
-      data: { body: "post com imagem", imageUrl: "https://example.com/meme.png" },
+      data: {
+        body: "post com imagem",
+        imageUrls: ["https://example.com/meme.png", "https://example.com/meme2.png"],
+      },
     });
     expect(valid.status()).toBe(201);
     const data = await valid.json();
-    expect(data.post.imageUrl).toBe("https://example.com/meme.png");
+    expect(data.post.imageUrls).toEqual([
+      "https://example.com/meme.png",
+      "https://example.com/meme2.png",
+    ]);
+  });
+
+  test("rejeita mais de 6 imagens num post", async ({ request }) => {
+    const res = await request.post(`/api/anime/${animeId}/posts`, {
+      data: {
+        body: "post com imagens demais",
+        imageUrls: Array.from({ length: 7 }, (_, i) => `https://example.com/${i}.png`),
+      },
+    });
+    expect(res.status()).toBe(400);
   });
 
   test("anime que não é meu retorna 404 ao postar", async ({ request }) => {

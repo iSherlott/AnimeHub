@@ -1,48 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireUser } from "@/lib/auth/session";
-import { toPostDto, type PostDTO } from "@/lib/postDto";
+import { toDtoPage, POST_ROW_INCLUDE } from "@/lib/postFeedDto";
 import { computeRecommendedScore, RANKED_WINDOW_SIZE } from "@/lib/feedRanking";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
-
-type PostWithCount = Awaited<ReturnType<typeof loadFollowingPage>>["page"][number];
-
-/**
- * Carrega em lote (não um fetch por post) o estado de curtida/denúncia do
- * viewer pra essa página — mesma lógica de evitar N+1 usada em
- * myOpenReports na rota de comentários.
- */
-async function toDtoPage(page: PostWithCount[], viewerId: string | null): Promise<PostDTO[]> {
-  const postIds = page.map((p) => p.id);
-  // Leitura pública (viewer deslogado) não tem "minhas curtidas"/"minhas
-  // denúncias" — pula as 2 consultas em vez de rodar com userId nulo.
-  const [myLikes, myOpenReports] = viewerId
-    ? await Promise.all([
-        prisma.postLike.findMany({
-          where: { userId: viewerId, postId: { in: postIds } },
-          select: { postId: true },
-        }),
-        prisma.postReport.findMany({
-          where: { reporterId: viewerId, resolvedAt: null, postId: { in: postIds } },
-          select: { postId: true },
-        }),
-      ])
-    : [[], []];
-  const likedSet = new Set(myLikes.map((l) => l.postId));
-  const reportedSet = new Set(myOpenReports.map((r) => r.postId));
-
-  return page.map((post) =>
-    toPostDto(post, {
-      viewerId,
-      likeCount: post._count.likes,
-      likedByMe: likedSet.has(post.id),
-      reportedByMe: reportedSet.has(post.id),
-      commentCount: post._count.comments,
-    })
-  );
-}
 
 async function loadFollowingPage(userId: string, cursor: string | null, limit: number) {
   const followed = await prisma.follow.findMany({
@@ -60,14 +23,7 @@ async function loadFollowingPage(userId: string, cursor: string | null, limit: n
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: limit + 1,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-    include: {
-      user: { select: { id: true, displayName: true } },
-      // PostComment tem soft delete (deletedAt) — contar a relação crua
-      // sem filtro incluía comentários apagados no contador exibido no
-      // card (achado real de verificação ao vivo: um comentário apagado
-      // continuava contando depois de recarregar a página).
-      _count: { select: { likes: true, comments: { where: { deletedAt: null } } } },
-    },
+    include: POST_ROW_INCLUDE,
   });
 
   const hasMore = rows.length > limit;
@@ -104,14 +60,7 @@ async function loadRecommendedPage(offset: number, limit: number, now: Date) {
     // existe pra fechar — só que pelo empate, não pela janela em si.
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: RANKED_WINDOW_SIZE,
-    include: {
-      user: { select: { id: true, displayName: true } },
-      // PostComment tem soft delete (deletedAt) — contar a relação crua
-      // sem filtro incluía comentários apagados no contador exibido no
-      // card (achado real de verificação ao vivo: um comentário apagado
-      // continuava contando depois de recarregar a página).
-      _count: { select: { likes: true, comments: { where: { deletedAt: null } } } },
-    },
+    include: POST_ROW_INCLUDE,
   });
 
   const ranked = [...window].sort((a, b) => {

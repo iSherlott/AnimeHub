@@ -62,7 +62,11 @@ function DiscoverPageContent() {
   // URL, então dá pra ler direto no inicializador do state (diferente do
   // localStorage de filtersExpanded logo abaixo, que só existe no cliente).
   const searchParams = useSearchParams();
-  const [query, setQuery] = useState("");
+  // `?search=` — mesmo padrão de `?genre=` acima, usado pela lateral de
+  // threads de anime do Feed (Epic 25) pra linkar direto pra uma busca já
+  // preenchida, já que nem todo anilistId tem uma linha de Anime que o
+  // viewer atual possa abrir (posse é por usuário).
+  const [query, setQuery] = useState(() => searchParams.get("search") ?? "");
   const [searchResults, setSearchResults] = useState<DiscoverItem[]>([]);
   const [searchCached, setSearchCached] = useState(false);
   const [seasonResults, setSeasonResults] = useState<DiscoverItem[]>([]);

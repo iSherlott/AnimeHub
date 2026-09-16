@@ -2,10 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import NextLink from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import CloseIcon from "@mui/icons-material/Close";
 import {
   Alert,
   Box,
   Button,
+  IconButton,
   Link as MuiLink,
   MenuItem,
   Stack,
@@ -23,11 +26,15 @@ import type { PostDTO } from "@/lib/postDto";
 type FeedTab = "recommended" | "following";
 type MyAnime = { id: string; titleRomaji: string; titleEnglish: string | null };
 type Suggestion = { id: string; displayName: string };
+type Quoting = { id: string; author: string; snippet: string };
 
 const MAX_BODY_LENGTH = 500;
+const MAX_IMAGES = 6;
 
 export function FeedView() {
   const user = useCurrentUser();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const loggedOut = user === null;
   const [tab, setTab] = useState<FeedTab>("recommended");
   const [posts, setPosts] = useState<PostDTO[]>([]);
@@ -48,9 +55,14 @@ export function FeedView() {
   const [myAnime, setMyAnime] = useState<MyAnime[]>([]);
   const [composerAnimeId, setComposerAnimeId] = useState("");
   const [composerBody, setComposerBody] = useState("");
-  const [composerImageUrl, setComposerImageUrl] = useState("");
+  const [composerImageUrls, setComposerImageUrls] = useState("");
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Modo citação (Epic 25) — setado pelo botão "Citar" de um PostCard
+  // (aqui no próprio Feed) ou por navegação vinda do perfil de outro
+  // usuário (UserPostList.tsx não tem compositor próprio, então "Citar"
+  // lá volta pro Feed com esses 3 parâmetros na URL).
+  const [quoting, setQuoting] = useState<Quoting | null>(null);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   // Espelha loadingMore/hasMore/tab num ref pro callback do IntersectionObserver
@@ -80,6 +92,30 @@ export function FeedView() {
       .then((res) => res.json())
       .then((data) => setMyAnime(data.animes ?? []));
   }, [user]);
+
+  // "Citar" a partir do perfil de outra pessoa (UserPostList.tsx, que não
+  // tem compositor próprio) volta pro Feed com esses 3 parâmetros —
+  // consome uma vez ao montar e limpa a URL (router.replace, sem
+  // recarregar) pra não reabrir o mesmo modo citação numa navegação
+  // futura de volta pra "/".
+  useEffect(() => {
+    const quotePostId = searchParams.get("quotePostId");
+    if (!quotePostId) return;
+    // Consome um parâmetro de URL vindo de outra tela, não estado interno
+    // recalculado — sem efeito não tem outro jeito de ler a URL na
+    // montagem antes do 1º render útil.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setQuoting({
+      id: quotePostId,
+      author: searchParams.get("quoteAuthor") ?? "",
+      snippet: searchParams.get("quoteSnippet") ?? "",
+    });
+    router.replace("/");
+    // Só na montagem, de propósito: `searchParams`/`router` mudam de
+    // referência a cada navegação, e reagir a eles de novo reabriria o
+    // modo citação depois do próprio `router.replace` acima limpar a URL.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // "Seguindo" não existe sem conta — se a sessão cair (ou nunca existiu)
   // enquanto essa aba está selecionada, volta pra "Recomendado", a única
@@ -210,6 +246,10 @@ export function FeedView() {
     setPosts((prev) => prev.filter((p) => p.id !== id));
   }
 
+  function handleQuote(post: PostDTO) {
+    setQuoting({ id: post.id, author: post.author.displayName, snippet: post.body.slice(0, 80) });
+  }
+
   async function handleSubmit() {
     const text = composerBody.trim();
     if (!composerAnimeId || !text) return;
@@ -218,10 +258,19 @@ export function FeedView() {
     setPosting(true);
     setError(null);
     try {
+      const imageUrls = composerImageUrls
+        .split("\n")
+        .map((url) => url.trim())
+        .filter(Boolean)
+        .slice(0, MAX_IMAGES);
       const res = await fetch(`/api/anime/${composerAnimeId}/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: text, imageUrl: composerImageUrl.trim() || undefined }),
+        body: JSON.stringify({
+          body: text,
+          imageUrls,
+          quotedPostId: quoting?.id,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -232,7 +281,8 @@ export function FeedView() {
         setPosts((prev) => [data.post as PostDTO, ...prev]);
       }
       setComposerBody("");
-      setComposerImageUrl("");
+      setComposerImageUrls("");
+      setQuoting(null);
     } catch {
       setError("Falha ao publicar post");
     } finally {
@@ -273,6 +323,26 @@ export function FeedView() {
           </Typography>
         ) : (
           <Stack spacing={1.5}>
+            {quoting && (
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  p: 1,
+                  bgcolor: "background.default",
+                  borderRadius: 1,
+                }}
+              >
+                <Typography variant="caption" sx={{ color: "text.secondary", minWidth: 0 }} noWrap>
+                  Citando post de {quoting.author}: &ldquo;{quoting.snippet}&rdquo;
+                </Typography>
+                <IconButton onClick={() => setQuoting(null)} size="small" aria-label="Cancelar citação">
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Stack>
+            )}
             <TextField
               select
               label="Anime"
@@ -296,10 +366,12 @@ export function FeedView() {
               helperText={`${composerBody.length}/${MAX_BODY_LENGTH}`}
             />
             <TextField
-              value={composerImageUrl}
-              onChange={(e) => setComposerImageUrl(e.target.value)}
-              placeholder="URL de imagem (opcional)"
+              value={composerImageUrls}
+              onChange={(e) => setComposerImageUrls(e.target.value)}
+              placeholder={`URLs de imagem (opcional, uma por linha, até ${MAX_IMAGES})`}
               size="small"
+              multiline
+              maxRows={MAX_IMAGES}
             />
             <Box>
               <Button
@@ -361,7 +433,20 @@ export function FeedView() {
       ) : (
         <Box>
           {posts.map((post) => (
-            <PostCard key={post.id} post={post} onDeleted={handlePostDeleted} />
+            // Um repost resolve pro MESMO `post.id` do original (curtida/
+            // comentário sempre agem sobre o original — ver
+            // src/lib/postFeedDto.ts) — então o mesmo post pode aparecer
+            // 2x na mesma página (uma vez como ele mesmo, outra como
+            // repost de alguém), com `id` igual nas duas. A chave precisa
+            // diferenciar por QUEM repostou (ou "self" pro post original
+            // em si), senão o React vê 2 filhos com a mesma key (achado
+            // real de verificação ao vivo, Epic 25).
+            <PostCard
+              key={`${post.id}:${post.repostedBy?.id ?? "self"}`}
+              post={post}
+              onDeleted={handlePostDeleted}
+              onQuote={handleQuote}
+            />
           ))}
           <Box ref={sentinelRef} sx={{ height: 1 }} />
           {loadingMore && (

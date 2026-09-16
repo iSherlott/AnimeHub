@@ -8,6 +8,7 @@ import { isBlank } from "@/lib/text";
 type Params = { params: Promise<{ id: string }> };
 
 const MAX_BODY_LENGTH = 500;
+const MAX_IMAGES = 6;
 
 /**
  * `[id]` é a linha de Anime do próprio autor (não o anilistId) — o post
@@ -54,13 +55,44 @@ export async function POST(request: Request, { params }: Params) {
     );
   }
 
-  let imageUrl: string | null = null;
-  if (typeof body.imageUrl === "string" && body.imageUrl.trim()) {
-    const trimmed = body.imageUrl.trim();
-    if (!isValidHttpUrl(trimmed)) {
-      return NextResponse.json({ error: "URL de imagem inválida" }, { status: 400 });
+  const imageUrls: string[] = [];
+  if (body.imageUrls !== undefined) {
+    if (!Array.isArray(body.imageUrls)) {
+      return NextResponse.json({ error: "imageUrls deve ser uma lista" }, { status: 400 });
     }
-    imageUrl = trimmed;
+    if (body.imageUrls.length > MAX_IMAGES) {
+      return NextResponse.json(
+        { error: `No máximo ${MAX_IMAGES} imagens por post` },
+        { status: 400 }
+      );
+    }
+    for (const raw of body.imageUrls) {
+      if (typeof raw !== "string") {
+        return NextResponse.json({ error: "URL de imagem inválida" }, { status: 400 });
+      }
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+      if (!isValidHttpUrl(trimmed)) {
+        return NextResponse.json({ error: "URL de imagem inválida" }, { status: 400 });
+      }
+      imageUrls.push(trimmed);
+    }
+  }
+
+  // Citação (Epic 25) — confirma que o post citado existe e não foi
+  // apagado antes de gravar a referência. Sem exigir o mesmo anime do
+  // citado: citar é sobre o POST, o anime do post novo é sempre o que a
+  // pessoa escolheu no compositor, como qualquer outro post.
+  let quotedPostId: string | null = null;
+  if (typeof body.quotedPostId === "string" && body.quotedPostId.trim()) {
+    const quoted = await prisma.post.findUnique({
+      where: { id: body.quotedPostId.trim() },
+      select: { id: true, deletedAt: true },
+    });
+    if (!quoted || quoted.deletedAt) {
+      return NextResponse.json({ error: "Post citado não encontrado" }, { status: 404 });
+    }
+    quotedPostId = quoted.id;
   }
 
   const post = await prisma.post.create({
@@ -71,9 +103,13 @@ export async function POST(request: Request, { params }: Params) {
       animeTitleEnglish: anime.titleEnglish,
       animeCoverImage: anime.coverImage,
       body: text,
-      imageUrl,
+      imageUrls,
+      quotedPostId,
     },
-    include: { user: { select: { id: true, displayName: true } } },
+    include: {
+      user: { select: { id: true, displayName: true } },
+      quotedPost: { include: { user: { select: { id: true, displayName: true } } } },
+    },
   });
 
   return NextResponse.json(
@@ -84,6 +120,7 @@ export async function POST(request: Request, { params }: Params) {
         likedByMe: false,
         reportedByMe: false,
         commentCount: 0,
+        quotedPost: post.quotedPost,
       }),
     },
     { status: 201 }

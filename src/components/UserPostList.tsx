@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Box, Typography } from "@mui/material";
 import { PostCard } from "@/components/PostCard";
 import type { PostDTO } from "@/lib/postDto";
@@ -11,6 +12,7 @@ import type { PostDTO } from "@/lib/postDto";
  * GET /api/posts.
  */
 export function UserPostList({ userId }: { userId: string }) {
+  const router = useRouter();
   const [posts, setPosts] = useState<PostDTO[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
@@ -69,6 +71,20 @@ export function UserPostList({ userId }: { userId: string }) {
     setPosts((prev) => prev.filter((p) => p.id !== id));
   }
 
+  // Esta tela (perfil público de outra pessoa) não tem compositor próprio
+  // — "Citar" volta pro Feed (única tela com compositor) já em modo
+  // citação, via parâmetros de URL que o FeedView consome uma vez ao
+  // montar (PostCard já garante, antes de chamar isto, que o viewer está
+  // logado — ver handleQuoteClick lá).
+  function handleQuote(post: PostDTO) {
+    const params = new URLSearchParams({
+      quotePostId: post.id,
+      quoteAuthor: post.author.displayName,
+      quoteSnippet: post.body.slice(0, 80),
+    });
+    router.push(`/?${params.toString()}`);
+  }
+
   if (loading) {
     return (
       <Typography variant="body2" sx={{ color: "text.secondary" }}>
@@ -88,7 +104,15 @@ export function UserPostList({ userId }: { userId: string }) {
   return (
     <Box>
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} onDeleted={handlePostDeleted} />
+        // Ver FeedView.tsx — um repost resolve pro MESMO `post.id` do
+        // original, então precisa diferenciar a key por quem repostou
+        // (ou "self") pro React não ver 2 filhos com a mesma key.
+        <PostCard
+          key={`${post.id}:${post.repostedBy?.id ?? "self"}`}
+          post={post}
+          onDeleted={handlePostDeleted}
+          onQuote={handleQuote}
+        />
       ))}
       <Box ref={sentinelRef} sx={{ height: 1 }} />
       {loadingMore && (
