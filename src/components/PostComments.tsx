@@ -43,7 +43,9 @@ export function PostComments({
   onCountChange,
 }: {
   postId: string;
-  onCountChange: (delta: number) => void;
+  /** Contagem ABSOLUTA atual (não um delta) — ver comentário no efeito de
+   * carregamento abaixo sobre por que isso importa. */
+  onCountChange: (count: number) => void;
 }) {
   const user = useCurrentUser();
   const loggedOut = user === null;
@@ -72,6 +74,26 @@ export function PostComments({
     };
   }, [postId]);
 
+  // Sincroniza o contador do PostCard com a lista REAL sempre que ela
+  // muda de verdade (carregamento inicial, criar, apagar, ou desfazer um
+  // apagar que falhou) — nunca lendo `comments` direto dentro dos
+  // handlers abaixo, que ficaria preso a um closure antigo se 2 mudanças
+  // de estado terminarem fora de ordem (ex.: o GET inicial ainda em voo
+  // quando um "Comentar" já digitado é clicado) — um handler async
+  // comum não é notificado de mudanças de estado que aconteçam enquanto
+  // ele está em andamento. Um efeito, ao contrário, sempre roda depois
+  // do estado já estar committado, então nunca fica desatualizado dessa
+  // forma. `loading` evita reportar 0 no instante entre montar e o 1º
+  // fetch responder, sobrescrevendo por um instante a contagem certa que
+  // já veio do feed (achado real da 17ª rodada de auditoria, Epic 18 —
+  // o badge só andava por delta ±1 das próprias ações do viewer e nunca
+  // se corrigia contra a contagem real quando outra pessoa comentava/
+  // apagava enquanto a thread estava fechada).
+  useEffect(() => {
+    if (loading) return;
+    onCountChange(comments.length);
+  }, [comments, loading, onCountChange]);
+
   async function handlePost() {
     const text = draft.trim();
     if (!text) return;
@@ -91,7 +113,6 @@ export function PostComments({
         return;
       }
       setComments((prev) => [...prev, data.comment]);
-      onCountChange(1);
       setDraft("");
     } finally {
       postingRef.current = false;
@@ -103,18 +124,15 @@ export function PostComments({
     const removed = comments.find((c) => c.id === id);
     setError(null);
     setComments((prev) => prev.filter((c) => c.id !== id));
-    onCountChange(-1);
     try {
       const res = await fetch(`/api/posts/${postId}/comments/${id}`, { method: "DELETE" });
       if (!res.ok) {
         if (removed) setComments((prev) => [...prev, removed].sort(byCreatedAt));
-        onCountChange(1);
         const data = await res.json().catch(() => null);
         setError(data?.error ?? "Falha ao apagar comentário");
       }
     } catch {
       if (removed) setComments((prev) => [...prev, removed].sort(byCreatedAt));
-      onCountChange(1);
       setError("Falha ao apagar comentário");
     }
   }

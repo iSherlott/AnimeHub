@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
@@ -97,9 +97,19 @@ export function PostCard({
     }
   }
 
-  function handleCommentCountChange(delta: number) {
-    setCommentCount((c) => Math.max(0, c + delta));
-  }
+  // useCallback pra manter a mesma referência entre renders — o efeito de
+  // carregamento do PostComments depende disso pra não refazer o fetch
+  // toda vez que o PostCard re-renderiza por outro motivo (imagem
+  // quebrada, erro, etc.) enquanto a thread está aberta. Recebe a
+  // contagem ABSOLUTA (não mais um delta ±1): antes, o número só andava
+  // por cima/baixo das próprias ações do viewer e nunca se corrigia
+  // sozinho quando outra pessoa comentava/apagava enquanto a thread
+  // estava fechada — o badge ficava desatualizado e cada ação própria
+  // seguinte piorava o desvio em vez de corrigir (achado real da 17ª
+  // rodada de auditoria, Epic 18).
+  const handleCommentCountChange = useCallback((count: number) => {
+    setCommentCount(count);
+  }, []);
 
   return (
     <Box
