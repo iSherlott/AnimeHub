@@ -246,6 +246,36 @@ export function FeedView() {
     setPosts((prev) => prev.filter((p) => p.id !== id));
   }
 
+  // O MESMO post pode aparecer 2x nesta página (uma vez como ele mesmo,
+  // outra como repost de alguém — ver src/lib/postFeedDto.ts), então a
+  // contagem de comentário precisa ser atualizada em TODA entrada com
+  // esse `id`, não só na instância de PostCard onde a thread foi aberta
+  // (achado real da 18ª rodada de auditoria, Epic 18).
+  const handleCommentCountChange = useCallback((postId: string, count: number) => {
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, commentCount: count } : p)));
+  }, []);
+
+  // Mesmo raciocínio pro repost: `confirmed` distingue a atualização
+  // otimista (só troca o ícone em toda entrada com esse id — reversível
+  // sem perda se a requisição falhar) da confirmação do servidor (só aí
+  // é seguro remover do feed a entrada "eu repostei" que acabou de ser
+  // desfeita — removê-la otimisticamente antes de saber se a requisição
+  // teve sucesso deixaria a entrada perdida pra sempre num rollback).
+  // Sem isso, desfazer um repost deixava a faixa "Fulano repostou" e o
+  // card presos na tela até recarregar, e uma 2ª instância do mesmo post
+  // ficava com o ícone de repost desatualizado (achado real da 18ª
+  // rodada de auditoria, Epic 18).
+  const handleRepostChange = useCallback(
+    (postId: string, reposted: boolean, confirmed: boolean) => {
+      setPosts((prev) => {
+        const updated = prev.map((p) => (p.id === postId ? { ...p, repostedByMe: reposted } : p));
+        if (!confirmed || reposted || !user) return updated;
+        return updated.filter((p) => !(p.id === postId && p.repostedBy?.id === user.id));
+      });
+    },
+    [user]
+  );
+
   function handleQuote(post: PostDTO) {
     setQuoting({ id: post.id, author: post.author.displayName, snippet: post.body.slice(0, 80) });
   }
@@ -446,6 +476,8 @@ export function FeedView() {
               post={post}
               onDeleted={handlePostDeleted}
               onQuote={handleQuote}
+              onCommentCountChange={handleCommentCountChange}
+              onRepostChange={handleRepostChange}
             />
           ))}
           <Box ref={sentinelRef} sx={{ height: 1 }} />

@@ -52,11 +52,22 @@ export function PostCard({
   post,
   onDeleted,
   onQuote,
+  onCommentCountChange,
+  onRepostChange,
 }: {
   post: PostDTO;
   onDeleted: (id: string) => void;
   /** Sobe até o FeedView, que abre o compositor em modo citação (Epic 25). */
   onQuote: (post: PostDTO) => void;
+  /** Sobe até o FeedView/UserPostList — ver comentário logo abaixo sobre
+   * por que a contagem não pode viver só no estado local deste card. */
+  onCommentCountChange: (postId: string, count: number) => void;
+  /** Idem, pro estado de repost (ver comentário em handleRepostToggle).
+   * `confirmed` distingue a atualização otimista (só troca o ícone,
+   * nunca remove nada — segura de desfazer se a requisição falhar) da
+   * confirmação do servidor (só aí é seguro remover do feed a entrada
+   * "eu repostei" que acabou de ser desfeita). */
+  onRepostChange: (postId: string, reposted: boolean, confirmed: boolean) => void;
 }) {
   const user = useCurrentUser();
   const router = useRouter();
@@ -71,9 +82,7 @@ export function PostCard({
     titleEnglish: post.animeTitleEnglish,
   });
   const [reportedByMe, setReportedByMe] = useState(post.reportedByMe);
-  const [commentCount, setCommentCount] = useState(post.commentCount);
   const [commentsOpen, setCommentsOpen] = useState(false);
-  const [reposted, setReposted] = useState(post.repostedByMe);
   const [reposting, setReposting] = useState(false);
   // Ver AnimeCard — mesma correção pro ícone quebrado cru numa URL de capa
   // que 404 (achado real da 6ª rodada de auditoria, Epic 18). Campo da
@@ -127,14 +136,23 @@ export function PostCard({
     onQuote(post);
   }
 
+  // O estado de repost sobe pro pai (FeedView/UserPostList) em vez de
+  // viver só neste card — o MESMO post pode aparecer 2x na mesma página
+  // (uma vez como ele mesmo, outra como repost de alguém, ver
+  // src/lib/postFeedDto.ts), e as 2 instâncias de PostCard precisam
+  // concordar sobre "eu repostei isso?" e sobre a entrada "Fulano
+  // repostou" continuar válida. Sem isso, desfazer um repost deixava a
+  // faixa/o card da entrada antiga presos na tela até recarregar, e uma
+  // 2ª instância do mesmo post ficava com o ícone de repost desatualizado
+  // (achado real da 18ª rodada de auditoria, Epic 18).
   async function handleRepostToggle() {
     if (loggedOut) {
       router.push("/login");
       return;
     }
     if (reposting) return;
-    const next = !reposted;
-    setReposted(next);
+    const next = !post.repostedByMe;
+    onRepostChange(post.id, next, false);
     setReposting(true);
     try {
       const res = await fetch(`/api/posts/${post.id}/repost`, {
@@ -143,12 +161,14 @@ export function PostCard({
         body: JSON.stringify({ reposted: next }),
       });
       if (!res.ok) {
-        setReposted(!next);
+        onRepostChange(post.id, !next, false);
         const data = await res.json().catch(() => null);
         setError(data?.error ?? "Falha ao repostar");
+      } else {
+        onRepostChange(post.id, next, true);
       }
     } catch {
-      setReposted(!next);
+      onRepostChange(post.id, !next, false);
       setError("Falha ao repostar");
     } finally {
       setReposting(false);
@@ -159,15 +179,17 @@ export function PostCard({
   // carregamento do PostComments depende disso pra não refazer o fetch
   // toda vez que o PostCard re-renderiza por outro motivo (imagem
   // quebrada, erro, etc.) enquanto a thread está aberta. Recebe a
-  // contagem ABSOLUTA (não mais um delta ±1): antes, o número só andava
-  // por cima/baixo das próprias ações do viewer e nunca se corrigia
-  // sozinho quando outra pessoa comentava/apagava enquanto a thread
-  // estava fechada — o badge ficava desatualizado e cada ação própria
-  // seguinte piorava o desvio em vez de corrigir (achado real da 17ª
-  // rodada de auditoria, Epic 18).
-  const handleCommentCountChange = useCallback((count: number) => {
-    setCommentCount(count);
-  }, []);
+  // contagem ABSOLUTA (não mais um delta ±1, achado da 17ª rodada) e sobe
+  // pro pai (`onCommentCountChange`) em vez de guardar num estado local
+  // deste card — o MESMO post pode aparecer 2x na mesma página (uma vez
+  // como ele mesmo, outra como repost de alguém), e as 2 instâncias
+  // precisam mostrar a mesma contagem; um estado só local nunca soube da
+  // atividade na OUTRA instância (achado real da 18ª rodada de
+  // auditoria, Epic 18).
+  const handleCommentCountChange = useCallback(
+    (count: number) => onCommentCountChange(post.id, count),
+    [post.id, onCommentCountChange]
+  );
 
   const hasImages = post.imageUrls.length > 0;
 
@@ -277,7 +299,7 @@ export function PostCard({
             </IconButton>
           </Tooltip>
           <Typography variant="caption" sx={{ color: "text.secondary", minWidth: 16 }}>
-            {commentCount}
+            {post.commentCount}
           </Typography>
         </Stack>
 
@@ -287,14 +309,14 @@ export function PostCard({
           </IconButton>
         </Tooltip>
 
-        <Tooltip title={loggedOut ? "Entre para repostar" : reposted ? "Desfazer repost" : "Repostar"}>
+        <Tooltip title={loggedOut ? "Entre para repostar" : post.repostedByMe ? "Desfazer repost" : "Repostar"}>
           <IconButton
             onClick={handleRepostToggle}
             disabled={reposting}
             size="small"
-            aria-label={reposted ? "Desfazer repost" : "Repostar"}
+            aria-label={post.repostedByMe ? "Desfazer repost" : "Repostar"}
           >
-            {reposted ? (
+            {post.repostedByMe ? (
               <RepeatIcon fontSize="small" sx={{ color: "success.main" }} />
             ) : (
               <RepeatOutlinedIcon fontSize="small" />

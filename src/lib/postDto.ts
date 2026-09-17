@@ -89,7 +89,16 @@ export function toPostDto(
     likedByMe: opts.likedByMe,
     reportedByMe: opts.reportedByMe,
     commentCount: opts.commentCount,
-    quotedPost: opts.quotedPost ? toPostSummaryDto(opts.quotedPost) : null,
+    // `deletedAt` checado aqui, não só na criação — na criação já é
+    // impossível citar um post já apagado (POST valida isso), mas o post
+    // citado pode ser apagado DEPOIS, por qualquer leitura futura desta
+    // citação. Sem esse filtro, o conteúdo de um post apagado (corpo,
+    // autor, anime) continuava circulando pra sempre dentro de toda
+    // citação dele — um gap real de integridade/moderação (achado da 18ª
+    // rodada de auditoria, Epic 18): apagar um post por denúncia, por
+    // exemplo, não impedia o texto de continuar visível embutido em quem
+    // o citou. Mesmo padrão já usado por resolveRepostRows pro repost.
+    quotedPost: opts.quotedPost && !opts.quotedPost.deletedAt ? toPostSummaryDto(opts.quotedPost) : null,
     repostedBy: opts.repostedBy ?? null,
     repostedByMe: opts.repostedByMe ?? false,
   };

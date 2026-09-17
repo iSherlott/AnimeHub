@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Box, Typography } from "@mui/material";
 import { PostCard } from "@/components/PostCard";
+import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { PostDTO } from "@/lib/postDto";
 
 /**
@@ -13,6 +14,7 @@ import type { PostDTO } from "@/lib/postDto";
  */
 export function UserPostList({ userId }: { userId: string }) {
   const router = useRouter();
+  const user = useCurrentUser();
   const [posts, setPosts] = useState<PostDTO[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
@@ -71,6 +73,25 @@ export function UserPostList({ userId }: { userId: string }) {
     setPosts((prev) => prev.filter((p) => p.id !== id));
   }
 
+  // Ver FeedView.tsx pra explicação completa — o mesmo post pode aparecer
+  // 2x nesta lista (ele mesmo + repost de alguém), então contagem de
+  // comentário e estado de repost precisam se propagar pra toda entrada
+  // com o mesmo `id`, não só na instância clicada.
+  const handleCommentCountChange = useCallback((postId: string, count: number) => {
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, commentCount: count } : p)));
+  }, []);
+
+  const handleRepostChange = useCallback(
+    (postId: string, reposted: boolean, confirmed: boolean) => {
+      setPosts((prev) => {
+        const updated = prev.map((p) => (p.id === postId ? { ...p, repostedByMe: reposted } : p));
+        if (!confirmed || reposted || !user) return updated;
+        return updated.filter((p) => !(p.id === postId && p.repostedBy?.id === user.id));
+      });
+    },
+    [user]
+  );
+
   // Esta tela (perfil público de outra pessoa) não tem compositor próprio
   // — "Citar" volta pro Feed (única tela com compositor) já em modo
   // citação, via parâmetros de URL que o FeedView consome uma vez ao
@@ -112,6 +133,8 @@ export function UserPostList({ userId }: { userId: string }) {
           post={post}
           onDeleted={handlePostDeleted}
           onQuote={handleQuote}
+          onCommentCountChange={handleCommentCountChange}
+          onRepostChange={handleRepostChange}
         />
       ))}
       <Box ref={sentinelRef} sx={{ height: 1 }} />
