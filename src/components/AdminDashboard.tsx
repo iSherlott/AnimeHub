@@ -72,6 +72,12 @@ type AdminPostReport = {
   author: { displayName: string; email: string };
   reportCount: number;
   reporters: { displayName: string; email: string }[];
+  /** Quantos reposts/citações ativos referenciam este post — contexto que
+   * faltava antes de "Remover" (achado real da 23ª rodada de auditoria,
+   * Epic 18): removê-lo derruba o embed/a faixa desses posts em outro
+   * lugar do feed. */
+  repostCount: number;
+  quoteCount: number;
 };
 
 function fmtDate(iso: string): string {
@@ -224,7 +230,13 @@ export function AdminDashboard() {
             <Table size="small" aria-label="Denúncias de comentário pendentes">
               <TableHead>
                 <TableRow>
-                  <TableCell>Anime</TableCell>
+                  {/* Mesma correção da tabela de Usuários (achado real da
+                      7ª rodada) — nunca aplicada aqui nem na de posts
+                      abaixo, apesar de terem o mesmo padrão de ação
+                      destrutiva ("Remover") só alcançável rolando pro
+                      lado no mobile (achado real da 23ª rodada de
+                      auditoria, Epic 18). */}
+                  <TableCell sx={STICKY_NAME_CELL_SX}>Anime</TableCell>
                   <TableCell>Autor</TableCell>
                   <TableCell>Comentário</TableCell>
                   <TableCell align="right">Denúncias</TableCell>
@@ -234,7 +246,7 @@ export function AdminDashboard() {
               <TableBody>
                 {commentReports.map((r) => (
                   <TableRow key={r.commentId}>
-                    <TableCell sx={{ color: "text.secondary" }}>{r.animeTitle}</TableCell>
+                    <TableCell sx={{ ...STICKY_NAME_CELL_SX, color: "text.secondary" }}>{r.animeTitle}</TableCell>
                     <TableCell sx={{ color: "text.secondary" }}>{r.author.displayName}</TableCell>
                     <TableCell sx={{ maxWidth: 320 }}>
                       {r.commentDeleted ? (
@@ -302,7 +314,7 @@ export function AdminDashboard() {
             <Table size="small" aria-label="Denúncias de post pendentes">
               <TableHead>
                 <TableRow>
-                  <TableCell>Anime</TableCell>
+                  <TableCell sx={STICKY_NAME_CELL_SX}>Anime</TableCell>
                   <TableCell>Autor</TableCell>
                   <TableCell>Post</TableCell>
                   <TableCell align="right">Denúncias</TableCell>
@@ -312,7 +324,7 @@ export function AdminDashboard() {
               <TableBody>
                 {postReports.map((r) => (
                   <TableRow key={r.postId}>
-                    <TableCell sx={{ color: "text.secondary" }}>{r.animeTitleRomaji}</TableCell>
+                    <TableCell sx={{ ...STICKY_NAME_CELL_SX, color: "text.secondary" }}>{r.animeTitleRomaji}</TableCell>
                     <TableCell sx={{ color: "text.secondary" }}>{r.author.displayName}</TableCell>
                     <TableCell sx={{ maxWidth: 320 }}>
                       {r.postDeleted ? (
@@ -320,9 +332,27 @@ export function AdminDashboard() {
                           (já apagado pelo autor)
                         </Typography>
                       ) : (
-                        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                          {r.body}
-                        </Typography>
+                        <>
+                          <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                            {r.body}
+                          </Typography>
+                          {/* Contexto que faltava antes de decidir
+                              "Remover" (soft-delete) — sem isso, o admin
+                              não tinha como saber que ia derrubar
+                              silenciosamente o embed de citação/a faixa
+                              de repost pra quem vê esse post embutido em
+                              outro lugar do feed (achado real da 23ª
+                              rodada de auditoria, Epic 18). Só faz
+                              sentido aqui, não no ramo "já apagado" acima
+                              — lá "Remover" nem aparece mais. */}
+                          {(r.repostCount > 0 || r.quoteCount > 0) && (
+                            <Typography variant="caption" sx={{ display: "block", color: "warning.main", mt: 0.5 }}>
+                              ⚠ Remover afeta outros posts: {r.repostCount > 0 && `${r.repostCount} repost${r.repostCount === 1 ? "" : "s"}`}
+                              {r.repostCount > 0 && r.quoteCount > 0 && ", "}
+                              {r.quoteCount > 0 && `${r.quoteCount} citaç${r.quoteCount === 1 ? "ão" : "ões"}`}
+                            </Typography>
+                          )}
+                        </>
                       )}
                     </TableCell>
                     <TableCell align="right">

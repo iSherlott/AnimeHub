@@ -53,6 +53,27 @@ export async function GET() {
 
   const grouped = [...byPost.values()];
 
+  // Contexto que faltava antes do admin decidir "Remover" — sem isso, não
+  // havia como saber que apagar este post (soft delete) derruba
+  // silenciosamente o embed de citação/a faixa "Fulano repostou" pra quem
+  // vê esse post embutido em outro card do feed (achado real da 23ª
+  // rodada de auditoria, Epic 18). Uma consulta em lote pros posts desta
+  // página (evita N+1). `quotedBy` filtra `deletedAt: null` — uma citação
+  // já apagada não aparece em lugar nenhum do feed, então não é contexto
+  // relevante; `repostedBy` não precisa do mesmo filtro porque a linha de
+  // repost em si é hard-deleted ao desfazer (nunca soft-deleted).
+  const postIds = grouped.map((g) => g.postId);
+  const engagement = postIds.length
+    ? await prisma.post.findMany({
+        where: { id: { in: postIds } },
+        select: {
+          id: true,
+          _count: { select: { repostedBy: true, quotedBy: { where: { deletedAt: null } } } },
+        },
+      })
+    : [];
+  const engagementById = new Map(engagement.map((e) => [e.id, e._count]));
+
   return NextResponse.json({
     reports: grouped.map((g) => ({
       postId: g.postId,
@@ -63,6 +84,8 @@ export async function GET() {
       author: g.author,
       reportCount: g.reporters.length,
       reporters: g.reporters,
+      repostCount: engagementById.get(g.postId)?.repostedBy ?? 0,
+      quoteCount: engagementById.get(g.postId)?.quotedBy ?? 0,
     })),
   });
 }
