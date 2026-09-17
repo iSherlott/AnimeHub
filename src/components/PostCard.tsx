@@ -280,13 +280,20 @@ export function PostCard({
         // Sem imagem, o próprio texto do post ocupa o espaço visual
         // principal do card em vez de aparecer só como legenda pequena
         // embaixo (achado do pedido de redesenho, Epic 25) — cor de
-        // fundo consistente por anime (ver coverColor acima).
+        // fundo consistente por anime (ver coverColor acima). Mesma
+        // proporção (4/5) do PostImageCarousel, não mais um `minHeight`
+        // solto — card com foto e card só-texto precisam ocupar o MESMO
+        // tamanho de bloco visual pra manter um padrão entre eles (pedido
+        // direto). Post longo rola dentro do próprio bloco em vez de
+        // esticar a altura (que quebraria esse padrão de novo).
         <Box
           sx={{
-            minHeight: 160,
+            width: "100%",
+            aspectRatio: "4 / 5",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            overflowY: "auto",
             p: 3,
             borderRadius: 2,
             bgcolor: coverColor(post.anilistId),
