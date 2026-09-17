@@ -92,6 +92,12 @@ export function UserPostList({ userId }: { userId: string }) {
     [user]
   );
 
+  // Idem pra curtida (achado real da 19ª rodada de auditoria, Epic 18 —
+  // LikeToggle.tsx tinha ficado de fora da correção da 18ª rodada).
+  const handleLikeChange = useCallback((postId: string, liked: boolean, likeCount: number) => {
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, likedByMe: liked, likeCount } : p)));
+  }, []);
+
   // Esta tela (perfil público de outra pessoa) não tem compositor próprio
   // — "Citar" volta pro Feed (única tela com compositor) já em modo
   // citação, via parâmetros de URL que o FeedView consome uma vez ao
@@ -135,6 +141,7 @@ export function UserPostList({ userId }: { userId: string }) {
           onQuote={handleQuote}
           onCommentCountChange={handleCommentCountChange}
           onRepostChange={handleRepostChange}
+          onLikeChange={handleLikeChange}
         />
       ))}
       <Box ref={sentinelRef} sx={{ height: 1 }} />

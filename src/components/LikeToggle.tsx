@@ -11,20 +11,30 @@ import { useCurrentUser } from "@/lib/auth/useCurrentUser";
  * Extensão de FavoriteToggle (boolean otimista) pra {liked, likeCount} —
  * não existia precedente de contador otimista neste app antes do Epic 22,
  * então o rollback em falha precisa desfazer as duas coisas juntas.
+ *
+ * `liked`/`likeCount` vêm como props CONTROLADAS (não mais "initial" +
+ * estado local próprio) — o MESMO post pode aparecer 2x na mesma página
+ * do feed (ele mesmo + "Fulano repostou", ver src/lib/postFeedDto.ts), e
+ * curtir numa das 2 instâncias precisa refletir na outra sem recarregar.
+ * `commentCount`/`repostedByMe` já passaram por essa mesma correção na
+ * 18ª rodada de auditoria (Epic 18) — este componente tinha ficado de
+ * fora daquela leva e carregava exatamente o mesmo bug (achado real da
+ * 19ª rodada): curtir/descurtir só atualizava a instância clicada, a
+ * outra ficava com o coração/contador desatualizado até recarregar.
  */
 export function LikeToggle({
   postId,
-  initialLiked,
-  initialLikeCount,
+  liked,
+  likeCount,
+  onChange,
 }: {
   postId: string;
-  initialLiked: boolean;
-  initialLikeCount: number;
+  liked: boolean;
+  likeCount: number;
+  onChange: (postId: string, liked: boolean, likeCount: number) => void;
 }) {
   const user = useCurrentUser();
   const router = useRouter();
-  const [liked, setLiked] = useState(initialLiked);
-  const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [saving, setSaving] = useState(false);
 
   // user === null (não undefined, que é "ainda carregando") é o caso
@@ -44,9 +54,9 @@ export function LikeToggle({
       return;
     }
     const next = !liked;
+    const prevLiked = liked;
     const prevCount = likeCount;
-    setLiked(next);
-    setLikeCount((c) => c + (next ? 1 : -1));
+    onChange(postId, next, likeCount + (next ? 1 : -1));
     setSaving(true);
     try {
       const res = await fetch(`/api/posts/${postId}/like`, {
@@ -55,16 +65,13 @@ export function LikeToggle({
         body: JSON.stringify({ liked: next }),
       });
       if (!res.ok) {
-        setLiked(!next);
-        setLikeCount(prevCount);
+        onChange(postId, prevLiked, prevCount);
         return;
       }
       const data = await res.json();
-      setLiked(data.liked);
-      setLikeCount(data.likeCount);
+      onChange(postId, data.liked, data.likeCount);
     } catch {
-      setLiked(!next);
-      setLikeCount(prevCount);
+      onChange(postId, prevLiked, prevCount);
     } finally {
       setSaving(false);
     }

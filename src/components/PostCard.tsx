@@ -54,6 +54,7 @@ export function PostCard({
   onQuote,
   onCommentCountChange,
   onRepostChange,
+  onLikeChange,
 }: {
   post: PostDTO;
   onDeleted: (id: string) => void;
@@ -68,6 +69,11 @@ export function PostCard({
    * confirmação do servidor (só aí é seguro remover do feed a entrada
    * "eu repostei" que acabou de ser desfeita). */
   onRepostChange: (postId: string, reposted: boolean, confirmed: boolean) => void;
+  /** Idem, pro estado de curtida — ver comentário em LikeToggle.tsx
+   * (achado real da 19ª rodada de auditoria, Epic 18: este era o único
+   * dos 3 estados "por post" que ainda tinha ficado de fora da correção
+   * da 18ª rodada). */
+  onLikeChange: (postId: string, liked: boolean, likeCount: number) => void;
 }) {
   const user = useCurrentUser();
   const router = useRouter();
@@ -290,7 +296,12 @@ export function PostCard({
       )}
 
       <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", mt: 1 }}>
-        <LikeToggle postId={post.id} initialLiked={post.likedByMe} initialLikeCount={post.likeCount} />
+        <LikeToggle
+          postId={post.id}
+          liked={post.likedByMe}
+          likeCount={post.likeCount}
+          onChange={onLikeChange}
+        />
 
         <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
           <Tooltip title={commentsOpen ? "Fechar comentários" : "Comentários"}>

@@ -276,6 +276,15 @@ export function FeedView() {
     [user]
   );
 
+  // Mesmo raciocínio de handleCommentCountChange/handleRepostChange acima
+  // — LikeToggle.tsx tinha ficado de fora da correção da 18ª rodada e
+  // carregava o mesmo bug: curtir numa instância não refletia na outra
+  // instância do mesmo post (achado real da 19ª rodada de auditoria,
+  // Epic 18).
+  const handleLikeChange = useCallback((postId: string, liked: boolean, likeCount: number) => {
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, likedByMe: liked, likeCount } : p)));
+  }, []);
+
   function handleQuote(post: PostDTO) {
     setQuoting({ id: post.id, author: post.author.displayName, snippet: post.body.slice(0, 80) });
   }
@@ -478,6 +487,7 @@ export function FeedView() {
               onQuote={handleQuote}
               onCommentCountChange={handleCommentCountChange}
               onRepostChange={handleRepostChange}
+              onLikeChange={handleLikeChange}
             />
           ))}
           <Box ref={sentinelRef} sx={{ height: 1 }} />
