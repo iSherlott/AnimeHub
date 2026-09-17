@@ -285,6 +285,14 @@ export function FeedView() {
     setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, likedByMe: liked, likeCount } : p)));
   }, []);
 
+  // Mesmo raciocínio de handleLikeChange acima, agora pro último campo
+  // "por post" que ainda vivia em estado local do PostCard (achado real
+  // da 20ª rodada de auditoria, Epic 18): denunciar numa instância não
+  // refletia "Denunciado" na outra instância do mesmo post.
+  const handleReportChange = useCallback((postId: string, reported: boolean) => {
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, reportedByMe: reported } : p)));
+  }, []);
+
   function handleQuote(post: PostDTO) {
     setQuoting({ id: post.id, author: post.author.displayName, snippet: post.body.slice(0, 80) });
   }
@@ -488,6 +496,7 @@ export function FeedView() {
               onCommentCountChange={handleCommentCountChange}
               onRepostChange={handleRepostChange}
               onLikeChange={handleLikeChange}
+              onReportChange={handleReportChange}
             />
           ))}
           <Box ref={sentinelRef} sx={{ height: 1 }} />

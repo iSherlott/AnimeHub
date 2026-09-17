@@ -55,6 +55,7 @@ export function PostCard({
   onCommentCountChange,
   onRepostChange,
   onLikeChange,
+  onReportChange,
 }: {
   post: PostDTO;
   onDeleted: (id: string) => void;
@@ -74,6 +75,12 @@ export function PostCard({
    * dos 3 estados "por post" que ainda tinha ficado de fora da correção
    * da 18ª rodada). */
   onLikeChange: (postId: string, liked: boolean, likeCount: number) => void;
+  /** Idem, pro estado de denúncia — o último campo "por post" que ainda
+   * vivia em `useState` local deste card, achado real da 20ª rodada de
+   * auditoria (Epic 18): denunciar numa instância (ex.: a de "Fulano
+   * repostou") não refletia "Denunciado" na outra instância do mesmo
+   * post. */
+  onReportChange: (postId: string, reported: boolean) => void;
 }) {
   const user = useCurrentUser();
   const router = useRouter();
@@ -87,7 +94,6 @@ export function PostCard({
     titleRomaji: post.animeTitleRomaji,
     titleEnglish: post.animeTitleEnglish,
   });
-  const [reportedByMe, setReportedByMe] = useState(post.reportedByMe);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [reposting, setReposting] = useState(false);
   // Ver AnimeCard — mesma correção pro ícone quebrado cru numa URL de capa
@@ -120,16 +126,16 @@ export function PostCard({
       router.push("/login");
       return;
     }
-    setReportedByMe(true);
+    onReportChange(post.id, true);
     try {
       const res = await fetch(`/api/posts/${post.id}/report`, { method: "POST" });
       if (!res.ok) {
-        setReportedByMe(false);
+        onReportChange(post.id, false);
         const data = await res.json().catch(() => null);
         setError(data?.error ?? "Falha ao denunciar post");
       }
     } catch {
-      setReportedByMe(false);
+      onReportChange(post.id, false);
       setError("Falha ao denunciar post");
     }
   }
@@ -337,14 +343,14 @@ export function PostCard({
 
         {!post.isMine && (
           <Tooltip
-            title={loggedOut ? "Entre para denunciar" : reportedByMe ? "Denunciado" : "Denunciar post"}
+            title={loggedOut ? "Entre para denunciar" : post.reportedByMe ? "Denunciado" : "Denunciar post"}
           >
             <span>
               <IconButton
                 onClick={handleReport}
-                disabled={reportedByMe}
+                disabled={post.reportedByMe}
                 size="small"
-                aria-label={reportedByMe ? "Denunciado" : "Denunciar post"}
+                aria-label={post.reportedByMe ? "Denunciado" : "Denunciar post"}
               >
                 <FlagIcon fontSize="small" />
               </IconButton>
@@ -400,7 +406,9 @@ export function PostCard({
         </Box>
       )}
 
-      {commentsOpen && <PostComments postId={post.id} onCountChange={handleCommentCountChange} />}
+      {commentsOpen && (
+        <PostComments postId={post.id} commentCount={post.commentCount} onCountChange={handleCommentCountChange} />
+      )}
 
       {error && (
         <Typography variant="caption" sx={{ color: "error.main", display: "block", mt: 0.5 }}>

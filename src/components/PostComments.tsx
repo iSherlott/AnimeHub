@@ -40,9 +40,16 @@ function byCreatedAt(a: CommentItem, b: CommentItem): number {
  */
 export function PostComments({
   postId,
+  commentCount,
   onCountChange,
 }: {
   postId: string;
+  /** Contagem "oficial" do post, levantada até FeedView/UserPostList —
+   * usada só pra notar quando ela muda por uma ação de OUTRA instância
+   * desta mesma thread (o mesmo post pode aparecer 2x na página — ele
+   * mesmo + "Fulano repostou" — com a thread aberta nos 2 ao mesmo
+   * tempo) e então recarregar a lista de verdade. Ver o efeito abaixo. */
+  commentCount: number;
   /** Contagem ABSOLUTA atual (não um delta) — ver comentário no efeito de
    * carregamento abaixo sobre por que isso importa. */
   onCountChange: (count: number) => void;
@@ -93,6 +100,36 @@ export function PostComments({
     if (loading) return;
     onCountChange(comments.length);
   }, [comments, loading, onCountChange]);
+
+  // A contagem sobe pro pai (efeito acima), mas isso corrige só o BADGE —
+  // achado real da 20ª rodada de auditoria (Epic 18): com a mesma thread
+  // aberta em 2 instâncias do mesmo post ao mesmo tempo, comentar numa
+  // atualizava a contagem nas 2 (correção da 17ª/18ª rodada, ainda
+  // válida) mas a LISTA de comentários da outra instância nunca sabia da
+  // novidade — badge e lista contradiziam um ao outro até recarregar.
+  // `commentCount` (prop levantada) muda quando QUALQUER instância da
+  // mesma thread posta/apaga; se ele não bate mais com o tamanho da
+  // lista LOCAL, é porque a mudança veio de outro lugar — recarrega a
+  // lista de verdade pra alcançar. `comments.length` é lido de propósito
+  // sem entrar nas dependências: numa ação própria, o estado local já
+  // muda primeiro (nesta mesma instância), então quando `commentCount`
+  // finalmente volta atualizado do pai os dois já batem e nenhum fetch
+  // extra acontece — só uma mudança vinda de fora deixa os dois
+  // diferentes na hora em que este efeito roda.
+  useEffect(() => {
+    if (loading) return;
+    if (commentCount === comments.length) return;
+    let cancelled = false;
+    fetch(`/api/posts/${postId}/comments`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setComments(data.comments ?? []);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `comments.length` lido de propósito sem virar dependência, ver comentário acima
+  }, [commentCount, loading, postId]);
 
   async function handlePost() {
     const text = draft.trim();

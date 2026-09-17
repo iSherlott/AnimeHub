@@ -98,6 +98,13 @@ export function UserPostList({ userId }: { userId: string }) {
     setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, likedByMe: liked, likeCount } : p)));
   }, []);
 
+  // Idem pra denúncia — o último campo "por post" que ainda vivia em
+  // estado local do PostCard (achado real da 20ª rodada de auditoria,
+  // Epic 18).
+  const handleReportChange = useCallback((postId: string, reported: boolean) => {
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, reportedByMe: reported } : p)));
+  }, []);
+
   // Esta tela (perfil público de outra pessoa) não tem compositor próprio
   // — "Citar" volta pro Feed (única tela com compositor) já em modo
   // citação, via parâmetros de URL que o FeedView consome uma vez ao
@@ -142,6 +149,7 @@ export function UserPostList({ userId }: { userId: string }) {
           onCommentCountChange={handleCommentCountChange}
           onRepostChange={handleRepostChange}
           onLikeChange={handleLikeChange}
+          onReportChange={handleReportChange}
         />
       ))}
       <Box ref={sentinelRef} sx={{ height: 1 }} />
