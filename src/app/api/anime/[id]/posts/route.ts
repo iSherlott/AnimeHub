@@ -87,12 +87,34 @@ export async function POST(request: Request, { params }: Params) {
   if (typeof body.quotedPostId === "string" && body.quotedPostId.trim()) {
     const quoted = await prisma.post.findUnique({
       where: { id: body.quotedPostId.trim() },
-      select: { id: true, deletedAt: true },
+      select: { id: true, deletedAt: true, repostOfId: true },
     });
     if (!quoted || quoted.deletedAt) {
       return NextResponse.json({ error: "Post citado não encontrado" }, { status: 404 });
     }
-    quotedPostId = quoted.id;
+    // Uma linha-repost não tem corpo/imagem próprios (Epic 25) — citar
+    // normaliza pro original de verdade antes de gravar, mesmo padrão já
+    // usado por PATCH .../repost, pra nunca criar uma citação apontando
+    // pra uma linha vazia. Sem isso, a pré-visualização da citação vinha
+    // em branco, atribuída a quem repostou em vez do autor de verdade
+    // (achado real da 21ª rodada de auditoria, Epic 18). O UI normal
+    // nunca expõe o `id` de uma linha-repost pro cliente (o feed sempre
+    // resolve pro original antes de mandar o DTO), então isso só protege
+    // contra citar diretamente por essa rota, mas garante o mesmo
+    // invariante do repost: `quotedPostId` sempre aponta pra um post de
+    // verdade, nunca outra linha-repost.
+    if (quoted.repostOfId) {
+      const original = await prisma.post.findUnique({
+        where: { id: quoted.repostOfId },
+        select: { id: true, deletedAt: true },
+      });
+      if (!original || original.deletedAt) {
+        return NextResponse.json({ error: "Post citado não encontrado" }, { status: 404 });
+      }
+      quotedPostId = original.id;
+    } else {
+      quotedPostId = quoted.id;
+    }
   }
 
   const post = await prisma.post.create({

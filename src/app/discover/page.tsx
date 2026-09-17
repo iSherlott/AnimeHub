@@ -244,6 +244,25 @@ function DiscoverPageContent() {
     return sortItems(filtered, sortBy);
   }, [catalogAll, query, selectedGenre, selectedStatus, selectedSeason, selectedYear, sortBy]);
 
+  // A busca ao vivo na AniList (searchResults) só manda `q` pra API — os
+  // chips de gênero/status/temporada/ano continuam visíveis acima dela
+  // como se estivessem em vigor pras 2 fileiras, mas só filteredCatalog
+  // de fato os aplicava. Filtra aqui do mesmo jeito, client-side, com os
+  // mesmos campos já presentes em todo DiscoverItem (achado real da 21ª
+  // rodada de auditoria, Epic 18: com "COMEDY" selecionado, a fileira do
+  // catálogo mostrava só comédias, mas a fileira de busca da AniList
+  // misturava títulos de qualquer gênero que só batessem o texto).
+  const filteredSearchResults = useMemo(() => {
+    const filtered = searchResults.filter((item) => {
+      if (selectedGenre && !item.genres.includes(selectedGenre)) return false;
+      if (selectedStatus && item.status !== selectedStatus) return false;
+      if (selectedSeason && item.season !== selectedSeason) return false;
+      if (selectedYear && yearOf(item) !== selectedYear) return false;
+      return true;
+    });
+    return sortItems(filtered, sortBy);
+  }, [searchResults, selectedGenre, selectedStatus, selectedSeason, selectedYear, sortBy]);
+
   function clearFilters() {
     setQuery("");
     setSelectedGenre(null);
@@ -406,7 +425,7 @@ function DiscoverPageContent() {
                 </Box>
               )}
               <Row title={searching ? "Buscando..." : "Resultados da busca (AniList)"}>
-                {searchResults.map((item) => (
+                {filteredSearchResults.map((item) => (
                   <DiscoverCard key={item.key} item={item} />
                 ))}
               </Row>
