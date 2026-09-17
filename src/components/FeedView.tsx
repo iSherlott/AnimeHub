@@ -63,6 +63,7 @@ export function FeedView() {
   // usuário (UserPostList.tsx não tem compositor próprio, então "Citar"
   // lá volta pro Feed com esses 3 parâmetros na URL).
   const [quoting, setQuoting] = useState<Quoting | null>(null);
+  const composerBodyRef = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   // Espelha loadingMore/hasMore/tab num ref pro callback do IntersectionObserver
@@ -116,6 +117,19 @@ export function FeedView() {
     // modo citação depois do próprio `router.replace` acima limpar a URL.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Move o foco pro campo de texto do compositor sempre que o modo citação
+  // liga (pelo "Citar" de um card aqui mesmo, ou pelos parâmetros de URL
+  // vindos de outra tela, ver efeito acima) — sem isso, só quem usa mouse
+  // percebia a mudança (scroll automático da própria página até aqui);
+  // teclado/leitor de tela não tinham nenhum sinal de que o modo citação
+  // tinha ligado, e precisavam navegar manualmente até o compositor
+  // (achado real da 22ª rodada de auditoria, Epic 18). Não dispara nada se
+  // o campo ainda não montou (ex.: deslogado, ou `myAnime` ainda
+  // carregando) — o CTA de login/carregando não tem nada pra focar mesmo.
+  useEffect(() => {
+    if (quoting) composerBodyRef.current?.focus();
+  }, [quoting]);
 
   // "Seguindo" não existe sem conta — se a sessão cair (ou nunca existiu)
   // enquanto essa aba está selecionada, volta pra "Recomendado", a única
@@ -371,9 +385,16 @@ export function FeedView() {
         ) : (
           <Stack spacing={1.5}>
             {quoting && (
+              // role="status" anuncia a entrada em modo citação pra quem usa
+              // leitor de tela — sem isso, só o scroll automático (useEffect
+              // logo acima) avisava quem enxerga, e nem esse chegava a mover
+              // o foco: teclado/leitor de tela tinham que navegar manualmente
+              // até aqui, sem nenhum sinal de que o modo tinha mudado (achado
+              // real da 22ª rodada de auditoria, Epic 18).
               <Stack
                 direction="row"
                 spacing={1}
+                role="status"
                 sx={{
                   alignItems: "center",
                   justifyContent: "space-between",
@@ -404,6 +425,7 @@ export function FeedView() {
               ))}
             </TextField>
             <TextField
+              inputRef={composerBodyRef}
               value={composerBody}
               onChange={(e) => setComposerBody(e.target.value.slice(0, MAX_BODY_LENGTH))}
               placeholder="O que você achou desse anime?"

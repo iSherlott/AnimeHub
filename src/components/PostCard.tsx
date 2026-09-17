@@ -373,6 +373,11 @@ export function PostCard({
       )}
 
       {post.quotedPost && (
+        // Sem link pro post citado em si (decisão de escopo do Epic 25 —
+        // este app não tem página de post avulso), mas o autor citado TEM
+        // uma página própria e ficou totalmente inerte, ao contrário do
+        // autor do post de fora (link logo acima) — achado real da 22ª
+        // rodada de auditoria, Epic 18.
         <Box
           sx={{
             mt: 1.5,
@@ -393,9 +398,14 @@ export function PostCard({
               />
             )}
             <Box sx={{ minWidth: 0 }}>
-              <Typography variant="caption" sx={{ fontWeight: 700, display: "block" }}>
+              <MuiLink
+                component={NextLink}
+                href={`/users/${post.quotedPost.author.id}`}
+                underline="hover"
+                sx={{ fontWeight: 700, fontSize: 12, color: "text.primary", display: "block" }}
+              >
                 {post.quotedPost.author.displayName}
-              </Typography>
+              </MuiLink>
               <Typography
                 variant="caption"
                 sx={{

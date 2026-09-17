@@ -97,7 +97,14 @@ export function AnimeThreadsSidebar() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/anime-threads/trending")
+    // Meia-noite no fuso do navegador, enviada como timestamp absoluto —
+    // mesmo padrão já usado por buildWeekDays/weekStart em
+    // src/app/calendar/page.tsx, pra "hoje" não discordar entre o
+    // servidor (UTC no Docker Compose) e quem está vendo a lateral
+    // (achado real da 22ª rodada de auditoria, Epic 18).
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    fetch(`/api/anime-threads/trending?todayStart=${Math.floor(todayStart.getTime() / 1000)}`)
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;

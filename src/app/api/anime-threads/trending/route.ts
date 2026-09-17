@@ -1,5 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+
+const DAY_SECONDS = 24 * 3600;
+
+/** Fallback só usado quando `todayStart` não vem na query (ex.: chamada
+ * direta à API) — nesse caso não há como saber o fuso do cliente, então
+ * caímos no relógio do servidor mesmo. */
+function serverTodayStart(): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.floor(today.getTime() / 1000);
+}
 
 type CommentGroup = {
   anilistId: number;
@@ -57,10 +68,25 @@ async function toSummaries(groups: CommentGroup[]): Promise<ThreadSummary[]> {
  * Lateral do Feed (Epic 25) — "trending topics" de THREAD DE ANIME (Epic
  * 15), não de post do Feed (Epic 24). Pública, sem login, mesma
  * filosofia do resto do Feed.
+ *
+ * `todayStart` é o timestamp Unix (segundos) da meia-noite **no fuso do
+ * navegador**, calculado pelo front-end (AnimeThreadsSidebar.tsx) — mesmo
+ * padrão já usado por /api/calendar, e pela mesma razão: recalcular "hoje"
+ * com o relógio do servidor (que roda em UTC no Docker Compose, sem `TZ`
+ * setado em nenhum serviço) discorda do fuso de quem está vendo a página
+ * pra qualquer viewer fora de UTC — um comentário postado antes da meia-
+ * noite local já cairia no "amanhã" do servidor, e vice-versa (achado real
+ * da 22ª rodada de auditoria, Epic 18). Ainda limitado a +-2 dias do
+ * relógio do servidor, só como cinto de segurança contra abuso.
  */
-export async function GET() {
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+export async function GET(request: NextRequest) {
+  const todayStartRaw = request.nextUrl.searchParams.get("todayStart");
+  const todayStartParam = todayStartRaw !== null ? Number(todayStartRaw) : NaN;
+  const serverNow = Math.floor(Date.now() / 1000);
+  const safetyMargin = 2 * DAY_SECONDS;
+  const usingClientTodayStart =
+    Number.isFinite(todayStartParam) && Math.abs(todayStartParam - serverNow) <= safetyMargin;
+  const todayStart = new Date((usingClientTodayStart ? todayStartParam : serverTodayStart()) * 1000);
 
   const [recentGroups, todayGroups] = await Promise.all([
     prisma.comment.groupBy({
