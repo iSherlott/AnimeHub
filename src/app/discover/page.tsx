@@ -2,6 +2,10 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import SearchIcon from "@mui/icons-material/Search";
+import TheaterComedyIcon from "@mui/icons-material/TheaterComedy";
+import EventIcon from "@mui/icons-material/Event";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import {
   Alert,
   Box,
@@ -9,8 +13,10 @@ import {
   Card,
   CardActionArea,
   Chip,
+  InputAdornment,
   MenuItem,
   Select,
+  Skeleton,
   Stack,
   TextField,
   Typography,
@@ -300,16 +306,44 @@ function DiscoverPageContent() {
     <div className="min-h-screen bg-ink pb-16">
       <Header />
 
-      <Box sx={{ borderBottom: 1, borderColor: "divider", px: { xs: 3, sm: 5 }, py: 4 }}>
+      <Box
+        sx={{
+          borderBottom: 1,
+          borderColor: "divider",
+          px: { xs: 3, sm: 5 },
+          py: 5,
+          background: "linear-gradient(to bottom, rgba(228,0,43,0.1), transparent)",
+        }}
+      >
         <Typography variant="h3" component="h1" className="font-display" sx={{ textTransform: "uppercase" }}>
           Descobrir
         </Typography>
+        <Typography variant="body2" sx={{ mt: 0.5, mb: 3, color: "text.secondary" }}>
+          Busque, filtre e encontre o próximo anime pra sua lista.
+        </Typography>
+        <TextField
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar anime..."
+          size="small"
+          fullWidth
+          sx={{ maxWidth: 480 }}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" sx={{ color: "text.secondary" }} />
+                </InputAdornment>
+              ),
+            },
+          }}
+        />
       </Box>
 
       {/* Cards de navegação rápida, inspirados no "番剧索引 / 类型风格 / 首播时间"
           do Bilibili — atalhos visuais pras categorias mais usadas. */}
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" }, gap: 1.5, px: { xs: 3, sm: 5 }, py: 3 }}>
-        <Card variant="outlined" sx={{ bgcolor: "rgba(228,0,43,0.08)" }}>
+        <Card variant="outlined" sx={{ bgcolor: "rgba(228,0,43,0.08)", transition: "transform 0.15s ease", "&:hover": { transform: "scale(1.015)" } }}>
           <CardActionArea onClick={() => scrollToRow(genreRowRef)} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
             <Box>
               <Typography className="font-display" sx={{ textTransform: "uppercase" }}>
@@ -319,10 +353,10 @@ function DiscoverPageContent() {
                 {loadingCatalog ? "Carregando..." : `${genres.length} categorias`}
               </Typography>
             </Box>
-            <Typography sx={{ fontSize: 24 }}>🎭</Typography>
+            <TheaterComedyIcon sx={{ fontSize: 28, color: "primary.main" }} />
           </CardActionArea>
         </Card>
-        <Card variant="outlined" sx={{ bgcolor: "rgba(46,111,242,0.08)" }}>
+        <Card variant="outlined" sx={{ bgcolor: "rgba(46,111,242,0.08)", transition: "transform 0.15s ease", "&:hover": { transform: "scale(1.015)" } }}>
           <CardActionArea onClick={() => scrollToRow(seasonRowRef, true)} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
             <Box>
               <Typography className="font-display" sx={{ textTransform: "uppercase" }}>
@@ -332,10 +366,10 @@ function DiscoverPageContent() {
                 Inverno · Primavera · Verão · Outono
               </Typography>
             </Box>
-            <Typography sx={{ fontSize: 24 }}>🗓️</Typography>
+            <EventIcon sx={{ fontSize: 28, color: "#2e6ff2" }} />
           </CardActionArea>
         </Card>
-        <Card variant="outlined" sx={{ bgcolor: "rgba(255,212,0,0.08)" }}>
+        <Card variant="outlined" sx={{ bgcolor: "rgba(255,212,0,0.08)", transition: "transform 0.15s ease", "&:hover": { transform: "scale(1.015)" } }}>
           <CardActionArea onClick={() => scrollToRow(yearRowRef, true)} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: 2 }}>
             <Box>
               <Typography className="font-display" sx={{ textTransform: "uppercase" }}>
@@ -345,7 +379,7 @@ function DiscoverPageContent() {
                 {years[years.length - 1] ?? "—"}–{years[0] ?? "—"}
               </Typography>
             </Box>
-            <Typography sx={{ fontSize: 24 }}>📅</Typography>
+            <CalendarMonthIcon sx={{ fontSize: 28, color: "secondary.main" }} />
           </CardActionArea>
         </Card>
       </Box>
@@ -359,14 +393,6 @@ function DiscoverPageContent() {
       )}
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2, px: { xs: 3, sm: 5 }, py: 3 }}>
-        <TextField
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar anime..."
-          size="small"
-          sx={{ width: "100%", maxWidth: 384 }}
-        />
-
         <DiscoverFilters
           genres={genres}
           statuses={statuses}
@@ -436,7 +462,22 @@ function DiscoverPageContent() {
 
       <Box component="section">
         {filtersActive ? (
-          filteredCatalog.length > 0 ? (
+          loadingCatalog ? (
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+                gap: { xs: 1.5, sm: 2 },
+                px: { xs: 3, sm: 5 },
+                pb: 3,
+                pt: 2,
+              }}
+            >
+              {Array.from({ length: 12 }, (_, i) => (
+                <Skeleton key={i} variant="rectangular" sx={{ aspectRatio: "2 / 3", width: "100%", borderRadius: 1 }} />
+              ))}
+            </Box>
+          ) : filteredCatalog.length > 0 ? (
             <>
               <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: { xs: 3, sm: 5 } }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -459,11 +500,17 @@ function DiscoverPageContent() {
                 </Select>
               </Box>
               <Box
-                className="no-scrollbar"
-                sx={{ display: "flex", gap: { xs: 1, sm: 1.5 }, overflowX: "auto", px: { xs: 3, sm: 5 }, pb: 3, pt: 2 }}
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+                  gap: { xs: 1.5, sm: 2 },
+                  px: { xs: 3, sm: 5 },
+                  pb: 3,
+                  pt: 2,
+                }}
               >
                 {filteredCatalog.map((item) => (
-                  <DiscoverCard key={item.key} item={item} />
+                  <DiscoverCard key={item.key} item={item} fill />
                 ))}
               </Box>
             </>

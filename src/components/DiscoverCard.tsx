@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import NextLink from "next/link";
 import Image from "next/image";
 import AddIcon from "@mui/icons-material/Add";
+import CachedIcon from "@mui/icons-material/Cached";
 import CheckIcon from "@mui/icons-material/Check";
 import {
   Box,
@@ -35,7 +36,17 @@ function formatNextEpisode(iso: string | null, number: number | null): string | 
   return number ? `Ep ${number} em ${formatted}` : `Próximo em ${formatted}`;
 }
 
-export function DiscoverCard({ item, rank }: { item: DiscoverItem; rank?: number }) {
+export function DiscoverCard({
+  item,
+  rank,
+  fill,
+}: {
+  item: DiscoverItem;
+  rank?: number;
+  /** Pra grade responsiva (lote 4 do Epic 27) — ocupa 100% da célula da
+   * grade em vez da largura fixa usada nas fileiras horizontais (`Row`). */
+  fill?: boolean;
+}) {
   const router = useRouter();
   const user = useCurrentUser();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
@@ -111,8 +122,21 @@ export function DiscoverCard({ item, rank }: { item: DiscoverItem; rank?: number
   }
 
   return (
-    <Box sx={{ width: { xs: 144, sm: 176 }, flexShrink: 0 }}>
+    <Box
+      sx={{
+        width: fill ? "100%" : { xs: 144, sm: 176 },
+        flexShrink: fill ? undefined : 0,
+        // Alvo do hover abaixo — grupo inteiro, não só o título (achado do
+        // pedido de retrabalho, lote 4 do Epic 27: hoje só o título reage
+        // ao passar o mouse, o resto do card fica sem nenhum feedback).
+        "&:hover .discover-card-cover": {
+          transform: "scale(1.03)",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.5)",
+        },
+      }}
+    >
       <Box
+        className="discover-card-cover"
         sx={{
           position: "relative",
           aspectRatio: "2 / 3",
@@ -121,6 +145,7 @@ export function DiscoverCard({ item, rank }: { item: DiscoverItem; rank?: number
           border: 1,
           borderColor: "divider",
           bgcolor: "background.paper",
+          transition: "transform 0.2s ease, box-shadow 0.2s ease",
         }}
       >
         {item.coverImage && !coverBroken ? (
@@ -140,9 +165,24 @@ export function DiscoverCard({ item, rank }: { item: DiscoverItem; rank?: number
           </Box>
         )}
 
+        {/* Gradiente sutil no rodapé — garante contraste do selo de
+            próximo episódio mesmo sobre capas muito claras (mesmo padrão
+            já usado em HeroBanner/CalendarEntryPreview). */}
+        <Box
+          sx={{
+            position: "absolute",
+            insetInline: 0,
+            bottom: 0,
+            height: "35%",
+            background: "linear-gradient(to top, rgba(0,0,0,0.75), transparent)",
+            pointerEvents: "none",
+          }}
+        />
+
         {item.cached && (
           <Chip
-            label="⛁ cache"
+            icon={<CachedIcon sx={{ fontSize: 14 }} />}
+            label="cache"
             size="small"
             sx={{
               position: "absolute",
@@ -153,7 +193,8 @@ export function DiscoverCard({ item, rank }: { item: DiscoverItem; rank?: number
               fontWeight: 700,
               textTransform: "uppercase",
               bgcolor: "warning.main",
-              color: "#0b0b0d",
+              color: "background.default",
+              "& .MuiChip-icon": { color: "background.default" },
             }}
           />
         )}
@@ -167,7 +208,7 @@ export function DiscoverCard({ item, rank }: { item: DiscoverItem; rank?: number
               aria-label={addButtonLabel}
               sx={{
                 bgcolor: owned ? "success.main" : "rgba(0,0,0,0.7)",
-                color: owned ? "#0b0b0d" : "#f7f7f5",
+                color: owned ? "background.default" : "text.primary",
                 "&:hover": { bgcolor: owned ? "success.main" : "primary.main" },
                 "&.Mui-disabled": { opacity: 0.5 },
               }}

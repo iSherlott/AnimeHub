@@ -1,4 +1,4 @@
-import { Badge, Box, Button, Collapse, MenuItem, Select, Typography, type SelectChangeEvent } from "@mui/material";
+import { Badge, Box, Button, Card, Collapse, MenuItem, Select, Typography, type SelectChangeEvent } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { CATALOG_STATUS_LABELS, SEASON_LABELS } from "@/lib/types";
@@ -51,7 +51,7 @@ export function DiscoverFilters({
   const hiddenActiveCount = (selectedSeason ? 1 : 0) + (selectedYear ? 1 : 0);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2, border: 1, borderColor: "divider", bgcolor: "background.paper", p: 2 }}>
+    <Card variant="outlined" sx={{ display: "flex", flexDirection: "column", gap: 2, bgcolor: "background.paper", p: 2 }}>
       <Box ref={genreRowRef}>
         <FilterChipRow
           label="Gênero"
@@ -125,6 +125,6 @@ export function DiscoverFilters({
           </Badge>
         )}
       </Button>
-    </Box>
+    </Card>
   );
 }
