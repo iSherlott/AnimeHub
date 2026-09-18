@@ -22,8 +22,66 @@ const SCRIPT_LABELS: Record<JapaneseScript, string> = {
   kanji: "Só kanji (kana+kanji)",
 };
 
-export function TitleLanguageMenu() {
+/**
+ * Só os `<MenuItem>` de idioma/escrita japonesa, sem o `IconButton`/`Menu`
+ * que os envolve — extraído pra dar pra reaproveitar dentro do
+ * `AccountMenu` (Epic 27, lote 3), que funde essa escolha de idioma com
+ * conta/sair num único dropdown pra quem está logado, sem duplicar esta
+ * lista. `onSelect` fecha o menu de fora (cada chamador cuida do próprio
+ * `anchorEl`).
+ */
+export function LanguageMenuItems({ onSelect }: { onSelect: () => void }) {
   const { preference, setPreference } = useTitlePreference();
+
+  return (
+    <>
+      <Typography variant="overline" sx={{ px: 2, color: "text.secondary" }}>
+        Idioma do título
+      </Typography>
+      {(Object.keys(LANGUAGE_LABELS) as TitleLanguage[]).map((lang) => (
+        <MenuItem
+          key={lang}
+          selected={preference.language === lang}
+          onClick={() => {
+            setPreference({ ...preference, language: lang });
+            onSelect();
+          }}
+        >
+          <ListItemIcon>
+            {preference.language === lang && <CheckIcon fontSize="small" />}
+          </ListItemIcon>
+          {LANGUAGE_LABELS[lang]}
+        </MenuItem>
+      ))}
+
+      {preference.language === "ja" && [
+        <Divider key="divider" />,
+        <Typography key="label" variant="overline" sx={{ px: 2, color: "text.secondary" }}>
+          Escrita japonesa
+        </Typography>,
+        ...(Object.keys(SCRIPT_LABELS) as JapaneseScript[]).map((script) => (
+          <MenuItem
+            key={script}
+            selected={preference.japaneseScript === script}
+            onClick={() => {
+              setPreference({ ...preference, japaneseScript: script });
+              onSelect();
+            }}
+          >
+            <ListItemIcon>
+              {preference.japaneseScript === script && <CheckIcon fontSize="small" />}
+            </ListItemIcon>
+            {SCRIPT_LABELS[script]}
+          </MenuItem>
+        )),
+      ]}
+    </>
+  );
+}
+
+/** Usado só por quem NÃO está logado — logado, o mesmo conteúdo (via
+ * `LanguageMenuItems`) mora dentro do `AccountMenu`. */
+export function TitleLanguageMenu() {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const open = Boolean(anchorEl);
   const buttonId = useId();
@@ -59,46 +117,7 @@ export function TitleLanguageMenu() {
         onClose={handleClose}
         slotProps={{ list: { "aria-labelledby": buttonId } }}
       >
-        <Typography variant="overline" sx={{ px: 2, color: "text.secondary" }}>
-          Idioma do título
-        </Typography>
-        {(Object.keys(LANGUAGE_LABELS) as TitleLanguage[]).map((lang) => (
-          <MenuItem
-            key={lang}
-            selected={preference.language === lang}
-            onClick={() => {
-              setPreference({ ...preference, language: lang });
-              handleClose();
-            }}
-          >
-            <ListItemIcon>
-              {preference.language === lang && <CheckIcon fontSize="small" />}
-            </ListItemIcon>
-            {LANGUAGE_LABELS[lang]}
-          </MenuItem>
-        ))}
-
-        {preference.language === "ja" && [
-          <Divider key="divider" />,
-          <Typography key="label" variant="overline" sx={{ px: 2, color: "text.secondary" }}>
-            Escrita japonesa
-          </Typography>,
-          ...(Object.keys(SCRIPT_LABELS) as JapaneseScript[]).map((script) => (
-            <MenuItem
-              key={script}
-              selected={preference.japaneseScript === script}
-              onClick={() => {
-                setPreference({ ...preference, japaneseScript: script });
-                handleClose();
-              }}
-            >
-              <ListItemIcon>
-                {preference.japaneseScript === script && <CheckIcon fontSize="small" />}
-              </ListItemIcon>
-              {SCRIPT_LABELS[script]}
-            </MenuItem>
-          )),
-        ]}
+        <LanguageMenuItems onSelect={handleClose} />
       </Menu>
     </>
   );

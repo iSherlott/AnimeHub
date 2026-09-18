@@ -9,8 +9,9 @@ import FlagIcon from "@mui/icons-material/Flag";
 import FormatQuoteIcon from "@mui/icons-material/FormatQuoteOutlined";
 import RepeatIcon from "@mui/icons-material/Repeat";
 import RepeatOutlinedIcon from "@mui/icons-material/RepeatOutlined";
+import StarIcon from "@mui/icons-material/Star";
 import NextLink from "next/link";
-import { Avatar, Box, Chip, IconButton, Link as MuiLink, Stack, Tooltip, Typography } from "@mui/material";
+import { Avatar, Box, Button, Chip, IconButton, Link as MuiLink, Stack, Tooltip, Typography } from "@mui/material";
 import { LikeToggle } from "@/components/LikeToggle";
 import { PostComments } from "@/components/PostComments";
 import { PostImageCarousel } from "@/components/PostImageCarousel";
@@ -19,6 +20,11 @@ import { avatarColor, coverColor, initials } from "@/lib/avatarColor";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 import type { PostDTO } from "@/lib/postDto";
+
+// Ponto de corte do "ver mais" pra legenda de post com imagem — mesmo
+// padrão já usado em CommentSection.tsx (lote 1 do Epic 27) pra
+// comentários longos.
+const LONG_CAPTION_THRESHOLD = 220;
 
 export function PostCard({
   post,
@@ -75,6 +81,7 @@ export function PostCard({
   const [coverBroken, setCoverBroken] = useState(false);
   const [quotedCoverBroken, setQuotedCoverBroken] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [captionExpanded, setCaptionExpanded] = useState(false);
 
   async function handleDelete() {
     try {
@@ -242,8 +249,28 @@ export function PostCard({
             </Box>
           ) : undefined
         }
-        label={animeTitle}
-        sx={{ mb: 1.5, maxWidth: "100%" }}
+        // Destaque sutil (borda + estrela) quando o post é sobre um anime
+        // que o viewer favoritou — puramente informativo, não afeta quais
+        // posts aparecem em nenhuma aba (Epic 27, lote 3). Estrela composta
+        // dentro do `label`, não no prop `icon` — Chip só renderiza UM dos
+        // dois (`avatar` ganha de `icon`), e a maioria dos posts já usa
+        // `avatar` pra capa do anime; mesma solução já usada no chip de
+        // "Site oficial" da página de detalhe (anime/[id]/page.tsx).
+        label={
+          post.favoritedByMe ? (
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
+              <StarIcon role="img" aria-label="Anime favoritado" sx={{ fontSize: 14 }} />
+              <span>{animeTitle}</span>
+            </Stack>
+          ) : (
+            animeTitle
+          )
+        }
+        sx={{
+          mb: 1.5,
+          maxWidth: "100%",
+          ...(post.favoritedByMe && { borderColor: "secondary.main", color: "secondary.main" }),
+        }}
       />
 
       {hasImages ? (
@@ -277,6 +304,30 @@ export function PostCard({
           >
             {post.body}
           </Typography>
+        </Box>
+      )}
+
+      {hasImages && (
+        // Legenda logo depois da imagem (não mais depois da linha de
+        // ações) — mesma ordem que redes sociais convencionais já usam, e
+        // que o caso sem imagem (acima) já seguia. Post longo trunca com
+        // "ver mais", mesmo padrão de CommentSection.tsx (lote 1 do
+        // Epic 27).
+        <Box sx={{ mt: 1.5 }}>
+          <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
+            {captionExpanded || post.body.length <= LONG_CAPTION_THRESHOLD
+              ? post.body
+              : `${post.body.slice(0, LONG_CAPTION_THRESHOLD)}…`}
+          </Typography>
+          {post.body.length > LONG_CAPTION_THRESHOLD && (
+            <Button
+              onClick={() => setCaptionExpanded((v) => !v)}
+              size="small"
+              sx={{ px: 0, minWidth: 0, textTransform: "none" }}
+            >
+              {captionExpanded ? "ver menos" : "ver mais"}
+            </Button>
+          )}
         </Box>
       )}
 
@@ -337,12 +388,6 @@ export function PostCard({
           </Tooltip>
         )}
       </Stack>
-
-      {hasImages && (
-        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 1 }}>
-          {post.body}
-        </Typography>
-      )}
 
       {post.quotedPost && (
         // Sem link pro post citado em si (decisão de escopo do Epic 25 —

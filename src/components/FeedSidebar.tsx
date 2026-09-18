@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import NextLink from "next/link";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { Avatar, Box, Link as MuiLink, Stack, Typography } from "@mui/material";
 import { FollowToggle } from "@/components/FollowToggle";
 import type { RecommendationData } from "@/components/RecommendationCard";
@@ -105,16 +104,18 @@ function RecommendedAnimeRow({ rec }: { rec: RecommendationData }) {
         )}
       </Box>
       <MuiLink
-        href={rec.href}
-        target="_blank"
-        rel="noopener noreferrer"
+        component={NextLink}
+        // Recomendação nunca é um anime que o viewer já tem na lista (por
+        // definição) — sem página própria pra linkar internamente, leva
+        // pra busca do Descobrir em vez de AniList (site externo), mesmo
+        // padrão de ThreadRow logo acima.
+        href={`/discover?search=${encodeURIComponent(rec.titleRomaji)}`}
         underline="hover"
         sx={{ display: "flex", alignItems: "center", gap: 0.5, minWidth: 0, color: "text.primary" }}
       >
         <Typography variant="body2" sx={{ fontSize: 13, fontWeight: 600 }} noWrap>
           {title}
         </Typography>
-        <OpenInNewIcon sx={{ fontSize: 12, color: "text.secondary", flexShrink: 0 }} />
       </MuiLink>
     </Stack>
   );

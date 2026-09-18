@@ -42,8 +42,9 @@ test.describe("Administrador — convites e usuários", () => {
   test("acessa o painel de administração", async ({ page }) => {
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "Administração" })).toBeVisible();
-    // "E2E Admin" aparece tanto no cabeçalho (nome logado) quanto na lista
-    // de usuários do próprio painel — checa a lista, que é o que a página
+    // O cabeçalho não mostra mais o nome como texto (só o avatar com
+    // iniciais, desde o lote 3 do Epic 27) — "E2E Admin" aqui só pode vir
+    // da lista de usuários do próprio painel, que é o que a página
     // realmente busca da API.
     await expect(page.getByText("E2E Admin").last()).toBeVisible();
     await expect(page.getByText("E2E Test User")).toBeVisible();

@@ -66,8 +66,10 @@ test.describe("Epic 27 (lote 1) — metadados atrás de 1 ícone único", () => 
     // Preferência padrão é "en" — ainda mostra a original em inglês.
     await expect(page.getByText("Descrição original em inglês.")).toBeVisible();
 
-    // Troca pra português via o mesmo menu de idioma do título (⚙, no header).
-    await page.getByRole("button", { name: "Configurações do título" }).click();
+    // Troca pra português via o menu de idioma — que pra quem está logado
+    // (esta suíte sempre está) mora dentro do menu de conta (avatar) desde
+    // o lote 3 do Epic 27, não mais num ícone de engrenagem separado.
+    await page.getByRole("button", { name: "Menu da conta" }).click();
     await page.getByRole("menuitem", { name: "PT" }).click();
 
     await expect(page.getByText("Descrição em português salva pelo teste.")).toBeVisible();

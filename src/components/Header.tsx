@@ -19,6 +19,7 @@ import {
   Typography,
 } from "@mui/material";
 import { TitleLanguageMenu } from "@/components/TitleLanguageMenu";
+import { AccountMenu } from "@/components/AccountMenu";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useCurrentUser, useSetCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { PublicUser } from "@/lib/auth/session";
@@ -35,6 +36,8 @@ function NavLinks({
   direction?: "row" | "column";
 }) {
   const linkSx = (href: string) => ({
+    position: "relative" as const,
+    display: "inline-block" as const,
     fontWeight: 600,
     textTransform: "uppercase" as const,
     fontSize: 14,
@@ -43,6 +46,22 @@ function NavLinks({
     // em 2 linhas exatamente nos 768px de tablet quando logado (link mais
     // longo que "Entrar", que sozinho nunca quebrava).
     whiteSpace: "nowrap" as const,
+    pb: 0.75,
+    // Mesma barra inclinada do logo, em miniatura, sob o link ativo — em
+    // vez de só trocar a cor (Epic 27, lote 3).
+    "&::after":
+      pathname === href
+        ? {
+            content: '""',
+            position: "absolute",
+            left: "50%",
+            bottom: 0,
+            width: 10,
+            height: 2,
+            bgcolor: "primary.main",
+            transform: "translateX(-50%) skewX(-12deg)",
+          }
+        : undefined,
   });
 
   return (
@@ -143,9 +162,24 @@ export function Header() {
           backgroundImage: scrolled
             ? "none"
             : "linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(0,0,0,0.4), transparent)",
-          borderBottom: scrolled ? "1px solid" : "none",
-          borderColor: "divider",
-          transition: "background-color .3s ease, border-color .3s ease",
+          // Mesmo "gradiente com pontas apagando" já usado no banner da
+          // página de detalhe/hero (accentColor) — borda inferior fina em
+          // vez de uma linha cinza plana, só quando rolado (Epic 27, lote
+          // 3: reforça a identidade "anime" já estabelecida no resto do
+          // app, sem inventar linguagem visual nova).
+          "&::after": scrolled
+            ? {
+                content: '""',
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: "1px",
+                background: (theme) =>
+                  `linear-gradient(to right, transparent, ${theme.palette.primary.main}, transparent)`,
+              }
+            : {},
+          transition: "background-color .3s ease",
         }}
       >
         <Toolbar sx={{ gap: 4, px: { xs: 3, sm: 5 } }}>
@@ -153,17 +187,25 @@ export function Header() {
             component={NextLink}
             href="/"
             underline="none"
-            className="font-display"
-            sx={{
-              fontSize: 24,
-              textTransform: "uppercase",
-              letterSpacing: 1,
-              color: "primary.main",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
-            }}
+            sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}
           >
-            Anime Hub
+            {/* Mesmo motivo de "linha de velocidade" usado antes de todo
+                título de seção na página de detalhe do anime — amarra o
+                cabeçalho à mesma identidade visual do resto do app. */}
+            <Box sx={{ width: 6, height: 20, bgcolor: "primary.main", transform: "skewX(-12deg)", flexShrink: 0 }} />
+            <Typography
+              component="span"
+              className="font-display"
+              sx={{
+                fontSize: 24,
+                textTransform: "uppercase",
+                letterSpacing: 1,
+                color: "primary.main",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Anime Hub
+            </Typography>
           </MuiLink>
 
           {/* O breakpoint pra virar menu hambúrguer era "sm" (600px), mas o
@@ -211,27 +253,18 @@ export function Header() {
               alignItems: "center",
             }}
           >
-            <TitleLanguageMenu />
             <NotificationBell user={user} />
             {user === undefined ? (
               <Skeleton variant="rounded" width={64} height={30} />
             ) : user ? (
+              <AccountMenu user={user} onLogout={handleLogout} />
+            ) : (
               <>
-                <Typography
-                  variant="body2"
-                  noWrap
-                  sx={{ display: { xs: "none", md: "inline" }, color: "text.secondary", maxWidth: 100 }}
-                >
-                  {user.displayName}
-                </Typography>
-                <Button onClick={handleLogout} color="inherit" size="small">
-                  Sair
+                <TitleLanguageMenu />
+                <Button component={NextLink} href="/login" color="inherit" size="small">
+                  Entrar
                 </Button>
               </>
-            ) : (
-              <Button component={NextLink} href="/login" color="inherit" size="small">
-                Entrar
-              </Button>
             )}
           </Stack>
 
@@ -271,20 +304,13 @@ export function Header() {
             <Divider />
             <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>
               <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                <TitleLanguageMenu />
+                {!user && <TitleLanguageMenu />}
                 <NotificationBell user={user} />
               </Stack>
               {user === undefined ? (
                 <Skeleton variant="rounded" width={64} height={30} />
               ) : user ? (
-                <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-                  <Typography variant="body2" noWrap sx={{ color: "text.secondary", maxWidth: 140 }}>
-                    {user.displayName}
-                  </Typography>
-                  <Button onClick={handleLogout} size="small">
-                    Sair
-                  </Button>
-                </Stack>
+                <AccountMenu user={user} onLogout={handleLogout} />
               ) : (
                 <Button
                   component={NextLink}

@@ -247,7 +247,10 @@ test.describe("Epic 18 — 16ª rodada de auditoria de UX/UI — deslogar invali
     await expect(card).toBeVisible();
     await expect(card.getByRole("button", { name: "Apagar post" })).toBeVisible();
 
-    await page.getByRole("button", { name: "Sair" }).click();
+    // "Sair" vive atrás do menu de conta (avatar) desde o lote 3 do
+    // Epic 27 — não é mais um botão solto no cabeçalho.
+    await page.getByRole("button", { name: "Menu da conta" }).click();
+    await page.getByRole("menuitem", { name: "Sair" }).click();
 
     await expect(page.getByRole("link", { name: "Entrar" }).first()).toBeVisible();
     // O mesmo card (mesmo post) não deve mais se oferecer como apagável —

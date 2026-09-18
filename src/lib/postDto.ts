@@ -37,6 +37,10 @@ export type PostDTO = {
   /// `id` acima, nunca sobre a linha de repost em si).
   repostedBy: { id: string; displayName: string } | null;
   repostedByMe: boolean;
+  /** Anime deste post está nos favoritos do viewer (Epic 27, lote 3) —
+   * puramente informativo (não muda quais posts aparecem em nenhuma aba),
+   * usado só pra destacar visualmente o chip do anime no card. */
+  favoritedByMe: boolean;
 };
 
 type PostWithAuthor = Post & { user: { id: string; displayName: string } };
@@ -72,6 +76,7 @@ export function toPostDto(
     quotedPost?: PostWithAuthor | null;
     repostedBy?: { id: string; displayName: string } | null;
     repostedByMe?: boolean;
+    favoritedByMe?: boolean;
   }
 ): PostDTO {
   return {
@@ -101,5 +106,6 @@ export function toPostDto(
     quotedPost: opts.quotedPost && !opts.quotedPost.deletedAt ? toPostSummaryDto(opts.quotedPost) : null,
     repostedBy: opts.repostedBy ?? null,
     repostedByMe: opts.repostedByMe ?? false,
+    favoritedByMe: opts.favoritedByMe ?? false,
   };
 }

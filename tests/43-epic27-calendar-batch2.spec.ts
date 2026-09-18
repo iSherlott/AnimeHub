@@ -137,7 +137,9 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     await expect(page.getByText("Sinopse original em inglês do calendário.")).toBeVisible();
     await page.mouse.move(0, 0);
 
-    await page.getByRole("button", { name: "Configurações do título" }).click();
+    // Idioma mora dentro do menu de conta pra quem está logado (esta
+    // suíte sempre está) desde o lote 3 do Epic 27.
+    await page.getByRole("button", { name: "Menu da conta" }).click();
     await page.getByRole("menuitem", { name: "PT" }).click();
 
     await mineLink.hover();

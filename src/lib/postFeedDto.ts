@@ -68,7 +68,8 @@ export async function toDtoPage(page: PostRow[], viewerId: string | null): Promi
   // Leitura pública (viewer deslogado) não tem "minhas curtidas"/"minhas
   // denúncias"/"meus reposts" — pula as consultas em vez de rodar com
   // userId nulo.
-  const [myLikes, myOpenReports, myReposts] = viewerId
+  const postAnilistIds = [...new Set(resolved.map((r) => r.effective.anilistId))];
+  const [myLikes, myOpenReports, myReposts, myFavorites] = viewerId
     ? await Promise.all([
         prisma.postLike.findMany({
           where: { userId: viewerId, postId: { in: postIds } },
@@ -82,11 +83,16 @@ export async function toDtoPage(page: PostRow[], viewerId: string | null): Promi
           where: { userId: viewerId, repostOfId: { in: postIds } },
           select: { repostOfId: true },
         }),
+        prisma.anime.findMany({
+          where: { userId: viewerId, anilistId: { in: postAnilistIds }, isFavorite: true },
+          select: { anilistId: true },
+        }),
       ])
-    : [[], [], []];
+    : [[], [], [], []];
   const likedSet = new Set(myLikes.map((l) => l.postId));
   const reportedSet = new Set(myOpenReports.map((r) => r.postId));
   const repostedSet = new Set(myReposts.map((r) => r.repostOfId));
+  const favoritedAnilistIdSet = new Set(myFavorites.map((a) => a.anilistId));
 
   return resolved.map(({ effective, repostedBy }) =>
     toPostDto(effective, {
@@ -98,6 +104,7 @@ export async function toDtoPage(page: PostRow[], viewerId: string | null): Promi
       quotedPost: effective.quotedPost,
       repostedBy,
       repostedByMe: repostedSet.has(effective.id),
+      favoritedByMe: favoritedAnilistIdSet.has(effective.anilistId),
     })
   );
 }

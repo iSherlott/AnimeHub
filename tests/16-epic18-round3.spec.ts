@@ -197,15 +197,18 @@ test.describe("Epic 18 — 3ª rodada — nav no pior caso real (admin, nome lon
       { name: SESSION_COOKIE_NAME, value: LONG_NAME_ADMIN_SESSION_TOKEN, domain: "localhost", path: "/" },
     ]);
 
+    // "Sair" vive atrás do menu de conta (avatar) desde o lote 3 do Epic
+    // 27 — o próprio botão que abre esse menu ("Menu da conta") é quem
+    // aparece/some no breakpoint agora, não mais um botão "Sair" solto.
     await page.setViewportSize({ width: 1230, height: 900 });
     await page.goto("/admin");
     await expect(page.getByRole("button", { name: "Abrir menu" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Sair" })).toBeHidden();
+    await expect(page.getByRole("button", { name: "Menu da conta" })).toBeHidden();
 
     await page.setViewportSize({ width: 1260, height: 900 });
     await page.reload();
     await expect(page.getByRole("button", { name: "Abrir menu" })).toBeHidden();
-    await expect(page.getByRole("button", { name: "Sair" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Menu da conta" })).toBeVisible();
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth
     );
@@ -221,6 +224,6 @@ test.describe("Epic 18 — 3ª rodada — nav no pior caso real (admin, nome lon
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto("/admin");
     await expect(page.getByRole("button", { name: "Abrir menu" })).toBeHidden();
-    await expect(page.getByRole("button", { name: "Sair" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Menu da conta" })).toBeVisible();
   });
 });

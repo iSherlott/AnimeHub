@@ -240,7 +240,11 @@ test.describe("Epic 18 — 5ª rodada — sessão invalidada em uso", () => {
 
   test("sessão apagada em uso reflete deslogado no cabeçalho sem precisar navegar", async ({ page }) => {
     await page.goto("/minha-lista");
-    await expect(page.getByText("E2E Round5 Expiring")).toBeVisible();
+    // O cabeçalho não mostra mais o nome como texto sempre visível (só o
+    // avatar, atrás do menu de conta, desde o lote 3 do Epic 27) — o sinal
+    // de "logado" agora é a própria presença do botão do menu.
+    const accountMenuButton = page.getByRole("button", { name: "Menu da conta" });
+    await expect(accountMenuButton).toBeVisible();
     const star = page.getByRole("button", { name: "Adicionar aos favoritos" }).first();
     await expect(star).toBeVisible();
 
@@ -254,6 +258,6 @@ test.describe("Epic 18 — 5ª rodada — sessão invalidada em uso", () => {
     // cabeçalho na hora, sem precisar de uma navegação nova.
     await star.click();
     await expect(page.getByRole("link", { name: "Entrar" })).toBeVisible();
-    await expect(page.getByText("E2E Round5 Expiring")).toBeHidden();
+    await expect(accountMenuButton).toBeHidden();
   });
 });
