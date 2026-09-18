@@ -112,6 +112,7 @@ export default async function MinhaListaPage() {
         titlePortuguese: anime.titlePortuguese,
         titleFurigana: furiganaHtml,
         description: anime.description,
+        descriptionPortuguese: anime.descriptionPortuguese,
         bannerImage: anime.bannerImage,
         coverImage: anime.coverImage,
         accentColor: anime.accentColor,

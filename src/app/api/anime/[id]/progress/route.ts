@@ -12,7 +12,7 @@ export async function PATCH(request: Request, { params }: Params) {
   const { id } = await params;
   const anime = await prisma.anime.findUnique({
     where: { id },
-    select: { id: true, userId: true, episodes: true },
+    select: { id: true, userId: true, episodes: true, progress: { select: { status: true } } },
   });
   if (!anime || anime.userId !== user.id) {
     return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
@@ -61,6 +61,19 @@ export async function PATCH(request: Request, { params }: Params) {
       return NextResponse.json({ error: "episodeProgress inválido" }, { status: 400 });
     }
     data.episodeProgress = body.episodeProgress;
+    // A UI não tem mais um jeito manual de setar WATCHING (ver decisão do
+    // lote 1 no plano — status virou só um botão de "Finalizado") — sem
+    // isso, um anime nunca sairia de PLAN_TO_WATCH sozinho mesmo com
+    // episódios já contados. Só infere na transição 0 → >0 e só quando o
+    // status atual ainda for PLAN_TO_WATCH — nunca sobrescreve COMPLETED
+    // (reabrir o progresso de um anime já finalizado não deveria
+    // "reabrir" o status sozinho) nem PAUSED/DROPPED setados manualmente
+    // antes dessa mudança.
+    const currentStatus = anime.progress?.status ?? "PLAN_TO_WATCH";
+    if (body.episodeProgress > 0 && currentStatus === "PLAN_TO_WATCH" && body.status === undefined) {
+      data.status = "WATCHING";
+      data.startedAt = new Date();
+    }
   }
   if (body.score !== undefined) {
     if (body.score === null) {

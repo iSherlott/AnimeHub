@@ -72,6 +72,9 @@ test.describe("Epic 20 — 2ª rodada de auditoria de UX/UI", () => {
     });
 
     await page.goto(`/anime/${animeId}`);
+    // Lista de episódios vem atrás de um accordion fechado por padrão
+    // desde o lote 1 do Epic 27.
+    await page.getByText(/Ver episódios/).click();
 
     for (let n = 1; n <= 3; n++) {
       const tile = page.getByTestId(`episode-tile-1-${n}`);

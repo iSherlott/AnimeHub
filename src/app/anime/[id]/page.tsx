@@ -8,11 +8,10 @@ import { ProgressEditor } from "@/components/ProgressEditor";
 import { PlatformLinksManager } from "@/components/PlatformLinksManager";
 import { EpisodeGrid } from "@/components/EpisodeGrid";
 import { SeasonSwitcher } from "@/components/SeasonSwitcher";
-import { SeriesGroupEditor } from "@/components/SeriesGroupEditor";
+import { AnimeMetaEditorsPopover } from "@/components/AnimeMetaEditorsPopover";
 import { AnimeTitle } from "@/components/AnimeTitle";
-import { TitleEditor } from "@/components/TitleEditor";
+import { AnimeDescription } from "@/components/AnimeDescription";
 import { RefreshDataButton } from "@/components/RefreshDataButton";
-import { AnidbIdEditor } from "@/components/AnidbIdEditor";
 import { OtherTitles } from "@/components/OtherTitles";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { CommentSection } from "@/components/CommentSection";
@@ -196,16 +195,17 @@ export default async function AnimeDetailPage({
             </Box>
           </Box>
 
-          <Stack spacing={1} sx={{ alignItems: "flex-start" }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
             <SeasonSwitcher currentId={anime.id} seasons={seasons} />
-            <SeriesGroupEditor
+            <RefreshDataButton animeId={anime.id} />
+            <AnimeMetaEditorsPopover
               animeId={anime.id}
               seriesKey={anime.seriesKey ?? anime.titleRomaji.toLowerCase()}
               seasonNumber={anime.seasonNumber}
+              titlePortuguese={anime.titlePortuguese}
+              descriptionPortuguese={anime.descriptionPortuguese}
+              anidbId={anime.anidbId}
             />
-            <TitleEditor animeId={anime.id} titlePortuguese={anime.titlePortuguese} />
-            <AnidbIdEditor animeId={anime.id} anidbId={anime.anidbId} />
-            <RefreshDataButton animeId={anime.id} />
             {anime.lastRefreshedAt && (
               <Typography variant="caption" sx={{ color: "text.secondary" }}>
                 Atualizado em {anime.lastRefreshedAt.toLocaleDateString("pt-BR")}
@@ -252,10 +252,9 @@ export default async function AnimeDetailPage({
           )}
 
           {anime.description && (
-            <Typography
-              variant="body2"
-              sx={{ maxWidth: 672, lineHeight: 1.7, color: "text.secondary" }}
-              dangerouslySetInnerHTML={{ __html: anime.description }}
+            <AnimeDescription
+              description={anime.description}
+              descriptionPortuguese={anime.descriptionPortuguese}
             />
           )}
 
@@ -298,6 +297,7 @@ export default async function AnimeDetailPage({
             initialStatus={(anime.progress?.status as WatchStatus) ?? "PLAN_TO_WATCH"}
             initialEpisodeProgress={anime.progress?.episodeProgress ?? 0}
             initialScore={anime.progress?.score ?? null}
+            accentColor={anime.accentColor}
           />
 
           <Box>
@@ -348,6 +348,7 @@ export default async function AnimeDetailPage({
             episodes={episodesResult.episodes}
             fallbackImage={anime.coverImage}
             watchedCount={anime.progress?.episodeProgress}
+            accentColor={anime.accentColor}
           />
         ) : (
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
@@ -365,7 +366,7 @@ export default async function AnimeDetailPage({
             Comentários
           </Typography>
         </Stack>
-        <CommentSection animeId={anime.id} />
+        <CommentSection animeId={anime.id} accentColor={anime.accentColor} />
       </Box>
 
       {recommendations.length > 0 && (

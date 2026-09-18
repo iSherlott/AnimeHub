@@ -80,6 +80,19 @@ export function useTitlePreference() {
   return ctx;
 }
 
+/**
+ * Como resolveTitleText, mas pra descrição — só 2 variantes possíveis (a
+ * original, sempre presente, vinda do AniList; e a portuguesa, preenchida
+ * manualmente, ver DescriptionEditor), então não precisa de uma função pura
+ * genérica: já é um hook, usado tanto em AnimeDescription (página de
+ * detalhe) quanto em HeroBanner (destaque de /minha-lista) — os 2 lugares
+ * que mostram a descrição de um anime.
+ */
+export function useLocalizedDescription(description: string, descriptionPortuguese?: string | null): string {
+  const { preference } = useTitlePreference();
+  return preference.language === "pt" && descriptionPortuguese ? descriptionPortuguese : description;
+}
+
 /** Resolução em texto puro — usada nos cards, onde furigana não cabe. */
 export function resolveTitleText(preference: TitlePreference, titles: TitleSet): string {
   if (preference.language === "pt") {

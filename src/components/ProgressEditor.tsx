@@ -4,8 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
-import { Box, IconButton, MenuItem, Rating, Select, Typography, type SelectChangeEvent } from "@mui/material";
-import { WATCH_STATUSES, WATCH_STATUS_LABELS, type WatchStatus } from "@/lib/types";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlined";
+import { Box, Chip, IconButton, Rating, Typography } from "@mui/material";
+import type { WatchStatus } from "@/lib/types";
 
 export function ProgressEditor({
   animeId,
@@ -13,12 +15,17 @@ export function ProgressEditor({
   initialStatus,
   initialEpisodeProgress,
   initialScore,
+  accentColor,
 }: {
   animeId: string;
   episodes: number | null;
   initialStatus: WatchStatus;
   initialEpisodeProgress: number;
   initialScore: number | null;
+  /** Cor de destaque do anime (ver Anime.accentColor) — usada no botão de
+   * "Finalizado" e nas estrelas de nota quando disponível, com fallback pro
+   * tema padrão. */
+  accentColor?: string | null;
 }) {
   const router = useRouter();
   const [status, setStatus] = useState<WatchStatus>(initialStatus);
@@ -48,10 +55,16 @@ export function ProgressEditor({
     update({ episodeProgress: next });
   }
 
-  function handleStatusChange(e: SelectChangeEvent<WatchStatus>) {
-    const value = e.target.value as WatchStatus;
-    setStatus(value);
-    update({ status: value });
+  // Único jeito de setar status pela UI agora (ver decisão do lote 1 no
+  // plano) — WATCHING é inferido no servidor a partir do primeiro bump de
+  // episódio (ver PATCH /api/anime/[id]/progress), então aqui só alterna
+  // COMPLETED "on"/"off". Desmarcar volta pro que fizer sentido pelo
+  // progresso atual: WATCHING se já tem episódio contado, senão
+  // PLAN_TO_WATCH.
+  function toggleFinished() {
+    const next: WatchStatus = status === "COMPLETED" ? (episodeProgress > 0 ? "WATCHING" : "PLAN_TO_WATCH") : "COMPLETED";
+    setStatus(next);
+    update({ status: next });
   }
 
   function handleRatingChange(newValue: number | null) {
@@ -62,13 +75,19 @@ export function ProgressEditor({
 
   return (
     <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 3, border: 1, borderColor: "divider", bgcolor: "background.paper", p: 2 }}>
-      <Select value={status} disabled={saving} onChange={handleStatusChange} size="small">
-        {WATCH_STATUSES.map((s) => (
-          <MenuItem key={s} value={s}>
-            {WATCH_STATUS_LABELS[s]}
-          </MenuItem>
-        ))}
-      </Select>
+      <Chip
+        onClick={toggleFinished}
+        disabled={saving}
+        icon={status === "COMPLETED" ? <CheckCircleIcon /> : <CheckCircleOutlineIcon />}
+        label={status === "COMPLETED" ? "Finalizado" : "Marcar como finalizado"}
+        size="small"
+        variant={status === "COMPLETED" ? "filled" : "outlined"}
+        sx={
+          status === "COMPLETED"
+            ? { bgcolor: accentColor ?? "success.main", color: "#0b0b0d", "& .MuiChip-icon": { color: "#0b0b0d" } }
+            : undefined
+        }
+      />
 
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         <IconButton
@@ -101,6 +120,7 @@ export function ProgressEditor({
           max={5}
           onChange={(_, newValue) => handleRatingChange(newValue)}
           disabled={saving}
+          sx={accentColor ? { color: accentColor } : undefined}
         />
         {score !== null && (
           <Typography variant="caption" sx={{ color: "text.secondary" }}>

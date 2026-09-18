@@ -5,6 +5,7 @@ import Image from "next/image";
 import NextLink from "next/link";
 import { Box, Button, Chip, Stack, Typography } from "@mui/material";
 import { AnimeTitle } from "@/components/AnimeTitle";
+import { useLocalizedDescription } from "@/lib/titlePreference";
 
 export type HeroBannerData = {
   id: string;
@@ -14,6 +15,7 @@ export type HeroBannerData = {
   titlePortuguese?: string | null;
   titleFurigana?: string | null;
   description: string | null;
+  descriptionPortuguese?: string | null;
   bannerImage: string | null;
   coverImage: string | null;
   accentColor?: string | null;
@@ -29,12 +31,14 @@ export function HeroBanner({
   titlePortuguese,
   titleFurigana,
   description,
+  descriptionPortuguese,
   bannerImage,
   coverImage,
   accentColor,
   genres,
   primaryLink,
 }: HeroBannerData) {
+  const localizedDescription = useLocalizedDescription(description ?? "", descriptionPortuguese);
   const backdrop = bannerImage ?? coverImage;
   // Mesma correção de AnimeCard/RecommendationCard/CoverImage — um backdrop
   // que 404 (dado sujo de fonte externa) renderizava o ícone quebrado cru
@@ -128,7 +132,7 @@ export function HeroBanner({
               WebkitBoxOrient: "vertical",
               overflow: "hidden",
             }}
-            dangerouslySetInnerHTML={{ __html: description }}
+            dangerouslySetInnerHTML={{ __html: localizedDescription }}
           />
         )}
 

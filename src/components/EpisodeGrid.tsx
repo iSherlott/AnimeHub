@@ -3,7 +3,19 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import { Box, MenuItem, Select, Stack, TextField, Typography, type SelectChangeEvent } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Box,
+  MenuItem,
+  Select,
+  Stack,
+  TextField,
+  Typography,
+  type SelectChangeEvent,
+} from "@mui/material";
 import type { Episode } from "@prisma/client";
 import { resolveTitleTextLenient, useTitlePreference } from "@/lib/titlePreference";
 
@@ -111,6 +123,7 @@ export function EpisodeGrid({
   episodes,
   fallbackImage,
   watchedCount,
+  accentColor,
 }: {
   episodes: Episode[];
   /** Capa do anime — mostrada no lugar da miniatura quando a fonte não traz
@@ -123,6 +136,8 @@ export function EpisodeGrid({
    * (temporada, número) e compara contra a posição nessa ordem — não
    * contra o número bruto do episódio. */
   watchedCount?: number;
+  /** Cor de destaque do anime — usada no cabeçalho do accordion. */
+  accentColor?: string | null;
 }) {
   const seasonNumbers = useMemo(
     () => Array.from(new Set(episodes.map((ep) => ep.seasonNumber))).sort((a, b) => a - b),
@@ -167,37 +182,52 @@ export function EpisodeGrid({
   }
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap", alignItems: "center" }}>
-        {seasonNumbers.length > 1 && (
-          <Select value={effectiveSeason ?? mostRecentSeason} onChange={handleSeasonChange} size="small" aria-label="Temporada">
-            {seasonNumbers.map((s) => (
-              <MenuItem key={s} value={s}>
-                Temporada {s}
-              </MenuItem>
-            ))}
-          </Select>
-        )}
-        <TextField
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar episódio..."
-          size="small"
-          sx={{ minWidth: 200, flex: { xs: 1, sm: "unset" } }}
-        />
-      </Stack>
-
-      {visibleEpisodes.length === 0 ? (
-        <Typography variant="body2" sx={{ color: "text.secondary" }}>
-          Nenhum episódio bate com essa busca.
+    <Accordion
+      disableGutters
+      sx={{ bgcolor: "background.paper", "&:before": { display: "none" } }}
+    >
+      <AccordionSummary
+        expandIcon={<ExpandMoreIcon sx={{ color: accentColor ?? undefined }} />}
+        aria-label={`Ver episódios (${episodes.length})`}
+      >
+        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+          Ver episódios ({episodes.length})
         </Typography>
-      ) : (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          {visibleEpisodes.map((ep) => (
-            <EpisodeRow key={ep.id} ep={ep} fallbackImage={fallbackImage} watched={isWatched(ep)} />
-          ))}
+      </AccordionSummary>
+      <AccordionDetails>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap", alignItems: "center" }}>
+            {seasonNumbers.length > 1 && (
+              <Select value={effectiveSeason ?? mostRecentSeason} onChange={handleSeasonChange} size="small" aria-label="Temporada">
+                {seasonNumbers.map((s) => (
+                  <MenuItem key={s} value={s}>
+                    Temporada {s}
+                  </MenuItem>
+                ))}
+              </Select>
+            )}
+            <TextField
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar episódio..."
+              size="small"
+              sx={{ minWidth: 200, flex: { xs: 1, sm: "unset" } }}
+            />
+          </Stack>
+
+          {visibleEpisodes.length === 0 ? (
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              Nenhum episódio bate com essa busca.
+            </Typography>
+          ) : (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              {visibleEpisodes.map((ep) => (
+                <EpisodeRow key={ep.id} ep={ep} fallbackImage={fallbackImage} watched={isWatched(ep)} />
+              ))}
+            </Box>
+          )}
         </Box>
-      )}
-    </Box>
+      </AccordionDetails>
+    </Accordion>
   );
 }

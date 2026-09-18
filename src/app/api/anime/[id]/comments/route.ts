@@ -6,6 +6,7 @@ import { isBlank } from "@/lib/text";
 type Params = { params: Promise<{ id: string }> };
 
 const MAX_BODY_LENGTH = 2000;
+const PAGE_SIZE = 10;
 
 /**
  * Comentários (Epic 15) são chaveados por anilistId, não pelo id da linha de
@@ -34,9 +35,20 @@ export async function GET(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
   }
 
+  const url = new URL(request.url);
+  const requestedPage = Number(url.searchParams.get("page"));
+  const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+
+  const totalCount = await prisma.comment.count({
+    where: { anilistId: anime.anilistId, deletedAt: null },
+  });
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
   const comments = await prisma.comment.findMany({
     where: { anilistId: anime.anilistId, deletedAt: null },
     orderBy: { createdAt: "asc" },
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
     include: { user: { select: { id: true, displayName: true } } },
   });
 
@@ -50,15 +62,38 @@ export async function GET(request: Request, { params }: Params) {
   });
   const reportedByMe = new Set(myOpenReports.map((r) => r.commentId));
 
+  // "Já assistiu" (ícone ao lado do nome) — WatchProgress é por (usuário,
+  // Anime), e Anime é por (usuário, anilistId): pra cada autor único nesta
+  // página, busca a própria linha de Anime dele pro mesmo anilistId e olha
+  // o progresso. Só pros autores da página atual (no máx. PAGE_SIZE), não
+  // pra thread inteira.
+  const authorIds = Array.from(new Set(comments.map((c) => c.userId)));
+  const authorAnime = authorIds.length
+    ? await prisma.anime.findMany({
+        where: { anilistId: anime.anilistId, userId: { in: authorIds } },
+        select: { userId: true, progress: { select: { status: true } } },
+      })
+    : [];
+  const completedUserIds = new Set(
+    authorAnime.filter((a) => a.progress?.status === "COMPLETED").map((a) => a.userId)
+  );
+
   return NextResponse.json({
     comments: comments.map((c) => ({
       id: c.id,
       body: c.body,
       createdAt: c.createdAt.toISOString(),
-      author: { id: c.user.id, displayName: c.user.displayName },
+      author: {
+        id: c.user.id,
+        displayName: c.user.displayName,
+        completed: completedUserIds.has(c.user.id),
+      },
       isMine: c.user.id === user.id,
       reportedByMe: reportedByMe.has(c.id),
     })),
+    page,
+    totalPages,
+    totalCount,
   });
 }
 
@@ -98,16 +133,33 @@ export async function POST(request: Request, { params }: Params) {
     include: { user: { select: { id: true, displayName: true } } },
   });
 
+  const totalCount = await prisma.comment.count({
+    where: { anilistId: anime.anilistId, deletedAt: null },
+  });
+
+  // Quem comenta sempre já assistiu o suficiente pra ter algo a dizer, mas
+  // não necessariamente concluiu — não assume `completed: true` aqui, só
+  // reflete o próprio progresso de quem acabou de postar.
+  const own = await prisma.anime.findUnique({
+    where: { id },
+    select: { progress: { select: { status: true } } },
+  });
+
   return NextResponse.json(
     {
       comment: {
         id: comment.id,
         body: comment.body,
         createdAt: comment.createdAt.toISOString(),
-        author: { id: comment.user.id, displayName: comment.user.displayName },
+        author: {
+          id: comment.user.id,
+          displayName: comment.user.displayName,
+          completed: own?.progress?.status === "COMPLETED",
+        },
         isMine: true,
         reportedByMe: false,
       },
+      totalPages: Math.max(1, Math.ceil(totalCount / PAGE_SIZE)),
     },
     { status: 201 }
   );

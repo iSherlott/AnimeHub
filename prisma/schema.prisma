@@ -142,6 +142,11 @@ model Anime {
   /// de detalhe e no hero da home.
   accentColor     String?
   description     String?
+  /// Descrição em português — igual titlePortuguese, sem fonte gratuita
+  /// confiável pra tradução automática, então é preenchida manualmente pelo
+  /// usuário (ver DescriptionEditor). Exibida no lugar de `description`
+  /// quando a preferência de idioma do título estiver em "pt".
+  descriptionPortuguese String?
   episodes        Int?
   /// TV / MOVIE / OVA / ONA / SPECIAL / MUSIC — vem da AniList (format) ou
   /// do Type da AniDB.

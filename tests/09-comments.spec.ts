@@ -1,7 +1,28 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type APIRequestContext } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
+
+// GET /api/anime/[id]/comments pagina em 10 por página (lote 1 do Epic 27)
+// — a suíte inteira compartilha o mesmo anime entre vários arquivos de
+// teste, então por essa altura já pode haver mais de 10 comentários
+// acumulados e a página 1 sozinha não é mais garantia de conter um
+// comentário específico recém-criado (que, por ordenação createdAt asc,
+// sempre cai nas páginas mais recentes). Busca todas as páginas quando
+// precisa achar 1 comentário específico em vez de assumir que cabe na 1ª.
+async function fetchAllComments(request: APIRequestContext, url: string, headers?: Record<string, string>) {
+  const first = await request.get(url, headers ? { headers } : undefined);
+  const firstData = await first.json();
+  const comments = [...(firstData.comments ?? [])];
+  const totalPages = firstData.totalPages ?? 1;
+  const sep = url.includes("?") ? "&" : "?";
+  for (let p = 2; p <= totalPages; p++) {
+    const res = await request.get(`${url}${sep}page=${p}`, headers ? { headers } : undefined);
+    const data = await res.json();
+    comments.push(...(data.comments ?? []));
+  }
+  return { status: first.status(), comments };
+}
 
 // Terceira sessão fixa, só usada neste arquivo — pra testar que a contagem
 // de denúncias soma pessoas distintas (o admin sozinho já cobre "outro
@@ -81,12 +102,11 @@ test.describe("Comentários por anime (Epic 15)", () => {
   test("outro usuário com o mesmo anime na lista vê o comentário, com isMine false", async ({
     request,
   }) => {
-    const res = await request.get(`/api/anime/${adminAnimeId}/comments`, {
-      headers: { Cookie: `${SESSION_COOKIE_NAME}=${TEST_ADMIN_SESSION_TOKEN}` },
+    const { status, comments } = await fetchAllComments(request, `/api/anime/${adminAnimeId}/comments`, {
+      Cookie: `${SESSION_COOKIE_NAME}=${TEST_ADMIN_SESSION_TOKEN}`,
     });
-    expect(res.status()).toBe(200);
-    const data = await res.json();
-    const found = data.comments.find((c: { id: string }) => c.id === commentId);
+    expect(status).toBe(200);
+    const found = comments.find((c: { id: string }) => c.id === commentId);
     expect(found).toBeTruthy();
     expect(found.isMine).toBe(false);
     expect(found.author.displayName).toBe("E2E Test User");
@@ -150,20 +170,18 @@ test.describe("Comentários por anime (Epic 15)", () => {
     const queueData = await queue.json();
     expect(queueData.reports.find((r: { commentId: string }) => r.commentId === commentId)).toBeFalsy();
 
-    const stillThere = await request.get(`/api/anime/${animeId}/comments`);
-    const stillThereData = await stillThere.json();
-    expect(stillThereData.comments.some((c: { id: string }) => c.id === commentId)).toBe(true);
+    const { comments: stillThereComments } = await fetchAllComments(request, `/api/anime/${animeId}/comments`);
+    expect(stillThereComments.some((c: { id: string }) => c.id === commentId)).toBe(true);
   });
 
   test("reportedByMe reflete uma denúncia própria em aberto, e some quando resolvida", async ({
     request,
   }) => {
-    const afterResolve = await request.get(`/api/anime/${adminAnimeId}/comments`, {
-      headers: { Cookie: `${SESSION_COOKIE_NAME}=${TEST_ADMIN_SESSION_TOKEN}` },
+    const { comments: afterResolveComments } = await fetchAllComments(request, `/api/anime/${adminAnimeId}/comments`, {
+      Cookie: `${SESSION_COOKIE_NAME}=${TEST_ADMIN_SESSION_TOKEN}`,
     });
-    const afterResolveData = await afterResolve.json();
     expect(
-      afterResolveData.comments.find((c: { id: string }) => c.id === commentId).reportedByMe
+      afterResolveComments.find((c: { id: string }) => c.id === commentId).reportedByMe
     ).toBe(false);
   });
 
@@ -187,13 +205,10 @@ test.describe("Comentários por anime (Epic 15)", () => {
     expect(entry).toBeTruthy();
     expect(entry.reportCount).toBe(1);
 
-    const list = await request.get(`/api/anime/${adminAnimeId}/comments`, {
-      headers: { Cookie: `${SESSION_COOKIE_NAME}=${TEST_ADMIN_SESSION_TOKEN}` },
+    const { comments: reopenedComments } = await fetchAllComments(request, `/api/anime/${adminAnimeId}/comments`, {
+      Cookie: `${SESSION_COOKIE_NAME}=${TEST_ADMIN_SESSION_TOKEN}`,
     });
-    const listData = await list.json();
-    expect(listData.comments.find((c: { id: string }) => c.id === commentId).reportedByMe).toBe(
-      true
-    );
+    expect(reopenedComments.find((c: { id: string }) => c.id === commentId).reportedByMe).toBe(true);
 
     // Deixa resolvido de novo pra não vazar denúncia pendente pros
     // próximos testes deste arquivo.
@@ -207,9 +222,8 @@ test.describe("Comentários por anime (Epic 15)", () => {
     const del = await request.delete(`/api/comments/${commentId}`);
     expect(del.status()).toBe(200);
 
-    const list = await request.get(`/api/anime/${animeId}/comments`);
-    const listData = await list.json();
-    expect(listData.comments.some((c: { id: string }) => c.id === commentId)).toBe(false);
+    const { comments: afterDeleteComments } = await fetchAllComments(request, `/api/anime/${animeId}/comments`);
+    expect(afterDeleteComments.some((c: { id: string }) => c.id === commentId)).toBe(false);
   });
 
   test("outro usuário não consegue apagar o comentário de alguém", async ({ request }) => {

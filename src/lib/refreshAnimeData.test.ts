@@ -70,6 +70,7 @@ function makeAnime(overrides: Partial<Anime> = {}): Anime {
     recommendationsJson: null,
     accentColor: null,
     description: null,
+    descriptionPortuguese: null,
     episodes: null,
     format: null,
     status: null,

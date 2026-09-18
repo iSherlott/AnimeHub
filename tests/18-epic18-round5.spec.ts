@@ -69,9 +69,15 @@ test.describe("Epic 18 — 5ª rodada de auditoria de UX/UI — duplo clique nã
     });
     await page.waitForTimeout(800);
 
-    const res = await request.get(`/api/anime/${animeId}/comments`);
-    const data = await res.json();
-    const matches = data.comments.filter((c: { body: string }) => c.body === uniqueBody);
+    // Comentários paginados (10/página, lote 1 do Epic 27) — o recém-postado
+    // é o mais novo (createdAt asc), então cai na última página, não
+    // necessariamente na 1ª (a suíte inteira compartilha este anime entre
+    // vários arquivos, já pode haver mais de 10 comentários acumulados).
+    const firstPage = await (await request.get(`/api/anime/${animeId}/comments`)).json();
+    const lastPage = await (
+      await request.get(`/api/anime/${animeId}/comments?page=${firstPage.totalPages}`)
+    ).json();
+    const matches = lastPage.comments.filter((c: { body: string }) => c.body === uniqueBody);
     expect(matches.length).toBe(1);
   });
 
@@ -129,6 +135,10 @@ test.describe("Epic 18 — 5ª rodada — editores inline", () => {
   test("cancelar um editor inline restaura o valor salvo, não o rascunho digitado", async ({ page }) => {
     await page.goto(`/anime/${animeId}`);
 
+    // Os 3 editores de metadado ficam atrás de 1 ícone único desde o lote 1
+    // do Epic 27 — precisa abrir o popover antes de achar o gatilho de
+    // cada um.
+    await page.getByRole("button", { name: "Editar metadados" }).click();
     await page.getByRole("button", { name: "Adicionar título em português" }).click();
     const input = page.getByPlaceholder("título em português (opcional)");
     await input.fill("Rascunho não salvo");
@@ -143,6 +153,7 @@ test.describe("Epic 18 — 5ª rodada — editores inline", () => {
   test("ID da AniDB não numérico mostra erro e não salva", async ({ page, request }) => {
     await page.goto(`/anime/${animeId}`);
 
+    await page.getByRole("button", { name: "Editar metadados" }).click();
     await page.getByRole("button", { name: "Vincular ID da AniDB" }).click();
     await page.getByPlaceholder("ID numérico (ex: 15617)").fill("abc123xyz");
     await page.getByRole("button", { name: "Salvar" }).click();
