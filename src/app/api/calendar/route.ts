@@ -65,19 +65,30 @@ export async function GET(request: NextRequest) {
   const from = weekStart - BUFFER_SECONDS;
   const to = weekStart + WEEK_SECONDS + BUFFER_SECONDS;
 
+  const entries = await getCachedAiringSchedule(new Date(from * 1000), new Date(to * 1000));
+
   // Navegar o calendário nunca exige login — sem sessão, ninguém aparece
   // marcado como "já está na minha lista" (não existe "minha lista" pra
-  // mostrar).
+  // mostrar). Escopado aos anilistIds que realmente aparecem nesta semana
+  // (não a lista inteira do usuário) — trazer título/sinopse em português
+  // pro preview do lote 2 do Epic 27 tornaria essa query pesada demais se
+  // buscasse todo mundo da lista a cada carregamento do calendário.
   const user = await getCurrentUser();
-  const myAnime = user
-    ? await prisma.anime.findMany({
-        where: { userId: user.id },
-        select: { id: true, anilistId: true },
-      })
-    : [];
-  const myAnimeByAnilistId = new Map(myAnime.map((a) => [a.anilistId, a.id]));
+  const weekAnilistIds = Array.from(new Set(entries.map((e) => e.anilistId)));
+  const myAnime =
+    user && weekAnilistIds.length
+      ? await prisma.anime.findMany({
+          where: { userId: user.id, anilistId: { in: weekAnilistIds } },
+          select: { id: true, anilistId: true, titlePortuguese: true, description: true, descriptionPortuguese: true, isFavorite: true },
+        })
+      : [];
+  const myAnimeByAnilistId = new Map(
+    myAnime.map((a) => [
+      a.anilistId,
+      { id: a.id, titlePortuguese: a.titlePortuguese, description: a.description, descriptionPortuguese: a.descriptionPortuguese, isFavorite: a.isFavorite },
+    ])
+  );
 
-  const entries = await getCachedAiringSchedule(new Date(from * 1000), new Date(to * 1000));
   return NextResponse.json({
     results: entries.map((e) => calendarItemFromCache(e, myAnimeByAnilistId)),
   });

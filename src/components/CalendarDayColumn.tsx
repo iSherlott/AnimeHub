@@ -51,7 +51,7 @@ export function CalendarDayColumn({
       {mine.length > 0 ? (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
           {mine.map((item) => (
-            <CalendarEntryCard key={item.key} item={item} variant="featured" />
+            <CalendarEntryCard key={item.key} item={item} />
           ))}
         </Box>
       ) : !showAll ? (
@@ -72,7 +72,7 @@ export function CalendarDayColumn({
             </Typography>
           )}
           {visibleOthers.map((item) => (
-            <CalendarEntryCard key={item.key} item={item} variant="compact" />
+            <CalendarEntryCard key={item.key} item={item} />
           ))}
           {hiddenCount > 0 && (
             <Button
