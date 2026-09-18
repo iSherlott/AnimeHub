@@ -1,26 +1,42 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import CloseIcon from "@mui/icons-material/Close";
+import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
+import TagIcon from "@mui/icons-material/Tag";
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   IconButton,
   Link as MuiLink,
-  MenuItem,
+  List,
+  ListItemButton,
+  ListItemText,
+  Paper,
   Stack,
   Tab,
   Tabs,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
+import { ComposerImageAttachments, type ComposerImage } from "@/components/ComposerImageAttachments";
 import { PostCard } from "@/components/PostCard";
 import { FollowToggle } from "@/components/FollowToggle";
 import { LinkButton } from "@/components/LinkButton";
+import {
+  animeSlug,
+  findActiveHashtagQuery,
+  insertHashtagSelection,
+  resolveAnimeFromHashtags,
+} from "@/lib/animeHashtag";
+import { avatarColor, initials } from "@/lib/avatarColor";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
+import { uploadImage } from "@/lib/uploadImage";
 import type { PostDTO } from "@/lib/postDto";
 
 type FeedTab = "recommended" | "following";
@@ -30,6 +46,7 @@ type Quoting = { id: string; author: string; snippet: string };
 
 const MAX_BODY_LENGTH = 500;
 const MAX_IMAGES = 6;
+const MAX_MENTION_SUGGESTIONS = 5;
 
 export function FeedView() {
   const user = useCurrentUser();
@@ -53,9 +70,20 @@ export function FeedView() {
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
 
   const [myAnime, setMyAnime] = useState<MyAnime[]>([]);
-  const [composerAnimeId, setComposerAnimeId] = useState("");
   const [composerBody, setComposerBody] = useState("");
-  const [composerImageUrls, setComposerImageUrls] = useState("");
+  // Epic 26 — o anime do post não vem mais de um campo separado, e sim de
+  // uma hashtag dentro do próprio texto (#NomeDoAnime, estilo Twitter/
+  // Instagram — pedido direto do usuário). `mentionQuery` é a hashtag
+  // ainda sendo digitada (ver findActiveHashtagQuery) — `null` quando o
+  // cursor não está numa mention ativa, string vazia logo depois de
+  // digitar só "#". `resolvedAnime` (useMemo abaixo) é o que de fato sai
+  // no post: a 1ª hashtag do texto que bate com um anime da lista.
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  // Epic 26 — cada imagem sobe de verdade (POST /api/uploads) assim que
+  // anexada, em paralelo entre elas, em vez do antigo campo de colar URL.
+  // `uploadedUrl` só existe quando `status === "done"`; handleSubmit só
+  // manda pro post as que já terminaram.
+  const [composerImages, setComposerImages] = useState<ComposerImage[]>([]);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Modo citação (Epic 25) — setado pelo botão "Citar" de um PostCard
@@ -311,20 +339,138 @@ export function FeedView() {
     setQuoting({ id: post.id, author: post.author.displayName, snippet: post.body.slice(0, 80) });
   }
 
+  // Anime do post = a 1ª hashtag do texto que bate com um anime da lista
+  // (ver comentário no estado `mentionQuery` acima). Recalcula a cada
+  // mudança de texto/lista de animes — leve o bastante (regex + find
+  // linear numa lista curta) pra não precisar de memo mais elaborado.
+  const resolvedAnime = useMemo(() => resolveAnimeFromHashtags(composerBody, myAnime), [composerBody, myAnime]);
+
+  // Lista de sugestão exibida enquanto `mentionQuery` não é null — filtra
+  // por animes cujo slug contém o que já foi digitado depois do "#".
+  const mentionSuggestions = useMemo(() => {
+    if (mentionQuery === null) return [];
+    const query = mentionQuery.toLowerCase();
+    return myAnime.filter((a) => animeSlug(a.titleRomaji).includes(query)).slice(0, MAX_MENTION_SUGGESTIONS);
+  }, [mentionQuery, myAnime]);
+
+  function handleBodyChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    const next = e.target.value.slice(0, MAX_BODY_LENGTH);
+    setComposerBody(next);
+    // `e.target.selectionStart` reflete o valor CRU (não cortado) do
+    // campo — colar um texto acima de MAX_BODY_LENGTH deixa o cursor
+    // numa posição depois do fim de `next`; sem o `Math.min`, a hashtag
+    // ativa era calculada em cima do texto CORTADO na posição errada
+    // (achado real da revisão de código desta entrega).
+    const cursorPos = Math.min(e.target.selectionStart ?? next.length, next.length);
+    setMentionQuery(findActiveHashtagQuery(next, cursorPos));
+  }
+
+  // Clicar ou navegar com as setas dentro do campo também muda a posição
+  // do cursor sem disparar `onChange` — sem isso, a lista de sugestões
+  // continuava aberta (ou fechada) baseada só na última digitação, mesmo
+  // depois da pessoa clicar pra fora de uma hashtag. Lê a posição via
+  // `composerBodyRef` (não `e.currentTarget`, que o TypeScript do
+  // TextField do MUI tipa como o `<div>` raiz, não o `<input>`/
+  // `<textarea>` de verdade).
+  function updateMentionQueryFromCursor() {
+    const el = composerBodyRef.current;
+    if (!el) return;
+    setMentionQuery(findActiveHashtagQuery(composerBody, el.selectionStart ?? composerBody.length));
+  }
+
+  function handleSelectMention(anime: MyAnime) {
+    const el = composerBodyRef.current;
+    const cursorPos = el?.selectionStart ?? composerBody.length;
+    const { body: nextBody, cursorPos: nextCursorPos } = insertHashtagSelection(
+      composerBody,
+      cursorPos,
+      animeSlug(anime.titleRomaji)
+    );
+    setComposerBody(nextBody);
+    setMentionQuery(null);
+    // Devolve o foco pro campo, com o cursor logo depois do espaço
+    // inserido — sem isso, clicar numa sugestão deixava o campo sem
+    // foco, obrigando a pessoa a clicar de novo nele pra continuar
+    // escrevendo.
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(nextCursorPos, nextCursorPos);
+    });
+  }
+
+  // Sobe UMA imagem e atualiza só a entrada dela por localId quando
+  // terminar — chamada em paralelo pra cada arquivo recém-anexado (ver
+  // handleAddImages) e de novo por handleRetryImage, então precisa ser
+  // segura de rodar mais de uma vez em paralelo sem interferir nas outras
+  // entradas.
+  function startImageUpload(entry: ComposerImage) {
+    uploadImage(entry.file)
+      .then((data) => {
+        setComposerImages((prev) =>
+          prev.map((img) => (img.localId === entry.localId ? { ...img, status: "done", uploadedUrl: data.url } : img))
+        );
+      })
+      .catch((err: Error) => {
+        setComposerImages((prev) =>
+          prev.map((img) =>
+            img.localId === entry.localId ? { ...img, status: "error", error: err.message } : img
+          )
+        );
+      });
+  }
+
+  function handleAddImages(files: File[]) {
+    const remainingSlots = Math.max(0, MAX_IMAGES - composerImages.length);
+    const accepted = files.slice(0, remainingSlots);
+    // Sem aviso nenhum antes, selecionar mais arquivos do que o espaço
+    // restante descartava o excesso em silêncio — a única pista era a
+    // fileira de miniaturas crescer menos do que o esperado (achado real
+    // da revisão de código desta entrega).
+    if (accepted.length < files.length) {
+      const dropped = files.length - accepted.length;
+      setError(
+        `No máximo ${MAX_IMAGES} imagens por post — ${dropped} ${dropped === 1 ? "não foi anexada" : "não foram anexadas"}.`
+      );
+    }
+    const newEntries: ComposerImage[] = accepted.map((file) => ({
+      localId: crypto.randomUUID(),
+      file,
+      previewUrl: URL.createObjectURL(file),
+      status: "uploading",
+    }));
+    setComposerImages((prev) => [...prev, ...newEntries]);
+    newEntries.forEach(startImageUpload);
+  }
+
+  function handleRemoveImage(localId: string) {
+    setComposerImages((prev) => {
+      const target = prev.find((img) => img.localId === localId);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((img) => img.localId !== localId);
+    });
+  }
+
+  function handleRetryImage(localId: string) {
+    const entry = composerImages.find((img) => img.localId === localId);
+    if (!entry) return;
+    setComposerImages((prev) =>
+      prev.map((img) => (img.localId === localId ? { ...img, status: "uploading", error: undefined } : img))
+    );
+    startImageUpload(entry);
+  }
+
   async function handleSubmit() {
     const text = composerBody.trim();
-    if (!composerAnimeId || !text) return;
+    if (!resolvedAnime || !text) return;
     if (postingRef.current) return;
     postingRef.current = true;
     setPosting(true);
     setError(null);
     try {
-      const imageUrls = composerImageUrls
-        .split("\n")
-        .map((url) => url.trim())
-        .filter(Boolean)
-        .slice(0, MAX_IMAGES);
-      const res = await fetch(`/api/anime/${composerAnimeId}/posts`, {
+      const imageUrls = composerImages
+        .filter((img) => img.status === "done")
+        .map((img) => img.uploadedUrl as string);
+      const res = await fetch(`/api/anime/${resolvedAnime.id}/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -342,7 +488,9 @@ export function FeedView() {
         setPosts((prev) => [data.post as PostDTO, ...prev]);
       }
       setComposerBody("");
-      setComposerImageUrls("");
+      setMentionQuery(null);
+      composerImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+      setComposerImages([]);
       setQuoting(null);
     } catch {
       setError("Falha ao publicar post");
@@ -359,7 +507,7 @@ export function FeedView() {
         {user && <Tab label="Seguindo" value="following" />}
       </Tabs>
 
-      <Box sx={{ mb: 3, p: 2, border: 1, borderColor: "divider", borderRadius: 1 }}>
+      <Box sx={{ mb: 3, pb: 2, borderBottom: 1, borderColor: "divider" }}>
         {loggedOut ? (
           <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", justifyContent: "space-between" }}>
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
@@ -383,74 +531,140 @@ export function FeedView() {
             Adicione um anime à sua lista pra poder postar no feed.
           </Typography>
         ) : (
-          <Stack spacing={1.5}>
-            {quoting && (
-              // role="status" anuncia a entrada em modo citação pra quem usa
-              // leitor de tela — sem isso, só o scroll automático (useEffect
-              // logo acima) avisava quem enxerga, e nem esse chegava a mover
-              // o foco: teclado/leitor de tela tinham que navegar manualmente
-              // até aqui, sem nenhum sinal de que o modo tinha mudado (achado
-              // real da 22ª rodada de auditoria, Epic 18).
+          // Estilo Twitter/X (Epic 26): avatar à esquerda, campo de texto
+          // sem borda à direita, barra de ações embaixo (anexar imagem,
+          // contador, "Publicar" arredondado). O anime do post não é mais
+          // um campo separado — sai de uma hashtag dentro do próprio
+          // texto (#NomeDoAnime), com sugestão em lista enquanto digita
+          // (mentionSuggestions/handleBodyChange/handleSelectMention
+          // acima) — pedido direto do usuário, pra ficar mais parecido
+          // com hashtag de rede social de verdade.
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: "flex-start" }}>
+            {user && (
+              <Avatar sx={{ bgcolor: avatarColor(user.id), width: 44, height: 44, fontSize: 18, fontWeight: 700 }}>
+                {initials(user.displayName)}
+              </Avatar>
+            )}
+            <Stack spacing={1} sx={{ flex: 1, minWidth: 0 }}>
+              {quoting && (
+                // role="status" anuncia a entrada em modo citação pra quem usa
+                // leitor de tela — sem isso, só o scroll automático (useEffect
+                // logo acima) avisava quem enxerga, e nem esse chegava a mover
+                // o foco: teclado/leitor de tela tinham que navegar manualmente
+                // até aqui, sem nenhum sinal de que o modo tinha mudado (achado
+                // real da 22ª rodada de auditoria, Epic 18).
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  role="status"
+                  sx={{
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    p: 1,
+                    bgcolor: "background.default",
+                    borderRadius: 1,
+                  }}
+                >
+                  <Typography variant="caption" sx={{ color: "text.secondary", minWidth: 0 }} noWrap>
+                    Citando post de {quoting.author}: &ldquo;{quoting.snippet}&rdquo;
+                  </Typography>
+                  <IconButton onClick={() => setQuoting(null)} size="small" aria-label="Cancelar citação">
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Stack>
+              )}
+
+              <TextField
+                inputRef={composerBodyRef}
+                value={composerBody}
+                onChange={handleBodyChange}
+                onClick={updateMentionQueryFromCursor}
+                onKeyUp={updateMentionQueryFromCursor}
+                placeholder="O que está acontecendo? Marque um anime com #NomeDoAnime"
+                variant="standard"
+                slotProps={{ input: { disableUnderline: true } }}
+                multiline
+                minRows={2}
+                maxRows={8}
+                sx={{ "& .MuiInputBase-input": { fontSize: "1.25rem", lineHeight: 1.4 } }}
+              />
+
+              {mentionQuery !== null && mentionSuggestions.length > 0 && (
+                <Paper variant="outlined" sx={{ overflow: "hidden" }}>
+                  <List dense disablePadding>
+                    {mentionSuggestions.map((a) => (
+                      <ListItemButton key={a.id} onMouseDown={(e) => e.preventDefault()} onClick={() => handleSelectMention(a)}>
+                        <TagIcon fontSize="small" sx={{ mr: 1, color: "text.secondary" }} />
+                        <ListItemText primary={a.titleRomaji} secondary={`#${animeSlug(a.titleRomaji)}`} />
+                      </ListItemButton>
+                    ))}
+                  </List>
+                </Paper>
+              )}
+
+              {!resolvedAnime && composerBody.trim() && mentionQuery === null && (
+                <Typography variant="caption" sx={{ color: "warning.main" }}>
+                  Marque um anime da sua lista com #NomeDoAnime pra poder publicar.
+                </Typography>
+              )}
+              {resolvedAnime && (
+                <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                  Sobre: {resolvedAnime.titleRomaji}
+                </Typography>
+              )}
+
+              <ComposerImageAttachments
+                images={composerImages}
+                onRemove={handleRemoveImage}
+                onRetry={handleRetryImage}
+              />
+
               <Stack
                 direction="row"
-                spacing={1}
-                role="status"
-                sx={{
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  p: 1,
-                  bgcolor: "background.default",
-                  borderRadius: 1,
-                }}
+                sx={{ alignItems: "center", justifyContent: "space-between", pt: 1, borderTop: 1, borderColor: "divider" }}
               >
-                <Typography variant="caption" sx={{ color: "text.secondary", minWidth: 0 }} noWrap>
-                  Citando post de {quoting.author}: &ldquo;{quoting.snippet}&rdquo;
-                </Typography>
-                <IconButton onClick={() => setQuoting(null)} size="small" aria-label="Cancelar citação">
-                  <CloseIcon fontSize="small" />
-                </IconButton>
+                <Tooltip title={composerImages.length >= MAX_IMAGES ? `Máximo de ${MAX_IMAGES} imagens` : "Anexar imagem"}>
+                  <span>
+                    <IconButton component="label" color="primary" disabled={composerImages.length >= MAX_IMAGES} aria-label="Anexar imagem">
+                      <ImageOutlinedIcon />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        hidden
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files ?? []);
+                          e.target.value = "";
+                          if (files.length) handleAddImages(files);
+                        }}
+                      />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+
+                <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: composerBody.length >= MAX_BODY_LENGTH ? "error.main" : "text.secondary" }}
+                  >
+                    {composerBody.length}/{MAX_BODY_LENGTH}
+                  </Typography>
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={
+                      posting ||
+                      !resolvedAnime ||
+                      !composerBody.trim() ||
+                      composerImages.some((img) => img.status === "uploading")
+                    }
+                    variant="contained"
+                    sx={{ borderRadius: 999, px: 3, textTransform: "none", fontWeight: 700 }}
+                  >
+                    Publicar
+                  </Button>
+                </Stack>
               </Stack>
-            )}
-            <TextField
-              select
-              label="Anime"
-              size="small"
-              value={composerAnimeId}
-              onChange={(e) => setComposerAnimeId(e.target.value)}
-            >
-              {myAnime.map((a) => (
-                <MenuItem key={a.id} value={a.id}>
-                  {a.titleRomaji}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              inputRef={composerBodyRef}
-              value={composerBody}
-              onChange={(e) => setComposerBody(e.target.value.slice(0, MAX_BODY_LENGTH))}
-              placeholder="O que você achou desse anime?"
-              size="small"
-              multiline
-              maxRows={4}
-              helperText={`${composerBody.length}/${MAX_BODY_LENGTH}`}
-            />
-            <TextField
-              value={composerImageUrls}
-              onChange={(e) => setComposerImageUrls(e.target.value)}
-              placeholder={`URLs de imagem (opcional, uma por linha, até ${MAX_IMAGES})`}
-              size="small"
-              multiline
-              maxRows={MAX_IMAGES}
-            />
-            <Box>
-              <Button
-                onClick={handleSubmit}
-                disabled={posting || !composerAnimeId || !composerBody.trim()}
-                variant="contained"
-              >
-                Publicar
-              </Button>
-            </Box>
+            </Stack>
           </Stack>
         )}
       </Box>

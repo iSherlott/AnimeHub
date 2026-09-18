@@ -54,6 +54,16 @@ services:
       NAME_RESOLVER_URL: http://name-resolver:4002
     ports:
       - "3000:3000"
+    volumes:
+      # Upload real de imagem (Epic 26) — sem volume aqui, todo upload
+      # seria perdido no próximo restart/rebuild (o resto da imagem é
+      # baked no build, ver Dockerfile). `storage/uploads`, não
+      # `public/uploads` — `next start` não serve dinamicamente um
+      # arquivo criado em `public/` depois que o servidor já subiu (só
+      # o que já existia no boot), então os arquivos são servidos de
+      # volta por uma rota própria (GET /api/uploads/[...path]) em vez
+      # do serving estático embutido do Next.
+      - uploads_data:/app/storage/uploads
     depends_on:
       # Só espera o migrate — nenhum dos serviços abaixo é obrigatório pro
       # `web` subir: cada rota que dependeria deles tem fallback pro código
@@ -156,3 +166,4 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:

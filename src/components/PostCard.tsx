@@ -15,38 +15,10 @@ import { LikeToggle } from "@/components/LikeToggle";
 import { PostComments } from "@/components/PostComments";
 import { PostImageCarousel } from "@/components/PostImageCarousel";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
+import { avatarColor, coverColor, initials } from "@/lib/avatarColor";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 import type { PostDTO } from "@/lib/postDto";
-
-// Sem infra de upload de avatar (decisão do Epic 22 — nenhum campo de
-// imagem no app tem uma hoje, nem User.avatarUrl é usado pra exibir
-// nada). Um card estilo Instagram/Twitter ainda pede um círculo de
-// identidade no cabeçalho — iniciais sobre uma cor determinística por
-// autor cobrem isso sem precisar de infraestrutura nova. A mesma paleta
-// também vira o fundo do bloco-capa de texto (Epic 25) quando o post não
-// tem imagem, hasheada pelo anilistId em vez do autor — o mesmo anime
-// sempre cai na mesma cor ali, sem precisar de uma coluna nova
-// (Anime.accentColor existe, mas não é copiado pro Post).
-const AVATAR_COLORS = ["#7C4DFF", "#00BFA5", "#FF6D00", "#2979FF", "#D500F9", "#FFAB00", "#F50057"];
-
-function hashString(value: string): number {
-  let hash = 0;
-  for (let i = 0; i < value.length; i++) hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
-  return hash;
-}
-
-function avatarColor(authorId: string): string {
-  return AVATAR_COLORS[hashString(authorId) % AVATAR_COLORS.length];
-}
-
-function coverColor(anilistId: number): string {
-  return AVATAR_COLORS[hashString(String(anilistId)) % AVATAR_COLORS.length];
-}
-
-function initials(name: string): string {
-  return name.trim().slice(0, 1).toUpperCase() || "?";
-}
 
 export function PostCard({
   post,

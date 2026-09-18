@@ -37,7 +37,7 @@ test.describe("Epic 18 — 22ª rodada de auditoria de UX/UI — modo citação:
 
     const banner = page.getByRole("status").filter({ hasText: "Citando post de" });
     await expect(banner).toBeVisible();
-    await expect(page.getByPlaceholder("O que você achou desse anime?")).toBeFocused();
+    await expect(page.getByPlaceholder("O que está acontecendo? Marque um anime com #NomeDoAnime")).toBeFocused();
 
     await request.delete(`/api/posts/${postId}`);
   });

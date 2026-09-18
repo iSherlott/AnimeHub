@@ -31,15 +31,15 @@ test.describe("Epic 18 — 6ª rodada de auditoria de UX/UI — preferência de 
   });
 
   test("post no Feed mostra o título em inglês (preferência padrão), não o romaji cru", async ({ page }) => {
-    const uniqueBody = `Post de teste de preferência de título ${Date.now()}`;
+    // Anime do post agora vem de hashtag no texto, não de um dropdown
+    // separado (Epic 26) — a hashtag é sempre derivada do titleRomaji
+    // (FeedView.tsx/animeSlug), nunca do titleEnglish — é o título
+    // exibido no post depois de publicado que precisa respeitar a
+    // preferência, não como o anime é marcado no compositor.
+    const uniqueBody = `Post de teste de preferência de título #romajicrudeteste ${Date.now()}`;
     await page.goto("/");
 
-    // O seletor do composer sempre lista por titleRomaji (FeedView.tsx) —
-    // é o título exibido no post depois de publicado que precisa respeitar
-    // a preferência, não a opção do composer em si.
-    await page.locator('div[role="combobox"]').first().click();
-    await page.getByRole("option", { name: "Romaji Cru De Teste" }).click();
-    await page.getByPlaceholder("O que você achou desse anime?").fill(uniqueBody);
+    await page.getByPlaceholder("O que está acontecendo? Marque um anime com #NomeDoAnime").fill(uniqueBody);
     await page.getByRole("button", { name: "Publicar" }).click();
     await expect(page.getByText(uniqueBody)).toBeVisible();
 

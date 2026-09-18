@@ -37,6 +37,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# uploads (gerado em runtime — Epic 26)
+/storage/
+
 # prisma
 /prisma/dev.db
 /prisma/dev.db-journal

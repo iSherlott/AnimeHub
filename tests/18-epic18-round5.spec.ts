@@ -3,24 +3,39 @@ import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
 
+// Mesma normalização de src/lib/animeHashtag.ts (animeSlug) — duplicada
+// aqui de propósito, não importada, pra não depender do alias "@/" no
+// runtime de teste (nunca usado antes nos specs deste projeto).
+const DIACRITIC_COMBINING_MARKS = new RegExp("[\\u0300-\\u036f]", "g");
+function animeSlug(title: string): string {
+  return title
+    .normalize("NFD")
+    .replace(DIACRITIC_COMBINING_MARKS, "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toLowerCase();
+}
+
 test.describe("Epic 18 — 5ª rodada de auditoria de UX/UI — duplo clique não duplica", () => {
   let animeId: string;
+  let animeTitleRomaji: string;
 
   test.beforeAll(async () => {
     const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
     const user = await prisma.user.findUniqueOrThrow({ where: { email: TEST_USER_EMAIL } });
     const anime = await prisma.anime.findFirstOrThrow({ where: { userId: user.id } });
     animeId = anime.id;
+    animeTitleRomaji = anime.titleRomaji;
     await prisma.$disconnect();
   });
 
   test("clicar 'Publicar' duas vezes rápido no Feed cria só 1 post", async ({ page, request }) => {
-    const uniqueBody = `Post de teste de duplo clique ${Date.now()}`;
+    // Anime do post agora vem de hashtag no texto, não de um dropdown
+    // separado (Epic 26) — mesma hashtag que o compositor já teria
+    // sugerido pra este anime.
+    const uniqueBody = `Post de teste de duplo clique #${animeSlug(animeTitleRomaji)} ${Date.now()}`;
     await page.goto("/");
 
-    await page.locator('div[role="combobox"]').first().click();
-    await page.getByRole("option").first().click();
-    await page.getByPlaceholder("O que você achou desse anime?").fill(uniqueBody);
+    await page.getByPlaceholder("O que está acontecendo? Marque um anime com #NomeDoAnime").fill(uniqueBody);
 
     // Dois cliques DOM síncronos no mesmo tick, via evaluate — um
     // `.click()` normal do Playwright espera o botão ficar habilitado de

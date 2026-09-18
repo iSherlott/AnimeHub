@@ -70,7 +70,7 @@ async function toSummaries(groups: CommentGroup[]): Promise<ThreadSummary[]> {
  * filosofia do resto do Feed.
  *
  * `todayStart` é o timestamp Unix (segundos) da meia-noite **no fuso do
- * navegador**, calculado pelo front-end (AnimeThreadsSidebar.tsx) — mesmo
+ * navegador**, calculado pelo front-end (FeedSidebar.tsx) — mesmo
  * padrão já usado por /api/calendar, e pela mesma razão: recalcular "hoje"
  * com o relógio do servidor (que roda em UTC no Docker Compose, sem `TZ`
  * setado em nenhum serviço) discorda do fuso de quem está vendo a página
