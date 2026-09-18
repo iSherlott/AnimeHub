@@ -12,7 +12,8 @@
     "test:ui": "playwright test --ui --grep-invert @external",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
-    "seed:catalog": "node scripts/seed-catalog-cache.cjs"
+    "seed:catalog": "node scripts/seed-catalog-cache.cjs",
+    "seed:community": "node scripts/seed-community.cjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
