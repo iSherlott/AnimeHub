@@ -148,7 +148,13 @@ async function main() {
             animeId: anime.id,
             status: pick(["WATCHING", "COMPLETED", "PLAN_TO_WATCH"]),
             episodeProgress,
-            score: Math.random() < 0.6 ? 2 * (5 + Math.floor(Math.random() * 6)) : null,
+            // `score` é 0-10 (cada estrela do widget de 5 estrelas vale 2
+            // pontos) — a fórmula original gerava 10-20 por confundir a
+            // escala de estrelas (0-5) com a de score (0-10), resultando em
+            // notas "14/10"/"20/10" ao lado de 5 estrelas cheias na tela
+            // (achado real da 24ª rodada de auditoria, Epic 18). 3-5
+            // estrelas (nota tendendo positiva, mais orgânico) = score 6/8/10.
+            score: Math.random() < 0.6 ? 2 * (3 + Math.floor(Math.random() * 3)) : null,
           },
         });
       }

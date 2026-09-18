@@ -8,6 +8,7 @@ const META_ANILIST_ID = 902000;
 const PROGRESS_ANILIST_ID = 902001;
 const ACCORDION_ANILIST_ID = 902002;
 const COMMENTS_ANILIST_ID = 902003;
+const FINISH_SYNC_ANILIST_ID = 902004;
 
 test.describe("Epic 27 (lote 1) — metadados atrás de 1 ícone único", () => {
   let animeId: string;
@@ -138,6 +139,55 @@ test.describe("Epic 27 (lote 1) — status simplificado (botão de finalizado)",
     // anime, mesma suíte serial) — desmarcar finalizado volta pra WATCHING,
     // não PLAN_TO_WATCH, porque episodeProgress > 0.
     expect(anime.progress?.status).toBe("WATCHING");
+  });
+});
+
+test.describe("Epic 27 (lote 1) — marcar como finalizado sincroniza o progresso de episódio", () => {
+  // Achado real da 24ª rodada de auditoria (Epic 18): marcar "Finalizado"
+  // só trocava o status — o contador de episódio (e o accordion de
+  // episódios logo abaixo) continuavam mostrando progresso parcial,
+  // contradizendo o próprio selo "Finalizado" no topo da página.
+  let animeId: string;
+
+  test.beforeAll(async () => {
+    const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: TEST_USER_EMAIL } });
+    const anime = await prisma.anime.upsert({
+      where: { userId_anilistId: { userId: user.id, anilistId: FINISH_SYNC_ANILIST_ID } },
+      create: {
+        userId: user.id,
+        anilistId: FINISH_SYNC_ANILIST_ID,
+        titleRomaji: "Anime Pra Testar Sincronia Do Finalizado",
+        episodes: 12,
+        genres: "",
+      },
+      update: {},
+    });
+    animeId = anime.id;
+    await prisma.watchProgress.upsert({
+      where: { animeId },
+      create: { animeId, status: "WATCHING", episodeProgress: 3 },
+      update: { status: "WATCHING", episodeProgress: 3 },
+    });
+    await prisma.$disconnect();
+  });
+
+  test("marcar como finalizado com progresso parcial leva o contador até o total de episódios", async ({
+    page,
+    request,
+  }) => {
+    await page.goto(`/anime/${animeId}`);
+    await expect(page.getByText("Episódio 3 / 12")).toBeVisible();
+
+    await page.getByRole("button", { name: "Marcar como finalizado" }).click();
+    await expect(page.getByRole("button", { name: "Finalizado" })).toBeVisible();
+    await expect(page.getByText("Episódio 12 / 12")).toBeVisible();
+
+    const res = await request.get("/api/anime");
+    const data = await res.json();
+    const anime = data.animes.find((a: { id: string }) => a.id === animeId);
+    expect(anime.progress?.status).toBe("COMPLETED");
+    expect(anime.progress?.episodeProgress).toBe(12);
   });
 });
 

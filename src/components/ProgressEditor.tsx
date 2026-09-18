@@ -62,9 +62,25 @@ export function ProgressEditor({
   // progresso atual: WATCHING se já tem episódio contado, senão
   // PLAN_TO_WATCH.
   function toggleFinished() {
-    const next: WatchStatus = status === "COMPLETED" ? (episodeProgress > 0 ? "WATCHING" : "PLAN_TO_WATCH") : "COMPLETED";
-    setStatus(next);
-    update({ status: next });
+    if (status === "COMPLETED") {
+      const next: WatchStatus = episodeProgress > 0 ? "WATCHING" : "PLAN_TO_WATCH";
+      setStatus(next);
+      update({ status: next });
+      return;
+    }
+    // Marcar como finalizado sem also levar o contador de episódio até o
+    // fim deixava a página contradizendo a si mesma — "Finalizado" no
+    // topo, mas o accordion de episódios logo abaixo ainda mostrando a
+    // maioria como não assistida (achado real da 24ª rodada de auditoria,
+    // Epic 18). Só ajusta quando o total de episódios é conhecido e o
+    // progresso atual ainda não chegou lá — nunca diminui.
+    const data: Partial<{ status: WatchStatus; episodeProgress: number }> = { status: "COMPLETED" };
+    setStatus("COMPLETED");
+    if (episodes != null && episodeProgress < episodes) {
+      setEpisodeProgress(episodes);
+      data.episodeProgress = episodes;
+    }
+    update(data);
   }
 
   function handleRatingChange(newValue: number | null) {
