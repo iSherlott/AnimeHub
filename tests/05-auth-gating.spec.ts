@@ -33,7 +33,7 @@ test.describe("Controle de acesso — dados pessoais exigem login", () => {
     expect(res?.status()).toBe(200);
 
     await expect(page.getByText("Faça login para ver o feed")).toHaveCount(0);
-    await expect(page.getByRole("tab", { name: "Recomendado" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Para você" })).toBeVisible();
     // "Seguindo" não existe sem conta.
     await expect(page.getByRole("tab", { name: "Seguindo" })).toHaveCount(0);
   });

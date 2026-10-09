@@ -1,16 +1,8 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { NextResponse } from "next/server";
-import sharp from "sharp";
 import { requireUser } from "@/lib/auth/session";
-import {
-  isAllowedImageFormat,
-  isWithinMaxSize,
-  MAX_REQUEST_BYTES,
-  MAX_UPLOAD_BYTES,
-} from "@/lib/uploadValidation";
-import { UPLOAD_STORAGE_ROOT } from "@/lib/uploadStorage";
+import { MAX_REQUEST_BYTES, MAX_UPLOAD_BYTES } from "@/lib/uploadValidation";
+import { processImageUpload } from "@/lib/processImageUpload";
+import { hitRateLimit, tooManyRequests } from "@/lib/rateLimit";
 
 const MAX_DIMENSION = 2048;
 
@@ -34,6 +26,8 @@ const MAX_DIMENSION = 2048;
 export async function POST(request: Request) {
   const { user, response } = await requireUser();
   if (!user) return response;
+  const limit = hitRateLimit(`upload:${user.id}`, 30, 10 * 60_000);
+  if (!limit.allowed) return tooManyRequests(limit.retryAfterSec);
 
   // Rejeita ANTES de `request.formData()` ler o corpo inteiro pra
   // memória — sem essa checagem, um POST de centenas de MB (autenticado,
@@ -60,51 +54,11 @@ export async function POST(request: Request) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Nenhum arquivo enviado" }, { status: 400 });
   }
-  if (!isWithinMaxSize(file.size)) {
-    return NextResponse.json(
-      { error: `Arquivo muito grande (máximo ${MAX_UPLOAD_BYTES / (1024 * 1024)}MB)` },
-      { status: 400 }
-    );
+
+  const result = await processImageUpload(file, request, { kind: "posts", maxDimension: MAX_DIMENSION });
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-
-  // Num try/catch só, do começo ao fim — `metadata()` só lê o cabeçalho,
-  // não decodifica o pixel inteiro; um arquivo com cabeçalho válido mas
-  // dado de pixel corrompido passa por `metadata()` sem erro e só quebra
-  // de verdade dentro de `toBuffer()` (confirmado ao vivo: um PNG
-  // corrompido gerava 500 cru em vez do 400 esperado, porque só a 1ª
-  // chamada estava protegida). As 2 etapas precisam do mesmo tratamento.
-  let outBuffer: Buffer;
-  let info: { width: number; height: number };
-  try {
-    const image = sharp(buffer);
-    const metadata = await image.metadata();
-    if (!isAllowedImageFormat(metadata.format)) {
-      return NextResponse.json({ error: "Arquivo não é uma imagem válida" }, { status: 400 });
-    }
-    // Reencodifica sempre pra WEBP — normaliza formato, tira EXIF
-    // (inclusive dado de geolocalização, se houver) e capa a dimensão
-    // máxima, tudo num só passo, independente do formato/tamanho de
-    // origem.
-    const result = await image
-      .resize({ width: MAX_DIMENSION, height: MAX_DIMENSION, fit: "inside", withoutEnlargement: true })
-      .webp({ quality: 82 })
-      .toBuffer({ resolveWithObject: true });
-    outBuffer = result.data;
-    info = result.info;
-  } catch {
-    return NextResponse.json({ error: "Arquivo não é uma imagem válida" }, { status: 400 });
-  }
-
-  const monthBucket = new Date().toISOString().slice(0, 7); // "YYYY-MM"
-  const filename = `${randomUUID()}.webp`;
-  const dir = path.join(UPLOAD_STORAGE_ROOT, "posts", monthBucket);
-  await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, filename), outBuffer);
-
-  const origin = new URL(request.url).origin;
-  const url = `${origin}/api/uploads/posts/${monthBucket}/${filename}`;
-
-  return NextResponse.json({ url, width: info.width, height: info.height }, { status: 201 });
+  return NextResponse.json({ url: result.url, width: result.width, height: result.height }, { status: 201 });
 }

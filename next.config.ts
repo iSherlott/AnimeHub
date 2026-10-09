@@ -1,6 +1,36 @@
 import type { NextConfig } from "next";
 
+// Cabeçalhos de segurança (GAP-S-07). 'unsafe-inline' em script/style é
+// necessário hoje (hidratação inline do Next e estilos do MUI/emotion); a
+// próxima rodada pode migrar para nonce via proxy. `img-src https:` porque
+// posts ainda aceitam URL de imagem externa (D-15 pendente).
+const isDev = process.env.NODE_ENV !== "production";
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join("; ");
+
+const securityHeaders = [
+  { key: "Content-Security-Policy", value: contentSecurityPolicy },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+];
+
 const nextConfig: NextConfig = {
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
   // Empacota só o necessário pra rodar em produção (usado pela imagem
   // Docker) — evita levar node_modules/devDependencies inteiros pro runner.
   // Só a build da imagem Docker liga isso (ver Dockerfile): dev local e a

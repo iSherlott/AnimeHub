@@ -3,12 +3,17 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { refreshAnimeData, type RefreshResult } from "@/lib/refreshAnimeData";
 import { callInternalService } from "@/lib/serviceDelegate";
+import { hitRateLimit, tooManyRequests } from "@/lib/rateLimit";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function POST(_request: Request, { params }: Params) {
   const { user, response } = await requireUser();
   if (!user) return response;
+
+  // Atualização completa = 5 fontes externas: 10 por minuto por conta.
+  const limit = hitRateLimit(`refresh:${user.id}`, 10, 60_000);
+  if (!limit.allowed) return tooManyRequests(limit.retryAfterSec);
 
   const { id } = await params;
   const anime = await prisma.anime.findUnique({ where: { id } });

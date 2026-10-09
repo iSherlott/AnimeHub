@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { TextField } from "@mui/material";
 import { InlineEditField } from "@/components/InlineEditField";
@@ -12,7 +11,6 @@ export function DescriptionEditor({
   animeId: string;
   descriptionPortuguese: string | null;
 }) {
-  const router = useRouter();
   const [value, setValue] = useState(descriptionPortuguese ?? "");
 
   async function save() {
@@ -25,7 +23,6 @@ export function DescriptionEditor({
       const data = await res.json().catch(() => null);
       throw new Error(data?.error ?? "Falha ao salvar");
     }
-    router.refresh();
   }
 
   return (

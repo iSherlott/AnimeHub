@@ -1,5 +1,6 @@
 "use client";
 
+import { readNextFromLocation, signupHref } from "@/lib/safeRedirect";
 import { useEffect, useState } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
@@ -18,7 +19,7 @@ export default function LoginPage() {
   // Já logado não tem o que fazer aqui — manda pra home em vez de deixar o
   // formulário reaparecer (achado real da auditoria: item baixo do Epic 21).
   useEffect(() => {
-    if (user) router.replace("/");
+    if (user) router.replace(readNextFromLocation());
   }, [user, router]);
 
   if (user) return null;
@@ -38,7 +39,7 @@ export default function LoginPage() {
         setError(data.error ?? "Falha ao entrar");
         return;
       }
-      router.push("/");
+      router.push(readNextFromLocation());
       router.refresh();
     } finally {
       setLoading(false);
@@ -80,7 +81,7 @@ export default function LoginPage() {
         </Box>
         <Typography variant="body2" sx={{ mt: 3, color: "text.secondary" }}>
           Não tem conta?{" "}
-          <MuiLink component={NextLink} href="/signup" color="inherit">
+          <MuiLink component={NextLink} href="/signup" onClick={(e: React.MouseEvent) => { e.preventDefault(); router.push(signupHref(new URLSearchParams(window.location.search).get("next"))); }} color="inherit">
             Criar conta
           </MuiLink>
         </Typography>

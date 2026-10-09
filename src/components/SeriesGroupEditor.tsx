@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { TextField } from "@mui/material";
 import { InlineEditField } from "@/components/InlineEditField";
@@ -14,7 +13,6 @@ export function SeriesGroupEditor({
   seriesKey: string;
   seasonNumber: number;
 }) {
-  const router = useRouter();
   const [key, setKey] = useState(seriesKey);
   const [season, setSeason] = useState(seasonNumber);
 
@@ -28,7 +26,6 @@ export function SeriesGroupEditor({
       const data = await res.json().catch(() => null);
       throw new Error(data?.error ?? "Falha ao salvar");
     }
-    router.refresh();
   }
 
   return (

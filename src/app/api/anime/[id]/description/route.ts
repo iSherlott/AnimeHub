@@ -21,7 +21,15 @@ export async function PATCH(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
   }
 
-  const body = await request.json();
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
+  }
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
+  }
 
   const raw = typeof body.descriptionPortuguese === "string" ? body.descriptionPortuguese.trim() : "";
   if (raw.length > MAX_DESCRIPTION_LENGTH) {
