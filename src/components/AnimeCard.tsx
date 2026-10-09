@@ -3,55 +3,34 @@
 import NextLink from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { Box, Card, CardActionArea, Chip, LinearProgress, Tooltip, Typography } from "@mui/material";
-import { statusColors } from "@/lib/muiTheme";
-import {
-  WATCH_STATUS_LABELS,
-  type WatchStatus,
-} from "@/lib/types";
+import { Box, Card, CardActionArea, Tooltip, Typography } from "@mui/material";
 import { resolveTitleText, useTitlePreference, type TitleSet } from "@/lib/titlePreference";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
+import { LocalDateTime } from "@/components/LocalDateTime";
 
+/**
+ * Card de uma obra acompanhada. Mostra só o que a agenda precisa: capa,
+ * título e o PRÓXIMO lançamento confirmado. Nenhuma métrica de consumo
+ * (episódios assistidos, status, barra de progresso) — o produto "registra
+ * interesse, não consumo" (P-3, D-02).
+ */
 export type AnimeCardData = {
   id: string | number;
   href: string;
   titles: TitleSet;
   coverImage: string | null;
-  episodes?: number | null;
-  status?: WatchStatus;
-  episodeProgress?: number;
   isFavorite?: boolean;
+  /** Próximo episódio com data confirmada (ISO), se houver. */
+  next?: { airingAt: string; episode: number } | null;
 };
 
-const STATUS_COLOR_KEY: Record<WatchStatus, keyof typeof statusColors> = {
-  WATCHING: "watching",
-  COMPLETED: "completed",
-  PLAN_TO_WATCH: "planned",
-  PAUSED: "paused",
-  DROPPED: "dropped",
-};
-
-export function AnimeCard({
-  id,
-  href,
-  titles,
-  coverImage,
-  episodes,
-  status,
-  episodeProgress,
-  isFavorite,
-}: AnimeCardData) {
+export function AnimeCard({ id, href, titles, coverImage, isFavorite, next }: AnimeCardData) {
   const { preference } = useTitlePreference();
   const title = resolveTitleText(preference, titles);
   // Uma URL de capa que 404 (dado sujo vindo de fonte externa) renderizava
   // o ícone quebrado cru do navegador em vez do mesmo placeholder já usado
   // pra "sem capa nenhuma" — achado real da 6ª rodada de auditoria, Epic 18.
   const [coverBroken, setCoverBroken] = useState(false);
-
-  const progressPct =
-    status === "WATCHING" && episodes && episodes > 0
-      ? Math.min(100, ((episodeProgress ?? 0) / episodes) * 100)
-      : null;
 
   return (
     <Card data-testid={`anime-card-${id}`} sx={{ position: "relative", width: { xs: 144, sm: 176 }, flexShrink: 0 }}>
@@ -85,50 +64,21 @@ export function AnimeCard({
                 </Typography>
               </Box>
             )}
-
-            {status && (
-              <Chip
-                label={WATCH_STATUS_LABELS[status]}
-                size="small"
-                sx={{
-                  position: "absolute",
-                  top: 6,
-                  left: 6,
-                  height: 20,
-                  fontSize: 10,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  bgcolor: statusColors[STATUS_COLOR_KEY[status]],
-                  color: status === "WATCHING" ? "#f7f7f5" : "#0b0b0d",
-                }}
-              />
-            )}
-
-            {progressPct !== null && (
-              <LinearProgress
-                variant="determinate"
-                value={progressPct}
-                sx={{
-                  position: "absolute",
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  height: 4,
-                  bgcolor: "rgba(0,0,0,0.6)",
-                }}
-              />
-            )}
           </Box>
 
           <Box sx={{ p: 1 }}>
             <Typography variant="body2" noWrap>
               {title}
             </Typography>
-            {episodes ? (
-              <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                {episodeProgress ?? 0}/{episodes} eps
-              </Typography>
-            ) : null}
+            <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }} data-testid="card-next">
+              {next ? (
+                <>
+                  EP {next.episode} · <LocalDateTime iso={next.airingAt} compact />
+                </>
+              ) : (
+                "Sem previsão confirmada"
+              )}
+            </Typography>
           </Box>
         </CardActionArea>
       </Tooltip>

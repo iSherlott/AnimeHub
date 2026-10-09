@@ -4,7 +4,7 @@ import LanguageIcon from "@mui/icons-material/Language";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { Header } from "@/components/Header";
-import { ProgressEditor } from "@/components/ProgressEditor";
+import { UnfollowButton } from "@/components/UnfollowButton";
 import { PlatformLinksManager } from "@/components/PlatformLinksManager";
 import { EpisodeGrid } from "@/components/EpisodeGrid";
 import { SeasonSwitcher } from "@/components/SeasonSwitcher";
@@ -23,7 +23,6 @@ import { CoverImage, BackdropImage } from "@/components/CoverImage";
 import { ensureEpisodes, type EpisodesResult } from "@/lib/episodes";
 import { ensureTitleFurigana } from "@/lib/ensureFurigana";
 import { callInternalService } from "@/lib/serviceDelegate";
-import type { WatchStatus } from "@/lib/types";
 import type { AniListCharacterEntry, AniListRecommendation } from "@/lib/anilist";
 
 export default async function AnimeDetailPage({
@@ -37,7 +36,7 @@ export default async function AnimeDetailPage({
   const { id } = await params;
   const anime = await prisma.anime.findUnique({
     where: { id },
-    include: { platformLinks: true, progress: true },
+    include: { platformLinks: true },
   });
 
   if (!anime || anime.userId !== user.id) notFound();
@@ -81,8 +80,8 @@ export default async function AnimeDetailPage({
     const ownAnimeId = animeIdByAnilistId.get(rec.anilistId);
     return {
       ...rec,
-      isInternal: Boolean(ownAnimeId),
-      href: ownAnimeId ? `/anime/${ownAnimeId}` : `https://anilist.co/anime/${rec.anilistId}`,
+      isInternal: true, // sempre interno: lista própria ou página pública da obra
+      href: ownAnimeId ? `/anime/${ownAnimeId}` : `/obra/${rec.anilistId}`,
     };
   });
 
@@ -291,14 +290,12 @@ export default async function AnimeDetailPage({
             </Box>
           )}
 
-          <ProgressEditor
-            animeId={anime.id}
-            episodes={anime.episodes}
-            initialStatus={(anime.progress?.status as WatchStatus) ?? "PLAN_TO_WATCH"}
-            initialEpisodeProgress={anime.progress?.episodeProgress ?? 0}
-            initialScore={anime.progress?.score ?? null}
-            accentColor={anime.accentColor}
-          />
+          <Box>
+            <UnfollowButton
+              animeId={anime.id}
+              title={anime.titleEnglish ?? anime.titleRomaji}
+            />
+          </Box>
 
           <Box>
             <Typography variant="body2" className="font-display" sx={{ mb: 1, textTransform: "uppercase", color: "text.secondary" }}>
@@ -347,7 +344,6 @@ export default async function AnimeDetailPage({
           <EpisodeGrid
             episodes={episodesResult.episodes}
             fallbackImage={anime.coverImage}
-            watchedCount={anime.progress?.episodeProgress}
             accentColor={anime.accentColor}
           />
         ) : (

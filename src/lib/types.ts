@@ -1,22 +1,4 @@
-export const WATCH_STATUSES = [
-  "WATCHING",
-  "COMPLETED",
-  "PLAN_TO_WATCH",
-  "PAUSED",
-  "DROPPED",
-] as const;
-
-export type WatchStatus = (typeof WATCH_STATUSES)[number];
-
-export const WATCH_STATUS_LABELS: Record<WatchStatus, string> = {
-  WATCHING: "Assistindo",
-  COMPLETED: "Completo",
-  PLAN_TO_WATCH: "Quero assistir",
-  PAUSED: "Pausado",
-  DROPPED: "Abandonado",
-};
-
-/** Status de exibição do anime em si (AniList), não confundir com WatchStatus. */
+/** Status de exibição do anime em si (AniList), (não existe status de consumo: P-3). */
 export const CATALOG_STATUSES = [
   "RELEASING",
   "FINISHED",

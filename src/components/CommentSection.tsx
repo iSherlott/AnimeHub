@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import FlagIcon from "@mui/icons-material/Flag";
 import DeleteIcon from "@mui/icons-material/Delete";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import {
   Alert,
   Box,
@@ -20,7 +19,7 @@ type CommentItem = {
   id: string;
   body: string;
   createdAt: string;
-  author: { id: string; displayName: string; completed: boolean };
+  author: { id: string; displayName: string };
   isMine: boolean;
   reportedByMe: boolean;
 };
@@ -256,15 +255,6 @@ export function CommentSection({
                     <Typography variant="body2" sx={{ fontWeight: 700 }}>
                       {c.author.displayName}
                     </Typography>
-                    {c.author.completed && (
-                      <Tooltip title="Já assistiu esse anime">
-                        <CheckCircleIcon
-                          role="img"
-                          aria-label="Já assistiu esse anime"
-                          sx={{ fontSize: 14, color: accentColor ?? "success.main" }}
-                        />
-                      </Tooltip>
-                    )}
                     <Typography variant="caption" sx={{ color: "text.secondary" }}>
                       {fmtDate(c.createdAt)}
                     </Typography>

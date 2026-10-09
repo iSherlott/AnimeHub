@@ -180,7 +180,7 @@ function TrendingPostRow({ post }: { post: PostDTO }) {
             overflow: "hidden",
           }}
         >
-          {post.body}
+          {post.isSpoiler ? "Conteúdo com spoilers" : post.body}
         </Typography>
         <Typography variant="caption" sx={{ color: "text.secondary" }}>
           {post.likeCount} {post.likeCount === 1 ? "curtida" : "curtidas"}

@@ -5,10 +5,8 @@ import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "
 
 // anilistId fora da faixa usada por outras fixtures.
 const META_ANILIST_ID = 902000;
-const PROGRESS_ANILIST_ID = 902001;
 const ACCORDION_ANILIST_ID = 902002;
 const COMMENTS_ANILIST_ID = 902003;
-const FINISH_SYNC_ANILIST_ID = 902004;
 
 test.describe("Epic 27 (lote 1) — metadados atrás de 1 ícone único", () => {
   let animeId: string;
@@ -78,118 +76,8 @@ test.describe("Epic 27 (lote 1) — metadados atrás de 1 ícone único", () => 
   });
 });
 
-test.describe("Epic 27 (lote 1) — status simplificado (botão de finalizado)", () => {
-  let animeId: string;
-
-  test.beforeAll(async () => {
-    const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
-    const user = await prisma.user.findUniqueOrThrow({ where: { email: TEST_USER_EMAIL } });
-    const anime = await prisma.anime.upsert({
-      where: { userId_anilistId: { userId: user.id, anilistId: PROGRESS_ANILIST_ID } },
-      create: {
-        userId: user.id,
-        anilistId: PROGRESS_ANILIST_ID,
-        titleRomaji: "Anime Pra Testar Status Simplificado",
-        episodes: 12,
-        genres: "",
-      },
-      update: {},
-    });
-    animeId = anime.id;
-    await prisma.watchProgress.deleteMany({ where: { animeId } });
-    await prisma.$disconnect();
-  });
-
-  test("dropdown de 5 status não existe mais na página", async ({ page }) => {
-    await page.goto(`/anime/${animeId}`);
-    await expect(page.getByText("Quero assistir")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Marcar como finalizado" })).toBeVisible();
-  });
-
-  test("aumentar episódio a partir de 0 infere WATCHING sozinho, sem UI manual pra status", async ({
-    page,
-    request,
-  }) => {
-    await page.goto(`/anime/${animeId}`);
-    await page.getByRole("button", { name: "Aumentar episódio" }).click();
-    await expect(page.getByText("Episódio 1 / 12")).toBeVisible();
-
-    const res = await request.get("/api/anime");
-    const data = await res.json();
-    const anime = data.animes.find((a: { id: string }) => a.id === animeId);
-    expect(anime.progress?.status).toBe("WATCHING");
-  });
-
-  test("marcar/desmarcar 'Finalizado' alterna COMPLETED e volta pro status anterior", async ({ page, request }) => {
-    await page.goto(`/anime/${animeId}`);
-
-    await page.getByRole("button", { name: "Marcar como finalizado" }).click();
-    await expect(page.getByRole("button", { name: "Finalizado" })).toBeVisible();
-    let res = await request.get("/api/anime");
-    let data = await res.json();
-    let anime = data.animes.find((a: { id: string }) => a.id === animeId);
-    expect(anime.progress?.status).toBe("COMPLETED");
-
-    await page.getByRole("button", { name: "Finalizado" }).click();
-    await expect(page.getByRole("button", { name: "Marcar como finalizado" })).toBeVisible();
-    res = await request.get("/api/anime");
-    data = await res.json();
-    anime = data.animes.find((a: { id: string }) => a.id === animeId);
-    // episodeProgress já tinha sido incrementado no teste anterior (mesmo
-    // anime, mesma suíte serial) — desmarcar finalizado volta pra WATCHING,
-    // não PLAN_TO_WATCH, porque episodeProgress > 0.
-    expect(anime.progress?.status).toBe("WATCHING");
-  });
-});
-
-test.describe("Epic 27 (lote 1) — marcar como finalizado sincroniza o progresso de episódio", () => {
-  // Achado real da 24ª rodada de auditoria (Epic 18): marcar "Finalizado"
-  // só trocava o status — o contador de episódio (e o accordion de
-  // episódios logo abaixo) continuavam mostrando progresso parcial,
-  // contradizendo o próprio selo "Finalizado" no topo da página.
-  let animeId: string;
-
-  test.beforeAll(async () => {
-    const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
-    const user = await prisma.user.findUniqueOrThrow({ where: { email: TEST_USER_EMAIL } });
-    const anime = await prisma.anime.upsert({
-      where: { userId_anilistId: { userId: user.id, anilistId: FINISH_SYNC_ANILIST_ID } },
-      create: {
-        userId: user.id,
-        anilistId: FINISH_SYNC_ANILIST_ID,
-        titleRomaji: "Anime Pra Testar Sincronia Do Finalizado",
-        episodes: 12,
-        genres: "",
-      },
-      update: {},
-    });
-    animeId = anime.id;
-    await prisma.watchProgress.upsert({
-      where: { animeId },
-      create: { animeId, status: "WATCHING", episodeProgress: 3 },
-      update: { status: "WATCHING", episodeProgress: 3 },
-    });
-    await prisma.$disconnect();
-  });
-
-  test("marcar como finalizado com progresso parcial leva o contador até o total de episódios", async ({
-    page,
-    request,
-  }) => {
-    await page.goto(`/anime/${animeId}`);
-    await expect(page.getByText("Episódio 3 / 12")).toBeVisible();
-
-    await page.getByRole("button", { name: "Marcar como finalizado" }).click();
-    await expect(page.getByRole("button", { name: "Finalizado" })).toBeVisible();
-    await expect(page.getByText("Episódio 12 / 12")).toBeVisible();
-
-    const res = await request.get("/api/anime");
-    const data = await res.json();
-    const anime = data.animes.find((a: { id: string }) => a.id === animeId);
-    expect(anime.progress?.status).toBe("COMPLETED");
-    expect(anime.progress?.episodeProgress).toBe(12);
-  });
-});
+// Removidos (D-02): "status simplificado" e "marcar como finalizado" testavam consumo
+// (WatchProgress), que deixou de existir. Ver tests/50-follow-unfollow-my-list.spec.ts.
 
 test.describe("Epic 27 (lote 1) — lista de episódios em accordion fechado por padrão", () => {
   let animeId: string;
@@ -299,18 +187,21 @@ test.describe("Epic 27 (lote 1) — comentários paginados, 'ver mais' e ícone 
     await expect(page.getByRole("button", { name: "ver menos" })).toBeVisible();
   });
 
-  test("ícone de 'já assistiu' aparece só pro autor com progresso concluído", async ({ page }) => {
+  test("progresso de outro usuário não é exposto nos comentários (P-3/P-8)", async ({ page }) => {
     // Sessão do admin, pra ver os mesmos comentários (mesmo anilistId) sem
     // depender de qual usuário é o "dono" de cada linha de Anime.
     await page.context().addCookies([
       { name: SESSION_COOKIE_NAME, value: TEST_ADMIN_SESSION_TOKEN, domain: "localhost", path: "/" },
     ]);
     await page.goto(`/anime/${adminAnimeId}`);
+    await expect(page.getByText("Comentário paginado número 1", { exact: true })).toBeVisible();
 
-    const testUserComment = page.getByText("Comentário paginado número 1", { exact: true }).locator("..");
-    await expect(testUserComment.getByLabel("Já assistiu esse anime")).toBeVisible();
+    // Antes havia um ícone "Já assistiu esse anime" derivado do WatchProgress
+    // do autor — dado privado de outra pessoa. Removido (audit D-02).
+    await expect(page.getByLabel("Já assistiu esse anime")).toHaveCount(0);
 
-    const adminComment = page.getByText("Comentário paginado número 2", { exact: true }).locator("..");
-    await expect(adminComment.getByLabel("Já assistiu esse anime")).toHaveCount(0);
+    const res = await page.request.get(`/api/anime/${adminAnimeId}/comments`);
+    const json = await res.json();
+    for (const c of json.comments) expect(c.author).not.toHaveProperty("completed");
   });
 });

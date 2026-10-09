@@ -66,40 +66,6 @@ test.describe("Epic 20 — 2ª rodada de auditoria de UX/UI", () => {
     expect(anime.isFavorite).toBe(true);
   });
 
-  test("grade de episódios marca como assistido só até o progresso salvo", async ({ page, request }) => {
-    await request.patch(`/api/anime/${animeId}/progress`, {
-      data: { episodeProgress: 3 },
-    });
-
-    await page.goto(`/anime/${animeId}`);
-    // Lista de episódios vem atrás de um accordion fechado por padrão
-    // desde o lote 1 do Epic 27.
-    await page.getByText(/Ver episódios/).click();
-
-    for (let n = 1; n <= 3; n++) {
-      const tile = page.getByTestId(`episode-tile-1-${n}`);
-      await expect(tile.getByLabel("Já assistido")).toBeVisible();
-    }
-    for (let n = 4; n <= 5; n++) {
-      const tile = page.getByTestId(`episode-tile-1-${n}`);
-      await expect(tile.getByLabel("Já assistido")).toHaveCount(0);
-    }
-  });
-
-  test("botão de pausar a rotação do hero é alcançável por teclado e alterna o rótulo", async ({ page }) => {
-    // Precisa de pelo menos 3 animes na lista pra rotator armar o timer —
-    // as fixtures padrão do usuário de teste (global-setup.ts) já bastam.
-    await page.goto("/minha-lista");
-
-    const pauseButton = page.getByRole("button", { name: "Pausar rotação do destaque" });
-    await expect(pauseButton).toBeVisible();
-    await pauseButton.focus();
-    await expect(pauseButton).toBeFocused();
-    await pauseButton.press("Enter");
-
-    await expect(page.getByRole("button", { name: "Retomar rotação do destaque" })).toBeVisible();
-  });
-
   test("Descobrir faz só 1 requisição a /api/auth/me pra tela inteira, mesmo com vários cards", async ({
     page,
   }) => {

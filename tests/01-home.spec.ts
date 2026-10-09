@@ -7,7 +7,7 @@ test.describe("Frontend — catálogo pessoal (/minha-lista)", () => {
 
     await expect(page.getByRole("link", { name: "Anime Hub" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Minha lista" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Descobrir" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Explorar" })).toBeVisible();
 
     for (const anime of ANIME_FIXTURES) {
       await expect(
@@ -30,9 +30,9 @@ test.describe("Frontend — catálogo pessoal (/minha-lista)", () => {
     );
   });
 
-  test("navega entre Minha lista e Descobrir pelo menu", async ({ page }) => {
+  test("navega entre Minha lista e Explorar pelo menu", async ({ page }) => {
     await page.goto("/minha-lista");
-    await page.getByRole("link", { name: "Descobrir" }).click();
+    await page.getByRole("link", { name: "Explorar" }).click();
     await expect(page).toHaveURL(/\/discover/);
     await expect(page.getByPlaceholder("Buscar anime...")).toBeVisible();
 

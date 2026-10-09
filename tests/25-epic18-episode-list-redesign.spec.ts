@@ -83,7 +83,11 @@ test.describe("Redesenho da lista de episódios — seletor de temporada e busca
     await page.getByLabel("Temporada").click();
     await page.getByRole("option", { name: "Temporada 1" }).click();
 
-    await expect(page.getByTestId("episode-tile-1-1").getByText("Resumo do episódio 1.")).toBeVisible();
+    const tile = page.getByTestId("episode-tile-1-1");
+    // Sinopse atrás de ação explícita (spoiler, D-09): oculta até pedir.
+    await expect(tile.getByText("Resumo do episódio 1.")).toHaveCount(0);
+    await tile.getByRole("button", { name: /Mostrar sinopse/ }).click();
+    await expect(tile.getByText("Resumo do episódio 1.")).toBeVisible();
   });
 });
 
@@ -122,12 +126,6 @@ test.describe("Redesenho da lista de episódios — seletor reage a episódios n
         { animeId, number: 2, seasonNumber: 1, titleRomaji: "Segundo Episódio" },
       ],
     });
-    await prisma.watchProgress.upsert({
-      where: { animeId },
-      create: { animeId, status: "WATCHING", episodeProgress: 0 },
-      update: { episodeProgress: 0 },
-    });
-
     await prisma.$disconnect();
   });
 
@@ -150,10 +148,10 @@ test.describe("Redesenho da lista de episódios — seletor reage a episódios n
     });
     await prisma.$disconnect();
 
-    // Clicar em "+" no progresso chama router.refresh() sem navegar — o
+    // Favoritar chama router.refresh() sem navegar — o
     // mesmo tipo de atualização "in-place" que expôs o bug (EpisodeGrid
     // continua montado, só os `episodes` que chegam nele mudam).
-    await page.getByRole("button", { name: "Aumentar episódio" }).click();
+    await page.getByRole("button", { name: "Adicionar aos favoritos" }).click();
 
     const seasonSelect = page.getByLabel("Temporada");
     await expect(seasonSelect).toBeVisible();

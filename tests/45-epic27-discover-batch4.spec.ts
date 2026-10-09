@@ -64,9 +64,9 @@ test.describe("Epic 27 (lote 4) — Descobrir: grade responsiva pros resultados 
     await page.goto("/discover");
     await page.getByRole("button", { name: GENRE, exact: true }).click();
 
-    const addButton = page.getByRole("button", { name: "Adicionar à lista" }).first();
+    const addButton = page.getByRole("button", { name: "Acompanhar", exact: true }).first();
     await expect(addButton).toBeVisible();
     await addButton.click();
-    await expect(page.getByRole("button", { name: "Adicionar" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Confirmar", exact: true })).toBeVisible();
   });
 });

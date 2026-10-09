@@ -1,5 +1,6 @@
 "use client";
 
+import { loginHref } from "@/lib/safeRedirect";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import NextLink from "next/link";
@@ -72,14 +73,14 @@ export function DiscoverCard({
   const owned = item.inMyList || done;
   const ownedAnimeId = item.animeId ?? addedAnimeId;
   const addButtonLabel = owned
-    ? "Já está na sua lista — ver"
+    ? "Acompanhando — ver"
     : !canAdd
       ? "Disponível quando a AniList voltar ao ar"
       : user === undefined
         ? "Carregando..."
         : user
-          ? "Adicionar à lista"
-          : "Faça login para adicionar";
+          ? "Acompanhar"
+          : "Entre para acompanhar";
 
   function handleAddButtonClick(e: React.MouseEvent<HTMLElement>) {
     if (owned) {
@@ -88,7 +89,7 @@ export function DiscoverCard({
     }
     if (!canAdd || user === undefined) return; // ainda checando se está logado
     if (!user) {
-      router.push("/login");
+      router.push(loginHref(window.location.pathname + window.location.search));
       return;
     }
     setAnchorEl(e.currentTarget);
@@ -306,7 +307,7 @@ export function DiscoverCard({
             </Typography>
           )}
           <Button onClick={handleAdd} disabled={saving} variant="contained" fullWidth>
-            {saving ? "Salvando..." : "Adicionar"}
+            {saving ? "Salvando..." : "Confirmar"}
           </Button>
         </Box>
       </Popover>

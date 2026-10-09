@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
   Box,
+  Button,
   MenuItem,
   Select,
   Stack,
@@ -19,15 +19,7 @@ import {
 import type { Episode } from "@prisma/client";
 import { resolveTitleTextLenient, useTitlePreference } from "@/lib/titlePreference";
 
-function EpisodeRow({
-  ep,
-  fallbackImage,
-  watched,
-}: {
-  ep: Episode;
-  fallbackImage?: string | null;
-  watched: boolean;
-}) {
+function EpisodeRow({ ep, fallbackImage }: { ep: Episode; fallbackImage?: string | null }) {
   const { preference } = useTitlePreference();
   // Ao contrário do Anime, nem todo episódio tem os 3 campos preenchidos
   // (Kitsu/AniDB às vezes só trazem um) — resolveTitleTextLenient degrada
@@ -41,6 +33,7 @@ function EpisodeRow({
   // Ver AnimeCard — mesma correção pro ícone quebrado cru numa URL de
   // imagem que 404 (achado real da 6ª rodada de auditoria, Epic 18).
   const [broken, setBroken] = useState(false);
+  const [showSynopsis, setShowSynopsis] = useState(false);
 
   return (
     <Stack
@@ -52,7 +45,6 @@ function EpisodeRow({
         border: 1,
         borderColor: "divider",
         bgcolor: "background.paper",
-        opacity: watched ? 0.6 : 1,
       }}
     >
       <Box
@@ -86,35 +78,31 @@ function EpisodeRow({
       <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center", py: 1, pr: 1.5, gap: 0.25 }}>
         <Typography
           variant="body2"
-          sx={{ fontWeight: 700, color: watched ? "text.secondary" : "text.primary" }}
+          sx={{ fontWeight: 700, color: "text.primary" }}
         >
           EP {ep.number} · {title}
         </Typography>
         {ep.synopsis && (
-          <Typography
-            variant="caption"
-            sx={{
-              color: "text.secondary",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
-            {ep.synopsis}
-          </Typography>
+          // Sinopse de episódio pode entregar a trama: só aparece por ação
+          // explícita (D-09, P-12).
+          <>
+            <Button
+              onClick={() => setShowSynopsis((v) => !v)}
+              size="small"
+              aria-expanded={showSynopsis}
+              sx={{ px: 0, minWidth: 0, textTransform: "none", justifyContent: "flex-start", alignSelf: "flex-start" }}
+            >
+              {showSynopsis ? "Ocultar sinopse" : "Mostrar sinopse (pode conter spoilers)"}
+            </Button>
+            {showSynopsis && (
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                {ep.synopsis}
+              </Typography>
+            )}
+          </>
         )}
       </Box>
 
-      {watched && (
-        <Box
-          role="img"
-          aria-label="Já assistido"
-          sx={{ display: "flex", alignItems: "center", pr: 1.5, flexShrink: 0 }}
-        >
-          <CheckCircleIcon sx={{ fontSize: 20, color: "success.main" }} />
-        </Box>
-      )}
     </Stack>
   );
 }
@@ -122,20 +110,12 @@ function EpisodeRow({
 export function EpisodeGrid({
   episodes,
   fallbackImage,
-  watchedCount,
   accentColor,
 }: {
   episodes: Episode[];
   /** Capa do anime — mostrada no lugar da miniatura quando a fonte não traz
    * uma imagem por episódio (em vez de deixar o quadro vazio). */
   fallbackImage?: string | null;
-  /** WatchProgress.episodeProgress — contagem simples de episódios
-   * assistidos, sem relação com o `number` de cada episódio dentro da sua
-   * própria temporada (que reinicia a cada uma). Pra marcar o episódio
-   * certo como assistido mesmo com várias temporadas, ordena tudo por
-   * (temporada, número) e compara contra a posição nessa ordem — não
-   * contra o número bruto do episódio. */
-  watchedCount?: number;
   /** Cor de destaque do anime — usada no cabeçalho do accordion. */
   accentColor?: string | null;
 }) {
@@ -156,13 +136,6 @@ export function EpisodeGrid({
   const [query, setQuery] = useState("");
 
   if (episodes.length === 0) return null;
-
-  const ordinalByEpisodeId = new Map<string, number>();
-  [...episodes]
-    .sort((a, b) => a.seasonNumber - b.seasonNumber || a.number - b.number)
-    .forEach((ep, i) => ordinalByEpisodeId.set(ep.id, i + 1));
-  const isWatched = (ep: Episode) =>
-    typeof watchedCount === "number" && (ordinalByEpisodeId.get(ep.id) ?? Infinity) <= watchedCount;
 
   const needle = query.trim().toLowerCase();
   const visibleEpisodes = episodes
@@ -222,7 +195,7 @@ export function EpisodeGrid({
           ) : (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
               {visibleEpisodes.map((ep) => (
-                <EpisodeRow key={ep.id} ep={ep} fallbackImage={fallbackImage} watched={isWatched(ep)} />
+                <EpisodeRow key={ep.id} ep={ep} fallbackImage={fallbackImage} />
               ))}
             </Box>
           )}

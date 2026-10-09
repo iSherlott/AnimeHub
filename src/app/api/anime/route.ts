@@ -14,7 +14,7 @@ export async function GET() {
 
   const animes = await prisma.anime.findMany({
     where: { userId: user.id },
-    include: { platformLinks: true, progress: true },
+    include: { platformLinks: true },
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json({ animes });
@@ -101,14 +101,11 @@ export async function POST(request: NextRequest) {
         recommendationsJson: media.recommendationsJson,
         seriesKey,
         seasonNumber,
-        progress: {
-          create: { status: "PLAN_TO_WATCH", episodeProgress: 0 },
-        },
         ...(platform && url
           ? { platformLinks: { create: [{ platform, url }] } }
           : {}),
       },
-      include: { platformLinks: true, progress: true },
+      include: { platformLinks: true },
     });
   } catch (error) {
     // A checagem de duplicata acima (findUnique) não é atômica com este
