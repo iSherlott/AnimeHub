@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { blockRelation } from "@/lib/blocks";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -13,13 +14,16 @@ export async function GET(request: Request, { params }: Params) {
   const { id } = await params;
   const target = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, displayName: true, createdAt: true },
+    select: { id: true, displayName: true, handle: true, avatarUrl: true, bio: true, createdAt: true },
   });
   if (!target) {
     return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
   }
 
   const viewer = await getCurrentUser();
+  if ((await blockRelation(viewer?.id ?? null, id)) !== "none") {
+    return NextResponse.json({ error: "Perfil indisponível" }, { status: 404 });
+  }
   const [followerCount, followingCount, postCount, isFollowedByMe] = await Promise.all([
     prisma.follow.count({ where: { followingId: id } }),
     prisma.follow.count({ where: { followerId: id } }),
@@ -35,6 +39,9 @@ export async function GET(request: Request, { params }: Params) {
     user: {
       id: target.id,
       displayName: target.displayName,
+      handle: target.handle,
+      avatarUrl: target.avatarUrl,
+      bio: target.bio,
       createdAt: target.createdAt.toISOString(),
       followerCount,
       followingCount,

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { toDtoPage, POST_ROW_INCLUDE } from "@/lib/postFeedDto";
+import { blockRelation } from "@/lib/blocks";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -24,8 +25,19 @@ export async function GET(request: Request, { params }: Params) {
     Math.max(1, Number(searchParams.get("limit")) || DEFAULT_LIMIT)
   );
 
+  const viewer = await getCurrentUser();
+  if ((await blockRelation(viewer?.id ?? null, id)) !== "none") {
+    return NextResponse.json({ error: "Perfil indisponível" }, { status: 404 });
+  }
+
   const rows = await prisma.post.findMany({
-    where: { userId: id, deletedAt: null },
+    // "Discussões iniciadas" (PROF-004, proposta): publicações da pessoa que
+    // abrem conversa sobre uma obra (contexto explícito). Reposts ficam fora.
+    where: {
+      userId: id,
+      deletedAt: null,
+      ...(searchParams.get("kind") === "discussions" ? { anilistId: { not: null }, repostOfId: null } : {}),
+    },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: limit + 1,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -35,8 +47,6 @@ export async function GET(request: Request, { params }: Params) {
   const hasMore = rows.length > limit;
   const page = hasMore ? rows.slice(0, limit) : rows;
   const nextCursor = hasMore ? page[page.length - 1].id : null;
-
-  const viewer = await getCurrentUser();
 
   return NextResponse.json({
     posts: await toDtoPage(page, viewer?.id ?? null),
