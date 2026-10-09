@@ -26,6 +26,7 @@ export default function Home() {
         sx={{ maxWidth: 980, mx: "auto", px: { xs: 2, sm: 3 }, py: { xs: 2, sm: 3 }, alignItems: "flex-start" }}
       >
         <Box sx={{ maxWidth: 640, mx: "auto", flex: 1, minWidth: 0 }}>
+          <h1 className="sr-only">Comunidade</h1>
           {/* useSearchParams (modo citação vindo do perfil de outra
               pessoa) exige um limite de Suspense — sem isso o build
               estático da rota falha. */}
