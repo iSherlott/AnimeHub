@@ -19,12 +19,29 @@ model User {
   /// qualquer conteúdo público que a pessoa publicar (ex.: comentários).
   displayName  String
   avatarUrl    String?
+  /// @identificador público e único (minúsculas; ver src/lib/handle.ts).
+  /// Opcional até a pessoa escolher o seu.
+  handle       String?   @unique
+  /// Bio curta e opcional (Epic 28) — texto livre, sem markdown/formatação.
+  bio          String?
   /// "ADMIN" | "MEMBER". A primeira conta criada no sistema vira admin
   /// automaticamente (mesmo bootstrap que já herda os dados órfãos).
   role         String    @default("MEMBER")
+  /// Preferências da conta (Configurações, Figma `8:3333`/`13:42966`).
+  /// titleFormat: "ja" (Japonês) | "romaji" | null (usa o padrão do produto).
+  titleFormat  String?
+  /// IANA (ex.: "America/Sao_Paulo"), "device" ou null (padrão do produto).
+  timeZone     String?
+  notifyReleases  Boolean  @default(true)
+  notifyReplies   Boolean  @default(true)
+  notifyComments  Boolean  @default(true)
+  notifyFollowers Boolean  @default(true)
+  notifyLikes     Boolean  @default(false)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  socialReceived   SocialNotification[] @relation("SocialReceived")
+  socialSent       SocialNotification[] @relation("SocialSent")
   sessions         Session[]
   animeList        Anime[]
   invitesCreated   Invite[]        @relation("InvitesCreated")
@@ -37,9 +54,17 @@ model User {
   postLikes           PostLike[]
   postComments        PostComment[]
   postReports         PostReport[] @relation("PostReporter")
+  postCommentReports        PostCommentReport[] @relation("PostCommentReporter")
+  postCommentReportsResolved PostCommentReport[] @relation("PostCommentResolver")
+  userReportsMade           UserReport[]        @relation("UserReporter")
+  userReportsReceived       UserReport[]        @relation("UserReported")
+  userReportsResolved       UserReport[]        @relation("UserReportResolver")
   postReportsResolved PostReport[] @relation("PostResolver")
   following           Follow[]     @relation("Following")
   followers           Follow[]     @relation("Followers")
+  postCommentReplyTargets PostComment[] @relation("CommentReplyTo")
+  blocksMade          Block[]      @relation("Blocker")
+  blocksReceived      Block[]      @relation("Blocked")
 
   @@index([email])
 }
@@ -176,6 +201,118 @@ model Anime {
   @@index([seriesKey])
   @@index([userId])
   @@index([userId, isFavorite])
+}
+
+/**
+ * Franquia canônica (D-18, aprovada) — agrupa as produções (temporadas,
+ * filmes, OVAs) de uma mesma obra, derivada das `relations` da AniList
+ * (src/lib/franchise.ts), NÃO do título. Compartilhada por todos os usuários.
+ */
+model Franchise {
+  id            String       @id @default(cuid())
+  /// anilistId da produção mais antiga da cadeia PREQUEL/PARENT.
+  rootAnilistId Int          @unique
+  name          String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  productions   Production[]
+}
+
+/**
+ * Produção canônica (D-18/D-03) — uma entrada de catálogo (temporada,
+ * filme, OVA…) compartilhada por todos: base do detalhe público de obra.
+ * Metadados vivem aqui UMA vez; o estado pessoal (acompanhar, favorito,
+ * overrides) continua em `Anime` por usuário até a fatia F4.
+ */
+model Production {
+  id           String    @id @default(cuid())
+  anilistId    Int       @unique
+  franchiseId  String
+  franchise    Franchise @relation(fields: [franchiseId], references: [id], onDelete: Restrict)
+  /// 1 + temporadas (TV/TV_SHORT) anteriores na cadeia da franquia.
+  seasonNumber Int       @default(1)
+  /// TV / TV_SHORT / MOVIE / OVA / ONA / SPECIAL / MUSIC (formato AniList).
+  format       String?
+  titleRomaji  String
+  titleEnglish String?
+  titleNative  String?
+  coverImage   String?
+  bannerImage  String?
+  description  String?
+  episodes     Int?
+  status       String?
+  season       String?
+  seasonYear   Int?
+  genres       String?
+  officialSite String?
+  /// JSON [{id, titleRomaji, format, relationType}] — relações da AniList (sequências, spin-offs…).
+  relationsJson String?
+  createdAt    DateTime  @default(now())
+  fetchedAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([franchiseId])
+}
+
+/**
+ * Registro de execuções dos serviços de dados (calendar-loader, notifier…):
+ * base do painel Admin → Execuções (ADMIN-003/004). Retenção curta.
+ */
+model IngestionRun {
+  id             String   @id @default(cuid())
+  /// "calendar-loader" | "notifier" | ...
+  source         String
+  startedAt      DateTime
+  finishedAt     DateTime
+  /// "OK" | "PARTIAL" | "ERROR"
+  status         String
+  itemsProcessed Int      @default(0)
+  itemsFailed    Int      @default(0)
+  message        String?
+
+  @@index([source, startedAt])
+}
+
+/**
+ * Bloqueio de perfil (D-10): bidirecional para visibilidade e interação
+ * (ver src/lib/blocks.ts). Bloquear também desfaz o seguir nos dois sentidos.
+ */
+/**
+ * Hashtag canônica (D-13; Figma `13:42068`): `key` é o ID canônico
+ * (NFKC + minúsculas), `display` o nome da 1ª ocorrência. Não associa o post
+ * a nenhum anime.
+ */
+model Hashtag {
+  id        String        @id @default(cuid())
+  key       String        @unique
+  display   String
+  /// WORK | SEASON | GENRE | TOPIC (ver src/lib/hashtags.ts#classifyHashtag).
+  kind      String        @default("TOPIC")
+  createdAt DateTime      @default(now())
+  posts     PostHashtag[]
+}
+
+model PostHashtag {
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  hashtagId String
+  hashtag   Hashtag  @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([postId, hashtagId])
+  @@index([hashtagId, createdAt])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String
+  blocked   User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
 }
 
 model Episode {
@@ -322,6 +459,10 @@ model AiringScheduleEntry {
   coverImage   String?
   bannerImage  String?
   genres       String?
+  /// Sinopse (Epic 29) — pedida na mesma busca AniList que popula o
+  /// resto da linha (services/calendar-loader), pra dar pro preview do
+  /// calendário mostrar sinopse mesmo de anime fora da lista do viewer.
+  description  String?
   fetchedAt    DateTime @default(now())
 
   @@unique([anilistId, episode])
@@ -355,10 +496,36 @@ model AiringAlert {
   episode   Int
   airingAt  DateTime
   seenAt    DateTime?
+  /// Horário anterior quando a data do episódio MUDOU depois do alerta
+  /// ("Data alterada", Figma 13:43025); null = alerta de lançamento normal.
+  previousAiringAt DateTime?
   createdAt DateTime  @default(now())
 
   @@unique([userId, anilistId, episode])
   @@index([userId, seenAt])
+}
+
+/**
+ * Notificação SOCIAL (canal separado de "Lançamentos"): resposta à
+ * publicação, resposta ao comentário, novo seguidor, curtida (OFF por
+ * padrão). Guarda só QUEM e ONDE — nunca texto do conteúdo (spoiler-safe).
+ */
+model SocialNotification {
+  id        String    @id @default(cuid())
+  /// Quem recebe.
+  userId    String
+  user      User      @relation("SocialReceived", fields: [userId], references: [id], onDelete: Cascade)
+  /// Quem fez a ação.
+  actorId   String
+  actor     User      @relation("SocialSent", fields: [actorId], references: [id], onDelete: Cascade)
+  /// "POST_REPLY" | "COMMENT_REPLY" | "NEW_FOLLOWER" | "POST_LIKE"
+  type      String
+  postId    String?
+  commentId String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt, createdAt])
 }
 
 /**
@@ -374,11 +541,15 @@ model Post {
   id                String    @id @default(cuid())
   userId            String
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  anilistId         Int
-  animeTitleRomaji  String
+  anilistId         Int?
+  animeTitleRomaji  String?
   animeTitleEnglish String?
   animeCoverImage   String?
   body              String
+  /// Marca do AUTOR (Figma `13:41840`, P-12): o texto/imagens NÃO saem nas
+  /// listas — só pela rota de revelar, por ação explícita. Desmarcado por
+  /// padrão e independente de qualquer noção de "assistido".
+  isSpoiler         Boolean   @default(false)
   /// URLs coladas pela pessoa (meme/imagem, 0+, exibidas em carrossel) —
   /// sem infraestrutura de upload (nenhum campo de imagem no app tem uma
   /// hoje, nem User.avatarUrl). Renderizado como <img> simples com
@@ -411,6 +582,7 @@ model Post {
   repostedBy Post[]  @relation("PostReposts")
 
   likes    PostLike[]
+  hashtags PostHashtag[]
   reports  PostReport[]
   comments PostComment[]
 
@@ -449,8 +621,22 @@ model PostComment {
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   body      String
+  /// Marca do autor (P-12) — mesmo contrato de Post.isSpoiler.
+  isSpoiler Boolean   @default(false)
   createdAt DateTime  @default(now())
   deletedAt DateTime?
+
+  reports PostCommentReport[]
+
+  /// Um nível visual de resposta (Figma `13:42257`, decisão provisória do
+  /// produto): `parentId` é SEMPRE a resposta de topo; responder a uma
+  /// resposta filha mantém o mesmo parentId e registra em `replyToUserId`
+  /// a quem se responde ("Em resposta a …"), sem aumentar a indentação.
+  parentId      String?
+  parent        PostComment?  @relation("CommentThread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies       PostComment[] @relation("CommentThread")
+  replyToUserId String?
+  replyToUser   User?         @relation("CommentReplyTo", fields: [replyToUserId], references: [id], onDelete: SetNull)
 
   @@index([postId])
   @@index([userId])
@@ -471,9 +657,47 @@ model PostReport {
   resolvedAt   DateTime?
   resolvedById String?
   resolvedBy   User?     @relation("PostResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  /// SPAM | HARASSMENT | UNMARKED_SPOILER | OTHER (Figma `13:43571`).
+  reason       String?
 
   @@unique([postId, reporterId])
   @@index([postId])
+}
+
+/// Denúncia de RESPOSTA (PostComment) — antes não existia (nem o admin
+/// conseguia remover uma resposta). Mesmo contrato do PostReport.
+model PostCommentReport {
+  id           String      @id @default(cuid())
+  commentId    String
+  comment      PostComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reporterId   String
+  reporter     User        @relation("PostCommentReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reason       String
+  createdAt    DateTime    @default(now())
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolvedBy   User?       @relation("PostCommentResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@unique([commentId, reporterId])
+  @@index([commentId])
+}
+
+/// Denúncia de PERFIL. Denunciar não bloqueia nem suspende (Figma
+/// `13:43571`); a fila só marca como revisada na v1 (suspensão: D-16).
+model UserReport {
+  id           String    @id @default(cuid())
+  targetUserId String
+  target       User      @relation("UserReported", fields: [targetUserId], references: [id], onDelete: Cascade)
+  reporterId   String
+  reporter     User      @relation("UserReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reason       String
+  createdAt    DateTime  @default(now())
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolvedBy   User?     @relation("UserReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@unique([targetUserId, reporterId])
+  @@index([targetUserId])
 }
 
 /// Segue-outra-pessoa (Epic 22) — alimenta a aba "Seguindo" do feed.
