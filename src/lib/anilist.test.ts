@@ -6,6 +6,7 @@ import {
   getSeasonalAnime,
   getAnimeById,
   getAiringSchedule,
+  getAiringScheduleWindow,
   type AniListMedia,
 } from "@/lib/anilist";
 
@@ -372,5 +373,100 @@ describe("getAiringSchedule", () => {
     await getAiringSchedule(0, 100);
 
     expect(fetch).toHaveBeenCalledTimes(10);
+  });
+});
+
+describe("getAiringScheduleWindow", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const entry = {
+    episode: 1,
+    airingAt: 1700000000,
+    media: {
+      id: 1,
+      title: { romaji: "Some Anime", english: null, native: null },
+      coverImage: { extraLarge: null },
+      bannerImage: null,
+      genres: [],
+      format: "TV",
+    },
+  };
+
+  it("flags truncation when the page ceiling is hit while the API still has more", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ data: { Page: { pageInfo: { hasNextPage: true }, airingSchedules: [entry] } } })
+    );
+    const result = await getAiringScheduleWindow(0, 100);
+    expect(result.truncated).toBe(true);
+    expect(result.entries).toHaveLength(10);
+  });
+
+  it("does not flag truncation when pagination ends naturally", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ data: { Page: { pageInfo: { hasNextPage: false }, airingSchedules: [entry] } } })
+    );
+    expect((await getAiringScheduleWindow(0, 100)).truncated).toBe(false);
+  });
+});
+
+describe("rate limit handling (HTTP 429)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", vi.fn());
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  const okBody = { data: { Page: { pageInfo: { hasNextPage: false }, airingSchedules: [] } } };
+
+  it("retries after a 429 honoring Retry-After, then succeeds", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        headers: new Headers({ "Retry-After": "3" }),
+        text: async () => "Too Many Requests",
+      } as unknown as Response)
+      .mockResolvedValueOnce(jsonResponse(okBody));
+
+    const promise = getAiringScheduleWindow(0, 100);
+    await vi.advanceTimersByTimeAsync(3000);
+    const result = await promise;
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(result.entries).toEqual([]);
+  });
+
+  it("gives up after the retry budget and surfaces the 429", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 429,
+      headers: new Headers(),
+      text: async () => "Too Many Requests",
+    } as unknown as Response);
+
+    const promise = getAiringScheduleWindow(0, 100);
+    const assertion = expect(promise).rejects.toThrow("429");
+    await vi.advanceTimersByTimeAsync(120_000);
+    await assertion;
+    expect(fetch).toHaveBeenCalledTimes(4); // 1 tentativa + 3 retries
+  });
+
+  it("does not retry other HTTP errors", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 500,
+      headers: new Headers(),
+      text: async () => "boom",
+    } as unknown as Response);
+    await expect(getAiringScheduleWindow(0, 100)).rejects.toThrow("500");
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });

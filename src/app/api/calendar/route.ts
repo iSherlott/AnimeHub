@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCachedAiringSchedule } from "@/lib/airingCache";
 import { calendarItemFromCache } from "@/lib/calendarItem";
 import { getCurrentUser } from "@/lib/auth/session";
+import { startOfWeekMonday } from "@/lib/calendarWeek";
 
 const MAX_WEEK_OFFSET = 8;
 
@@ -12,11 +13,7 @@ const WEEK_SECONDS = 7 * 24 * 3600;
  * à API) — nesse caso não há como saber o fuso do cliente, então caímos no
  * relógio do servidor mesmo. */
 function serverWeekStart(weekOffset: number): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const sunday = new Date(today);
-  sunday.setDate(sunday.getDate() - sunday.getDay() + weekOffset * 7);
-  return Math.floor(sunday.getTime() / 1000);
+  return Math.floor(startOfWeekMonday(new Date(), weekOffset).getTime() / 1000);
 }
 
 /**
@@ -31,7 +28,7 @@ function serverWeekStart(weekOffset: number): number {
  * semana, -1 = semana anterior), limitado a +-8 semanas para evitar
  * varreduras enormes na AniList.
  *
- * `weekStart` é o timestamp Unix (segundos) do domingo 00:00 **no fuso do
+ * `weekStart` é o timestamp Unix (segundos) do segunda 00:00 **no fuso do
  * navegador**, calculado pelo front-end (buildWeekDays em
  * src/app/calendar/page.tsx) e sempre preferido em vez de recalcular "hoje"
  * no servidor — server e navegador podem estar em fusos diferentes, e cada

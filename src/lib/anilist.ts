@@ -1,4 +1,5 @@
 import { normalizeGenres } from "@/lib/genreTaxonomy";
+import type { MediaRelations } from "@/lib/franchise";
 
 const ANILIST_ENDPOINT = "https://graphql.anilist.co";
 
@@ -86,19 +87,39 @@ export function fuzzyDateToISO(date: AniListFuzzyDate | null): string | null {
   return new Date(Date.UTC(date.year, month - 1, day)).toISOString();
 }
 
+const RATE_LIMIT_MAX_RETRIES = 3;
+const RATE_LIMIT_MAX_WAIT_MS = 60_000;
+
+/** Espera sugerida após um 429: header Retry-After (segundos) ou backoff exponencial. */
+export function rateLimitWaitMs(retryAfterHeader: string | null, attempt: number): number {
+  const seconds = Number(retryAfterHeader);
+  const suggested = Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : 2000 * 2 ** attempt;
+  return Math.min(suggested, RATE_LIMIT_MAX_WAIT_MS);
+}
+
 async function anilistRequest<T>(
   query: string,
   variables: Record<string, unknown>
 ): Promise<T> {
-  const res = await fetch(ANILIST_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({ query, variables }),
-    next: { revalidate: 3600 },
-  });
+  let res: Response;
+  for (let attempt = 0; ; attempt += 1) {
+    res = await fetch(ANILIST_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ query, variables }),
+      next: { revalidate: 3600 },
+    });
+    // 429 é transitório (limite de ~90 req/min da AniList): respeita
+    // Retry-After e tenta de novo, em vez de derrubar a fatia/ciclo inteiro.
+    if (res.status === 429 && attempt < RATE_LIMIT_MAX_RETRIES) {
+      await new Promise((r) => setTimeout(r, rateLimitWaitMs(res.headers?.get?.("Retry-After") ?? null, attempt)));
+      continue;
+    }
+    break;
+  }
 
   if (!res.ok) {
     const text = await res.text();
@@ -320,6 +341,7 @@ export type AniListAiringEntry = {
   coverImage: string | null;
   bannerImage: string | null;
   genres: string[];
+  description: string | null;
 };
 
 /**
@@ -333,6 +355,20 @@ export async function getAiringSchedule(
   airingAtGreater: number,
   airingAtLesser: number
 ): Promise<AniListAiringEntry[]> {
+  return (await getAiringScheduleWindow(airingAtGreater, airingAtLesser)).entries;
+}
+
+/**
+ * Igual a getAiringSchedule, mas informa se a paginação foi cortada pela
+ * trava de segurança (MAX_PAGES) — truncamento silencioso foi o que deixou o
+ * calendário sem a semana atual (a janela larga + ordenação crescente nunca
+ * chegava ao presente). Quem ingere deve fatiar a janela e registrar
+ * "truncated".
+ */
+export async function getAiringScheduleWindow(
+  airingAtGreater: number,
+  airingAtLesser: number
+): Promise<{ entries: AniListAiringEntry[]; truncated: boolean }> {
   const query = `
     query ($page: Int, $greater: Int, $lesser: Int) {
       Page(page: $page, perPage: 50) {
@@ -359,6 +395,7 @@ export async function getAiringSchedule(
             bannerImage
             genres
             format
+            description(asHtml: false)
           }
         }
       }
@@ -384,6 +421,7 @@ export async function getAiringSchedule(
             bannerImage: string | null;
             genres: string[];
             format: string | null;
+            description: string | null;
           };
         }>;
       };
@@ -401,6 +439,7 @@ export async function getAiringSchedule(
         coverImage: entry.media.coverImage.extraLarge,
         bannerImage: entry.media.bannerImage,
         genres: normalizeGenres(entry.media.genres),
+        description: entry.media.description,
       });
     }
 
@@ -408,7 +447,53 @@ export async function getAiringSchedule(
     page += 1;
   }
 
-  return entries;
+  return { entries, truncated: hasNextPage };
+}
+
+/**
+ * Relações de uma mídia (PREQUEL/PARENT) — base da resolução de franquia
+ * (src/lib/franchise.ts). Só mídias de anime entram; manga/novel ficam de fora.
+ */
+const RELATED_TYPES = new Set(["PREQUEL", "SEQUEL", "PARENT", "SIDE_STORY", "SPIN_OFF", "ALTERNATIVE", "SUMMARY"]);
+
+export async function getMediaRelations(anilistId: number): Promise<MediaRelations | null> {
+  const query = `
+    query ($id: Int) {
+      Media(id: $id, type: ANIME) {
+        id
+        format
+        title { romaji }
+        relations {
+          edges {
+            relationType(version: 2)
+            node { id type format title { romaji } }
+          }
+        }
+      }
+    }
+  `;
+  type Edge = { relationType: string; node: { id: number; type: string; format: string | null; title: { romaji: string } } };
+  let data: { Media: { id: number; format: string | null; title: { romaji: string }; relations: { edges: Edge[] } } | null };
+  try {
+    data = await anilistRequest(query, { id: anilistId });
+  } catch (error) {
+    // 404 da AniList = id inexistente; qualquer outro erro sobe para o chamador decidir.
+    if (error instanceof Error && error.message.includes("(404)")) return null;
+    throw error;
+  }
+  if (!data.Media) return null;
+  const edges = data.Media.relations.edges.filter((e) => e.node.type === "ANIME");
+  const prequels = edges.filter((e) => e.relationType === "PREQUEL").map((e) => e.node.id);
+  const parents = edges.filter((e) => e.relationType === "PARENT").map((e) => e.node.id);
+  return {
+    id: data.Media.id,
+    format: data.Media.format,
+    titleRomaji: data.Media.title.romaji,
+    predecessorIds: prequels.length ? prequels : parents,
+    related: edges
+      .filter((e) => RELATED_TYPES.has(e.relationType))
+      .map((e) => ({ id: e.node.id, titleRomaji: e.node.title.romaji, format: e.node.format, relationType: e.relationType })),
+  };
 }
 
 export function currentSeason(date = new Date()): {

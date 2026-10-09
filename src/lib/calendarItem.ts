@@ -16,9 +16,12 @@ export type CalendarItem = {
   coverImage: string | null;
   genres: string[];
   inMyList: boolean;
-  /** Sinopse — como titlePortuguese, só disponível pra quem já tem o
-   * anime na lista (AiringScheduleEntry não guarda descrição nenhuma;
-   * ver decisão no lote 2 do Epic 27). */
+  /** Sinopse (Epic 29) — vem da própria linha de Anime do usuário
+   * quando está na lista, senão do cache de calendário
+   * (AiringScheduleEntry.description, pedido na mesma busca AniList
+   * que já traz o resto da entrada). `descriptionPortuguese` continua
+   * só disponível na lista — não existe onde guardar uma tradução
+   * manual pra anime sem dono. */
   description: string | null;
   descriptionPortuguese: string | null;
   isFavorite: boolean;
@@ -50,7 +53,7 @@ export function calendarItemFromCache(
     coverImage: entry.coverImage,
     genres: entry.genres ? entry.genres.split(",").filter(Boolean) : [],
     inMyList: owned !== null,
-    description: owned?.description ?? null,
+    description: owned?.description ?? entry.description ?? null,
     descriptionPortuguese: owned?.descriptionPortuguese ?? null,
     isFavorite: owned?.isFavorite ?? false,
   };
