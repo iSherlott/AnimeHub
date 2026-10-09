@@ -1,5 +1,6 @@
 "use client";
 
+import { sanitizeFuriganaHtml } from "@/lib/plainText";
 import { resolveTitleText, useTitlePreference, type TitleSet } from "@/lib/titlePreference";
 
 export function AnimeTitle({
@@ -23,7 +24,7 @@ export function AnimeTitle({
         <span
           className={combined}
           suppressHydrationWarning
-          dangerouslySetInnerHTML={{ __html: furiganaHtml }}
+          dangerouslySetInnerHTML={{ __html: sanitizeFuriganaHtml(furiganaHtml) }}
         />
       );
     }

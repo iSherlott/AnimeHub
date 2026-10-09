@@ -8,6 +8,8 @@ import type { CalendarItem } from "@/lib/calendarItem";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 import { isAiringNow } from "@/lib/airingWindow";
 import { CalendarEntryPreview } from "@/components/CalendarEntryPreview";
+import { formatTimeInZone } from "@/lib/timeZone";
+import { useTimeZone } from "@/lib/useTimeZone";
 
 /** Reavalia a cada minuto — sem isso, um card aberto numa aba esquecida
  * ficaria com o selo "NO AR" preso muito depois da janela real ter passado. */
@@ -28,10 +30,8 @@ const CLOSE_DELAY_MS = 150;
 export function CalendarEntryCard({ item }: { item: CalendarItem }) {
   const { preference } = useTitlePreference();
   const title = resolveTitleText(preference, item) || "Sem título";
-  const time = new Date(item.airingAt).toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const timeZone = useTimeZone();
+  const time = formatTimeInZone(new Date(item.airingAt), timeZone);
 
   // Começa false (em vez de calcular já no useState) e só decide de verdade
   // dentro do efeito — esse componente é renderizado no servidor também, e
@@ -110,7 +110,7 @@ export function CalendarEntryCard({ item }: { item: CalendarItem }) {
           {title}
         </Typography>
         <Typography sx={{ mt: 0.25, fontSize: 11, color: "text.secondary" }}>
-          EP {item.episode} · {time}
+          {time} · EP {item.episode}
           {airingNow && (
             <Box
               component="span"
@@ -153,10 +153,8 @@ export function CalendarEntryCard({ item }: { item: CalendarItem }) {
         </Box>
       ) : (
         <Box
-          component="a"
-          href={`https://anilist.co/anime/${item.anilistId}`}
-          target="_blank"
-          rel="noopener noreferrer"
+          component={NextLink}
+          href={`/obra/${item.anilistId}`}
           sx={linkSx}
           onMouseEnter={openPreview}
           onMouseLeave={scheduleClose}

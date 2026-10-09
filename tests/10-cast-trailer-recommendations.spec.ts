@@ -92,10 +92,8 @@ test.describe("Trailer, elenco e recomendações (Epic 14)", () => {
 
     const externalLink = page.getByRole("link", { name: "Anime Recomendado Externo" });
     await expect(externalLink).toBeVisible();
-    await expect(externalLink).toHaveAttribute(
-      "href",
-      `https://anilist.co/anime/${RECOMMENDED_EXTERNAL_ANILIST_ID}`
-    );
-    await expect(externalLink).toHaveAttribute("target", "_blank");
+    // Fora da lista agora abre a página pública da obra (D-03), não a AniList.
+    await expect(externalLink).toHaveAttribute("href", `/obra/${RECOMMENDED_EXTERNAL_ANILIST_ID}`);
+    await expect(externalLink).not.toHaveAttribute("target", "_blank");
   });
 });

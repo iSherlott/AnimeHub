@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import NextLink from "next/link";
+import { htmlToPlainText } from "@/lib/plainText";
 import { Box, Link as MuiLink, Typography } from "@mui/material";
 import type { CalendarItem } from "@/lib/calendarItem";
 import { resolveTitleText, useLocalizedDescription, useTitlePreference } from "@/lib/titlePreference";
@@ -20,7 +22,7 @@ export function CalendarEntryPreview({ item }: { item: CalendarItem }) {
   const [coverBroken, setCoverBroken] = useState(false);
 
   const isInternal = Boolean(item.inMyList && item.animeId);
-  const detailHref = isInternal ? `/anime/${item.animeId}` : `https://anilist.co/anime/${item.anilistId}`;
+  const detailHref = isInternal ? `/anime/${item.animeId}` : `/obra/${item.anilistId}`;
 
   return (
     <Box sx={{ display: "flex", gap: 1.5, p: 1.5, maxWidth: 320 }}>
@@ -52,7 +54,7 @@ export function CalendarEntryPreview({ item }: { item: CalendarItem }) {
           {title}
         </Typography>
 
-        {item.inMyList && item.description ? (
+        {item.description ? (
           <Typography
             variant="caption"
             sx={{
@@ -62,8 +64,9 @@ export function CalendarEntryPreview({ item }: { item: CalendarItem }) {
               WebkitBoxOrient: "vertical",
               overflow: "hidden",
             }}
-            dangerouslySetInnerHTML={{ __html: description }}
-          />
+          >
+            {htmlToPlainText(description)}
+          </Typography>
         ) : (
           <Typography variant="caption" sx={{ color: "text.secondary" }}>
             {item.inMyList ? "Sem sinopse salva." : "Sem sinopse — abra pra ver mais."}
@@ -75,13 +78,12 @@ export function CalendarEntryPreview({ item }: { item: CalendarItem }) {
             <FavoriteToggle animeId={item.animeId!} initialFavorite={item.isFavorite} size="small" />
           ) : (
             <MuiLink
+              component={NextLink}
               href={detailHref}
-              target="_blank"
-              rel="noopener noreferrer"
               variant="caption"
               sx={{ fontWeight: 700 }}
             >
-              Ver mais detalhes ↗
+              Ver mais detalhes
             </MuiLink>
           )}
         </Box>

@@ -3,7 +3,9 @@
 import { useId, useState } from "react";
 import CloseIcon from "@mui/icons-material/Close";
 import Image from "next/image";
-import { Box, Chip, Dialog, IconButton, Skeleton, Stack, Typography } from "@mui/material";
+import NextLink from "next/link";
+import { htmlToPlainText } from "@/lib/plainText";
+import { Box, Chip, Dialog, IconButton, Link as MuiLink, Skeleton, Stack, Typography } from "@mui/material";
 import type { DiscoverItem } from "@/lib/discoverItem";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 
@@ -135,13 +137,24 @@ export function AnimeInfoModal({
       {item.description ? (
         <Typography
           variant="body2"
-          sx={{ mt: 2, px: 3, pb: 3, color: "text.secondary", lineHeight: 1.6 }}
-          dangerouslySetInnerHTML={{ __html: item.description }}
-        />
+          sx={{ mt: 2, px: 3, pb: 1, color: "text.secondary", lineHeight: 1.6, whiteSpace: "pre-wrap" }}
+        >
+          {htmlToPlainText(item.description)}
+        </Typography>
       ) : (
-        <Typography variant="body2" sx={{ mt: 2, px: 3, pb: 3, color: "text.secondary" }}>
+        <Typography variant="body2" sx={{ mt: 2, px: 3, pb: 1, color: "text.secondary" }}>
           Sem sinopse disponível.
         </Typography>
+      )}
+
+      {item.anilistId ? (
+        <Box sx={{ px: 3, pb: 3 }}>
+          <MuiLink component={NextLink} href={`/obra/${item.anilistId}`} sx={{ fontWeight: 700 }}>
+            Ver página da obra
+          </MuiLink>
+        </Box>
+      ) : (
+        <Box sx={{ pb: 2 }} />
       )}
     </Dialog>
   );

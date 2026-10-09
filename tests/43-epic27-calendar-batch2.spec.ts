@@ -114,9 +114,9 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     await otherLink.hover();
 
     await expect(page.getByText("Sem sinopse — abra pra ver mais.")).toBeVisible();
-    const seeMore = page.getByRole("link", { name: "Ver mais detalhes ↗" });
+    const seeMore = page.getByRole("link", { name: "Ver mais detalhes" });
     await expect(seeMore).toBeVisible();
-    await expect(seeMore).toHaveAttribute("href", `https://anilist.co/anime/${OTHER_ANILIST_ID}`);
+    await expect(seeMore).toHaveAttribute("href", `/obra/${OTHER_ANILIST_ID}`);
     await expect(page.getByRole("button", { name: "Adicionar aos favoritos" })).toHaveCount(0);
   });
 
