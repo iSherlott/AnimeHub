@@ -38,7 +38,10 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - name: Tipos
-        run: npx tsc --noEmit
+        # typegen gera LayoutProps/PageProps (em .next/types), ausentes num checkout limpo.
+        run: |
+          npx next typegen
+          npx tsc --noEmit
       - name: Lint
         run: npm run lint
       - name: Testes unitários
