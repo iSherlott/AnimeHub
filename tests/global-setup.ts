@@ -95,7 +95,6 @@ export default async function globalSetup() {
           anilistId: fixture.anilistId,
           titleRomaji: fixture.titleRomaji,
           genres: "",
-          progress: { create: { status: "PLAN_TO_WATCH", episodeProgress: 0 } },
         },
       });
     }
@@ -109,7 +108,8 @@ export default async function globalSetup() {
     ".bin",
     process.platform === "win32" ? "next.cmd" : "next"
   );
-  const testEnv = { ...process.env, ANIME_HUB_DATABASE_URL: TEST_DB_URL };
+  // Rate limit desligado na suíte E2E (muitos logins/cadastros do mesmo IP); coberto por unit tests.
+  const testEnv = { ...process.env, ANIME_HUB_DATABASE_URL: TEST_DB_URL, ANIME_HUB_RATE_LIMIT_DISABLED: "1" };
 
   // build de produção: mais rápido e determinístico que `next dev` (sem
   // compilação sob demanda do Turbopack, que causava flakiness na 1ª visita

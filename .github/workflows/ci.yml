@@ -1,0 +1,56 @@
+name: CI
+
+# Regressão da PoC (F15): tipos, lint, testes unitários e a suíte Playwright
+# (inclui acessibilidade com axe). Os testes `@external` (rede real) ficam de
+# fora de propósito e rodam sob demanda: `npm run test:external`.
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: animehub
+          POSTGRES_PASSWORD: animehub_dev_local
+          POSTGRES_DB: animehub_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U animehub"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Mesmos valores que tests/test-db.ts espera; o schema é recriado pela suíte.
+      ANIME_HUB_DATABASE_URL: postgresql://animehub:animehub_dev_local@localhost:5432/animehub_test?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Tipos
+        run: npx tsc --noEmit
+      - name: Lint
+        run: npm run lint
+      - name: Testes unitários
+        run: npm run test:unit
+      - name: Navegador do Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Testes de ponta a ponta (+ acessibilidade)
+        run: npm test
+      - name: Relatório em caso de falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7
