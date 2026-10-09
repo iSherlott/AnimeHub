@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { toPostDto, type PostDTO } from "@/lib/postDto";
 import type { Post } from "@prisma/client";
+import { blockedUserIdSet } from "@/lib/blocks";
 
-type Author = { id: string; displayName: string };
+type Author = { id: string; displayName: string; avatarUrl: string | null };
 type QuotedPostRow = Post & { user: Author };
 
 /**
@@ -19,8 +20,8 @@ export type PostRow = Post & {
 };
 
 export const POST_ROW_INCLUDE = {
-  user: { select: { id: true, displayName: true } },
-  quotedPost: { include: { user: { select: { id: true, displayName: true } } } },
+  user: { select: { id: true, displayName: true, avatarUrl: true } },
+  quotedPost: { include: { user: { select: { id: true, displayName: true, avatarUrl: true } } } },
   // PostComment tem soft delete (deletedAt) — contar a relação crua sem
   // filtro incluía comentários apagados no contador exibido no card
   // (achado real de verificação ao vivo: um comentário apagado
@@ -52,7 +53,10 @@ async function resolveRepostRows(
       // soft delete — mas defensivo) ou soft-deletado depois de
       // repostado: nada pra mostrar nessa posição do feed.
       if (!original || original.deletedAt) return null;
-      return { effective: original, repostedBy: { id: row.user.id, displayName: row.user.displayName } };
+      return {
+        effective: original,
+        repostedBy: { id: row.user.id, displayName: row.user.displayName, avatarUrl: row.user.avatarUrl },
+      };
     })
     .filter((r): r is { effective: PostRow; repostedBy: Author | null } => r !== null);
 }
@@ -63,12 +67,18 @@ async function resolveRepostRows(
  * myOpenReports na rota de comentários.
  */
 export async function toDtoPage(page: PostRow[], viewerId: string | null): Promise<PostDTO[]> {
-  const resolved = await resolveRepostRows(page);
+  // Bloqueio (D-10): nada de quem bloqueei ou de quem me bloqueou — nem o
+  // autor, nem quem repostou, nem o post citado. A página pode vir com
+  // menos itens que o limite; isso é esperado e o cursor segue válido.
+  const blocked = await blockedUserIdSet(viewerId);
+  const resolved = (await resolveRepostRows(page)).filter(
+    (r) => !blocked.has(r.effective.user.id) && !(r.repostedBy && blocked.has(r.repostedBy.id))
+  );
   const postIds = resolved.map((r) => r.effective.id);
   // Leitura pública (viewer deslogado) não tem "minhas curtidas"/"minhas
   // denúncias"/"meus reposts" — pula as consultas em vez de rodar com
   // userId nulo.
-  const postAnilistIds = [...new Set(resolved.map((r) => r.effective.anilistId))];
+  const postAnilistIds = [...new Set(resolved.map((r) => r.effective.anilistId).filter((id): id is number => id !== null))];
   const [myLikes, myOpenReports, myReposts, myFavorites] = viewerId
     ? await Promise.all([
         prisma.postLike.findMany({
@@ -101,10 +111,10 @@ export async function toDtoPage(page: PostRow[], viewerId: string | null): Promi
       likedByMe: likedSet.has(effective.id),
       reportedByMe: reportedSet.has(effective.id),
       commentCount: effective._count.comments,
-      quotedPost: effective.quotedPost,
+      quotedPost: effective.quotedPost && blocked.has(effective.quotedPost.user.id) ? null : effective.quotedPost,
       repostedBy,
       repostedByMe: repostedSet.has(effective.id),
-      favoritedByMe: favoritedAnilistIdSet.has(effective.anilistId),
+      favoritedByMe: effective.anilistId !== null && favoritedAnilistIdSet.has(effective.anilistId),
     })
   );
 }

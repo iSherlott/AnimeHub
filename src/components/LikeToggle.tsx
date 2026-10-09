@@ -1,5 +1,6 @@
 "use client";
 
+import { loginHref } from "@/lib/safeRedirect";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import FavoriteIcon from "@mui/icons-material/Favorite";
@@ -50,7 +51,7 @@ export function LikeToggle({
     // (achado real do pedido de redesenho do Feed) — antes o botão só
     // ficava `disabled`, sem indicar o que fazer pra curtir de verdade.
     if (loggedOut) {
-      router.push("/login");
+      router.push(loginHref(window.location.pathname + window.location.search));
       return;
     }
     const next = !liked;

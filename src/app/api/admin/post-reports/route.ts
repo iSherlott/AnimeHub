@@ -42,7 +42,7 @@ export async function GET() {
     }
     byPost.set(report.postId, {
       postId: report.postId,
-      animeTitleRomaji: report.post.animeTitleRomaji,
+      animeTitleRomaji: report.post.animeTitleRomaji ?? "(sem obra associada)",
       body: report.post.body,
       postCreatedAt: report.post.createdAt,
       postDeleted: Boolean(report.post.deletedAt),

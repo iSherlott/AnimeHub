@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
+import { blockedUserIdSet } from "@/lib/blocks";
 
 type Params = { params: Promise<{ postId: string }> };
 
@@ -39,7 +40,7 @@ export async function PATCH(request: Request, { params }: Params) {
       animeCoverImage: true,
     },
   });
-  if (!original || original.deletedAt) {
+  if (!original || original.deletedAt || (await blockedUserIdSet(user.id)).has(original.userId)) {
     return NextResponse.json({ error: "Post não encontrado" }, { status: 404 });
   }
   if (original.userId === user.id) {

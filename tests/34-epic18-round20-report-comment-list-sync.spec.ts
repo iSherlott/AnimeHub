@@ -56,6 +56,11 @@ test.describe("Epic 18 — 20ª rodada de auditoria de UX/UI — denúncia e lis
     const selfCard = allCardsForPost.filter({ hasNotText: "repostou" });
 
     await repostCard.getByRole("button", { name: "Denunciar post" }).click();
+    // Denúncia agora passa pelo diálogo de motivo + confirmação (Figma 13:43571).
+    const reportDialog = page.getByRole("dialog");
+    await reportDialog.getByLabel("Outro motivo").check();
+    await reportDialog.getByTestId("report-continue").click();
+    await reportDialog.getByTestId("report-send").click();
     await expect(repostCard.getByRole("button", { name: "Denunciado" })).toBeVisible();
 
     // A entrada "self" precisa refletir a mesma denúncia (botão

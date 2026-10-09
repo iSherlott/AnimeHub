@@ -7,30 +7,41 @@ import type { Post } from "@prisma/client";
  */
 export type PostSummaryDTO = {
   id: string;
-  author: { id: string; displayName: string };
+  author: { id: string; displayName: string; avatarUrl: string | null };
+  /** Vazio quando `isSpoiler` — o texto só sai pela rota de revelar. */
   body: string;
+  isSpoiler: boolean;
   imageUrl: string | null;
-  animeTitleRomaji: string;
+  /** null = publicação sem obra associada (contexto opcional). */
+  animeTitleRomaji: string | null;
   animeTitleEnglish: string | null;
   createdAt: string;
 };
 
 export type PostDTO = {
   id: string;
+  /** Vazio (e sem imagens) quando `isSpoiler` — ver /api/posts/[postId]/reveal. */
   body: string;
+  isSpoiler: boolean;
   imageUrls: string[];
   createdAt: string;
-  anilistId: number;
-  animeTitleRomaji: string;
+  /** null = publicação sem obra associada (Figma 13:41840: contexto opcional). */
+  anilistId: number | null;
+  animeTitleRomaji: string | null;
   animeTitleEnglish: string | null;
   animeCoverImage: string | null;
-  author: { id: string; displayName: string };
+  author: { id: string; displayName: string; avatarUrl: string | null };
   isMine: boolean;
   likeCount: number;
   likedByMe: boolean;
   reportedByMe: boolean;
   commentCount: number;
   quotedPost: PostSummaryDTO | null;
+  /// A citação aponta para um post que não pode ser mostrado (apagado,
+  /// removido por moderação ou de alguém bloqueado) — a UI mostra o
+  /// tombstone neutro "Publicação original indisponível" (Figma 13:43571),
+  /// sem texto, autor ou motivo.
+  quotedUnavailable: boolean;
   /// Quem repostou (Epic 25) — presente só quando esta linha do feed
   /// veio de uma linha-repost resolvida pro original; o próprio PostDTO
   /// sempre descreve o ORIGINAL (curtida/comentário/citação agem sobre
@@ -43,14 +54,15 @@ export type PostDTO = {
   favoritedByMe: boolean;
 };
 
-type PostWithAuthor = Post & { user: { id: string; displayName: string } };
+type PostWithAuthor = Post & { user: { id: string; displayName: string; avatarUrl: string | null } };
 
 export function toPostSummaryDto(post: PostWithAuthor): PostSummaryDTO {
   return {
     id: post.id,
-    author: { id: post.user.id, displayName: post.user.displayName },
-    body: post.body,
-    imageUrl: post.imageUrls[0] ?? null,
+    author: { id: post.user.id, displayName: post.user.displayName, avatarUrl: post.user.avatarUrl },
+    body: post.isSpoiler ? "" : post.body,
+    isSpoiler: post.isSpoiler,
+    imageUrl: post.isSpoiler ? null : (post.imageUrls[0] ?? null),
     animeTitleRomaji: post.animeTitleRomaji,
     animeTitleEnglish: post.animeTitleEnglish,
     createdAt: post.createdAt.toISOString(),
@@ -81,14 +93,15 @@ export function toPostDto(
 ): PostDTO {
   return {
     id: post.id,
-    body: post.body,
-    imageUrls: post.imageUrls,
+    body: post.isSpoiler ? "" : post.body,
+    isSpoiler: post.isSpoiler,
+    imageUrls: post.isSpoiler ? [] : post.imageUrls,
     createdAt: post.createdAt.toISOString(),
     anilistId: post.anilistId,
     animeTitleRomaji: post.animeTitleRomaji,
     animeTitleEnglish: post.animeTitleEnglish,
     animeCoverImage: post.animeCoverImage,
-    author: { id: post.user.id, displayName: post.user.displayName },
+    author: { id: post.user.id, displayName: post.user.displayName, avatarUrl: post.user.avatarUrl },
     isMine: post.user.id === opts.viewerId,
     likeCount: opts.likeCount,
     likedByMe: opts.likedByMe,
@@ -104,6 +117,7 @@ export function toPostDto(
     // exemplo, não impedia o texto de continuar visível embutido em quem
     // o citou. Mesmo padrão já usado por resolveRepostRows pro repost.
     quotedPost: opts.quotedPost && !opts.quotedPost.deletedAt ? toPostSummaryDto(opts.quotedPost) : null,
+    quotedUnavailable: Boolean(post.quotedPostId) && !(opts.quotedPost && !opts.quotedPost.deletedAt),
     repostedBy: opts.repostedBy ?? null,
     repostedByMe: opts.repostedByMe ?? false,
     favoritedByMe: opts.favoritedByMe ?? false,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { toDtoPage } from "@/lib/postFeedDto";
 import { loadRecommendedPage } from "@/lib/feedRecommended";
+import { getCurrentUser } from "@/lib/auth/session";
 
 const LIMIT = 5;
 
@@ -15,6 +16,8 @@ const LIMIT = 5;
  */
 export async function GET() {
   const { page } = await loadRecommendedPage(0, LIMIT, new Date());
-  const posts = await toDtoPage(page, null);
+  // Com sessão, aplica o bloqueio do viewer (D-10); sem sessão segue público.
+  const viewer = await getCurrentUser();
+  const posts = await toDtoPage(page, viewer?.id ?? null);
   return NextResponse.json({ posts });
 }
