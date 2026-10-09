@@ -13,10 +13,15 @@ export const muiTheme = createTheme({
       default: "#0b0b0d",
       paper: "#18171c",
     },
+    // Contraste (VIS/WCAG AA): texto/ícone em vermelho sobre o fundo escuro
+    // precisa de >= 4,5:1; o vermelho da marca (#e4002b) dá só ~4,05. Por
+    // isso `main` (usado como COR DE TEXTO em links, abas, botões de
+    // contorno, rótulos) é o tom mais claro, e o vermelho da marca fica nos
+    // botões preenchidos (override abaixo), onde o texto branco passa.
     primary: {
-      main: "#e4002b",
+      main: "#ff1a3d",
       dark: "#c50023",
-      light: "#ff1a3d",
+      light: "#ff4d66",
       contrastText: "#f7f7f5",
     },
     secondary: {
@@ -43,6 +48,21 @@ export const muiTheme = createTheme({
     // da 2ª auditoria de UX/UI, Epic 20). Aplicado em ButtonBase, a base de
     // Button/IconButton/CardActionArea, pra cobrir todo esse tipo de
     // componente de uma vez, não card por card.
+    // Alvos de toque/clique >= 44 px (VIS/WCAG 2.5.8 AAA recomendado pelo
+    // Figma): ícones isolados são os que mais ficavam abaixo disso.
+    MuiIconButton: {
+      styleOverrides: {
+        root: { minWidth: 44, minHeight: 44 },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: ({ ownerState }) =>
+          ownerState.variant === "contained" && ownerState.color === "primary"
+            ? { backgroundColor: "#e4002b", "&:hover": { backgroundColor: "#c50023" } }
+            : {},
+      },
+    },
     MuiButtonBase: {
       styleOverrides: {
         root: {
@@ -62,16 +82,3 @@ export const muiTheme = createTheme({
     },
   },
 });
-
-/**
- * Cores de status de progresso (Assistindo/Completo/etc.) — mantidas como
- * constantes simples em vez de estender o tipo da paleta do MUI, seguindo a
- * mesma linha de "menos cerimônia de tema" do restante da migração.
- */
-export const statusColors = {
-  watching: "#2e6ff2",
-  completed: "#22c55e",
-  planned: "#ffd400",
-  paused: "#c08a2e",
-  dropped: "#52525b",
-} as const;

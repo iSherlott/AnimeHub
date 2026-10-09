@@ -90,3 +90,35 @@ body {
 .animate-fade-in {
   animation: fade-in 0.5s ease-out both;
 }
+
+/* Skip-link: fora da tela até receber foco por teclado. */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -64px;
+  z-index: 2000;
+  padding: 10px 16px;
+  background: var(--color-jump-yellow);
+  color: #0b0b0d;
+  font-weight: 700;
+  border-radius: 6px;
+}
+.skip-link:focus {
+  top: 8px;
+  outline: 2px solid #0b0b0d;
+  outline-offset: 2px;
+}
+
+/* Foco visível global para elementos nativos fora do MUI (links, inputs). */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-jump-yellow);
+  outline-offset: 2px;
+}
+main:focus {
+  outline: none;
+}

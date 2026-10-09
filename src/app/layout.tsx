@@ -36,6 +36,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${anton.variable} ${inter.variable} ${notoSansJP.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-ink">
+        {/* Skip-link (VIS/VT-A): primeiro item focável da página; só aparece com foco. */}
+        <a href="#conteudo" className="skip-link">
+          Pular para o conteúdo
+        </a>
         <AppRouterCacheProvider>
           <MuiProviders>
             <CurrentUserProvider>
@@ -46,7 +50,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                     auditoria, Epic 18, confirmado e corrigido na 13ª). Cada
                     página já injeta seu próprio <Header/>, então este <main>
                     só envolve o restante do conteúdo. */}
-                <main className="flex flex-1 flex-col">{children}</main>
+                <main id="conteudo" tabIndex={-1} className="flex flex-1 flex-col">
+                  {children}
+                </main>
               </TitlePreferenceProvider>
             </CurrentUserProvider>
           </MuiProviders>
