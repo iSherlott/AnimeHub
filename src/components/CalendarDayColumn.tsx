@@ -7,18 +7,20 @@ import type { CalendarItem } from "@/lib/calendarItem";
 
 const OTHERS_PREVIEW_COUNT = 4;
 
-const DAY_LABELS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
 
 export function CalendarDayColumn({
   day,
   items,
   showAll,
   isToday,
+  timeZone,
 }: {
   day: Date;
   items: CalendarItem[];
   showAll: boolean;
   isToday: boolean;
+  /** Fuso em que o dia foi montado (instante 00:00 nesse fuso). */
+  timeZone: string;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -41,10 +43,10 @@ export function CalendarDayColumn({
         }}
       >
         <Typography variant="body2" className="font-display" sx={{ textTransform: "uppercase", color: isToday ? "primary.main" : "text.secondary" }}>
-          {DAY_LABELS[day.getDay()]}
+          {new Intl.DateTimeFormat("pt-BR", { timeZone, weekday: "short" }).format(day).replace(".", "").toUpperCase()}
         </Typography>
         <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          {day.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+          {new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit", month: "2-digit" }).format(day)}
         </Typography>
       </Stack>
 

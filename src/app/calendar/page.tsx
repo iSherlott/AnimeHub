@@ -17,32 +17,19 @@ import { Header } from "@/components/Header";
 import { CalendarDayColumn } from "@/components/CalendarDayColumn";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { CalendarItem } from "@/lib/calendarItem";
+import { buildWeekDaysInZone, dayKeyInZone } from "@/lib/timeZone";
+import { useTimeZone } from "@/lib/useTimeZone";
 
 const MAX_WEEK_OFFSET = 8;
 
-/**
- * Semana fixa de calendário (Dom→Sáb), ancorada no domingo da semana atual
- * — não uma janela rolante de "hoje + 6 dias", que mudaria de recorte
- * dependendo do dia em que a página fosse aberta.
- */
-function buildWeekDays(weekOffset: number): Date[] {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const sunday = new Date(today);
-  sunday.setDate(sunday.getDate() - sunday.getDay() + weekOffset * 7);
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(sunday);
-    d.setDate(d.getDate() + i);
-    return d;
-  });
-}
-
 export default function CalendarPage() {
   const user = useCurrentUser();
+  const timeZone = useTimeZone();
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [reloadKey, setReloadKey] = useState(0);
   const [showAll, setShowAllRaw] = useState(false);
   const userTouchedToggle = useRef(false);
 
@@ -65,8 +52,8 @@ export default function CalendarPage() {
     }
   }, [user]);
 
-  const weekDays = useMemo(() => buildWeekDays(weekOffset), [weekOffset]);
-  const todayKey = useMemo(() => new Date().toDateString(), []);
+  const weekDays = useMemo(() => buildWeekDaysInZone(weekOffset, timeZone), [weekOffset, timeZone]);
+  const todayKey = useMemo(() => dayKeyInZone(new Date(), timeZone), [timeZone]);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,7 +65,7 @@ export default function CalendarPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setError(null);
-    // O início da semana (domingo 00:00 no fuso do navegador) é enviado como
+    // O início da semana (segunda 00:00 no fuso do navegador) é enviado como
     // timestamp absoluto — o servidor não deve recalcular "hoje" com o
     // próprio relógio, porque server e navegador podem estar em fusos
     // diferentes e discordar sobre qual semana é a atual.
@@ -102,23 +89,24 @@ export default function CalendarPage() {
     return () => {
       cancelled = true;
     };
-  }, [weekOffset, weekDays]);
+  }, [weekOffset, weekDays, reloadKey]);
 
   const weekRangeLabel = useMemo(() => {
     const start = weekDays[0];
     const end = weekDays[6];
-    const fmt = (d: Date) => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+    const fmt = (d: Date) =>
+      new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit", month: "2-digit" }).format(d);
     return `${fmt(start)} – ${fmt(end)}`;
-  }, [weekDays]);
+  }, [weekDays, timeZone]);
 
   const itemsByDay = useMemo(() => {
     return weekDays.map((day) => {
-      const dayKey = day.toDateString();
+      const dayKey = dayKeyInZone(day, timeZone);
       return items
-        .filter((item) => new Date(item.airingAt).toDateString() === dayKey)
+        .filter((item) => dayKeyInZone(new Date(item.airingAt), timeZone) === dayKey)
         .sort((a, b) => new Date(a.airingAt).getTime() - new Date(b.airingAt).getTime());
     });
-  }, [items, weekDays]);
+  }, [items, weekDays, timeZone]);
 
   const myListCountThisWeek = useMemo(
     () => items.filter((item) => item.inMyList).length,
@@ -134,6 +122,9 @@ export default function CalendarPage() {
           Calendário
         </Typography>
         <Typography variant="body2" sx={{ mt: 0.5, color: "text.secondary" }}>
+          <span suppressHydrationWarning data-testid="calendar-timezone">
+            Horários no fuso {timeZone}.
+          </span>{" "}
           {myListCountThisWeek > 0
             ? `${myListCountThisWeek} lançamento${myListCountThisWeek > 1 ? "s" : ""} da sua lista nesta semana.`
             : "Episódios com data e horário de exibição confirmados."}
@@ -188,7 +179,17 @@ export default function CalendarPage() {
             Carregando calendário...
           </Typography>
         ) : error ? (
-          <Alert severity="error">{error}</Alert>
+          <Alert
+            severity="error"
+            role="alert"
+            action={
+              <Button color="inherit" size="small" onClick={() => setReloadKey((k) => k + 1)}>
+                Tentar novamente
+              </Button>
+            }
+          >
+            {error}. A semana e o filtro foram mantidos.
+          </Alert>
         ) : (
           <div
             key={`${weekOffset}-${showAll}`}
@@ -200,7 +201,8 @@ export default function CalendarPage() {
                 day={day}
                 items={itemsByDay[i]}
                 showAll={showAll}
-                isToday={day.toDateString() === todayKey}
+                isToday={dayKeyInZone(day, timeZone) === todayKey}
+                timeZone={timeZone}
               />
             ))}
           </div>

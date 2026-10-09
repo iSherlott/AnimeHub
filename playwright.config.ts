@@ -12,6 +12,10 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${TEST_SERVER_PORT}`,
     trace: "retain-on-failure",
+    // Fuso do navegador fixo = padrão do produto (America/Sao_Paulo), para os
+    // testes de horário não dependerem da máquina que roda a suíte.
+    timezoneId: "America/Sao_Paulo",
+    locale: "pt-BR",
     // A suíte testa a lista pessoal, que agora exige login — os testes já
     // começam autenticados com a sessão fixa criada em global-setup.ts, sem
     // precisar passar pela tela de login em cada um.

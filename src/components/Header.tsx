@@ -1,5 +1,6 @@
 "use client";
 
+import { loginHref } from "@/lib/safeRedirect";
 import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -70,18 +71,6 @@ function NavLinks({
       spacing={direction === "row" ? 3 : 2}
       sx={{ alignItems: direction === "row" ? "center" : "flex-start" }}
     >
-      {user && (
-        <MuiLink
-          component={NextLink}
-          href="/minha-lista"
-          onClick={onNavigate}
-          underline="hover"
-          sx={linkSx("/minha-lista")}
-          aria-current={pathname === "/minha-lista" ? "page" : undefined}
-        >
-          Minha lista
-        </MuiLink>
-      )}
       <MuiLink
         component={NextLink}
         href="/discover"
@@ -90,7 +79,7 @@ function NavLinks({
         sx={linkSx("/discover")}
         aria-current={pathname === "/discover" ? "page" : undefined}
       >
-        Descobrir
+        Explorar
       </MuiLink>
       <MuiLink
         component={NextLink}
@@ -101,6 +90,26 @@ function NavLinks({
         aria-current={pathname === "/calendar" ? "page" : undefined}
       >
         Calendário
+      </MuiLink>
+      <MuiLink
+        component={NextLink}
+        href="/minha-lista"
+        onClick={onNavigate}
+        underline="hover"
+        sx={linkSx("/minha-lista")}
+        aria-current={pathname === "/minha-lista" ? "page" : undefined}
+      >
+        Minha lista
+      </MuiLink>
+      <MuiLink
+        component={NextLink}
+        href="/"
+        onClick={onNavigate}
+        underline="hover"
+        sx={linkSx("/")}
+        aria-current={pathname === "/" ? "page" : undefined}
+      >
+        Comunidade
       </MuiLink>
       {user?.role === "ADMIN" && (
         <MuiLink
@@ -185,7 +194,7 @@ export function Header() {
         <Toolbar sx={{ gap: 4, px: { xs: 3, sm: 5 } }}>
           <MuiLink
             component={NextLink}
-            href="/"
+            href={user ? "/dashboard" : "/discover"}
             underline="none"
             sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}
           >
@@ -261,7 +270,7 @@ export function Header() {
             ) : (
               <>
                 <TitleLanguageMenu />
-                <Button component={NextLink} href="/login" color="inherit" size="small">
+                <Button component={NextLink} href={loginHref(pathname)} color="inherit" size="small">
                   Entrar
                 </Button>
               </>
@@ -314,7 +323,7 @@ export function Header() {
               ) : (
                 <Button
                   component={NextLink}
-                  href="/login"
+                  href={loginHref(pathname)}
                   onClick={() => setMobileOpen(false)}
                   size="small"
                 >
