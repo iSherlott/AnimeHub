@@ -20,6 +20,8 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
+import { AdminExtraReports } from "@/components/AdminExtraReports";
+import { AdminDataPanel } from "@/components/AdminDataPanel";
 
 /** A tabela de Usuários rola na horizontal no mobile pra caber Desde/Ações
  * — sem fixar a 1ª coluna, rolar até "Resetar senha" (ação que derruba
@@ -396,6 +398,10 @@ export function AdminDashboard() {
           </TableContainer>
         )}
       </Box>
+
+      <AdminExtraReports />
+
+      <AdminDataPanel />
 
       <Box component="section">
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1.5 }}>
