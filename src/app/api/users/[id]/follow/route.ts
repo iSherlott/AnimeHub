@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { notifySocial } from "@/lib/socialNotifications";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
+import { blockRelation } from "@/lib/blocks";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -14,8 +16,9 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   const target = await prisma.user.findUnique({ where: { id }, select: { id: true } });
-  if (!target) {
-    return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+  if (!target || (await blockRelation(user.id, id)) !== "none") {
+    // Mensagem neutra: não revela se existe bloqueio nem de que lado.
+    return NextResponse.json({ error: "Perfil indisponível" }, { status: 404 });
   }
 
   let body;
@@ -37,6 +40,7 @@ export async function PATCH(request: Request, { params }: Params) {
       create: { followerId: user.id, followingId: id },
       update: {},
     });
+    await notifySocial({ type: "NEW_FOLLOWER", recipientId: id, actorId: user.id });
   } else {
     await prisma.follow.deleteMany({ where: { followerId: user.id, followingId: id } });
   }
