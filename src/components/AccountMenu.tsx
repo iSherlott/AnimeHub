@@ -5,9 +5,10 @@ import NextLink from "next/link";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import LogoutIcon from "@mui/icons-material/Logout";
-import { Avatar, Divider, IconButton, ListItemIcon, Menu, MenuItem, Tooltip, Typography } from "@mui/material";
+import SettingsIcon from "@mui/icons-material/Settings";
+import { Divider, IconButton, ListItemIcon, Menu, MenuItem, Tooltip, Typography } from "@mui/material";
 import { LanguageMenuItems } from "@/components/TitleLanguageMenu";
-import { avatarColor, initials } from "@/lib/avatarColor";
+import { UserAvatar } from "@/components/UserAvatar";
 import type { PublicUser } from "@/lib/auth/session";
 
 /**
@@ -46,9 +47,7 @@ export function AccountMenu({ user, onLogout }: { user: PublicUser; onLogout: ()
           aria-controls={open ? menuId : undefined}
           aria-expanded={open ? "true" : undefined}
         >
-          <Avatar sx={{ bgcolor: avatarColor(user.id), width: 28, height: 28, fontSize: 12, fontWeight: 700 }}>
-            {initials(user.displayName)}
-          </Avatar>
+          <UserAvatar id={user.id} displayName={user.displayName} avatarUrl={user.avatarUrl} size={28} />
         </IconButton>
       </Tooltip>
 
@@ -72,6 +71,12 @@ export function AccountMenu({ user, onLogout }: { user: PublicUser; onLogout: ()
             <AccountCircleIcon fontSize="small" />
           </ListItemIcon>
           Meu perfil
+        </MenuItem>
+        <MenuItem component={NextLink} href="/configuracoes" onClick={handleClose}>
+          <ListItemIcon>
+            <SettingsIcon fontSize="small" />
+          </ListItemIcon>
+          Configurações
         </MenuItem>
         {user.role === "ADMIN" && (
           <MenuItem component={NextLink} href="/admin" onClick={handleClose}>

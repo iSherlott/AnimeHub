@@ -6,6 +6,14 @@ import { ANIME_FIXTURES } from "./fixtures/animes";
  * para cada anime real (a suíte roda em ordem, workers: 1).
  */
 test.describe("Acesso ao link (sem navegar de verdade para fora)", () => {
+  // O padrão de título agora é Japonês (D-06); estes testes localizam a obra
+  // pelo título em romaji, então usam a escolha local do menu de títulos.
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem("anime-hub:title-preference", JSON.stringify({ language: "ja", japaneseScript: "romaji" }));
+    });
+  });
+
   for (const anime of ANIME_FIXTURES) {
     test(`o link de "${anime.titleRomaji}" aponta para a Crunchyroll certa e abre em nova aba`, async ({
       page,

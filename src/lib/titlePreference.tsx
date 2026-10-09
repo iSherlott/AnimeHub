@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 
 export type TitleLanguage = "pt" | "en" | "ja";
 export type JapaneseScript = "romaji" | "furigana" | "kanji";
@@ -26,20 +27,35 @@ export type PartialTitleSet = {
   titlePortuguese?: string | null;
 };
 
-const DEFAULT_PREFERENCE: TitlePreference = {
-  language: "en",
-  japaneseScript: "romaji",
+/** Padrão do produto: Japonês (kanji+kana+inglês) — Figma `8:183`/`8:3333`. */
+export const DEFAULT_PREFERENCE: TitlePreference = {
+  language: "ja",
+  japaneseScript: "kanji",
 };
+
+/** Formato da conta (Configurações) → preferência de exibição. */
+export function preferenceFromAccountFormat(format: "ja" | "romaji" | null | undefined): TitlePreference | null {
+  if (format === "ja") return { language: "ja", japaneseScript: "kanji" };
+  if (format === "romaji") return { language: "ja", japaneseScript: "romaji" };
+  return null;
+}
 
 const STORAGE_KEY = "anime-hub:title-preference";
 
 const TitlePreferenceContext = createContext<{
   preference: TitlePreference;
   setPreference: (preference: TitlePreference) => void;
+  /** Esquece a escolha local (menu) para a preferência da conta voltar a valer. */
+  clearLocalPreference: () => void;
 } | null>(null);
 
+/**
+ * Precedência: escolha local explícita no menu (localStorage) > formato da
+ * conta (Configurações) > padrão do produto (Japonês).
+ */
 export function TitlePreferenceProvider({ children }: { children: ReactNode }) {
-  const [preference, setPreferenceState] = useState<TitlePreference>(DEFAULT_PREFERENCE);
+  const user = useCurrentUser();
+  const [local, setLocal] = useState<TitlePreference | null>(null);
 
   useEffect(() => {
     try {
@@ -49,7 +65,7 @@ export function TitlePreferenceProvider({ children }: { children: ReactNode }) {
         // localStorage, então precisa hidratar aqui (pós-montagem), não no
         // inicializador do useState — o lint não modela isso, falso positivo.
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setPreferenceState(JSON.parse(raw));
+        setLocal(JSON.parse(raw));
       }
     } catch {
       // localStorage indisponível (aba privada etc.) — fica no padrão.
@@ -57,7 +73,7 @@ export function TitlePreferenceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   function setPreference(next: TitlePreference) {
-    setPreferenceState(next);
+    setLocal(next);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch {
@@ -65,8 +81,20 @@ export function TitlePreferenceProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  function clearLocalPreference() {
+    setLocal(null);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // idem.
+    }
+  }
+
+  const accountPreference = preferenceFromAccountFormat(user?.preferences?.titleFormat);
+  const preference = local ?? accountPreference ?? DEFAULT_PREFERENCE;
+
   return (
-    <TitlePreferenceContext.Provider value={{ preference, setPreference }}>
+    <TitlePreferenceContext.Provider value={{ preference, setPreference, clearLocalPreference }}>
       {children}
     </TitlePreferenceContext.Provider>
   );

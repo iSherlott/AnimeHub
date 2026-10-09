@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { User } from "@prisma/client";
+import type { UserPreferences } from "@/lib/userSettings";
 
 const SESSION_COOKIE = "session_token";
 const SESSION_TTL_MS = 30 * 24 * 3600 * 1000; // 30 dias
@@ -11,8 +12,10 @@ export type PublicUser = {
   id: string;
   email: string;
   displayName: string;
+  handle: string | null;
   avatarUrl: string | null;
   role: string;
+  preferences: UserPreferences;
 };
 
 export function toPublicUser(user: User): PublicUser {
@@ -20,8 +23,18 @@ export function toPublicUser(user: User): PublicUser {
     id: user.id,
     email: user.email,
     displayName: user.displayName,
+    handle: user.handle,
     avatarUrl: user.avatarUrl,
     role: user.role,
+    preferences: {
+      titleFormat: user.titleFormat === "ja" || user.titleFormat === "romaji" ? user.titleFormat : null,
+      timeZone: user.timeZone,
+      notifyReleases: user.notifyReleases,
+      notifyReplies: user.notifyReplies,
+      notifyComments: user.notifyComments,
+      notifyFollowers: user.notifyFollowers,
+      notifyLikes: user.notifyLikes,
+    },
   };
 }
 

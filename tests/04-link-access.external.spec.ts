@@ -11,6 +11,13 @@ import { ANIME_FIXTURES } from "./fixtures/animes";
  * link em vez de depender do 02-platform-link.spec.ts já ter rodado antes.
  */
 test.describe("Acesso real à Crunchyroll (rede externa) @external", () => {
+  // Padrão de título = Japonês (D-06); aqui a obra é localizada pelo romaji.
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem("anime-hub:title-preference", JSON.stringify({ language: "ja", japaneseScript: "romaji" }));
+    });
+  });
+
   for (const anime of ANIME_FIXTURES) {
     test(`abre "${anime.titleRomaji}" na Crunchyroll de verdade @external`, async ({
       page,

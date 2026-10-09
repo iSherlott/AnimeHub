@@ -2,6 +2,14 @@ import { test, expect } from "@playwright/test";
 import { ANIME_FIXTURES, UTILITY_FIXTURE } from "./fixtures/animes";
 
 test.describe("Criação de link de plataforma (Crunchyroll)", () => {
+  // O padrão de título agora é Japonês (D-06); estes testes localizam a obra
+  // pelo título em romaji, então usam a escolha local do menu de títulos.
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem("anime-hub:title-preference", JSON.stringify({ language: "ja", japaneseScript: "romaji" }));
+    });
+  });
+
   for (const anime of ANIME_FIXTURES) {
     test(`cria e persiste o link da Crunchyroll para "${anime.titleRomaji}"`, async ({
       page,
