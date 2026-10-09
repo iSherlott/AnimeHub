@@ -11,7 +11,7 @@ export async function GET(_request: Request, { params }: Params) {
   const { id } = await params;
   const anime = await prisma.anime.findUnique({
     where: { id },
-    include: { platformLinks: true, progress: true },
+    include: { platformLinks: true },
   });
 
   if (!anime || anime.userId !== user.id) {

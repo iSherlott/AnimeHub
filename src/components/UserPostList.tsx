@@ -2,17 +2,34 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Box, Typography } from "@mui/material";
+import { Alert, Box, Button, Typography } from "@mui/material";
 import { PostCard } from "@/components/PostCard";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { PostDTO } from "@/lib/postDto";
+
+/** Evento global: "a lista de publicações mudou, recarregue". */
+export const POSTS_CHANGED_EVENT = "animehub:posts-changed";
 
 /**
  * Posts de um único autor (perfil público) — mesmo padrão de scroll
  * infinito do FeedView, só que sobre GET /api/users/[id]/posts em vez de
  * GET /api/posts.
  */
-export function UserPostList({ userId }: { userId: string }) {
+export function UserPostList({
+  userId,
+  endpoint,
+  params,
+  emptyText = "Nenhum post ainda.",
+}: {
+  /** Perfil público: posts desta pessoa. */
+  userId?: string;
+  /** Alternativa genérica (ex.: discussões de uma obra): GET que devolve { posts, nextCursor }. */
+  endpoint?: string;
+  params?: Record<string, string>;
+  emptyText?: string;
+}) {
+  const base = endpoint ?? `/api/users/${userId}/posts`;
+  const extra = JSON.stringify(params ?? {});
   const router = useRouter();
   const user = useCurrentUser();
   const [posts, setPosts] = useState<PostDTO[]>([]);
@@ -20,6 +37,7 @@ export function UserPostList({ userId }: { userId: string }) {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(loadingMore);
@@ -31,21 +49,25 @@ export function UserPostList({ userId }: { userId: string }) {
 
   const loadPage = useCallback(
     async (cursorArg: string | null, replace: boolean) => {
-      const params = new URLSearchParams();
-      if (cursorArg) params.set("cursor", cursorArg);
-      const res = await fetch(`/api/users/${userId}/posts?${params.toString()}`);
+      const query = new URLSearchParams(JSON.parse(extra) as Record<string, string>);
+      if (cursorArg) query.set("cursor", cursorArg);
+      const res = await fetch(`${base}?${query.toString()}`);
+      if (!res.ok) throw new Error("falha ao carregar");
       const data = await res.json();
       const newPosts: PostDTO[] = data.posts ?? [];
       setPosts((prev) => (replace ? newPosts : [...prev, ...newPosts]));
       setCursor(data.nextCursor ?? null);
       setHasMore(Boolean(data.nextCursor));
     },
-    [userId]
+    [base, extra]
   );
 
   const initialLoad = useCallback(() => {
     setLoading(true);
-    loadPage(null, true).finally(() => setLoading(false));
+    setFailed(false);
+    loadPage(null, true)
+      .catch(() => setFailed(true))
+      .finally(() => setLoading(false));
   }, [loadPage]);
 
   useEffect(() => {
@@ -53,10 +75,23 @@ export function UserPostList({ userId }: { userId: string }) {
     initialLoad();
   }, [initialLoad]);
 
+  // Quando outra parte da tela publica algo (ex.: "Publicar sobre este
+  // anime" no detalhe da obra), recarrega a primeira página sem piscar o
+  // estado de "Carregando".
+  useEffect(() => {
+    function onChanged() {
+      void loadPage(null, true);
+    }
+    window.addEventListener(POSTS_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(POSTS_CHANGED_EVENT, onChanged);
+  }, [loadPage]);
+
   const loadMore = useCallback(() => {
     if (loadingMoreRef.current || !hasMoreRef.current) return;
     setLoadingMore(true);
-    loadPage(cursor, false).finally(() => setLoadingMore(false));
+    loadPage(cursor, false)
+      .catch(() => setFailed(true))
+      .finally(() => setLoadingMore(false));
   }, [cursor, loadPage]);
 
   useEffect(() => {
@@ -127,10 +162,25 @@ export function UserPostList({ userId }: { userId: string }) {
     );
   }
 
+  if (failed && posts.length === 0) {
+    return (
+      <Alert
+        severity="error"
+        action={
+          <Button color="inherit" size="small" onClick={initialLoad}>
+            Tentar de novo
+          </Button>
+        }
+      >
+        Não foi possível carregar. Isso não quer dizer que não há publicações.
+      </Alert>
+    );
+  }
+
   if (posts.length === 0) {
     return (
       <Typography variant="body2" sx={{ color: "text.secondary" }}>
-        Nenhum post ainda.
+        {emptyText}
       </Typography>
     );
   }

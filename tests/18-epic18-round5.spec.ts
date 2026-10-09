@@ -29,13 +29,11 @@ test.describe("Epic 18 — 5ª rodada de auditoria de UX/UI — duplo clique nã
   });
 
   test("clicar 'Publicar' duas vezes rápido no Feed cria só 1 post", async ({ page, request }) => {
-    // Anime do post agora vem de hashtag no texto, não de um dropdown
-    // separado (Epic 26) — mesma hashtag que o compositor já teria
-    // sugerido pra este anime.
-    const uniqueBody = `Post de teste de duplo clique #${animeSlug(animeTitleRomaji)} ${Date.now()}`;
+    // O contexto de obra é opcional (F8): basta haver texto.
+    const uniqueBody = `Post de teste de duplo clique ${Date.now()}`;
     await page.goto("/");
 
-    await page.getByPlaceholder("O que está acontecendo? Marque um anime com #NomeDoAnime").fill(uniqueBody);
+    await page.getByPlaceholder("Que conversa você quer começar?").fill(uniqueBody);
 
     // Dois cliques DOM síncronos no mesmo tick, via evaluate — um
     // `.click()` normal do Playwright espera o botão ficar habilitado de
@@ -44,14 +42,14 @@ test.describe("Epic 18 — 5ª rodada de auditoria de UX/UI — duplo clique nã
     // botão fica desabilitado por um motivo legítimo, travando a espera
     // pra sempre. `evaluate` despacha os dois cliques de verdade antes do
     // React sequer re-renderizar o `disabled`.
-    const submit = page.getByRole("button", { name: "Publicar" });
+    const submit = page.getByRole("button", { name: "Publicar", exact: true });
     await submit.evaluate((el: HTMLElement) => {
       el.click();
       el.click();
     });
     await page.waitForTimeout(800);
 
-    const res = await request.get("/api/posts?tab=recommended&limit=50");
+    const res = await request.get("/api/posts?tab=recent&limit=50");
     const data = await res.json();
     const matches = data.posts.filter((p: { body: string }) => p.body === uniqueBody);
     expect(matches.length).toBe(1);
@@ -257,7 +255,7 @@ test.describe("Epic 18 — 5ª rodada — sessão invalidada em uso", () => {
     // Qualquer ação autenticada que agora volte 401 precisa refletir no
     // cabeçalho na hora, sem precisar de uma navegação nova.
     await star.click();
-    await expect(page.getByRole("link", { name: "Entrar" })).toBeVisible();
+    await expect(page.locator("header").getByRole("link", { name: "Entrar" })).toBeVisible();
     await expect(accountMenuButton).toBeHidden();
   });
 });

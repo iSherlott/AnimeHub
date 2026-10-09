@@ -1,5 +1,6 @@
 "use client";
 
+import { loginHref } from "@/lib/safeRedirect";
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -11,12 +12,16 @@ import RepeatIcon from "@mui/icons-material/Repeat";
 import RepeatOutlinedIcon from "@mui/icons-material/RepeatOutlined";
 import StarIcon from "@mui/icons-material/Star";
 import NextLink from "next/link";
-import { Avatar, Box, Button, Chip, IconButton, Link as MuiLink, Stack, Tooltip, Typography } from "@mui/material";
+import { SpoilerGate } from "@/components/SpoilerGate";
+import { PostBodyText } from "@/components/PostBodyText";
+import { ReportDialog } from "@/components/ReportDialog";
+import { Box, Button, Chip, IconButton, Link as MuiLink, Stack, Tooltip, Typography } from "@mui/material";
 import { LikeToggle } from "@/components/LikeToggle";
 import { PostComments } from "@/components/PostComments";
 import { PostImageCarousel } from "@/components/PostImageCarousel";
+import { UserAvatar } from "@/components/UserAvatar";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
-import { avatarColor, coverColor, initials } from "@/lib/avatarColor";
+import { coverColor, readableTextColor } from "@/lib/avatarColor";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 import type { PostDTO } from "@/lib/postDto";
@@ -34,8 +39,11 @@ export function PostCard({
   onRepostChange,
   onLikeChange,
   onReportChange,
+  initialCommentsOpen = false,
 }: {
   post: PostDTO;
+  /** Página dedicada de discussão abre as respostas direto. */
+  initialCommentsOpen?: boolean;
   onDeleted: (id: string) => void;
   /** Sobe até o FeedView, que abre o compositor em modo citação (Epic 25). */
   onQuote: (post: PostDTO) => void;
@@ -68,11 +76,11 @@ export function PostCard({
   // português), mas o card ainda ignorava a preferência de idioma por
   // completo, sempre mostrando romaji cru mesmo com "Inglês" selecionado
   // (achado real da 6ª rodada de auditoria, Epic 18).
-  const animeTitle = resolveTitleText(preference, {
+  const animeTitle = post.animeTitleRomaji === null ? null : resolveTitleText(preference, {
     titleRomaji: post.animeTitleRomaji,
     titleEnglish: post.animeTitleEnglish,
   });
-  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(initialCommentsOpen);
   const [reposting, setReposting] = useState(false);
   // Ver AnimeCard — mesma correção pro ícone quebrado cru numa URL de capa
   // que 404 (achado real da 6ª rodada de auditoria, Epic 18). Campo da
@@ -82,6 +90,7 @@ export function PostCard({
   const [quotedCoverBroken, setQuotedCoverBroken] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [captionExpanded, setCaptionExpanded] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   async function handleDelete() {
     try {
@@ -102,26 +111,16 @@ export function PostCard({
     // tem conta, o clique é que leva pro login (Feed público estilo
     // Instagram/Twitter) em vez de ficar `disabled`.
     if (loggedOut) {
-      router.push("/login");
+      router.push(loginHref(window.location.pathname + window.location.search));
       return;
     }
-    onReportChange(post.id, true);
-    try {
-      const res = await fetch(`/api/posts/${post.id}/report`, { method: "POST" });
-      if (!res.ok) {
-        onReportChange(post.id, false);
-        const data = await res.json().catch(() => null);
-        setError(data?.error ?? "Falha ao denunciar post");
-      }
-    } catch {
-      onReportChange(post.id, false);
-      setError("Falha ao denunciar post");
-    }
+    // Motivo + confirmação antes de enviar (Figma 13:43571, fluxo G).
+    setReportOpen(true);
   }
 
   function handleQuoteClick() {
     if (loggedOut) {
-      router.push("/login");
+      router.push(loginHref(window.location.pathname + window.location.search));
       return;
     }
     onQuote(post);
@@ -138,7 +137,7 @@ export function PostCard({
   // (achado real da 18ª rodada de auditoria, Epic 18).
   async function handleRepostToggle() {
     if (loggedOut) {
-      router.push("/login");
+      router.push(loginHref(window.location.pathname + window.location.search));
       return;
     }
     if (reposting) return;
@@ -205,9 +204,7 @@ export function PostCard({
 
       <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start", justifyContent: "space-between", mb: 1 }}>
         <Stack direction="row" spacing={1.25} sx={{ alignItems: "center", minWidth: 0 }}>
-          <Avatar sx={{ bgcolor: avatarColor(post.author.id), width: 36, height: 36, fontSize: 15, fontWeight: 700 }}>
-            {initials(post.author.displayName)}
-          </Avatar>
+          <UserAvatar id={post.author.id} displayName={post.author.displayName} avatarUrl={post.author.avatarUrl} size={36} />
           <Stack direction="row" spacing={1} sx={{ alignItems: "baseline", flexWrap: "wrap" }}>
             <MuiLink
               component={NextLink}
@@ -217,9 +214,16 @@ export function PostCard({
             >
               {post.author.displayName}
             </MuiLink>
-            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+            <MuiLink
+              component={NextLink}
+              href={`/publicacao/${post.id}`}
+              underline="hover"
+              variant="caption"
+              aria-label="Abrir discussão"
+              sx={{ color: "text.secondary" }}
+            >
               · {formatRelativeTime(post.createdAt)}
-            </Typography>
+            </MuiLink>
           </Stack>
         </Stack>
 
@@ -232,6 +236,7 @@ export function PostCard({
         )}
       </Stack>
 
+      {animeTitle !== null && (
       <Chip
         size="small"
         variant="outlined"
@@ -272,8 +277,22 @@ export function PostCard({
           ...(post.favoritedByMe && { borderColor: "secondary.main", color: "secondary.main" }),
         }}
       />
+      )}
 
-      {hasImages ? (
+      {post.isSpoiler ? (
+        <SpoilerGate<{ body: string; imageUrls: string[] }>
+          revealUrl={`/api/posts/${post.id}/reveal`}
+          context={animeTitle ?? undefined}
+          render={(d) => (
+            <Box>
+              {d.imageUrls.length > 0 && <PostImageCarousel imageUrls={d.imageUrls} />}
+              <Typography variant="body1" sx={{ whiteSpace: "pre-wrap", mt: d.imageUrls.length > 0 ? 1.5 : 0 }}>
+                {d.body}
+              </Typography>
+            </Box>
+          )}
+        />
+      ) : hasImages ? (
         <PostImageCarousel imageUrls={post.imageUrls} />
       ) : (
         // Sem imagem, o próprio texto do post ocupa o espaço visual
@@ -295,19 +314,19 @@ export function PostCard({
             overflowY: "auto",
             p: 3,
             borderRadius: 2,
-            bgcolor: coverColor(post.anilistId),
+            bgcolor: coverColor(post.anilistId ?? 0),
           }}
         >
           <Typography
             variant="h6"
-            sx={{ color: "#fff", textAlign: "center", whiteSpace: "pre-wrap", fontWeight: 600 }}
+            sx={{ color: readableTextColor(coverColor(post.anilistId ?? 0)), textAlign: "center", whiteSpace: "pre-wrap", fontWeight: 600 }}
           >
-            {post.body}
+            <PostBodyText text={post.body} />
           </Typography>
         </Box>
       )}
 
-      {hasImages && (
+      {!post.isSpoiler && hasImages && (
         // Legenda logo depois da imagem (não mais depois da linha de
         // ações) — mesma ordem que redes sociais convencionais já usam, e
         // que o caso sem imagem (acima) já seguia. Post longo trunca com
@@ -315,9 +334,13 @@ export function PostCard({
         // Epic 27).
         <Box sx={{ mt: 1.5 }}>
           <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
-            {captionExpanded || post.body.length <= LONG_CAPTION_THRESHOLD
-              ? post.body
-              : `${post.body.slice(0, LONG_CAPTION_THRESHOLD)}…`}
+            <PostBodyText
+              text={
+                captionExpanded || post.body.length <= LONG_CAPTION_THRESHOLD
+                  ? post.body
+                  : `${post.body.slice(0, LONG_CAPTION_THRESHOLD)}…`
+              }
+            />
           </Typography>
           {post.body.length > LONG_CAPTION_THRESHOLD && (
             <Button
@@ -389,6 +412,20 @@ export function PostCard({
         )}
       </Stack>
 
+      {post.quotedUnavailable && !post.quotedPost && (
+        <Box
+          data-testid="quoted-unavailable"
+          sx={{ mt: 1.5, p: 1.5, border: 1, borderColor: "divider", borderRadius: 1.5, color: "text.secondary" }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+            ↗ Publicação original indisponível
+          </Typography>
+          <Typography variant="caption">
+            Conteúdo removido ou não acessível. Nenhum trecho ou texto do autor original é exibido.
+          </Typography>
+        </Box>
+      )}
+
       {post.quotedPost && (
         // Sem link pro post citado em si (decisão de escopo do Epic 25 —
         // este app não tem página de post avulso), mas o autor citado TEM
@@ -423,22 +460,41 @@ export function PostCard({
               >
                 {post.quotedPost.author.displayName}
               </MuiLink>
-              <Typography
-                variant="caption"
-                sx={{
-                  color: "text.secondary",
-                  display: "-webkit-box",
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                }}
-              >
-                {post.quotedPost.body}
-              </Typography>
+              {post.quotedPost.isSpoiler ? (
+                <SpoilerGate<{ body: string }>
+                  revealUrl={`/api/posts/${post.quotedPost.id}/reveal`}
+                  render={(d) => (
+                    <Typography variant="caption" sx={{ color: "text.secondary", whiteSpace: "pre-wrap" }}>
+                      {d.body}
+                    </Typography>
+                  )}
+                />
+              ) : (
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }}
+                >
+                  {post.quotedPost.body}
+                </Typography>
+              )}
             </Box>
           </Stack>
         </Box>
       )}
+
+      <ReportDialog
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        target={{ kind: "post", id: post.id }}
+        targetLabel="esta publicação"
+        onReported={() => onReportChange(post.id, true)}
+      />
 
       {commentsOpen && (
         <PostComments postId={post.id} commentCount={post.commentCount} onCountChange={handleCommentCountChange} />

@@ -30,18 +30,19 @@ test.describe("Epic 18 — 6ª rodada de auditoria de UX/UI — preferência de 
     await prisma.$disconnect();
   });
 
-  test("post no Feed mostra o título em inglês (preferência padrão), não o romaji cru", async ({ page }) => {
-    // Anime do post agora vem de hashtag no texto, não de um dropdown
-    // separado (Epic 26) — a hashtag é sempre derivada do titleRomaji
-    // (FeedView.tsx/animeSlug), nunca do titleEnglish — é o título
-    // exibido no post depois de publicado que precisa respeitar a
-    // preferência, não como o anime é marcado no compositor.
-    const uniqueBody = `Post de teste de preferência de título #romajicrudeteste ${Date.now()}`;
+  test("post no Feed respeita a preferência de título (inglês), não crava o romaji cru", async ({ page, request }) => {
+    // O padrão do produto agora é Japonês (D-06); este teste escolhe INGLÊS
+    // explicitamente (override local, como o menu da conta faz) e confere que
+    // o card do post obedece a preferência em vez de sempre mostrar romaji.
+    await page.addInitScript(() => {
+      localStorage.setItem("anime-hub:title-preference", JSON.stringify({ language: "en", japaneseScript: "romaji" }));
+    });
+    const uniqueBody = `Post de teste de preferência de título ${Date.now()}`;
+    const { animes } = await (await request.get("/api/anime")).json();
+    const target = animes.find((a: { anilistId: number }) => a.anilistId === TITLE_PREF_ANILIST_ID);
+    const created = await request.post(`/api/anime/${target.id}/posts`, { data: { body: uniqueBody } });
+    expect(created.status()).toBe(201);
     await page.goto("/");
-
-    await page.getByPlaceholder("O que está acontecendo? Marque um anime com #NomeDoAnime").fill(uniqueBody);
-    await page.getByRole("button", { name: "Publicar" }).click();
-    await expect(page.getByText(uniqueBody)).toBeVisible();
 
     // Verifica pelo perfil próprio (lista cronológica só do autor), não pela
     // timeline "Recomendado" — o ranqueamento por engajamento/idade (Epic 22)
@@ -52,8 +53,7 @@ test.describe("Epic 18 — 6ª rodada de auditoria de UX/UI — preferência de 
     await page.goto(`/users/${userId}`);
     const postCard = page.locator('[data-testid^="post-card-"]').filter({ hasText: uniqueBody });
     await expect(postCard).toBeVisible();
-    // A preferência padrão da conta é "en" (titlePreference.tsx) — antes da
-    // correção da 6ª rodada, PostCard ignorava isso e sempre cravava romaji.
+    // Antes da correção da 6ª rodada, PostCard ignorava a preferência e sempre cravava romaji.
     await expect(postCard.getByText("English Title For Preference Test")).toBeVisible();
     await expect(postCard.getByText("Romaji Cru De Teste")).toHaveCount(0);
   });

@@ -1,22 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import NextLink from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { loginHref } from "@/lib/safeRedirect";
 import CloseIcon from "@mui/icons-material/Close";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
-import TagIcon from "@mui/icons-material/Tag";
 import {
   Alert,
   Avatar,
   Box,
   Button,
+  Checkbox,
+  FormControlLabel,
   IconButton,
   Link as MuiLink,
-  List,
-  ListItemButton,
-  ListItemText,
-  Paper,
   Stack,
   Tab,
   Tabs,
@@ -28,27 +26,22 @@ import { ComposerImageAttachments, type ComposerImage } from "@/components/Compo
 import { PostCard } from "@/components/PostCard";
 import { FollowToggle } from "@/components/FollowToggle";
 import { LinkButton } from "@/components/LinkButton";
-import {
-  animeSlug,
-  findActiveHashtagQuery,
-  insertHashtagSelection,
-  resolveAnimeFromHashtags,
-} from "@/lib/animeHashtag";
+import { CommunitySearchBox } from "@/components/CommunitySearchBox";
+import { AnimeContextPicker, type RelatedAnime } from "@/components/AnimeContextPicker";
 import { avatarColor, initials } from "@/lib/avatarColor";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { uploadImage } from "@/lib/uploadImage";
 import type { PostDTO } from "@/lib/postDto";
 
-type FeedTab = "recommended" | "following";
-type MyAnime = { id: string; titleRomaji: string; titleEnglish: string | null };
+type FeedTab = "recommended" | "following" | "recent";
 type Suggestion = { id: string; displayName: string };
 type Quoting = { id: string; author: string; snippet: string };
 
 const MAX_BODY_LENGTH = 500;
 const MAX_IMAGES = 6;
-const MAX_MENTION_SUGGESTIONS = 5;
 
 export function FeedView() {
+  const pathname = usePathname();
   const user = useCurrentUser();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -69,16 +62,11 @@ export function FeedView() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
 
-  const [myAnime, setMyAnime] = useState<MyAnime[]>([]);
   const [composerBody, setComposerBody] = useState("");
-  // Epic 26 — o anime do post não vem mais de um campo separado, e sim de
-  // uma hashtag dentro do próprio texto (#NomeDoAnime, estilo Twitter/
-  // Instagram — pedido direto do usuário). `mentionQuery` é a hashtag
-  // ainda sendo digitada (ver findActiveHashtagQuery) — `null` quando o
-  // cursor não está numa mention ativa, string vazia logo depois de
-  // digitar só "#". `resolvedAnime` (useMemo abaixo) é o que de fato sai
-  // no post: a 1ª hashtag do texto que bate com um anime da lista.
-  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [composerSpoiler, setComposerSpoiler] = useState(false);
+  // Contexto de obra OPCIONAL e EXPLÍCITO (Figma 13:41840): escolhido no
+  // seletor "Anime relacionado"; hashtag/menção no texto nunca associa.
+  const [relatedAnime, setRelatedAnime] = useState<RelatedAnime | null>(null);
   // Epic 26 — cada imagem sobe de verdade (POST /api/uploads) assim que
   // anexada, em paralelo entre elas, em vez do antigo campo de colar URL.
   // `uploadedUrl` só existe quando `status === "done"`; handleSubmit só
@@ -86,6 +74,8 @@ export function FeedView() {
   const [composerImages, setComposerImages] = useState<ComposerImage[]>([]);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Falha de rede/servidor ao carregar a lista NÃO pode parecer "feed vazio".
+  const [loadFailed, setLoadFailed] = useState(false);
   // Modo citação (Epic 25) — setado pelo botão "Citar" de um PostCard
   // (aqui no próprio Feed) ou por navegação vinda do perfil de outro
   // usuário (UserPostList.tsx não tem compositor próprio, então "Citar"
@@ -112,15 +102,6 @@ export function FeedView() {
   // criando posts duplicados (achado real da 5ª rodada de auditoria,
   // Epic 18). Um ref é síncrono, não espera render nenhum.
   const postingRef = useRef(false);
-
-  useEffect(() => {
-    // Deslogado não tem lista própria (a chamada só voltaria 401) — o
-    // composer vira um CTA de login em vez de buscar nada.
-    if (!user) return;
-    fetch("/api/anime")
-      .then((res) => res.json())
-      .then((data) => setMyAnime(data.animes ?? []));
-  }, [user]);
 
   // "Citar" a partir do perfil de outra pessoa (UserPostList.tsx, que não
   // tem compositor próprio) volta pro Feed com esses 3 parâmetros —
@@ -184,12 +165,13 @@ export function FeedView() {
       sinceArg: string | null
     ) => {
       const params = new URLSearchParams({ tab: targetTab });
-      if (targetTab === "following" && cursorArg) params.set("cursor", cursorArg);
+      if ((targetTab === "following" || targetTab === "recent") && cursorArg) params.set("cursor", cursorArg);
       if (targetTab === "recommended") {
         if (offsetArg) params.set("offset", String(offsetArg));
         if (sinceArg) params.set("since", sinceArg);
       }
       const res = await fetch(`/api/posts?${params.toString()}`);
+      if (!res.ok) throw new Error("falha ao carregar o feed");
       const data = await res.json();
       // Uma troca de aba pode deixar este fetch "para trás" (ex.: um
       // loadMore da aba antiga ainda em voo quando o usuário já trocou de
@@ -199,10 +181,10 @@ export function FeedView() {
       const newPosts: PostDTO[] = data.posts ?? [];
       setPosts((prev) => (replace ? newPosts : [...prev, ...newPosts]));
 
-      if (targetTab === "following") {
+      if (targetTab === "following" || targetTab === "recent") {
         setCursor(data.nextCursor ?? null);
         setHasMore(Boolean(data.nextCursor));
-        if (replace && newPosts.length === 0) {
+        if (targetTab === "following" && replace && newPosts.length === 0) {
           loadFollowingSuggestions();
         } else if (replace) {
           setSuggestions(null);
@@ -229,7 +211,14 @@ export function FeedView() {
       setOffset(0);
       setHasMore(true);
       setSince(null);
-      loadPage(targetTab, null, 0, true, null).finally(() => setLoading(false));
+      setLoadFailed(false);
+      loadPage(targetTab, null, 0, true, null)
+        .catch(() => {
+          // Posts da aba anterior não podem ficar à mostra sob a aba nova que falhou.
+          setPosts([]);
+          setLoadFailed(true);
+        })
+        .finally(() => setLoading(false));
     },
     [loadPage]
   );
@@ -339,63 +328,8 @@ export function FeedView() {
     setQuoting({ id: post.id, author: post.author.displayName, snippet: post.body.slice(0, 80) });
   }
 
-  // Anime do post = a 1ª hashtag do texto que bate com um anime da lista
-  // (ver comentário no estado `mentionQuery` acima). Recalcula a cada
-  // mudança de texto/lista de animes — leve o bastante (regex + find
-  // linear numa lista curta) pra não precisar de memo mais elaborado.
-  const resolvedAnime = useMemo(() => resolveAnimeFromHashtags(composerBody, myAnime), [composerBody, myAnime]);
-
-  // Lista de sugestão exibida enquanto `mentionQuery` não é null — filtra
-  // por animes cujo slug contém o que já foi digitado depois do "#".
-  const mentionSuggestions = useMemo(() => {
-    if (mentionQuery === null) return [];
-    const query = mentionQuery.toLowerCase();
-    return myAnime.filter((a) => animeSlug(a.titleRomaji).includes(query)).slice(0, MAX_MENTION_SUGGESTIONS);
-  }, [mentionQuery, myAnime]);
-
   function handleBodyChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-    const next = e.target.value.slice(0, MAX_BODY_LENGTH);
-    setComposerBody(next);
-    // `e.target.selectionStart` reflete o valor CRU (não cortado) do
-    // campo — colar um texto acima de MAX_BODY_LENGTH deixa o cursor
-    // numa posição depois do fim de `next`; sem o `Math.min`, a hashtag
-    // ativa era calculada em cima do texto CORTADO na posição errada
-    // (achado real da revisão de código desta entrega).
-    const cursorPos = Math.min(e.target.selectionStart ?? next.length, next.length);
-    setMentionQuery(findActiveHashtagQuery(next, cursorPos));
-  }
-
-  // Clicar ou navegar com as setas dentro do campo também muda a posição
-  // do cursor sem disparar `onChange` — sem isso, a lista de sugestões
-  // continuava aberta (ou fechada) baseada só na última digitação, mesmo
-  // depois da pessoa clicar pra fora de uma hashtag. Lê a posição via
-  // `composerBodyRef` (não `e.currentTarget`, que o TypeScript do
-  // TextField do MUI tipa como o `<div>` raiz, não o `<input>`/
-  // `<textarea>` de verdade).
-  function updateMentionQueryFromCursor() {
-    const el = composerBodyRef.current;
-    if (!el) return;
-    setMentionQuery(findActiveHashtagQuery(composerBody, el.selectionStart ?? composerBody.length));
-  }
-
-  function handleSelectMention(anime: MyAnime) {
-    const el = composerBodyRef.current;
-    const cursorPos = el?.selectionStart ?? composerBody.length;
-    const { body: nextBody, cursorPos: nextCursorPos } = insertHashtagSelection(
-      composerBody,
-      cursorPos,
-      animeSlug(anime.titleRomaji)
-    );
-    setComposerBody(nextBody);
-    setMentionQuery(null);
-    // Devolve o foco pro campo, com o cursor logo depois do espaço
-    // inserido — sem isso, clicar numa sugestão deixava o campo sem
-    // foco, obrigando a pessoa a clicar de novo nele pra continuar
-    // escrevendo.
-    requestAnimationFrame(() => {
-      el?.focus();
-      el?.setSelectionRange(nextCursorPos, nextCursorPos);
-    });
+    setComposerBody(e.target.value.slice(0, MAX_BODY_LENGTH));
   }
 
   // Sobe UMA imagem e atualiza só a entrada dela por localId quando
@@ -461,7 +395,7 @@ export function FeedView() {
 
   async function handleSubmit() {
     const text = composerBody.trim();
-    if (!resolvedAnime || !text) return;
+    if (!text) return;
     if (postingRef.current) return;
     postingRef.current = true;
     setPosting(true);
@@ -470,12 +404,14 @@ export function FeedView() {
       const imageUrls = composerImages
         .filter((img) => img.status === "done")
         .map((img) => img.uploadedUrl as string);
-      const res = await fetch(`/api/anime/${resolvedAnime.id}/posts`, {
+      const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           body: text,
           imageUrls,
+          anilistId: relatedAnime?.anilistId,
+          isSpoiler: composerSpoiler,
           quotedPostId: quoting?.id,
         }),
       });
@@ -488,7 +424,8 @@ export function FeedView() {
         setPosts((prev) => [data.post as PostDTO, ...prev]);
       }
       setComposerBody("");
-      setMentionQuery(null);
+      setComposerSpoiler(false);
+      setRelatedAnime(null);
       composerImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
       setComposerImages([]);
       setQuoting(null);
@@ -502,10 +439,20 @@ export function FeedView() {
 
   return (
     <Box>
+      <Box sx={{ mb: 2 }}>
+        <CommunitySearchBox />
+      </Box>
+
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
-        <Tab label="Recomendado" value="recommended" />
+        <Tab label="Para você" value="recommended" />
         {user && <Tab label="Seguindo" value="following" />}
+        <Tab label="Recentes" value="recent" />
       </Tabs>
+      {tab === "recommended" && (
+        <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mb: 2 }} data-testid="for-you-explainer">
+          Publicações recentes com mais curtidas. Sem perfil pessoal: a regra é a mesma para todo mundo.
+        </Typography>
+      )}
 
       <Box sx={{ mb: 3, pb: 2, borderBottom: 1, borderColor: "divider" }}>
         {loggedOut ? (
@@ -513,7 +460,7 @@ export function FeedView() {
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
               Entre pra publicar no feed.
             </Typography>
-            <LinkButton href="/login" variant="contained" size="small">
+            <LinkButton href={loginHref(pathname)} variant="contained" size="small">
               Entrar
             </LinkButton>
           </Stack>
@@ -525,10 +472,6 @@ export function FeedView() {
           // fetch confirmar e trocar pro CTA de login correto.
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
             Carregando...
-          </Typography>
-        ) : myAnime.length === 0 ? (
-          <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            Adicione um anime à sua lista pra poder postar no feed.
           </Typography>
         ) : (
           // Estilo Twitter/X (Epic 26): avatar à esquerda, campo de texto
@@ -578,9 +521,7 @@ export function FeedView() {
                 inputRef={composerBodyRef}
                 value={composerBody}
                 onChange={handleBodyChange}
-                onClick={updateMentionQueryFromCursor}
-                onKeyUp={updateMentionQueryFromCursor}
-                placeholder="O que está acontecendo? Marque um anime com #NomeDoAnime"
+                placeholder="Que conversa você quer começar?"
                 variant="standard"
                 slotProps={{ input: { disableUnderline: true } }}
                 multiline
@@ -589,29 +530,7 @@ export function FeedView() {
                 sx={{ "& .MuiInputBase-input": { fontSize: "1.25rem", lineHeight: 1.4 } }}
               />
 
-              {mentionQuery !== null && mentionSuggestions.length > 0 && (
-                <Paper variant="outlined" sx={{ overflow: "hidden" }}>
-                  <List dense disablePadding>
-                    {mentionSuggestions.map((a) => (
-                      <ListItemButton key={a.id} onMouseDown={(e) => e.preventDefault()} onClick={() => handleSelectMention(a)}>
-                        <TagIcon fontSize="small" sx={{ mr: 1, color: "text.secondary" }} />
-                        <ListItemText primary={a.titleRomaji} secondary={`#${animeSlug(a.titleRomaji)}`} />
-                      </ListItemButton>
-                    ))}
-                  </List>
-                </Paper>
-              )}
-
-              {!resolvedAnime && composerBody.trim() && mentionQuery === null && (
-                <Typography variant="caption" sx={{ color: "warning.main" }}>
-                  Marque um anime da sua lista com #NomeDoAnime pra poder publicar.
-                </Typography>
-              )}
-              {resolvedAnime && (
-                <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                  Sobre: {resolvedAnime.titleRomaji}
-                </Typography>
-              )}
+              <AnimeContextPicker value={relatedAnime} onChange={setRelatedAnime} disabled={posting} />
 
               <ComposerImageAttachments
                 images={composerImages}
@@ -642,6 +561,18 @@ export function FeedView() {
                   </span>
                 </Tooltip>
 
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={composerSpoiler}
+                      onChange={(e) => setComposerSpoiler(e.target.checked)}
+                    />
+                  }
+                  label="Contém spoilers"
+                  slotProps={{ typography: { variant: "caption" } }}
+                />
+
                 <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
                   <Typography
                     variant="caption"
@@ -653,7 +584,6 @@ export function FeedView() {
                     onClick={handleSubmit}
                     disabled={
                       posting ||
-                      !resolvedAnime ||
                       !composerBody.trim() ||
                       composerImages.some((img) => img.status === "uploading")
                     }
@@ -679,6 +609,17 @@ export function FeedView() {
         <Typography variant="body2" sx={{ color: "text.secondary" }}>
           Carregando feed...
         </Typography>
+      ) : loadFailed && posts.length === 0 ? (
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={() => resetAndLoad(tab)}>
+              Tentar de novo
+            </Button>
+          }
+        >
+          Não foi possível carregar o feed. Isso não quer dizer que ele está vazio.
+        </Alert>
       ) : posts.length === 0 ? (
         <Box>
           <Typography variant="body2" sx={{ color: "text.secondary", mb: suggestions?.length ? 2 : 0 }}>

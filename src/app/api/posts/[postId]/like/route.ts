@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { notifySocial } from "@/lib/socialNotifications";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
+import { blockedUserIdSet } from "@/lib/blocks";
 
 type Params = { params: Promise<{ postId: string }> };
 
@@ -16,9 +18,9 @@ export async function PATCH(request: Request, { params }: Params) {
   const { postId } = await params;
   const post = await prisma.post.findUnique({
     where: { id: postId },
-    select: { deletedAt: true },
+    select: { deletedAt: true, userId: true },
   });
-  if (!post || post.deletedAt) {
+  if (!post || post.deletedAt || (await blockedUserIdSet(user.id)).has(post.userId)) {
     return NextResponse.json({ error: "Post não encontrado" }, { status: 404 });
   }
 
@@ -41,6 +43,7 @@ export async function PATCH(request: Request, { params }: Params) {
       create: { postId, userId: user.id },
       update: {},
     });
+    await notifySocial({ type: "POST_LIKE", recipientId: post.userId, actorId: user.id, postId });
   } else {
     await prisma.postLike.deleteMany({ where: { postId, userId: user.id } });
   }

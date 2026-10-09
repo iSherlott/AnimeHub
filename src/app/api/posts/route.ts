@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireUser } from "@/lib/auth/session";
 import { toDtoPage, POST_ROW_INCLUDE } from "@/lib/postFeedDto";
 import { loadRecommendedPage } from "@/lib/feedRecommended";
+import { createPostResponse } from "@/lib/createPost";
+import { ensureProduction } from "@/lib/production";
+import { rateLimitedResponse } from "@/lib/rateLimit";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
@@ -32,9 +35,29 @@ async function loadFollowingPage(userId: string, cursor: string | null, limit: n
   return { page, nextCursor };
 }
 
+/**
+ * "Recentes" (Figma `13:41143`): publicações públicas, da mais nova para a
+ * mais antiga, com cursor. `anilistId` restringe às discussões de uma obra
+ * (seção "Discussões" do detalhe público).
+ */
+async function loadRecentPage(cursor: string | null, limit: number, anilistId: number | null) {
+  const rows = await prisma.post.findMany({
+    where: { deletedAt: null, ...(anilistId ? { anilistId } : {}) },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: limit + 1,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    include: POST_ROW_INCLUDE,
+  });
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  const nextCursor = hasMore ? page[page.length - 1].id : null;
+  return { page, nextCursor };
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const tab = searchParams.get("tab") === "following" ? "following" : "recommended";
+  const tabParam = searchParams.get("tab");
+  const tab = tabParam === "following" ? "following" : tabParam === "recent" ? "recent" : "recommended";
   const limit = Math.min(MAX_LIMIT, Math.max(1, Number(searchParams.get("limit")) || DEFAULT_LIMIT));
 
   // "Seguindo" não existe sem conta — só essa aba exige login. "Recomendado"
@@ -46,6 +69,17 @@ export async function GET(request: Request) {
     const cursor = searchParams.get("cursor");
     const { page, nextCursor } = await loadFollowingPage(user.id, cursor, limit);
     return NextResponse.json({ posts: await toDtoPage(page, user.id), nextCursor });
+  }
+
+  if (tab === "recent") {
+    const user = await getCurrentUser();
+    const anilistParam = Number(searchParams.get("anilistId"));
+    const { page, nextCursor } = await loadRecentPage(
+      searchParams.get("cursor"),
+      limit,
+      Number.isInteger(anilistParam) && anilistParam > 0 ? anilistParam : null
+    );
+    return NextResponse.json({ posts: await toDtoPage(page, user?.id ?? null), nextCursor });
   }
 
   const user = await getCurrentUser();
@@ -73,4 +107,47 @@ export async function GET(request: Request) {
     nextOffset,
     since: now.toISOString(),
   });
+}
+
+/**
+ * Criar publicação (Figma `13:41840`): a obra é OPCIONAL e escolhida
+ * explicitamente (`anilistId` — a produção); mencionar um nome ou hashtag
+ * no texto nunca cria associação. Publicar não exige acompanhar a obra
+ * (D-27) e não cria nenhum vínculo.
+ */
+export async function POST(request: Request) {
+  const { user, response } = await requireUser();
+  if (!user) return response;
+  const limited = rateLimitedResponse(`post:${user.id}`, 30, 10 * 60_000);
+  if (limited) return limited;
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
+  }
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
+  }
+
+  let anime = null;
+  if (body.anilistId !== undefined && body.anilistId !== null) {
+    const anilistId = Number(body.anilistId);
+    if (!Number.isInteger(anilistId) || anilistId <= 0) {
+      return NextResponse.json({ error: "Obra inválida" }, { status: 400 });
+    }
+    const production = await ensureProduction(anilistId);
+    if (!production) {
+      return NextResponse.json({ error: "Obra não encontrada" }, { status: 404 });
+    }
+    anime = {
+      anilistId: production.anilistId,
+      titleRomaji: production.titleRomaji,
+      titleEnglish: production.titleEnglish,
+      coverImage: production.coverImage,
+    };
+  }
+
+  return createPostResponse(user, body, anime);
 }

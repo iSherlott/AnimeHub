@@ -1,11 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { loginHref } from "@/lib/safeRedirect";
 import NextLink from "next/link";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SendIcon from "@mui/icons-material/Send";
 import {
   Box,
+  Button,
+  Checkbox,
+  FormControlLabel,
   IconButton,
   Link as MuiLink,
   Stack,
@@ -13,12 +18,18 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { SpoilerGate } from "@/components/SpoilerGate";
+import { ReportDialog } from "@/components/ReportDialog";
+import FlagIcon from "@mui/icons-material/Flag";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { formatRelativeTime } from "@/lib/relativeTime";
 
 type CommentItem = {
   id: string;
+  parentId?: string | null;
+  replyTo?: { id: string; displayName: string } | null;
   body: string;
+  isSpoiler?: boolean;
   createdAt: string;
   author: { id: string; displayName: string };
   isMine: boolean;
@@ -27,6 +38,19 @@ type CommentItem = {
 // Mesmo limite do backend (src/app/api/posts/[postId]/comments/route.ts) —
 // mesmo padrão de eco no cliente já usado em CommentSection.tsx.
 const MAX_BODY_LENGTH = 2000;
+
+/** Respostas de topo em ordem cronológica, cada uma seguida das suas filhas (um nível). */
+function threadOrder(comments: CommentItem[]): CommentItem[] {
+  const ids = new Set(comments.map((c) => c.id));
+  const isChild = (c: CommentItem) => Boolean(c.parentId && ids.has(c.parentId));
+  const tops = comments.filter((c) => !isChild(c));
+  const out: CommentItem[] = [];
+  for (const top of tops) {
+    out.push(top);
+    out.push(...comments.filter((c) => c.parentId === top.id));
+  }
+  return out;
+}
 
 function byCreatedAt(a: CommentItem, b: CommentItem): number {
   return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
@@ -55,7 +79,12 @@ export function PostComments({
   onCountChange: (count: number) => void;
 }) {
   const user = useCurrentUser();
+  const pathname = usePathname();
   const loggedOut = user === null;
+  const [draftSpoiler, setDraftSpoiler] = useState(false);
+  const [reportingId, setReportingId] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<CommentItem | null>(null);
+  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
@@ -65,6 +94,15 @@ export function PostComments({
   // CommentSection.tsx/FeedView.tsx — disabled={posting} só reflete no
   // próximo render.
   const postingRef = useRef(false);
+
+  // Destino de notificação com âncora (#comentario-<id>): depois que a
+  // lista carrega, leva a resposta exata para a tela.
+  useEffect(() => {
+    if (loading) return;
+    const hash = window.location.hash;
+    if (!hash.startsWith("#comentario-")) return;
+    document.getElementById(hash.slice(1))?.scrollIntoView({ block: "center" });
+  }, [loading]);
 
   useEffect(() => {
     let cancelled = false;
@@ -142,7 +180,7 @@ export function PostComments({
       const res = await fetch(`/api/posts/${postId}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: text }),
+        body: JSON.stringify({ body: text, isSpoiler: draftSpoiler, parentId: replyingTo?.id }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -151,6 +189,8 @@ export function PostComments({
       }
       setComments((prev) => [...prev, data.comment]);
       setDraft("");
+      setDraftSpoiler(false);
+      setReplyingTo(null);
     } finally {
       postingRef.current = false;
       setPosting(false);
@@ -192,8 +232,21 @@ export function PostComments({
         </Typography>
       ) : (
         <Stack spacing={1.25} sx={{ mb: 1.5 }}>
-          {comments.map((c) => (
-            <Stack key={c.id} direction="row" spacing={1} sx={{ alignItems: "flex-start", justifyContent: "space-between" }}>
+          {threadOrder(comments).map((c) => (
+            <Stack
+              key={c.id}
+              id={`comentario-${c.id}`}
+              data-testid={`comment-${c.id}`}
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                ...(c.parentId && comments.some((p) => p.id === c.parentId)
+                  ? { ml: 3, pl: 1.5, borderLeft: 2, borderColor: "divider" }
+                  : {}),
+              }}
+            >
               <Box sx={{ minWidth: 0 }}>
                 <Stack direction="row" spacing={1} sx={{ alignItems: "baseline", flexWrap: "wrap" }}>
                   <MuiLink
@@ -208,28 +261,89 @@ export function PostComments({
                     {formatRelativeTime(c.createdAt)}
                   </Typography>
                 </Stack>
-                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                  {c.body}
-                </Typography>
+                {c.replyTo && (
+                  <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
+                    Em resposta a {c.replyTo.displayName}
+                  </Typography>
+                )}
+                {c.isSpoiler ? (
+                  <SpoilerGate<{ body: string }>
+                    revealUrl={`/api/posts/${postId}/comments/${c.id}/reveal`}
+                    render={(d) => (
+                      <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                        {d.body}
+                      </Typography>
+                    )}
+                  />
+                ) : (
+                  <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                    {c.body}
+                  </Typography>
+                )}
+                {!loggedOut && (
+                  <Button
+                    onClick={() => setReplyingTo(c)}
+                    size="small"
+                    sx={{ px: 0, minWidth: 0, textTransform: "none", fontSize: 12 }}
+                    aria-label={`Responder a ${c.author.displayName}`}
+                  >
+                    Responder
+                  </Button>
+                )}
               </Box>
-              {c.isMine && (
+              {c.isMine ? (
                 <Tooltip title="Apagar comentário">
                   <IconButton onClick={() => handleDelete(c.id)} size="small" aria-label="Apagar comentário">
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
+              ) : (
+                !loggedOut && (
+                  <Tooltip title={reportedIds.has(c.id) ? "Denunciado" : "Denunciar comentário"}>
+                    <span>
+                      <IconButton
+                        onClick={() => setReportingId(c.id)}
+                        disabled={reportedIds.has(c.id)}
+                        size="small"
+                        aria-label={reportedIds.has(c.id) ? "Comentário denunciado" : "Denunciar comentário"}
+                      >
+                        <FlagIcon fontSize="small" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                )
               )}
             </Stack>
           ))}
         </Stack>
       )}
 
+      {reportingId && (
+        <ReportDialog
+          open
+          onClose={() => setReportingId(null)}
+          target={{ kind: "comment", id: reportingId, postId }}
+          targetLabel="este comentário"
+          onReported={() => setReportedIds((prev) => new Set(prev).add(reportingId))}
+        />
+      )}
+
       {loggedOut ? (
-        <MuiLink component={NextLink} href="/login" underline="hover" sx={{ fontSize: 13 }}>
+        <MuiLink component={NextLink} href={loginHref(pathname)} underline="hover" sx={{ fontSize: 13 }}>
           Entre para comentar
         </MuiLink>
       ) : (
-        <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+          {replyingTo && (
+            <Box sx={{ width: "100%", display: "flex", alignItems: "center", gap: 1 }} role="status" data-testid="replying-to">
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Em resposta a {replyingTo.author.displayName} · comentário
+              </Typography>
+              <Button size="small" onClick={() => setReplyingTo(null)} sx={{ textTransform: "none", minWidth: 0 }}>
+                Cancelar resposta
+              </Button>
+            </Box>
+          )}
           <TextField
             value={draft}
             onChange={(e) => setDraft(e.target.value.slice(0, MAX_BODY_LENGTH))}
@@ -238,6 +352,11 @@ export function PostComments({
             fullWidth
             multiline
             maxRows={4}
+          />
+          <FormControlLabel
+            control={<Checkbox size="small" checked={draftSpoiler} onChange={(e) => setDraftSpoiler(e.target.checked)} />}
+            label="Contém spoilers"
+            slotProps={{ typography: { variant: "caption" } }}
           />
           <Tooltip title="Comentar">
             <span>

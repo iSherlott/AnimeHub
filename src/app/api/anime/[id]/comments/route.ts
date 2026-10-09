@@ -62,22 +62,6 @@ export async function GET(request: Request, { params }: Params) {
   });
   const reportedByMe = new Set(myOpenReports.map((r) => r.commentId));
 
-  // "Já assistiu" (ícone ao lado do nome) — WatchProgress é por (usuário,
-  // Anime), e Anime é por (usuário, anilistId): pra cada autor único nesta
-  // página, busca a própria linha de Anime dele pro mesmo anilistId e olha
-  // o progresso. Só pros autores da página atual (no máx. PAGE_SIZE), não
-  // pra thread inteira.
-  const authorIds = Array.from(new Set(comments.map((c) => c.userId)));
-  const authorAnime = authorIds.length
-    ? await prisma.anime.findMany({
-        where: { anilistId: anime.anilistId, userId: { in: authorIds } },
-        select: { userId: true, progress: { select: { status: true } } },
-      })
-    : [];
-  const completedUserIds = new Set(
-    authorAnime.filter((a) => a.progress?.status === "COMPLETED").map((a) => a.userId)
-  );
-
   return NextResponse.json({
     comments: comments.map((c) => ({
       id: c.id,
@@ -86,7 +70,6 @@ export async function GET(request: Request, { params }: Params) {
       author: {
         id: c.user.id,
         displayName: c.user.displayName,
-        completed: completedUserIds.has(c.user.id),
       },
       isMine: c.user.id === user.id,
       reportedByMe: reportedByMe.has(c.id),
@@ -137,14 +120,6 @@ export async function POST(request: Request, { params }: Params) {
     where: { anilistId: anime.anilistId, deletedAt: null },
   });
 
-  // Quem comenta sempre já assistiu o suficiente pra ter algo a dizer, mas
-  // não necessariamente concluiu — não assume `completed: true` aqui, só
-  // reflete o próprio progresso de quem acabou de postar.
-  const own = await prisma.anime.findUnique({
-    where: { id },
-    select: { progress: { select: { status: true } } },
-  });
-
   return NextResponse.json(
     {
       comment: {
@@ -154,7 +129,6 @@ export async function POST(request: Request, { params }: Params) {
         author: {
           id: comment.user.id,
           displayName: comment.user.displayName,
-          completed: own?.progress?.status === "COMPLETED",
         },
         isMine: true,
         reportedByMe: false,
