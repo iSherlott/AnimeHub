@@ -331,7 +331,7 @@ describe("getAiringSchedule", () => {
     expect(secondPageVariables.page).toBe(2);
   });
 
-  it("filters out formats other than TV/TV_SHORT, but keeps entries with a null format", async () => {
+  it("keeps every release format (TV, ONA, OVA, specials, movies) but drops MUSIC; null format is kept", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       jsonResponse({
         data: {
@@ -342,6 +342,8 @@ describe("getAiringSchedule", () => {
               scheduleEntry({ id: 2, format: "TV" }),
               scheduleEntry({ id: 3, format: "TV_SHORT" }),
               scheduleEntry({ id: 4, format: null }),
+              scheduleEntry({ id: 5, format: "ONA" }),
+              scheduleEntry({ id: 6, format: "MUSIC" }),
             ],
           },
         },
@@ -350,7 +352,7 @@ describe("getAiringSchedule", () => {
 
     const result = await getAiringSchedule(0, 100);
 
-    expect(result.map((e) => e.anilistId)).toEqual([2, 3, 4]);
+    expect(result.map((e) => e.anilistId)).toEqual([1, 2, 3, 4, 5]);
   });
 
   it("normalizes genres to the closed taxonomy (Epic 3)", async () => {

@@ -80,6 +80,21 @@ describe("parseSeasonHtml · listagem de temporada do AniDB", () => {
     expect(result.skipped).toBe(3);
   });
 
+  it("lê todos os títulos de uma listagem grande, sem perder nenhum", () => {
+    const many = Array.from({ length: 150 }, (_, i) => `<div class="g_bubble box no${i + 1}" id="a${30000 + i}"><div class="data"><div class="wrap name"><a class="name-colored" href="/anime/${30000 + i}">Titulo ${i}</a></div><div class="date">1st October</div><div class="general">TV Series</div></div></div>`).join("\n");
+    const result = parseSeasonHtml(`<div class="g_bubblewrap g_bubble container">${many}</div>`, { season: FALL_2026 });
+    expect(result.records).toHaveLength(150);
+    expect(result.records.map((r) => r.sourceKey)).toEqual(Array.from({ length: 150 }, (_, i) => String(30000 + i)));
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("avisa quando um título do HTML não pôde ser lido (bloco sem identificador)", () => {
+    const html = ANIDB + `<div class="g_bubble box no4"><div class="data"><div class="wrap name"><a class="name-colored" href="/anime/1">Sem Id Round</a></div></div></div>`;
+    const result = parseSeasonHtml(html, { season: FALL_2026 });
+    expect(result.records).toHaveLength(3);
+    expect(result.warnings.join(" ")).toContain("4 títulos, mas só 3 foram lidos");
+  });
+
   it("sem a temporada, o ano vem da própria data e só se ela o trouxer", () => {
     const { records } = parseSeasonHtml(ANIDB);
     expect(records[0].airsAt).toBeNull();

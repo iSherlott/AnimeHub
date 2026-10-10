@@ -225,6 +225,12 @@ export function parseSeasonHtml(html: string, options: { season?: SeasonRef | nu
 
   if (/\bg_bubble\b[^"]*\bbox\b/i.test(clean)) {
     const anidb = parseAnidbBoxes(clean, options.season ?? null, warnings);
+    // Conferência de completude: todo nome de anime do HTML precisa ter virado registro (ou ter sido recusado com aviso).
+    const names = (clean.match(/<a\b[^>]*class="[^"]*\bname-colored\b/gi) ?? []).length;
+    const accounted = anidb.records.length + anidb.skipped;
+    if (names > accounted && anidb.records.length < MAX_RECORDS) {
+      warnings.push(`O HTML tem ${names} títulos, mas só ${accounted} foram lidos. Confira se a listagem foi colada por inteiro.`);
+    }
     return { records: anidb.records, seasonLabel, skipped: anidb.skipped, warnings };
   }
 

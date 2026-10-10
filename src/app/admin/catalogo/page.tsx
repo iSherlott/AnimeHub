@@ -61,29 +61,45 @@ export default async function AdminCatalogPage({ searchParams }: { searchParams:
       : {}),
   };
 
-  // Obras do catálogo (AniList/AniDB) que ainda não têm produção: aparecem depois das produções.
+  // Obras do catálogo (AniList/AniDB) que ainda não têm produção entram DEPOIS das produções, numa única
+  // lista paginada: nenhuma obra do catálogo fica de fora por causa de um limite.
   const producedIds = (await prisma.production.findMany({ select: { anilistId: true } })).map((p) => p.anilistId);
-  const [total, productions, entries, franchiseCount] = await Promise.all([
+  const entryWhere: Prisma.CatalogEntryWhereInput = {
+    ...(fonte ? { source: fonte } : {}),
+    ...(status ? { status } : {}),
+    AND: [
+      // `NOT IN` descartaria as obras sem anilistId (NULL): elas são justamente as criadas só pelo AniDB.
+      { OR: [{ anilistId: null }, { anilistId: { notIn: producedIds } }] },
+      ...(q
+        ? [
+            {
+              OR: [
+                { titleRomaji: { contains: q, mode: "insensitive" as const } },
+                { titleNative: { contains: q, mode: "insensitive" as const } },
+                { titleEnglish: { contains: q, mode: "insensitive" as const } },
+                ...(asId !== null ? [{ anilistId: asId }, { anidbId: asId }] : []),
+              ],
+            },
+          ]
+        : []),
+    ],
+  };
+  const skip = page * PAGE_SIZE;
+  const [productionCount, entryCount, franchiseCount] = await Promise.all([
     prisma.production.count({ where }),
-    prisma.production.findMany({ where, orderBy: [{ titleRomaji: "asc" }, { id: "asc" }], skip: page * PAGE_SIZE, take: PAGE_SIZE, include: { franchise: true } }),
-    // Entradas do catálogo sem produção: temporada da AniList (ainda sem página) e obras criadas por importação (AniDB).
-    tipo
-      ? Promise.resolve([])
-      : prisma.catalogEntry.findMany({
-          where: {
-            ...(fonte ? { source: fonte } : {}),
-            ...(status ? { status } : {}),
-            AND: [
-              // `NOT IN` descartaria as obras sem anilistId (NULL): elas são justamente as criadas só pelo AniDB.
-              { OR: [{ anilistId: null }, { anilistId: { notIn: producedIds } }] },
-              ...(q ? [{ OR: [{ titleRomaji: { contains: q, mode: "insensitive" as const } }, { titleNative: { contains: q, mode: "insensitive" as const } }, { titleEnglish: { contains: q, mode: "insensitive" as const } }] }] : []),
-            ],
-          },
-          orderBy: { titleRomaji: "asc" },
-          take: 60,
-        }),
+    tipo ? Promise.resolve(0) : prisma.catalogEntry.count({ where: entryWhere }),
     prisma.franchise.count(),
   ]);
+  const total = productionCount + entryCount;
+  const productions =
+    skip < productionCount
+      ? await prisma.production.findMany({ where, orderBy: [{ titleRomaji: "asc" }, { id: "asc" }], skip, take: PAGE_SIZE, include: { franchise: true } })
+      : [];
+  const entryTake = PAGE_SIZE - productions.length;
+  const entries =
+    tipo || entryTake <= 0
+      ? []
+      : await prisma.catalogEntry.findMany({ where: entryWhere, orderBy: [{ titleRomaji: "asc" }, { id: "asc" }], skip: Math.max(0, skip - productionCount), take: entryTake });
 
   const rows: Row[] = [
     ...productions.map((p) => ({
@@ -143,7 +159,7 @@ export default async function AdminCatalogPage({ searchParams }: { searchParams:
       />
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
         <Typography data-testid="admin-catalog-count" sx={{ fontSize: 16, color: "text.secondary" }}>
-          {total} {total === 1 ? "produção" : "produções"} · {franchiseCount} {franchiseCount === 1 ? "franquia" : "franquias"}
+          {productionCount} {productionCount === 1 ? "produção" : "produções"} · {entryCount} {entryCount === 1 ? "obra" : "obras"} só no catálogo · {franchiseCount} {franchiseCount === 1 ? "franquia" : "franquias"}
         </Typography>
         <SmallChip>TV / Movie / OVA / Special são distintos</SmallChip>
       </Box>

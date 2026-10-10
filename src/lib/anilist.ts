@@ -401,6 +401,8 @@ export async function getAiringSchedule(
  * chegava ao presente). Quem ingere deve fatiar a janela e registrar
  * "truncated".
  */
+const CALENDAR_FORMATS = new Set(["TV", "TV_SHORT", "ONA", "OVA", "SPECIAL", "MOVIE"]);
+
 export async function getAiringScheduleWindow(
   airingAtGreater: number,
   airingAtLesser: number
@@ -464,7 +466,9 @@ export async function getAiringScheduleWindow(
     }>(query, { page, greater: airingAtGreater, lesser: airingAtLesser });
 
     for (const entry of data.Page.airingSchedules) {
-      if (entry.media.format && !["TV", "TV_SHORT"].includes(entry.media.format)) {
+      // Só MUSIC (clipes) fica de fora. ONA (animes de streaming/web, ex.: Magical Explorer), OVA, especiais
+      // e filmes também têm data de lançamento e precisam aparecer no calendário, como no Explorar.
+      if (entry.media.format && !CALENDAR_FORMATS.has(entry.media.format)) {
         continue;
       }
       entries.push({
