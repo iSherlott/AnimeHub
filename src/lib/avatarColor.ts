@@ -25,8 +25,11 @@ export function coverColor(anilistId: number): string {
   return AVATAR_COLORS[hashString(String(anilistId)) % AVATAR_COLORS.length];
 }
 
+/** Até 2 iniciais (primeira letra das duas primeiras palavras), como no Figma ("Lia Sato" → "LS", "Akira" → "A"). */
 export function initials(name: string): string {
-  return name.trim().slice(0, 1).toUpperCase() || "?";
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const letters = words.slice(0, 2).map((w) => [...w][0] ?? "");
+  return letters.join("").toUpperCase() || "?";
 }
 
 /** Luminância relativa WCAG de uma cor #rrggbb. */

@@ -1,5 +1,5 @@
 import { Avatar } from "@mui/material";
-import { avatarColor, initials } from "@/lib/avatarColor";
+import { initials } from "@/lib/avatarColor";
 
 /**
  * Avatar de usuário (Epic 28) — mostra a imagem real quando existe
@@ -22,9 +22,20 @@ export function UserAvatar({
   if (avatarUrl) {
     return <Avatar src={avatarUrl} alt={displayName} sx={{ width: size, height: size }} />;
   }
+  // Avatar de iniciais do Figma: círculo "elevated" com iniciais secundárias
+  // (11 px aos 28 px, 12 px aos 36 px); o id só entra como semente de cor se
+  // for pedido explicitamente no futuro.
+  void id;
   return (
     <Avatar
-      sx={{ bgcolor: avatarColor(id), width: size, height: size, fontSize: size * 0.42, fontWeight: 700 }}
+      sx={{
+        bgcolor: "#171820",
+        color: "text.secondary",
+        width: size,
+        height: size,
+        fontSize: size >= 36 ? 12 : 11,
+        fontWeight: 700,
+      }}
     >
       {initials(displayName)}
     </Avatar>

@@ -4,6 +4,7 @@ import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import { MuiProviders } from "@/components/MuiProviders";
 import { TitlePreferenceProvider } from "@/lib/titlePreference";
 import { CurrentUserProvider } from "@/lib/auth/useCurrentUser";
+import { SiteFooter } from "@/components/SiteFooter";
 import "./globals.css";
 
 const anton = Anton({
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 <main id="conteudo" tabIndex={-1} className="flex flex-1 flex-col">
                   {children}
                 </main>
+                <SiteFooter />
               </TitlePreferenceProvider>
             </CurrentUserProvider>
           </MuiProviders>

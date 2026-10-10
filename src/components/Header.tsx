@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
+import TuneIcon from "@mui/icons-material/Tune";
 import {
   AppBar,
   Box,
@@ -16,7 +17,6 @@ import {
   Link as MuiLink,
   Skeleton,
   Stack,
-  Toolbar,
   Typography,
 } from "@mui/material";
 import { TitleLanguageMenu } from "@/components/TitleLanguageMenu";
@@ -24,6 +24,27 @@ import { AccountMenu } from "@/components/AccountMenu";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useCurrentUser, useSetCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { PublicUser } from "@/lib/auth/session";
+
+/** Largura a partir da qual o menu completo (logo + nav + conta) cabe sem hambúrguer. */
+const DESKTOP_QUERY = "@media (min-width:1240px)";
+
+const NAV_ITEMS: Array<{ href: string; label: string; match: (p: string) => boolean }> = [
+  { href: "/discover", label: "Explorar", match: (p) => p === "/discover" },
+  { href: "/calendar", label: "Calendário", match: (p) => p === "/calendar" },
+  { href: "/minha-lista", label: "Minha lista", match: (p) => p === "/minha-lista" },
+  // "Comunidade" cobre o feed e as telas sociais (publicar, buscar, hashtag, discussão, perfis).
+  {
+    href: "/",
+    label: "Comunidade",
+    match: (p) =>
+      p === "/" ||
+      p.startsWith("/publicar") ||
+      p.startsWith("/buscar") ||
+      p.startsWith("/hashtag") ||
+      p.startsWith("/publicacao") ||
+      p.startsWith("/users"),
+  },
+];
 
 function NavLinks({
   pathname,
@@ -36,118 +57,97 @@ function NavLinks({
   onNavigate?: () => void;
   direction?: "row" | "column";
 }) {
-  const linkSx = (href: string) => ({
-    position: "relative" as const,
-    display: "inline-block" as const,
-    fontWeight: 600,
-    textTransform: "uppercase" as const,
-    fontSize: 14,
-    color: pathname === href ? "text.primary" : "text.secondary",
-    // Mesmo problema do logo "Anime Hub" (Epic 20) — "Minha lista" quebrava
-    // em 2 linhas exatamente nos 768px de tablet quando logado (link mais
-    // longo que "Entrar", que sozinho nunca quebrava).
-    whiteSpace: "nowrap" as const,
-    pb: 0.75,
-    // Mesma barra inclinada do logo, em miniatura, sob o link ativo — em
-    // vez de só trocar a cor (Epic 27, lote 3).
-    "&::after":
-      pathname === href
-        ? {
-            content: '""',
-            position: "absolute",
-            left: "50%",
-            bottom: 0,
-            width: 10,
-            height: 2,
-            bgcolor: "primary.main",
-            transform: "translateX(-50%) skewX(-12deg)",
-          }
-        : undefined,
-  });
+  const items = [...NAV_ITEMS];
+  if (user?.role === "ADMIN") {
+    items.push({ href: "/admin", label: "Administração", match: (p) => p === "/admin" });
+  }
 
   return (
     <Stack
       direction={direction}
-      spacing={direction === "row" ? 3 : 2}
-      sx={{ alignItems: direction === "row" ? "center" : "flex-start" }}
+      spacing={direction === "row" ? 5 : 2}
+      sx={{ alignItems: direction === "row" ? "flex-start" : "stretch" }}
     >
-      <MuiLink
-        component={NextLink}
-        href="/discover"
-        onClick={onNavigate}
-        underline="hover"
-        sx={linkSx("/discover")}
-        aria-current={pathname === "/discover" ? "page" : undefined}
-      >
-        Explorar
-      </MuiLink>
-      <MuiLink
-        component={NextLink}
-        href="/calendar"
-        onClick={onNavigate}
-        underline="hover"
-        sx={linkSx("/calendar")}
-        aria-current={pathname === "/calendar" ? "page" : undefined}
-      >
-        Calendário
-      </MuiLink>
-      <MuiLink
-        component={NextLink}
-        href="/minha-lista"
-        onClick={onNavigate}
-        underline="hover"
-        sx={linkSx("/minha-lista")}
-        aria-current={pathname === "/minha-lista" ? "page" : undefined}
-      >
-        Minha lista
-      </MuiLink>
-      <MuiLink
-        component={NextLink}
-        href="/"
-        onClick={onNavigate}
-        underline="hover"
-        sx={linkSx("/")}
-        aria-current={pathname === "/" ? "page" : undefined}
-      >
-        Comunidade
-      </MuiLink>
-      {user?.role === "ADMIN" && (
-        <MuiLink
-          component={NextLink}
-          href="/admin"
-          onClick={onNavigate}
-          underline="hover"
-          sx={linkSx("/admin")}
-          aria-current={pathname === "/admin" ? "page" : undefined}
-        >
-          Administração
-        </MuiLink>
-      )}
+      {items.map((item) => {
+        const active = item.match(pathname);
+        return (
+          <MuiLink
+            key={item.href}
+            component={NextLink}
+            href={item.href}
+            onClick={onNavigate}
+            underline="none"
+            aria-current={active ? "page" : undefined}
+            sx={{
+              display: "inline-flex",
+              flexDirection: "column",
+              gap: 1,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              fontSize: 12,
+              lineHeight: 1.5,
+              whiteSpace: "nowrap",
+              color: active ? "text.primary" : "text.secondary",
+              "&:hover": { color: "text.primary" },
+              // Indicador ativo do Figma: barra de acento de 2 px sob o item
+              // (reservada também nos inativos para a altura não oscilar).
+              "&::after": {
+                content: '""',
+                display: "block",
+                height: 2,
+                width: "100%",
+                bgcolor: active ? "primary.main" : "transparent",
+              },
+            }}
+          >
+            {item.label}
+          </MuiLink>
+        );
+      })}
     </Stack>
   );
 }
 
+function AccountArea({ user, onLogout, pathname }: { user: PublicUser | null | undefined; onLogout: () => void; pathname: string }) {
+  if (user === undefined) return <Skeleton variant="rounded" width={64} height={30} />;
+  if (!user) {
+    return (
+      <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+        <TitleLanguageMenu />
+        <Button component={NextLink} href={loginHref(pathname)} color="inherit" size="small">
+          Entrar
+        </Button>
+      </Stack>
+    );
+  }
+  return (
+    <Stack direction="row" spacing={3} sx={{ alignItems: "center" }}>
+      <NotificationBell user={user} />
+      <IconButton component={NextLink} href="/configuracoes" aria-label="Configurações" sx={{ color: "text.secondary" }}>
+        <TuneIcon sx={{ fontSize: 20 }} />
+      </IconButton>
+      <AccountMenu user={user} onLogout={onLogout} />
+    </Stack>
+  );
+}
+
+/**
+ * Cabeçalho do Figma ("Header / Expansão social"): 88 px, borda inferior,
+ * marca com selo de acento, navegação em caixa alta com indicador ativo e,
+ * à direita, sino com contagens (Lançamentos · Social), Configurações e
+ * avatar. Abaixo de 1240 px vira hambúrguer (comportamento já existente).
+ */
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
-  const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const user = useCurrentUser();
   const setUser = useSetCurrentUser();
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
   // Fecha o menu mobile sempre que a rota muda. A receita oficial do React
-  // pra "resetar estado quando um valor muda" seria ajustar isso durante a
-  // renderização via ref — mas o lint react-hooks/refs deste projeto (mira
-  // compatibilidade com o React Compiler) proíbe acessar ref.current fora
-  // de efeito/handler, então essa receita não se aplica aqui. Um efeito
-  // reagindo à mudança de pathname continua sendo a forma correta.
+  // pra "resetar estado quando um valor muda" usaria ref durante o render,
+  // o que o lint react-hooks/refs deste projeto proíbe; um efeito reagindo
+  // à mudança de pathname continua sendo a forma correta aqui.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileOpen(false);
@@ -162,178 +162,73 @@ export function Header() {
   }
 
   return (
-    <>
-      <AppBar
-        position="sticky"
-        elevation={scrolled ? 4 : 0}
+    <AppBar
+      position="sticky"
+      elevation={0}
+      sx={{ bgcolor: "background.default", backgroundImage: "none", borderBottom: 1, borderColor: "divider" }}
+    >
+      <Box
         sx={{
-          bgcolor: scrolled ? "rgba(11,11,13,0.95)" : "transparent",
-          backgroundImage: scrolled
-            ? "none"
-            : "linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(0,0,0,0.4), transparent)",
-          // Mesmo "gradiente com pontas apagando" já usado no banner da
-          // página de detalhe/hero (accentColor) — borda inferior fina em
-          // vez de uma linha cinza plana, só quando rolado (Epic 27, lote
-          // 3: reforça a identidade "anime" já estabelecida no resto do
-          // app, sem inventar linguagem visual nova).
-          "&::after": scrolled
-            ? {
-                content: '""',
-                position: "absolute",
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: "1px",
-                background: (theme) =>
-                  `linear-gradient(to right, transparent, ${theme.palette.primary.main}, transparent)`,
-              }
-            : {},
-          transition: "background-color .3s ease",
+          height: 88,
+          px: { xs: 2, sm: 4, lg: 8 },
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 4,
         }}
       >
-        <Toolbar sx={{ gap: 4, px: { xs: 3, sm: 5 } }}>
-          <MuiLink
-            component={NextLink}
-            href={user ? "/dashboard" : "/discover"}
-            underline="none"
-            sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}
-          >
-            {/* Mesmo motivo de "linha de velocidade" usado antes de todo
-                título de seção na página de detalhe do anime — amarra o
-                cabeçalho à mesma identidade visual do resto do app. */}
-            <Box sx={{ width: 6, height: 20, bgcolor: "primary.main", transform: "skewX(-12deg)", flexShrink: 0 }} />
-            <Typography
-              component="span"
-              className="font-display"
-              sx={{
-                fontSize: 24,
-                textTransform: "uppercase",
-                letterSpacing: 1,
-                color: "primary.main",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Anime Hub
-            </Typography>
-          </MuiLink>
+        <MuiLink
+          component={NextLink}
+          href={user ? "/dashboard" : "/discover"}
+          underline="none"
+          sx={{ display: "flex", alignItems: "center", gap: 1.5, flexShrink: 0 }}
+        >
+          <Box sx={{ width: 6, height: 28, bgcolor: "primary.main", flexShrink: 0 }} />
+          <Typography component="span" sx={{ fontSize: 23, fontWeight: 800, color: "text.primary", whiteSpace: "nowrap", textTransform: "uppercase" }}>
+            Anime Hub
+          </Typography>
+        </MuiLink>
 
-          {/* O breakpoint pra virar menu hambúrguer era "sm" (600px), mas o
-              nav completo (logo + até 5 links + gear/sino/nome/Sair, mais
-              ainda pra admin com "Administração") só cabe de verdade bem
-              mais tarde — sobrava uma faixa real de largura (achado da 3ª
-              rodada de auditoria, Epic 18) onde o nav não quebrava pro
-              hambúrguer nem cabia inteiro, empurrando sino/config/Sair pra
-              fora da tela sem nenhuma pista visual.
+        {/* Abaixo de 1240 px o nav completo não cabe com folga (medido ao
+            vivo na 3ª rodada de auditoria, Epic 18) e vira hambúrguer. */}
+        <Box component="nav" aria-label="Navegação principal" sx={{ display: "none", [DESKTOP_QUERY]: { display: "block" } }}>
+          <NavLinks pathname={pathname} user={user} />
+        </Box>
 
-              Um breakpoint fixo do MUI ("lg", 1200px) medido ao vivo ficou
-              em ~0px de folga no pior caso real (admin, nome no limite de
-              140px, página com scrollbar) — troca de fonte, hinting de
-              sub-pixel ou zoom já bastavam pra reabrir o mesmo bug em
-              silêncio. A primeira correção só subiu o breakpoint pra
-              1300px, mas isso regrediu o caso comum: 1280px é a largura
-              padrão da suíte de teste (device "Desktop Chrome" do
-              Playwright) e também uma largura real de navegador/laptop
-              bem comum — nesses 1280px o nav completo já cabia de sobra
-              antes desta mudança. Em vez de só empurrar o breakpoint pra
-              cima (o que sempre existe risco de ultrapassar alguma largura
-              comum de verdade), a correção reduz também o pior caso:
-              maxWidth do nome caiu de 140 pra 100px (link acima). Com as
-              duas mudanças juntas, 1240px (customizado, não um token do
-              MUI) fica com folga real acima do pior caso e ainda abaixo
-              dos 1280px comuns. */}
-          <Box
-            component="nav"
-            aria-label="Navegação principal"
-            sx={{
-              display: "none",
-              "@media (min-width:1240px)": { display: "block" },
-            }}
-          >
-            <NavLinks pathname={pathname} user={user} />
+        <Box sx={{ display: "none", [DESKTOP_QUERY]: { display: "flex" }, alignItems: "center" }}>
+          <AccountArea user={user} onLogout={handleLogout} pathname={pathname} />
+        </Box>
+
+        <IconButton
+          onClick={() => setMobileOpen((v) => !v)}
+          sx={{ ml: "auto", display: "inline-flex", [DESKTOP_QUERY]: { display: "none" } }}
+          aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
+        >
+          {mobileOpen ? <CloseIcon /> : <MenuIcon />}
+        </IconButton>
+      </Box>
+
+      <Collapse in={mobileOpen} unmountOnExit>
+        <Box
+          sx={{
+            bgcolor: "background.default",
+            borderTop: 1,
+            borderColor: "divider",
+            p: 3,
+            display: "flex",
+            flexDirection: "column",
+            gap: 3,
+          }}
+        >
+          <Box component="nav" aria-label="Navegação principal">
+            <NavLinks pathname={pathname} user={user} onNavigate={() => setMobileOpen(false)} direction="column" />
           </Box>
-
-          <Stack
-            direction="row"
-            spacing={1.5}
-            sx={{
-              ml: "auto",
-              display: "none",
-              "@media (min-width:1240px)": { display: "flex" },
-              alignItems: "center",
-            }}
-          >
-            <NotificationBell user={user} />
-            {user === undefined ? (
-              <Skeleton variant="rounded" width={64} height={30} />
-            ) : user ? (
-              <AccountMenu user={user} onLogout={handleLogout} />
-            ) : (
-              <>
-                <TitleLanguageMenu />
-                <Button component={NextLink} href={loginHref(pathname)} color="inherit" size="small">
-                  Entrar
-                </Button>
-              </>
-            )}
+          <Divider />
+          <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>
+            <AccountArea user={user} onLogout={handleLogout} pathname={pathname} />
           </Stack>
-
-          <IconButton
-            onClick={() => setMobileOpen((v) => !v)}
-            sx={{
-              ml: "auto",
-              display: "inline-flex",
-              "@media (min-width:1240px)": { display: "none" },
-            }}
-            aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
-          >
-            {mobileOpen ? <CloseIcon /> : <MenuIcon />}
-          </IconButton>
-        </Toolbar>
-
-        <Collapse in={mobileOpen} unmountOnExit>
-          <Box
-            sx={{
-              bgcolor: "background.default",
-              borderTop: 1,
-              borderColor: "divider",
-              p: 3,
-              display: "flex",
-              flexDirection: "column",
-              gap: 3,
-            }}
-          >
-            <Box component="nav" aria-label="Navegação principal">
-              <NavLinks
-                pathname={pathname}
-                user={user}
-                onNavigate={() => setMobileOpen(false)}
-                direction="column"
-              />
-            </Box>
-            <Divider />
-            <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>
-              <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                {!user && <TitleLanguageMenu />}
-                <NotificationBell user={user} />
-              </Stack>
-              {user === undefined ? (
-                <Skeleton variant="rounded" width={64} height={30} />
-              ) : user ? (
-                <AccountMenu user={user} onLogout={handleLogout} />
-              ) : (
-                <Button
-                  component={NextLink}
-                  href={loginHref(pathname)}
-                  onClick={() => setMobileOpen(false)}
-                  size="small"
-                >
-                  Entrar
-                </Button>
-              )}
-            </Stack>
-          </Box>
-        </Collapse>
-      </AppBar>
-    </>
+        </Box>
+      </Collapse>
+    </AppBar>
   );
 }

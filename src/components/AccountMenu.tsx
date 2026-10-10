@@ -47,7 +47,7 @@ export function AccountMenu({ user, onLogout }: { user: PublicUser; onLogout: ()
           aria-controls={open ? menuId : undefined}
           aria-expanded={open ? "true" : undefined}
         >
-          <UserAvatar id={user.id} displayName={user.displayName} avatarUrl={user.avatarUrl} size={28} />
+          <UserAvatar id={user.id} displayName={user.displayName} avatarUrl={user.avatarUrl} size={36} />
         </IconButton>
       </Tooltip>
 

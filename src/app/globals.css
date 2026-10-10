@@ -1,19 +1,21 @@
 @import "tailwindcss";
 
 :root {
-  --color-ink: #0b0b0d;
-  --color-surface: #18171c;
-  --color-surface-raised: #201f26;
-  --color-border: #2c2b31;
-  --color-border-strong: #f7f7f5;
+  /* Tokens do Figma (variáveis background/surface/elevated/border/primary/
+     secondary/accent). Os nomes antigos continuam para o resto do app. */
+  --color-ink: #08080b;
+  --color-surface: #101116;
+  --color-surface-raised: #171820;
+  --color-border: #272832;
+  --color-border-strong: #f2f2f5;
 
-  --color-text-primary: #f7f7f5;
-  --color-text-body: #e4e4e2;
-  --color-text-muted: #9b98a1;
+  --color-text-primary: #f2f2f5;
+  --color-text-body: #f2f2f5;
+  --color-text-muted: #92939d;
 
-  --color-jump-red: #e4002b;
-  --color-jump-red-pressed: #c50023;
-  --color-jump-red-bright: #ff1a3d;
+  --color-jump-red: #ff164f;
+  --color-jump-red-pressed: #e0113f;
+  --color-jump-red-bright: #ff164f;
   --color-jump-yellow: #ffd400;
 
   --color-status-watching: #2e6ff2;
