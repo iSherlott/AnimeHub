@@ -36,6 +36,9 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
+# Dicionário do kuromoji (kana/furigana dos títulos): o rastreio do standalone não inclui os .dat.gz,
+# e o kuroshiro os abre por caminho relativo (node_modules/kuromoji/dict) — sem isto /api/readings volta vazio.
+COPY --from=builder /app/node_modules/kuromoji/dict ./node_modules/kuromoji/dict
 EXPOSE 3000
 ENV PORT=3000
 CMD ["node", "server.js"]
