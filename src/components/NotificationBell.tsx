@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useId, useState, type MouseEvent } from "react";
-import Image from "next/image";
 import NextLink from "next/link";
-import NotificationsIcon from "@mui/icons-material/Notifications";
+import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import {
-  Badge,
   Box,
   Button,
   IconButton,
@@ -18,6 +16,7 @@ import {
 import type { PublicUser } from "@/lib/auth/session";
 import { resolveTitleTextLenient, useTitlePreference } from "@/lib/titlePreference";
 import { formatTimeInZone } from "@/lib/timeZone";
+import { formatRelativeTime } from "@/lib/relativeTime";
 import { useTimeZone } from "@/lib/useTimeZone";
 
 type AiringAlertItem = {
@@ -81,6 +80,12 @@ function socialText(n: SocialItem): string {
 
 const POLL_INTERVAL_MS = 60 * 1000;
 
+/** "sábado, 10 out · 13:00" no fuso escolhido (Figma: "DATA ALTERADA · Nova data…"). */
+function formatInZone(date: Date, timeZone: string): string {
+  const day = new Intl.DateTimeFormat("pt-BR", { timeZone, weekday: "long", day: "numeric", month: "short" }).format(date).replace(".", "");
+  return `${day} · ${formatTimeInZone(date, timeZone)}`;
+}
+
 /**
  * Sino único com dois canais (Figma `13:43025`): "Lançamentos" (favoritos no
  * ar agora e "Data alterada", Epic 10) e "Social" (respostas, novos
@@ -95,10 +100,6 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
   const [alerts, setAlerts] = useState<AiringAlertItem[]>([]);
   const [social, setSocial] = useState<SocialItem[]>([]);
   const [channel, setChannel] = useState<"releases" | "social">("releases");
-  // Ver AnimeCard — mesma correção pro ícone quebrado cru numa URL de capa
-  // que 404 (achado real da 6ª rodada de auditoria, Epic 18). Chave por
-  // alert.id porque o menu lista várias capas ao mesmo tempo.
-  const [brokenCovers, setBrokenCovers] = useState<Record<string, boolean>>({});
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const open = Boolean(anchorEl);
   const buttonId = useId();
@@ -179,10 +180,23 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
         aria-haspopup="true"
         aria-controls={open ? menuId : undefined}
         aria-expanded={open ? "true" : undefined}
+        sx={{ borderRadius: "10px" }}
       >
-        <Badge badgeContent={unseenCount} color="error">
-          <NotificationsIcon fontSize="small" />
-        </Badge>
+        {/* Sino + pílula "Lançamentos · Social" (Figma 13:41182); a pílula
+            só aparece quando há algo novo. */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "text.secondary" }}>
+          <NotificationsNoneIcon sx={{ fontSize: 20 }} />
+          {unseenCount > 0 && (
+            <Box
+              component="span"
+              data-testid="bell-counts"
+              aria-label={`${unseenReleases} de lançamentos e ${unreadSocial} sociais não lidos`}
+              sx={{ bgcolor: "#2c111b", color: "primary.main", fontSize: 11, fontWeight: 700, px: 1, py: 0.75, borderRadius: "6px", lineHeight: 1.5 }}
+            >
+              {unseenReleases} · {unreadSocial}
+            </Box>
+          )}
+        </Box>
       </IconButton>
 
       <Menu
@@ -191,34 +205,26 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
         open={open}
         onClose={handleClose}
         slotProps={{
-          paper: { sx: { width: 320 } },
-          list: { "aria-labelledby": buttonId },
+          paper: { sx: { width: 460, maxWidth: "calc(100vw - 32px)", bgcolor: "background.paper", backgroundImage: "none", borderRadius: "16px", p: 3, mt: 1 } },
+          list: { "aria-labelledby": buttonId, sx: { p: 0 } },
         }}
       >
-        <Tabs
-          value={channel}
-          onChange={(_, v) => setChannel(v)}
-          variant="fullWidth"
-          aria-label="Canais de notificação"
-          sx={{ minHeight: 40 }}
-        >
-          <Tab
-            value="releases"
-            label={unseenReleases > 0 ? `Lançamentos (${unseenReleases})` : "Lançamentos"}
-            sx={{ minHeight: 40 }}
-          />
-          <Tab value="social" label={unreadSocial > 0 ? `Social (${unreadSocial})` : "Social"} sx={{ minHeight: 40 }} />
+        <Typography component="h2" sx={{ fontSize: 26, lineHeight: 1.5, mb: 2 }}>
+          Notificações
+        </Typography>
+        <Tabs value={channel} onChange={(_, v) => setChannel(v)} aria-label="Canais de notificação" sx={{ mb: 2 }}>
+          <Tab value="releases" label={unseenReleases > 0 ? `Lançamentos · ${unseenReleases}` : "Lançamentos"} />
+          <Tab value="social" label={unreadSocial > 0 ? `Social · ${unreadSocial}` : "Social"} />
         </Tabs>
 
         {channel === "releases" ? (
           alerts.length === 0 ? (
-            <Typography variant="body2" sx={{ px: 2, py: 2, textAlign: "center", color: "text.secondary" }}>
-              Nada da sua lista no ar agora.
-            </Typography>
+            <Typography sx={{ py: 2, color: "text.secondary", fontSize: 14 }}>Nada da sua lista no ar agora.</Typography>
           ) : (
             alerts.map((alert) => {
-              const time = formatTimeInZone(new Date(alert.airingAt), timeZone);
+              const when = new Date(alert.airingAt);
               const changed = Boolean(alert.previousAiringAt);
+              const before = alert.previousAiringAt ? new Date(alert.previousAiringAt) : null;
               return (
                 <MenuItem
                   key={alert.id}
@@ -228,59 +234,40 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
                     handleClose();
                     if (!alert.seenAt) void markSeen(alert.id);
                   }}
-                  sx={{ opacity: alert.seenAt ? 0.6 : 1, gap: 1.5 }}
+                  sx={{ opacity: alert.seenAt ? 0.6 : 1, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0.5, whiteSpace: "normal", px: 0, py: 2, borderTop: 1, borderColor: "divider", borderRadius: 0 }}
                 >
-                  <Box
-                    sx={{
-                      position: "relative",
-                      width: 28,
-                      height: 40,
-                      flexShrink: 0,
-                      bgcolor: "background.paper",
-                    }}
-                  >
-                    {alert.coverImage && !brokenCovers[alert.id] && (
-                      <Image
-                        src={alert.coverImage}
-                        alt=""
-                        fill
-                        sizes="28px"
-                        className="object-cover"
-                        onError={() => setBrokenCovers((prev) => ({ ...prev, [alert.id]: true }))}
-                      />
-                    )}
-                  </Box>
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography variant="body2" noWrap>
-                      {resolveAlertTitle(preference, alert)}
+                  <Typography sx={{ fontSize: 16, fontWeight: 700 }}>{resolveAlertTitle(preference, alert)}</Typography>
+                  {changed && (
+                    <Typography data-testid="date-changed" sx={{ fontSize: 14, fontWeight: 700, textTransform: "uppercase" }}>
+                      Data alterada
                     </Typography>
-                    {changed && (
-                      <Typography variant="caption" sx={{ display: "block", fontWeight: 700 }} data-testid="date-changed">
-                        Data alterada
-                      </Typography>
-                    )}
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                      EP {alert.episode} · {time}
-                      {changed && alert.previousAiringAt
-                        ? ` (antes: ${formatTimeInZone(new Date(alert.previousAiringAt), timeZone)})`
-                        : ""}
-                    </Typography>
-                  </Box>
+                  )}
+                  <Typography sx={{ fontSize: 14 }}>
+                    EP{String(alert.episode).padStart(2, "0")} {changed ? "· Nova data: " : "disponível · "}
+                    {formatInZone(when, timeZone)}
+                  </Typography>
+                  {changed && before && (
+                    <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Antes: {formatInZone(before, timeZone)}</Typography>
+                  )}
                 </MenuItem>
               );
             })
           )
+        ) : !user.preferences.notifyReplies && !user.preferences.notifyComments && !user.preferences.notifyFollowers && !user.preferences.notifyLikes ? (
+          <Box sx={{ py: 2, display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start" }}>
+            <Typography sx={{ fontSize: 20 }}>Notificações sociais desativadas</Typography>
+            <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Seus alertas de lançamentos continuam ativos.</Typography>
+            <Button component={NextLink} href="/configuracoes" onClick={handleClose} sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}>
+              Configurar Social
+            </Button>
+          </Box>
         ) : social.length === 0 ? (
-          <Typography variant="body2" sx={{ px: 2, py: 2, textAlign: "center", color: "text.secondary" }}>
-            Nenhuma novidade social por enquanto.
-          </Typography>
+          <Box sx={{ py: 2, display: "flex", flexDirection: "column", gap: 1 }}>
+            <Typography sx={{ fontSize: 20 }}>Você está em dia.</Typography>
+            <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Novas respostas e seguidores aparecerão aqui.</Typography>
+          </Box>
         ) : (
           <>
-            <Box sx={{ display: "flex", justifyContent: "flex-end", px: 1 }}>
-              <Button size="small" onClick={markAllSocialRead} disabled={unreadSocial === 0}>
-                Marcar Social como lido
-              </Button>
-            </Box>
             {social.map((n) => (
               <MenuItem
                 key={n.id}
@@ -290,18 +277,30 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
                   handleClose();
                   if (!n.readAt) void markSocialRead(n.id);
                 }}
-                sx={{ opacity: n.readAt ? 0.6 : 1, whiteSpace: "normal" }}
+                sx={{ display: "flex", alignItems: "flex-start", gap: 2, whiteSpace: "normal", px: 0, py: 2, borderTop: 1, borderColor: "divider", borderRadius: 0 }}
               >
+                <Box aria-hidden sx={{ width: 8, height: 8, borderRadius: "50%", mt: "8px", flexShrink: 0, bgcolor: n.readAt ? "transparent" : "primary.main" }} />
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography variant="body2">{socialText(n)}</Typography>
-                  {n.unavailable && (
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                      Publicação removida
-                    </Typography>
+                  <Typography sx={{ fontSize: 14 }}>{socialText(n)}.</Typography>
+                  <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.5 }}>
+                    {n.readAt ? "Lida" : "Não lida"} · {formatRelativeTime(n.createdAt)}
+                  </Typography>
+                  {n.unavailable ? (
+                    <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.5 }}>Publicação removida</Typography>
+                  ) : (
+                    <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.5 }}>Abrir contexto →</Typography>
                   )}
                 </Box>
               </MenuItem>
             ))}
+            <Box sx={{ borderTop: 1, borderColor: "divider", pt: 2, display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start" }}>
+              <Button onClick={markAllSocialRead} disabled={unreadSocial === 0} sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}>
+                Marcar Social como lido
+              </Button>
+              <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+                Sem trecho da resposta, mesmo quando tem spoilers. A notificação abre a discussão e ancora o comentário exato; seguir abre o perfil.
+              </Typography>
+            </Box>
           </>
         )}
       </Menu>

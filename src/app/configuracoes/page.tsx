@@ -1,24 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Alert,
-  Box,
-  Button,
-  Chip,
-  FormControl,
-  FormControlLabel,
-  FormLabel,
-  MenuItem,
-  Radio,
-  RadioGroup,
-  Select,
-  Stack,
-  Switch,
-  Typography,
-} from "@mui/material";
+import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
+import { Alert, Box, Button, MenuItem, Select, Typography } from "@mui/material";
 import { Header } from "@/components/Header";
+import { PageContainer, PageIntro } from "@/components/PageShell";
 import { useCurrentUser, useSetCurrentUser } from "@/lib/auth/useCurrentUser";
 import { useTitlePreference } from "@/lib/titlePreference";
 import { loginHref } from "@/lib/safeRedirect";
@@ -42,6 +29,94 @@ const SOCIAL_TOGGLES: Array<{ key: keyof Draft; label: string; hint: string }> =
   { key: "notifyFollowers", label: "Novos seguidores", hint: "Padrão ativado; seguir perfil não acompanha anime." },
   { key: "notifyLikes", label: "Curtidas", hint: "Padrão desativado para reduzir ruído." },
 ];
+
+/** Cartão do Figma: surface, raio 16, respiro de 24 e título de 20 px. */
+function Card({ title, children, labelledBy }: { title: string; children: ReactNode; labelledBy?: string }) {
+  return (
+    <Box
+      component="section"
+      aria-labelledby={labelledBy}
+      sx={{ bgcolor: "background.paper", borderRadius: "16px", p: 3, display: "flex", flexDirection: "column", gap: 2 }}
+    >
+      <Typography id={labelledBy} component="h2" sx={{ fontSize: 20, lineHeight: 1.5 }}>
+        {title}
+      </Typography>
+      {children}
+    </Box>
+  );
+}
+
+const hiddenInput = {
+  position: "absolute",
+  inset: 0,
+  width: "100%",
+  height: "100%",
+  opacity: 0,
+  cursor: "pointer",
+  m: 0,
+} as const;
+
+/** Opção de título: pílula com o círculo ◉/○ — acento quando selecionada, "elevated" quando não. */
+function TitleOption({ value, current, label, onSelect }: { value: Draft["titleFormat"]; current: Draft["titleFormat"]; label: string; onSelect: () => void }) {
+  const selected = value === current;
+  return (
+    <Box
+      sx={{
+        position: "relative",
+        display: "inline-flex",
+        alignSelf: "flex-start",
+        alignItems: "center",
+        gap: 1,
+        minHeight: 44,
+        px: 2,
+        py: 1.5,
+        borderRadius: "10px",
+        fontSize: 14,
+        fontWeight: 700,
+        bgcolor: selected ? "primary.main" : "#171820",
+        color: selected ? "primary.contrastText" : "text.primary",
+        "&:focus-within": { outline: "2px solid #ffd400", outlineOffset: 2 },
+      }}
+    >
+      <input type="radio" name="titleFormat" value={value} checked={selected} onChange={onSelect} aria-label={label} style={hiddenInput as React.CSSProperties} />
+      <span aria-hidden>{selected ? "◉" : "○"}</span>
+      <span aria-hidden>{label}</span>
+    </Box>
+  );
+}
+
+/** Alternância "✓ Ativado" / "○ Desativado" do Figma, sobre um checkbox nativo (rótulo acessível = `label`). */
+function PillToggle({ label, hint, checked, onChange }: { label: string; hint: string; checked: boolean; onChange: (next: boolean) => void }) {
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1, pb: 2, borderBottom: 1, borderColor: "divider" }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+        <Typography aria-hidden sx={{ fontSize: 16 }}>
+          {label}
+        </Typography>
+        <Box
+          sx={{
+            position: "relative",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 0.75,
+            minHeight: 44,
+            px: 2,
+            borderRadius: "10px",
+            bgcolor: "#171820",
+            fontSize: 14,
+            fontWeight: 700,
+            "&:focus-within": { outline: "2px solid #ffd400", outlineOffset: 2 },
+          }}
+        >
+          <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} aria-label={label} style={hiddenInput as React.CSSProperties} />
+          <span aria-hidden>{checked ? "✓" : "○"}</span>
+          <span aria-hidden>{checked ? "Ativado" : "Desativado"}</span>
+        </Box>
+      </Box>
+      <Typography sx={{ fontSize: 14, color: "text.secondary" }}>{hint}</Typography>
+    </Box>
+  );
+}
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -100,142 +175,129 @@ export default function SettingsPage() {
   }
 
   const allSocialOff = !draft.notifyReplies && !draft.notifyComments && !draft.notifyFollowers && !draft.notifyLikes;
+  const japanese = draft.titleFormat === "ja";
 
   return (
-    <div className="min-h-screen bg-ink pb-16">
+    <Box sx={{ minHeight: "100%", bgcolor: "background.default" }}>
       <Header />
-      <Box sx={{ px: { xs: 3, sm: 5 }, py: 4, maxWidth: 760 }}>
-        <Typography variant="overline" sx={{ color: "primary.main", letterSpacing: 1 }}>
-          設定 / PREFERÊNCIAS
-        </Typography>
-        <Typography variant="h3" component="h1" className="font-display" sx={{ textTransform: "uppercase" }}>
-          Configurações
-        </Typography>
-        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-          Seu tempo, seus títulos e suas conversas, do seu jeito.
-        </Typography>
+      <PageContainer>
+        <PageIntro kicker="設定 / PREFERÊNCIAS" title="Configurações" subtitle="Seu tempo, seus títulos e suas conversas, do seu jeito." />
 
-        <Stack spacing={4} sx={{ mt: 4 }}>
-          <FormControl component="fieldset">
-            <FormLabel component="legend" sx={{ mb: 1 }}>
-              Formato dos títulos
-            </FormLabel>
-            <RadioGroup
-              value={draft.titleFormat}
-              onChange={(e) => update("titleFormat", e.target.value as Draft["titleFormat"])}
-              name="titleFormat"
-            >
-              <FormControlLabel value="ja" control={<Radio />} label="Japonês (kanji+kana+inglês)" />
-              <FormControlLabel value="romaji" control={<Radio />} label="Romaji (romaji+inglês)" />
-            </RadioGroup>
-            <Typography variant="caption" sx={{ color: "text.secondary" }}>
-              Muda a apresentação dos títulos, não o idioma da interface. Kana é a leitura em kana.
-            </Typography>
-          </FormControl>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", lg: "minmax(0,1.17fr) minmax(0,1fr)" }, columnGap: 5, rowGap: 3, alignItems: "start" }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <Card title="Formato dos títulos" labelledBy="titles-heading">
+              <Box role="radiogroup" aria-labelledby="titles-heading" sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <TitleOption value="ja" current={draft.titleFormat} label="Japonês (kanji+kana+inglês)" onSelect={() => update("titleFormat", "ja")} />
+                <TitleOption value="romaji" current={draft.titleFormat} label="Romaji (romaji+inglês)" onSelect={() => update("titleFormat", "romaji")} />
+              </Box>
+              <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+                Muda a apresentação dos títulos, não o idioma da interface. Kana é a leitura em kana.
+              </Typography>
+            </Card>
 
-          <FormControl>
-            <FormLabel id="tz-label" sx={{ mb: 1 }}>
-              Timezone
-            </FormLabel>
-            <Select
-              labelId="tz-label"
-              value={draft.timeZone}
-              onChange={(e) => update("timeZone", e.target.value)}
-              size="small"
-              sx={{ maxWidth: 360 }}
-              data-testid="timezone-select"
-            >
-              <MenuItem value={DEVICE_TIME_ZONE}>Usar o fuso do dispositivo</MenuItem>
-              {TIME_ZONE_OPTIONS.map((zone) => (
-                <MenuItem key={zone} value={zone}>
-                  {zone}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              <Typography id="tz-label" sx={{ fontSize: 12, fontWeight: 600, color: "text.secondary" }}>
+                Timezone
+              </Typography>
+              <Select
+                labelId="tz-label"
+                value={draft.timeZone}
+                onChange={(e) => update("timeZone", e.target.value)}
+                data-testid="timezone-select"
+                sx={{ bgcolor: "background.paper", fontSize: 14, "& .MuiSelect-select": { py: 2 }, "& fieldset": { borderColor: "divider" } }}
+              >
+                <MenuItem value={DEVICE_TIME_ZONE}>Usar o fuso do dispositivo</MenuItem>
+                {TIME_ZONE_OPTIONS.map((zone) => (
+                  <MenuItem key={zone} value={zone}>
+                    {zone}
+                  </MenuItem>
+                ))}
+              </Select>
+            </Box>
 
-          <Box>
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              Tema
-            </Typography>
-            <Chip label="Dark" size="small" />
-          </Box>
+            <Card title="Tema">
+              <Typography sx={{ fontSize: 14 }}>Dark</Typography>
+            </Card>
 
-          <Box component="section" aria-labelledby="notif-launch">
-            <Typography id="notif-launch" variant="h6" component="h2" sx={{ mb: 1 }}>
-              Notificações · Lançamentos
-            </Typography>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={draft.notifyReleases}
-                  onChange={(e) => update("notifyReleases", e.target.checked)}
-                  slotProps={{ input: { "aria-label": "Novos episódios e datas alteradas" } }}
-                />
-              }
-              label="Novos episódios e datas alteradas"
-            />
-            <Typography variant="caption" sx={{ display: "block", color: "text.secondary" }}>
-              Somente dos animes que você acompanha.
-            </Typography>
-          </Box>
+            <Card title="Notificações / Lançamentos" labelledBy="notif-launch">
+              <PillToggle
+                label="Novos episódios e datas alteradas"
+                hint="Somente dos animes que você acompanha. Preferência existente preservada."
+                checked={draft.notifyReleases}
+                onChange={(v) => update("notifyReleases", v)}
+              />
+            </Card>
 
-          <Box component="section" aria-labelledby="notif-social">
-            <Typography id="notif-social" variant="h6" component="h2" sx={{ mb: 1 }}>
-              Notificações · Social
-            </Typography>
-            <Stack spacing={1.5}>
+            <Card title="Notificações / Social" labelledBy="notif-social">
               {SOCIAL_TOGGLES.map(({ key, label, hint }) => (
-                <Box key={key}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={Boolean(draft[key])}
-                        onChange={(e) => update(key, e.target.checked as never)}
-                        slotProps={{ input: { "aria-label": label } }}
-                      />
-                    }
-                    label={label}
-                  />
-                  <Typography variant="caption" sx={{ display: "block", color: "text.secondary", ml: 6 }}>
-                    {hint}
-                  </Typography>
-                </Box>
+                <PillToggle key={key} label={label} hint={hint} checked={Boolean(draft[key])} onChange={(v) => update(key, v as never)} />
               ))}
-            </Stack>
-            <Button
-              variant="outlined"
-              color="inherit"
-              size="small"
-              sx={{ mt: 2 }}
-              disabled={allSocialOff}
-              onClick={() => setDraft((d) => (d ? { ...d, ...(SOCIAL_OFF_PATCH as Partial<Draft>) } : d))}
-            >
-              Desativar todo o Social
-            </Button>
-            <Typography variant="caption" sx={{ display: "block", color: "text.secondary", mt: 1 }}>
-              Desativar todas as notificações sociais não altera “Novos episódios e datas alteradas”. Os canais continuam separados.
-            </Typography>
+              <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+                Avisos de uma discussão específica exigem opt-in no próprio contexto; fora desta configuração global.
+              </Typography>
+            </Card>
+
+            <Box>
+              <Button variant="contained" onClick={save} disabled={status === "saving"} data-testid="save-settings">
+                {status === "saving" ? "Salvando…" : status === "error" ? "Salvar novamente" : "Salvar configurações"}
+              </Button>
+            </Box>
           </Box>
 
-          {status === "saved" && (
-            <Alert severity="success" role="status">
-              Configurações salvas. Preferências sociais atualizadas; lançamentos preservados.
-            </Alert>
-          )}
-          {status === "error" && (
-            <Alert severity="error" role="alert">
-              Não foi possível salvar as configurações. Suas escolhas foram mantidas. Tente salvar novamente.
-            </Alert>
-          )}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <Card title={`PREVIEW · ${japanese ? "Japonês" : "Romaji"} selecionado`}>
+              <Typography lang={japanese ? "ja" : undefined} sx={{ fontSize: 20, fontWeight: 700 }}>
+                {japanese ? "薬屋のひとりごと" : "Kusuriya no Hitorigoto"}
+              </Typography>
+              {japanese && <Typography lang="ja" sx={{ fontSize: 12, color: "text.secondary" }}>くすりやのひとりごと</Typography>}
+              <Typography sx={{ fontSize: 12, color: "text.secondary" }}>The Apothecary Diaries</Typography>
+              <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Exemplo · Sábado · 13:00 · EP03</Typography>
+            </Card>
 
-          <Box>
-            <Button variant="contained" onClick={save} disabled={status === "saving"} data-testid="save-settings">
-              {status === "saving" ? "Salvando…" : status === "error" ? "Salvar novamente" : "Salvar configurações"}
-            </Button>
+            <Card title="Sua privacidade">
+              <Typography sx={{ fontSize: 16 }}>
+                Minha Lista é privada por padrão. Seus interesses podem ajudar sugestões simples, mas não aparecem automaticamente no perfil.
+              </Typography>
+              <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+                Publicações são públicas. Acompanhar uma obra e seguir uma pessoa nunca publicam uma mensagem por conta própria.
+              </Typography>
+            </Card>
+
+            <Card title="Social desligado, agenda ativa">
+              <Typography sx={{ fontSize: 16 }}>
+                Desativar todas as notificações sociais não altera “Novos episódios e datas alteradas”. Os canais continuam separados no sino.
+              </Typography>
+              <Box>
+                <Button
+                  disabled={allSocialOff}
+                  onClick={() => {
+                    setDraft((d) => (d ? { ...d, ...(SOCIAL_OFF_PATCH as Partial<Draft>) } : d));
+                    setStatus("idle");
+                  }}
+                  sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}
+                >
+                  Desativar todo o Social
+                </Button>
+              </Box>
+            </Card>
+
+            {status === "saved" && (
+              <Box role="status" sx={{ display: "flex", gap: 2, p: 3, border: 1, borderColor: "divider", borderRadius: "16px" }}>
+                <CheckCircleOutlinedIcon sx={{ color: "success.main", mt: "2px" }} />
+                <Box>
+                  <Typography sx={{ fontSize: 16 }}>Configurações salvas.</Typography>
+                  <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Preferências sociais atualizadas; lançamentos preservados.</Typography>
+                </Box>
+              </Box>
+            )}
+            {status === "error" && (
+              <Alert severity="error" role="alert">
+                Não foi possível salvar as configurações. Suas escolhas foram mantidas. Tente salvar novamente.
+              </Alert>
+            )}
           </Box>
-        </Stack>
-      </Box>
-    </div>
+        </Box>
+      </PageContainer>
+    </Box>
   );
 }
