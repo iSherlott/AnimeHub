@@ -5,6 +5,7 @@ import { getSeasonalCatalog, type Season } from "../../../src/lib/seasonalCatalo
 import { resolveAnimeMedia } from "../../../src/lib/resolveAnimeMedia";
 import { ensureEpisodes } from "../../../src/lib/episodes";
 import { refreshAnimeData } from "../../../src/lib/refreshAnimeData";
+import { isRunning, isScheduledRunDue, runEpisodeImageSync } from "../../../src/lib/episodeImages";
 
 const PORT = Number(process.env.PORT ?? 4003);
 
@@ -164,6 +165,47 @@ async function handleRefreshAnime(req: IncomingMessage, res: ServerResponse) {
   }
 }
 
+async function handleEpisodeImagesRun(req: IncomingMessage, res: ServerResponse) {
+  let body: Record<string, unknown> = {};
+  try {
+    body = await readJsonBody(req);
+  } catch {
+    // Corpo opcional: sem JSON válido, segue como execução manual anônima.
+  }
+  try {
+    if (await isRunning()) {
+      sendJson(res, 409, { error: "Já existe uma execução em andamento." });
+      return;
+    }
+    // A busca é longa (uma chamada por episódio): responde já e segue em segundo plano.
+    void runEpisodeImageSync({ trigger: "manual", adminName: typeof body.adminName === "string" ? body.adminName : null });
+    sendJson(res, 202, { started: true });
+  } catch (error) {
+    console.error("[cache-updater] episode-images/run falhou:", error);
+    sendJson(res, 500, { error: "Falha ao iniciar a busca de imagens" });
+  }
+}
+
+/**
+ * Busca diária das imagens dos episódios (calendário): todo dia a partir das
+ * 00:00 de America/Sao_Paulo. A checagem é por banco ("já houve uma execução
+ * agendada desde a última meia-noite?"), então um serviço reiniciado ou fora do
+ * ar à meia-noite recupera a execução do dia assim que volta.
+ */
+async function tickEpisodeImageSchedule() {
+  try {
+    const last = await prisma.episodeImageRun.findFirst({ where: { trigger: "schedule" }, orderBy: { startedAt: "desc" }, select: { startedAt: true } });
+    if (isScheduledRunDue(new Date(), last?.startedAt ?? null)) {
+      console.log("[cache-updater] iniciando busca diária de imagens de episódios");
+      await runEpisodeImageSync({ trigger: "schedule" });
+    }
+  } catch (error) {
+    console.error("[cache-updater] agendador de imagens falhou:", error);
+  }
+}
+setTimeout(() => void tickEpisodeImageSchedule(), 30_000);
+setInterval(() => void tickEpisodeImageSchedule(), 60_000);
+
 createServer((req, res) => {
   if (req.method === "GET" && req.url === "/health") {
     sendJson(res, 200, { status: "ok" });
@@ -187,6 +229,10 @@ createServer((req, res) => {
   }
   if (req.method === "POST" && req.url === "/refresh-anime") {
     void handleRefreshAnime(req, res);
+    return;
+  }
+  if (req.method === "POST" && req.url === "/episode-images/run") {
+    void handleEpisodeImagesRun(req, res);
     return;
   }
   res.writeHead(404);

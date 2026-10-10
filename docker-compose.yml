@@ -49,6 +49,9 @@ services:
       # Não obrigatório — sem isso (ou se a chamada falhar), as rotas caem
       # pro caminho local de sempre (ver src/lib/serviceDelegate.ts).
       CACHE_UPDATER_URL: http://cache-updater:4003
+      # Serviço secundário de notícias da temporada (Admin → Scrapers → "Buscar
+      # notícias"); sem ele (ou fora do ar) o painel roda a busca no próprio `web`.
+      NEWS_FETCHER_URL: http://news-fetcher:4005
       # Usado só pelo fallback local de /refresh-anime (src/lib/refreshAnimeData.ts)
       # quando o cache-updater está fora do ar mas o name-resolver não está.
       NAME_RESOLVER_URL: http://name-resolver:4002
@@ -155,6 +158,27 @@ services:
       ANIME_HUB_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:4004/health', r => process.exit(r.statusCode===200?0:1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # Notícias sobre as obras da temporada atual (Jikan/MyAnimeList), exibidas na
+  # Comunidade → Notícias. Chamado pelo painel (POST /run) e uma vez por dia; o
+  # `web` só lê a tabela AnimeNews.
+  news-fetcher:
+    build:
+      context: .
+      dockerfile: services/news-fetcher/Dockerfile
+    restart: unless-stopped
+    environment:
+      ANIME_HUB_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4005/health', r => process.exit(r.statusCode===200?0:1)).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3

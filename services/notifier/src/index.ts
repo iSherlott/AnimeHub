@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { prisma } from "../../../src/lib/prisma";
-import { airingAtRangeForNow } from "../../../src/lib/airingWindow";
+import { notifyRangeForNow } from "../../../src/lib/airingWindow";
 import { recordIngestionRun } from "../../../src/lib/ingestionRuns";
 import { RESCHEDULE_THRESHOLD_MS } from "../../../src/lib/rescheduleAlerts";
 
@@ -22,7 +22,8 @@ async function tick(): Promise<void> {
   let failureMessage: string | null = null;
   try {
     const now = new Date();
-    const { from, to } = airingAtRangeForNow(now);
+    // Avisa dos lançamentos das próximas 24 h (hoje) e dos que acabaram de ir ao ar.
+    const { from, to } = notifyRangeForNow(now);
 
     const airingNow = await prisma.airingScheduleEntry.findMany({
       where: { airingAt: { gte: from, lte: to } },
