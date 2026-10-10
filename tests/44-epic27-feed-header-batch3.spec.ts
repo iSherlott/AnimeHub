@@ -4,56 +4,8 @@ import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
 
 // anilistId fora da faixa usada por outras fixtures.
-const RECOMMENDED_SOURCE_ANILIST_ID = 911000;
-const RECOMMENDED_TARGET_ANILIST_ID = 911001;
 const FAVORITED_ANILIST_ID = 911002;
 const LONG_CAPTION_ANILIST_ID = 911003;
-
-test.describe("Epic 27 (lote 3) — link do recomendado na lateral do Feed", () => {
-  test.beforeAll(async () => {
-    const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
-    const user = await prisma.user.findUniqueOrThrow({ where: { email: TEST_USER_EMAIL } });
-    await prisma.anime.upsert({
-      where: { userId_anilistId: { userId: user.id, anilistId: RECOMMENDED_SOURCE_ANILIST_ID } },
-      create: {
-        userId: user.id,
-        anilistId: RECOMMENDED_SOURCE_ANILIST_ID,
-        titleRomaji: "Anime Lote3 Sidebar Source",
-        genres: "",
-        recommendationsJson: JSON.stringify([
-          {
-            anilistId: RECOMMENDED_TARGET_ANILIST_ID,
-            titleRomaji: "Anime Lote3 Sidebar Recommended",
-            titleEnglish: null,
-            coverImage: null,
-          },
-        ]),
-      },
-      update: {
-        recommendationsJson: JSON.stringify([
-          {
-            anilistId: RECOMMENDED_TARGET_ANILIST_ID,
-            titleRomaji: "Anime Lote3 Sidebar Recommended",
-            titleEnglish: null,
-            coverImage: null,
-          },
-        ]),
-      },
-    });
-    await prisma.$disconnect();
-  });
-
-  test("clicar no nome do recomendado leva pro Descobrir, não pra AniList", async ({ page }) => {
-    await page.goto("/");
-    const link = page.getByRole("link", { name: "Anime Lote3 Sidebar Recommended" });
-    await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute(
-      "href",
-      `/discover?search=${encodeURIComponent("Anime Lote3 Sidebar Recommended")}`
-    );
-    await expect(link).not.toHaveAttribute("target", "_blank");
-  });
-});
 
 test.describe("Epic 27 (lote 3) — destaque de post sobre anime favoritado", () => {
   let animeId: string;

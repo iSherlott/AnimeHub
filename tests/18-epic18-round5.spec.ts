@@ -31,7 +31,7 @@ test.describe("Epic 18 — 5ª rodada de auditoria de UX/UI — duplo clique nã
   test("clicar 'Publicar' duas vezes rápido no Feed cria só 1 post", async ({ page, request }) => {
     // O contexto de obra é opcional (F8): basta haver texto.
     const uniqueBody = `Post de teste de duplo clique ${Date.now()}`;
-    await page.goto("/");
+    await page.goto("/publicar");
 
     await page.getByPlaceholder("Que conversa você quer começar?").fill(uniqueBody);
 

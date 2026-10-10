@@ -94,13 +94,17 @@ test.describe("Publicar, Recentes e discussões", () => {
     await expect(page.getByRole("tab", { name: "Recentes" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Para você" })).toBeVisible();
 
+    await page.getByRole("link", { name: "+ Nova publicação" }).click();
+    await expect(page).toHaveURL(/\/publicar$/);
+
     const publish = page.getByRole("button", { name: "Publicar", exact: true });
     await expect(publish).toBeDisabled();
     const text = `Sem obra nenhuma ${Date.now()}`;
     await page.getByPlaceholder("Que conversa você quer começar?").fill(text);
-    await expect(page.getByLabel("Anime relacionado (opcional)")).toBeVisible();
+    await expect(page.getByLabel("Buscar e associar um anime")).toBeVisible();
     await expect(publish).toBeEnabled();
     await publish.click();
+    await expect(page).toHaveURL(/\/publicacao\//);
     await expect(page.getByText(text)).toBeVisible();
 
     const feed = await (await page.request.get("/api/posts?tab=recent&limit=5")).json();
@@ -118,7 +122,11 @@ test.describe("Publicar, Recentes e discussões", () => {
       await page.goto(`/obra/${PROD_ID}`);
       const section = page.getByTestId("discussions");
       await expect(section).toContainText("Discussão visível ao visitante");
-      await expect(section.getByTestId("publish-about")).toContainText("Entre para publicar");
+      const publishAbout = section.getByTestId("publish-about");
+      await expect(publishAbout).toContainText("Publicar sobre este anime");
+      // Visitante é levado ao login, com o destino (o editor) preservado.
+      await publishAbout.click();
+      await expect(page).toHaveURL(/\/login\?next=%2Fpublicar/);
       await context.close();
     });
 
@@ -136,22 +144,24 @@ test.describe("Publicar, Recentes e discussões", () => {
     test("'Publicar sobre este anime': produção pré-selecionada, rascunho, descarte e publicação", async ({ page }) => {
       await page.goto(`/obra/${PROD_ID}`);
       await page.getByTestId("publish-about").click();
+      await expect(page).toHaveURL(new RegExp(`/publicar\\?anilistId=${PROD_ID}`));
 
-      const dialog = page.getByRole("dialog", { name: "Nova publicação" });
-      await expect(dialog.getByTestId("publish-context")).toContainText("a associação já está selecionada");
-      await expect(dialog.getByTestId("publish-send")).toBeDisabled();
+      // Produção pré-selecionada a partir do detalhe, removível.
+      await expect(page.getByTestId("related-anime-chip")).toContainText("Selecionado a partir do detalhe");
+      await expect(page.getByTestId("publish-send")).toBeDisabled();
 
-      const field = dialog.getByLabel("Sua publicação");
+      const field = page.getByLabel("Sua publicação");
       await field.fill("Rascunho que não quero perder");
-      await dialog.getByRole("button", { name: "Cancelar" }).click();
+      await page.getByRole("button", { name: "Cancelar", exact: true }).click();
       const confirm = page.getByRole("dialog", { name: "Descartar este rascunho?" });
       await expect(confirm).toBeVisible();
       await confirm.getByRole("button", { name: "Continuar escrevendo" }).click();
       await expect(field).toHaveValue("Rascunho que não quero perder");
 
       await field.fill(`Publicado pelo detalhe ${Date.now()}`);
-      await dialog.getByTestId("publish-send").click();
-      await expect(dialog).toBeHidden();
+      await page.getByTestId("publish-send").click();
+      await expect(page).toHaveURL(/\/publicacao\//);
+      await page.goto(`/obra/${PROD_ID}`);
       await expect(page.getByTestId("discussions")).toContainText("Publicado pelo detalhe");
 
       const feed = await (await page.request.get(`/api/posts?tab=recent&anilistId=${PROD_ID}&limit=5`)).json();
@@ -168,13 +178,12 @@ test.describe("Publicar, Recentes e discussões", () => {
         if (route.request().method() === "POST") await route.fulfill({ status: 500, body: "{}" });
         else await route.continue();
       });
-      await page.goto(`/obra/${PROD_ID}`);
-      await page.getByTestId("publish-about").click();
-      const dialog = page.getByRole("dialog", { name: "Nova publicação" });
-      await dialog.getByLabel("Sua publicação").fill("Texto que deve sobreviver à falha");
-      await dialog.getByTestId("publish-send").click();
-      await expect(dialog.getByRole("alert").filter({ hasText: "Não foi possível publicar" })).toContainText("Texto, associação e escolha de spoilers foram mantidos");
-      await expect(dialog.getByLabel("Sua publicação")).toHaveValue("Texto que deve sobreviver à falha");
+      await page.goto(`/publicar?anilistId=${PROD_ID}`);
+      await page.getByLabel("Sua publicação").fill("Texto que deve sobreviver à falha");
+      await page.getByTestId("publish-send").click();
+      await expect(page.getByRole("alert").filter({ hasText: "Não foi possível publicar" })).toContainText("Texto, associação e escolha de spoilers foram mantidos");
+      await expect(page.getByLabel("Sua publicação")).toHaveValue("Texto que deve sobreviver à falha");
+      await expect(page.getByTestId("related-anime-chip")).toBeVisible();
     });
   });
 
@@ -220,8 +229,8 @@ test.describe("Publicar, Recentes e discussões", () => {
 
       await page.getByRole("button", { name: /Responder a/ }).first().click();
       await expect(page.getByTestId("replying-to")).toContainText("Em resposta a");
-      await page.getByPlaceholder("Escreva um comentário...").fill("minha resposta ao thread");
-      await page.getByRole("button", { name: "Comentar" }).click();
+      await page.getByPlaceholder("Escreva uma resposta...").fill("minha resposta ao thread");
+      await page.getByRole("button", { name: "Enviar resposta" }).click();
 
       const child = page.locator("[data-testid^='comment-']").filter({ hasText: "minha resposta ao thread" });
       await expect(child).toContainText("Em resposta a");
@@ -232,7 +241,7 @@ test.describe("Publicar, Recentes e discussões", () => {
       await request.delete(`/api/posts/${postId}`);
       await page.goto(`/publicacao/${postId}`);
       await expect(page.getByTestId("post-unavailable")).toContainText("Publicação removida");
-      await expect(page.getByRole("link", { name: "Voltar à Comunidade" }).or(page.getByRole("button", { name: "Voltar à Comunidade" }))).toBeVisible();
+      await expect(page.getByRole("link", { name: "Voltar à Comunidade", exact: true })).toBeVisible();
     });
   });
 });

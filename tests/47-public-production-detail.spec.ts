@@ -138,10 +138,11 @@ test.describe("Detalhe público da obra (/obra/[anilistId])", () => {
       await page.goto(`/obra/${S2}`);
       const nextEp = page.getByTestId("next-episode");
       await expect(nextEp).toContainText("Episódio 3");
-      await expect(nextEp).toContainText("(");
+      await expect(nextEp).toContainText("America/Sao_Paulo");
 
       const related = page.getByTestId("related");
-      await expect(related.getByRole("link", { name: "Obra Publica Temporada Um" })).toHaveAttribute("href", `/obra/${S1}`);
+      // O cartão mostra o título original (padrão Japonês); a obra irmã é achada pelo destino.
+      await expect(related.locator(`a[href="/obra/${S1}"]`).first()).toBeVisible();
     });
 
     test("sem previsão confirmada, diz isso em vez de inventar horário", async ({ page }) => {

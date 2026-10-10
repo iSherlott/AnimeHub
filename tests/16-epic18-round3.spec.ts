@@ -101,7 +101,7 @@ test.describe("Epic 18 — 3ª rodada de auditoria de UX/UI", () => {
     page,
   }) => {
     // O seguidor já veio do teste anterior (mesmo arquivo, mesma ordem) —
-    // só falta o único post pra fechar "1 post · 1 seguidor · 0 seguindo".
+    // só falta o único post pra fechar "1 seguidor · 0 seguindo · 1 publicação".
     await request.post(`/api/anime/${thirdAnimeId}/posts`, {
       headers: { Cookie: `${SESSION_COOKIE_NAME}=${THIRD_SESSION_TOKEN}` },
       data: { body: "Único post deste usuário" },
@@ -109,7 +109,7 @@ test.describe("Epic 18 — 3ª rodada de auditoria de UX/UI", () => {
 
     await page.goto(`/users/${thirdUserId}`);
     const stats = page.getByText(/seguidor/);
-    await expect(stats).toHaveText("1 post · 1 seguidor · 0 seguindo");
+    await expect(stats).toHaveText("1 seguidor · 0 seguindo · 1 publicação");
   });
 });
 

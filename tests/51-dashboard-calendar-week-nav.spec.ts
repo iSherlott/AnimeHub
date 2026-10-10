@@ -84,13 +84,15 @@ test.describe("Dashboard, calendário e navegação", () => {
 
   test("calendário começa na segunda, mostra o fuso e coloca o horário antes de EP", async ({ page }) => {
     await page.goto("/calendar");
-    await page.getByRole("button", { name: "Todos os lançamentos" }).click();
+    await page.getByRole("button", { name: "Todos", exact: true }).click();
 
-    const headers = page.locator("p, span").filter({ hasText: /^(SEG|TER|QUA|QUI|SEX|SÁB|DOM)$/ });
-    await expect(headers.first()).toHaveText("SEG");
-    await expect(headers.last()).toHaveText("DOM");
+    const headers = page.getByTestId("calendar-grid").locator("p").filter({ hasText: /^(SEG|TER|QUA|QUI|SEX|SÁB|DOM) \d{2}$/ });
+    await expect(headers).toHaveCount(7);
+    await expect(headers.first()).toContainText("SEG");
+    await expect(headers.last()).toContainText("DOM");
 
-    await expect(page.getByTestId("calendar-timezone")).toContainText("Horários no fuso");
-    await expect(page.getByText("12:00 · EP 9").first()).toBeVisible();
+    await expect(page.locator("main")).toContainText("Horários locais em");
+    await expect(page.getByTestId("calendar-timezone")).toContainText("America/Sao_Paulo");
+    await expect(page.getByText("12:00 · EP09").first()).toBeVisible();
   });
 });

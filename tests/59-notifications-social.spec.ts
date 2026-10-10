@@ -166,7 +166,7 @@ test.describe("Notificações: Lançamentos e Social", () => {
     await expect(menu.getByRole("tab", { name: /Lançamentos/ })).toBeVisible();
     await expect(menu.getByRole("tab", { name: /Social/ })).toBeVisible();
     await expect(menu.getByTestId("date-changed").first()).toHaveText("Data alterada");
-    await expect(menu.getByText(/antes: /).first()).toBeVisible();
+    await expect(menu.getByText(/Antes: /).first()).toBeVisible();
 
     await menu.getByRole("tab", { name: /Social/ }).click();
     await expect(menu.getByText(/respondeu à sua publicação/)).toBeVisible();

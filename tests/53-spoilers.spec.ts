@@ -127,7 +127,7 @@ test.describe("Spoilers (marca do autor, revelar por ação explícita)", () => 
   });
 
   test("o compositor tem 'Contém spoilers' desmarcado por padrão", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/publicar");
     const checkbox = page.getByLabel("Contém spoilers").first();
     await expect(checkbox).toBeVisible();
     await expect(checkbox).not.toBeChecked();

@@ -205,7 +205,7 @@ test.describe("Bloqueio e denúncias", () => {
     test("na tela: motivo obrigatório, confirmação e retorno discreto ao denunciar um post", async ({ page }) => {
       await page.goto("/");
       const card = page.getByTestId(`post-card-${bPostId}`);
-      await card.getByRole("button", { name: "Denunciar post" }).click();
+      await card.getByRole("button", { name: "Denunciar", exact: true }).click();
 
       const dialog = page.getByRole("dialog");
       await expect(dialog.getByTestId("report-continue")).toBeDisabled();

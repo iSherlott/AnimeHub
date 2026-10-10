@@ -56,11 +56,10 @@ test.describe("Epic 18 — 19ª rodada de auditoria de UX/UI — curtida sincron
     const selfCard = allCardsForPost.filter({ hasNotText: "repostou" });
 
     await repostCard.getByRole("button", { name: "Curtir" }).click();
-    await expect(repostCard.getByRole("button", { name: "Descurtir" })).toBeVisible();
+    await expect(repostCard.getByRole("button", { name: /^Curtir/, pressed: true })).toBeVisible();
 
     // A entrada "self" precisa refletir o mesmo like (coração preenchido
     // + contador 1), sem nenhum reload, mesmo nunca tendo sido clicada.
-    await expect(selfCard.getByRole("button", { name: "Descurtir" })).toBeVisible();
-    await expect(selfCard.getByText("1", { exact: true })).toBeVisible();
+    await expect(selfCard.getByRole("button", { name: "Curtir · 1", pressed: true })).toBeVisible();
   });
 });

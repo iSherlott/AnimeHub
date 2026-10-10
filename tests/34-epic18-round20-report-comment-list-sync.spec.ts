@@ -55,7 +55,7 @@ test.describe("Epic 18 — 20ª rodada de auditoria de UX/UI — denúncia e lis
     const repostCard = allCardsForPost.filter({ hasText: "repostou" });
     const selfCard = allCardsForPost.filter({ hasNotText: "repostou" });
 
-    await repostCard.getByRole("button", { name: "Denunciar post" }).click();
+    await repostCard.getByRole("button", { name: "Denunciar", exact: true }).click();
     // Denúncia agora passa pelo diálogo de motivo + confirmação (Figma 13:43571).
     const reportDialog = page.getByRole("dialog");
     await reportDialog.getByLabel("Outro motivo").check();
@@ -94,14 +94,14 @@ test.describe("Epic 18 — 20ª rodada de auditoria de UX/UI — denúncia e lis
     const selfCard = allCardsForPost.filter({ hasNotText: "repostou" });
 
     // Abre a thread nas 2 entradas ao mesmo tempo.
-    await repostCard.getByRole("button", { name: "Comentários" }).click();
-    await selfCard.getByRole("button", { name: "Comentários" }).click();
+    await repostCard.getByRole("button", { name: /^Responder ·/ }).click();
+    await selfCard.getByRole("button", { name: /^Responder ·/ }).click();
     await expect(repostCard.getByText("Comentário original, já existia antes do teste")).toBeVisible();
     await expect(selfCard.getByText("Comentário original, já existia antes do teste")).toBeVisible();
 
     // Comenta a partir da entrada de REPOST.
-    await repostCard.getByPlaceholder("Escreva um comentário...").fill("Comentário novo via a entrada de repost");
-    await repostCard.getByRole("button", { name: "Comentar" }).click();
+    await repostCard.getByPlaceholder("Escreva uma resposta...").fill("Comentário novo via a entrada de repost");
+    await repostCard.getByRole("button", { name: "Enviar resposta" }).click();
     await expect(repostCard.getByText("Comentário novo via a entrada de repost")).toBeVisible();
 
     // A entrada "self", com a thread JÁ ABERTA desde antes, precisa

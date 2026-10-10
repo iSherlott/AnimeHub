@@ -10,7 +10,8 @@ const THREAD_ANILIST_ID = 910002;
 const SUGGESTION_EMAIL = "epic26-sidebar-suggestion@test.local";
 const SUGGESTION_NAME = "Epic26 Sidebar Suggestion User";
 
-test.describe("Epic 26 — lateral do Feed expandida (posts em alta, animes recomendados, pessoas pra seguir, threads)", () => {
+// Dados semeados para as APIs de recomendações/threads/sugestões (a lateral antiga do Feed foi
+// substituída pela do Figma; as APIs continuam existindo e testadas).
   test.beforeAll(async () => {
     const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
     const user = await prisma.user.findUniqueOrThrow({ where: { email: TEST_USER_EMAIL } });
@@ -84,38 +85,6 @@ test.describe("Epic 26 — lateral do Feed expandida (posts em alta, animes reco
     await prisma.$disconnect();
   });
 
-  test("logado (desktop), as 5 seções renderizam dado real", async ({ page }) => {
-    await page.goto("/");
-
-    await expect(page.getByText("Animes recomendados")).toBeVisible();
-    await expect(page.getByText("Anime Round Epic26 Sidebar Recommended")).toBeVisible();
-
-    await expect(page.getByText("Pessoas pra seguir")).toBeVisible();
-    await expect(page.getByText(SUGGESTION_NAME)).toBeVisible();
-
-    await expect(page.getByText("Threads recentes")).toBeVisible();
-    await expect(page.getByText("Mais comentadas hoje")).toBeVisible();
-    // O único comentário semeado conta como "recente" E "mais comentada
-    // hoje" ao mesmo tempo — aparece nas 2 seções, então checa só
-    // presença (.first()), não unicidade.
-    await expect(page.getByText("Anime Round Epic26 Sidebar Thread").first()).toBeVisible();
-  });
-
-  test("deslogado, só as seções públicas aparecem — nada de recomendação pessoal/sugestão de seguir", async ({
-    page,
-  }) => {
-    await page.context().clearCookies();
-    await page.goto("/");
-
-    // Ao menos uma seção pública (threads) continua visível.
-    await expect(page.getByText("Anime Round Epic26 Sidebar Thread").first()).toBeVisible();
-
-    // As 2 seções autenticadas não têm nenhum dado meu, já que a rota
-    // exige sessão pra sequer ser chamada.
-    await expect(page.getByText("Anime Round Epic26 Sidebar Recommended")).not.toBeVisible();
-    await expect(page.getByText(SUGGESTION_NAME)).not.toBeVisible();
-  });
-});
 
 test.describe("Epic 26 — GET /api/feed/trending-posts", () => {
   test("é pública e devolve no máximo 5 posts com o formato esperado", async ({ request }) => {

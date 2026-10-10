@@ -53,8 +53,8 @@ test.describe("Epic 18 — 17ª rodada de auditoria de UX/UI — badge de coment
 
     const card = page.getByTestId(`post-card-${postId}`);
     await expect(card).toBeVisible();
-    const commentButton = card.getByRole("button", { name: "Comentários" });
-    await expect(card.getByText("1", { exact: true })).toBeVisible();
+    const commentButton = card.getByRole("button", { name: /^Responder ·/ });
+    await expect(commentButton).toContainText("Responder · 1");
 
     // Outra pessoa comenta enquanto a thread está fechada nesta aba.
     const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
@@ -69,6 +69,6 @@ test.describe("Epic 18 — 17ª rodada de auditoria de UX/UI — badge de coment
     // correção garante é o valor certo assim que a thread é reaberta.
     await commentButton.click();
     await expect(card.getByText("Comentário de outra pessoa, com a thread fechada")).toBeVisible();
-    await expect(card.getByText("2", { exact: true })).toBeVisible();
+    await expect(commentButton).toContainText("Responder · 2");
   });
 });

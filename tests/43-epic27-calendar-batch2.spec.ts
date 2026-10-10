@@ -65,17 +65,20 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     await prisma.$disconnect();
   });
 
-  test("card da própria lista tem borda mais grossa que o de fora da lista", async ({ page }) => {
+  test("bloco da própria lista tem a barra lateral de destaque (acento) e o de fora a barra neutra", async ({ page }) => {
     await page.goto("/calendar");
-    await page.getByRole("button", { name: "Todos os lançamentos" }).click();
+    await page.getByRole("button", { name: "Todos", exact: true }).click();
 
     const mineLink = page.getByRole("link", { name: "Anime Do Calendario Que Esta Na Lista" });
     const otherLink = page.getByRole("link", { name: "Anime Do Calendario Fora Da Lista" });
     await expect(mineLink).toBeVisible();
     await expect(otherLink).toBeVisible();
 
+    // Figma 8:2181: todo bloco tem barra lateral de 3 px; o da lista usa o acento, o demais a borda neutra.
     await expect(mineLink).toHaveCSS("border-left-width", "3px");
-    await expect(otherLink).toHaveCSS("border-left-width", "1px");
+    await expect(otherLink).toHaveCSS("border-left-width", "3px");
+    await expect(mineLink).toHaveCSS("border-left-color", "rgb(255, 22, 79)");
+    await expect(otherLink).toHaveCSS("border-left-color", "rgb(39, 40, 50)");
   });
 
   test("hover num item da lista mostra sinopse e botão de favoritar, que funciona de verdade", async ({
@@ -83,7 +86,7 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     request,
   }) => {
     await page.goto("/calendar");
-    await page.getByRole("button", { name: "Todos os lançamentos" }).click();
+    await page.getByRole("button", { name: "Todos", exact: true }).click();
 
     const mineLink = page.getByRole("link", { name: "Anime Do Calendario Que Esta Na Lista" });
     await mineLink.hover();
@@ -104,7 +107,7 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     page,
   }) => {
     await page.goto("/calendar");
-    await page.getByRole("button", { name: "Todos os lançamentos" }).click();
+    await page.getByRole("button", { name: "Todos", exact: true }).click();
 
     const otherLink = page.getByRole("link", { name: "Anime Do Calendario Fora Da Lista" });
     await otherLink.hover();
@@ -125,7 +128,7 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     });
 
     await page.goto("/calendar");
-    await page.getByRole("button", { name: "Todos os lançamentos" }).click();
+    await page.getByRole("button", { name: "Todos", exact: true }).click();
 
     // Preferência padrão "en" — ainda mostra a original.
     const mineLink = page.getByRole("link", { name: "Anime Do Calendario Que Esta Na Lista" });

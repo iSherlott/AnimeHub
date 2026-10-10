@@ -106,9 +106,9 @@ test.describe("Epic 18 — 18ª rodada de auditoria de UX/UI — repost/comentá
     await expect(selfCard).toBeVisible();
 
     // Comenta a partir da entrada de REPOST.
-    await repostCard.getByRole("button", { name: "Comentários" }).click();
-    await repostCard.getByPlaceholder("Escreva um comentário...").fill("Comentário via a entrada de repost");
-    await repostCard.getByRole("button", { name: "Comentar" }).click();
+    await repostCard.getByRole("button", { name: /^Responder ·/ }).click();
+    await repostCard.getByPlaceholder("Escreva uma resposta...").fill("Comentário via a entrada de repost");
+    await repostCard.getByRole("button", { name: "Enviar resposta" }).click();
     await expect(repostCard.getByText("Comentário via a entrada de repost")).toBeVisible();
 
     // A entrada "self" (nunca aberta, nunca teve sua própria thread
@@ -116,7 +116,7 @@ test.describe("Epic 18 — 18ª rodada de auditoria de UX/UI — repost/comentá
     // curtida (LikeToggle) começa em 0 e não muda neste teste, então "1"
     // só pode ser o contador de comentário (mesma checagem já usada em
     // tests/30-epic18-round17-comment-count-sync.spec.ts).
-    await expect(selfCard.getByText("1", { exact: true })).toBeVisible();
+    await expect(selfCard.getByRole("button", { name: "Responder · 1" })).toBeVisible();
   });
 
   test("desfazer o repost remove a entrada correspondente sem recarregar", async ({ page, request }) => {
@@ -128,7 +128,8 @@ test.describe("Epic 18 — 18ª rodada de auditoria de UX/UI — repost/comentá
     await expect(allCardsForPost).toHaveCount(2);
     const repostCard = allCardsForPost.filter({ hasText: "repostou" });
 
-    await repostCard.getByRole("button", { name: "Desfazer repost" }).click();
+    await repostCard.getByRole("button", { name: "Compartilhar internamente" }).click();
+    await page.getByRole("menuitem", { name: "Desfazer repost" }).click();
 
     // A entrada de repost some sozinha; só a "self" continua na tela.
     await expect(allCardsForPost).toHaveCount(1);
