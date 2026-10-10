@@ -24,7 +24,7 @@ const PUBLIC_BY_DESIGN = new Set([
   "catalog/route.ts",
   "feed/trending-posts/route.ts",
   "readings/route.ts", // kana/furigana do texto enviado (com limite por IP)
-  "news/route.ts", // notícias da temporada (leitura pública; "following" confere a sessão)
+  "posts/news/route.ts", // notícias do NewsHub (leitura pública; "following" confere a sessão)
   "synopsis/route.ts", // sinopse traduzida do nosso catálogo (com limite por IP)
   "hashtags/route.ts", // populares e sugestões (só metadados)
   "hashtags/[key]/route.ts", // página pública da hashtag (só metadados e contagem)

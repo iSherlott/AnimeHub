@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { currentSeason } from "@/lib/anilist";
 import { getJikanAnimeNews, JikanError, type JikanNewsItem } from "@/lib/jikan";
 import { getSeasonalCatalog } from "@/lib/seasonalCatalog";
+import { publishNewsPosts } from "@/lib/newsHub";
 import { fetchNewsFeed, matchFeedToAnimes, NEWS_FEED_SOURCE, type FeedItem } from "@/lib/newsRss";
 import { startOfDayInZone, DEFAULT_TIME_ZONE } from "@/lib/timeZone";
 
@@ -157,10 +158,13 @@ export async function runNewsSync(options: { trigger: "schedule" | "manual"; adm
       if (jikanStreak >= JIKAN_GIVE_UP_AFTER) note += " Jikan indisponível; parei de tentar nesta execução.";
     }
 
+    // Cada notícia nova vira uma publicação do NewsHub (mesmo cartão do feed, com a # da obra).
+    const posts = await publishNewsPosts(now);
+
     await prisma.animeNews.deleteMany({ where: { publishedAt: { lt: new Date(now.getTime() - KEEP_DAYS * 86400_000) } } });
 
     const result: "OK" | "PARTIAL" | "ERROR" = failed === 0 ? "OK" : fetched > 0 || sources.length > 0 ? "PARTIAL" : "ERROR";
-    const message = `${animes} ${animes === 1 ? "obra" : "obras"} da temporada ${season} ${seasonYear} · ${fetched} ${fetched === 1 ? "notícia nova" : "notícias novas"} · ${failed} ${failed === 1 ? "falha" : "falhas"}.${sources.length ? ` Fontes: ${sources.join(", ")}.` : ""}${animes === 0 ? " Nenhuma obra no catálogo da temporada." : ""}${note}`;
+    const message = `${animes} ${animes === 1 ? "obra" : "obras"} da temporada ${season} ${seasonYear} · ${fetched} ${fetched === 1 ? "notícia nova" : "notícias novas"} · ${posts} ${posts === 1 ? "publicação" : "publicações"} no feed · ${failed} ${failed === 1 ? "falha" : "falhas"}.${sources.length ? ` Fontes: ${sources.join(", ")}.` : ""}${animes === 0 ? " Nenhuma obra no catálogo da temporada." : ""}${note}`;
     await prisma.newsRun.update({ where: { id: run.id }, data: { status: result, finishedAt: new Date(), animes, fetched, failed, message } });
     await prisma.adminLog
       .create({

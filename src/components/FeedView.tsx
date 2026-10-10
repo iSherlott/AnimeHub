@@ -2,12 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import NextLink from "next/link";
-import { useRouter } from "next/navigation";
 import { Alert, Box, Button, Link as MuiLink, Stack, Tab, Tabs, Typography } from "@mui/material";
-import { PostCard } from "@/components/PostCard";
+import { PostFeedList } from "@/components/PostFeedList";
 import { FollowToggle } from "@/components/FollowToggle";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
-import { quoteHref } from "@/lib/publishLinks";
+import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
 import type { PostDTO } from "@/lib/postDto";
 
 type FeedTab = "recommended" | "following" | "recent";
@@ -28,12 +27,11 @@ const EXPLAINERS: Record<FeedTab, string[]> = {
 /**
  * Feed da Comunidade (Figma `13:41181` / `13:41417` / `13:41628`): abas Para
  * você · Seguindo · Recentes com texto explicando a ordem, publicações sem
- * cartão e "Ver mais conversas". A criação de publicação fica na página
+ * cartão e rolagem infinita. A criação de publicação fica na página
  * própria `/publicar` (botão "+ Nova publicação" do topo).
  */
 export function FeedView() {
   const user = useCurrentUser();
-  const router = useRouter();
   const loggedOut = user === null;
   const [tab, setTab] = useState<FeedTab>("recommended");
   const [posts, setPosts] = useState<PostDTO[]>([]);
@@ -162,44 +160,8 @@ export function FeedView() {
       .finally(() => setLoadingMore(false));
   }, [tab, cursor, offset, since, loadPage]);
 
-  function handlePostDeleted(id: string) {
-    setPosts((prev) => prev.filter((p) => p.id !== id));
-  }
-
-  // O MESMO post pode aparecer 2x nesta página (uma vez como ele mesmo,
-  // outra como repost de alguém — ver src/lib/postFeedDto.ts), então
-  // contagem de comentário, repost, curtida e denúncia precisam ser
-  // atualizadas em TODA entrada com esse `id` (achados das 18ª–20ª rodadas
-  // de auditoria, Epic 18).
-  const handleCommentCountChange = useCallback((postId: string, count: number) => {
-    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, commentCount: count } : p)));
-  }, []);
-
-  // `confirmed` distingue a atualização otimista (reversível) da confirmação
-  // do servidor (só aí é seguro remover do feed a entrada "eu repostei"
-  // que acabou de ser desfeita).
-  const handleRepostChange = useCallback(
-    (postId: string, reposted: boolean, confirmed: boolean) => {
-      setPosts((prev) => {
-        const updated = prev.map((p) => (p.id === postId ? { ...p, repostedByMe: reposted } : p));
-        if (!confirmed || reposted || !user) return updated;
-        return updated.filter((p) => !(p.id === postId && p.repostedBy?.id === user.id));
-      });
-    },
-    [user]
-  );
-
-  const handleLikeChange = useCallback((postId: string, liked: boolean, likeCount: number) => {
-    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, likedByMe: liked, likeCount } : p)));
-  }, []);
-
-  const handleReportChange = useCallback((postId: string, reported: boolean) => {
-    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, reportedByMe: reported } : p)));
-  }, []);
-
-  function handleQuote(post: PostDTO) {
-    router.push(quoteHref(post));
-  }
+  // Rolagem infinita: o sentinela no fim da lista pede a próxima página antes de ela chegar à tela.
+  const { ref: sentinelRef, supported: infiniteSupported } = useInfiniteScroll(loadMore, hasMore && !loading && !loadFailed, posts.length);
 
   const timeStyle = tab === "recommended" ? "relative" : "clock";
 
@@ -266,36 +228,38 @@ export function FeedView() {
         </Box>
       ) : (
         <Box>
-          {posts.map((post) => (
-            // Um repost resolve pro MESMO `post.id` do original — a chave
-            // precisa diferenciar por QUEM repostou (ou "self") pro React não
-            // ver 2 filhos com a mesma key (achado de verificação ao vivo,
-            // Epic 25).
-            <PostCard
-              key={`${post.id}:${post.repostedBy?.id ?? "self"}`}
-              post={post}
-              timeStyle={timeStyle}
-              followingLabel={tab === "following"}
-              onDeleted={handlePostDeleted}
-              onQuote={handleQuote}
-              onCommentCountChange={handleCommentCountChange}
-              onRepostChange={handleRepostChange}
-              onLikeChange={handleLikeChange}
-              onReportChange={handleReportChange}
-            />
-          ))}
-          {hasMore && (
+          <PostFeedList posts={posts} setPosts={setPosts} timeStyle={timeStyle} followingLabel={tab === "following"} />
+          {hasMore && <Box ref={sentinelRef} data-testid="feed-sentinel" aria-hidden sx={{ height: 1 }} />}
+          {loadingMore && (
+            <Typography role="status" sx={{ mt: 2, fontSize: 14, color: "text.secondary" }}>
+              Carregando mais conversas…
+            </Typography>
+          )}
+          {hasMore && !infiniteSupported && (
             <Button
               onClick={loadMore}
               disabled={loadingMore}
               sx={{ mt: 3, bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}
             >
-              {loadingMore ? "Carregando…" : "Ver mais conversas"}
+              Ver mais conversas
             </Button>
           )}
+          {!hasMore && (
+            <Typography data-testid="feed-end" sx={{ mt: 3, fontSize: 13, color: "text.secondary", textAlign: "center" }}>
+              Você chegou ao fim do feed.
+            </Typography>
+          )}
           {loadFailed && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              Não foi possível carregar mais conversas. Tente de novo.
+            <Alert
+              severity="error"
+              sx={{ mt: 2 }}
+              action={
+                <Button color="inherit" size="small" onClick={() => { setLoadFailed(false); loadMore(); }}>
+                  Tentar de novo
+                </Button>
+              }
+            >
+              Não foi possível carregar mais conversas.
             </Alert>
           )}
         </Box>

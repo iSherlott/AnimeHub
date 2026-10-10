@@ -939,9 +939,12 @@ model AnimeNews {
   publishedAt DateTime
   source      String   @default("MyAnimeList")
   fetchedAt   DateTime @default(now())
+  /// Publicação do NewsHub que já mostra esta notícia (null = ainda não publicada).
+  postId      String?
 
   @@unique([anilistId, url])
   @@index([publishedAt])
+  @@index([postId])
 }
 
 /** Histórico/lock das execuções do serviço de notícias (Admin → Scrapers). */
