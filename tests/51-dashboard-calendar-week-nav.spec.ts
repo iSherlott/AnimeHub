@@ -2,22 +2,12 @@ import { test, expect } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { TEST_USER_EMAIL } from "./test-auth";
+import { todayAtNoonSaoPaulo as todayAtNoon } from "./test-time";
 
 // F5 (D-05/D-07/D-08): Dashboard "Seu dia, em anime.", semana segunda→domingo,
 // horário antes de "EP", rótulo de fuso e navegação do Figma (13:41078).
 const OWNED_TODAY_ID = 906000;
 const NOT_OWNED_TODAY_ID = 906001;
-
-// Meio-dia de HOJE em America/Sao_Paulo (fuso padrão do app e do playwright.config),
-// independente do fuso da máquina (o runner de CI é UTC). O Brasil não tem horário
-// de verão desde 2019, então São Paulo é UTC-3 o ano todo.
-function todayAtNoon(): Date {
-  const [y, m, d] = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" })
-    .format(new Date())
-    .split("-")
-    .map(Number);
-  return new Date(Date.UTC(y, m - 1, d, 15, 0, 0));
-}
 
 test.describe("Dashboard, calendário e navegação", () => {
   let prisma: PrismaClient;

@@ -2,15 +2,11 @@ import { test, expect } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { TEST_USER_EMAIL } from "./test-auth";
+import { todayAtNoonSaoPaulo as todayAtNoon } from "./test-time";
 
 // anilistId fora da faixa usada por outras fixtures.
 const OWNED_ANILIST_ID = 903000;
 const OTHER_ANILIST_ID = 903001;
-
-function todayAtNoon(): Date {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
-}
 
 test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover", () => {
   let ownedAnimeId: string;
