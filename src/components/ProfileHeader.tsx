@@ -1,23 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import NextLink from "next/link";
-import { Box, Button, Stack, Tooltip, Typography } from "@mui/material";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import { ProfileEditDialog } from "@/components/ProfileEditDialog";
+import { Box, Stack, Tooltip, Typography } from "@mui/material";
 import { AvatarUploader } from "@/components/AvatarUploader";
-import { BioEditor } from "@/components/BioEditor";
 import { FollowToggle } from "@/components/FollowToggle";
-import { UserAvatar } from "@/components/UserAvatar";
+import { LinkButton } from "@/components/LinkButton";
+import { ProfileEditDialog } from "@/components/ProfileEditDialog";
 import { ProfileSafetyMenu } from "@/components/ProfileSafetyMenu";
+import { UserAvatar } from "@/components/UserAvatar";
 
 /**
- * Avatar + nome + botão Seguir + contadores + bio, num componente
- * cliente só pra poder ajustar "N seguidores" otimisticamente junto do
- * toggle — sem isso, o contador ficava visivelmente parado até um
- * reload inteiro da página (achado real da 3ª rodada de auditoria,
- * Epic 18). Avatar/bio editáveis só aparecem quando `isOwnProfile`
- * (Epic 28) — não existe edição de perfil alheio.
+ * Bloco de identidade do perfil (Figma `13:42598` / `13:42736`): avatar,
+ * nome, @identificador, bio, contagens e ações. Cliente só para ajustar
+ * "N seguidores" otimisticamente junto do toggle de seguir — sem isso o
+ * contador ficava parado até um reload (achado da 3ª rodada, Epic 18).
+ * Avatar editável só aparece em `isOwnProfile` (Epic 28).
  */
 export function ProfileHeader({
   userId,
@@ -47,74 +44,53 @@ export function ProfileHeader({
   const [followerCount, setFollowerCount] = useState(initialFollowerCount);
 
   return (
-    <Stack direction="row" spacing={2.5} sx={{ alignItems: "flex-start", mb: 3 }}>
+    <Stack direction="row" spacing={3} sx={{ alignItems: "flex-start" }}>
       {isOwnProfile ? (
         <AvatarUploader userId={userId} displayName={displayName} avatarUrl={avatarUrl} />
       ) : (
-        <UserAvatar id={userId} displayName={displayName} avatarUrl={avatarUrl} size={96} />
+        <UserAvatar id={userId} displayName={displayName} avatarUrl={avatarUrl} size={64} />
       )}
-      <Box sx={{ minWidth: 0, flex: 1 }}>
-        <Stack
-          direction="row"
-          spacing={2}
-          sx={{ alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", mb: 1 }}
-        >
-          <Typography variant="h4" component="h1" sx={{ textTransform: "uppercase" }}>
+      <Box sx={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+        <Box>
+          <Typography component="h2" sx={{ fontSize: 26, lineHeight: 1.3 }}>
             {displayName}
           </Typography>
-          {!isOwnProfile &&
-            (viewerLoggedIn ? (
-              <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
-                <FollowToggle
-                  userId={userId}
-                  initialFollowing={initialFollowing}
-                  onChange={(following) => setFollowerCount((c) => c + (following ? 1 : -1))}
-                />
-                <ProfileSafetyMenu userId={userId} displayName={displayName} />
-              </Stack>
-            ) : (
-              <Tooltip title="Entre para seguir">
-                <span>
-                  <FollowToggle userId={userId} initialFollowing={false} disabled />
-                </span>
-              </Tooltip>
-            ))}
-        </Stack>
-        {handle && (
-          <Typography variant="body2" sx={{ color: "text.secondary", mb: 0.5 }} data-testid="profile-handle">
-            @{handle}
-          </Typography>
-        )}
-        {isOwnProfile && (
-          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1, mb: 1.5 }}>
-            <ProfileEditDialog displayName={displayName} handle={handle} />
-            <Button component={NextLink} href="/minha-lista" size="small" variant="outlined" startIcon={<LockOutlinedIcon />}>
-              Minha Lista privada
-            </Button>
-            <Button component={NextLink} href="/" size="small" variant="contained">
-              + Nova publicação
-            </Button>
-          </Stack>
-        )}
-        <Typography variant="body2" sx={{ color: "text.secondary", mb: 1 }}>
-          {postCount} {postCount === 1 ? "post" : "posts"} · {followerCount}{" "}
-          {followerCount === 1 ? "seguidor" : "seguidores"} · {followingCount} seguindo
+          {handle && (
+            <Typography data-testid="profile-handle" sx={{ fontSize: 14, color: "text.secondary" }}>
+              @{handle}
+            </Typography>
+          )}
+        </Box>
+        {bio && <Typography sx={{ fontSize: 16, whiteSpace: "pre-wrap" }}>{bio}</Typography>}
+        <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+          {followerCount} {followerCount === 1 ? "seguidor" : "seguidores"} · {followingCount} seguindo · {postCount}{" "}
+          {postCount === 1 ? "publicação" : "publicações"}
         </Typography>
-        {bio && !isOwnProfile && (
-          <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-            {bio}
-          </Typography>
-        )}
-        {isOwnProfile && (
-          <>
-            {bio && (
-              <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mb: 0.5 }}>
-                {bio}
-              </Typography>
-            )}
-            <BioEditor bio={bio} />
-          </>
-        )}
+        <Stack direction="row" sx={{ flexWrap: "wrap", gap: 2 }}>
+          {isOwnProfile ? (
+            <>
+              <LinkButton href="/publicar" variant="contained">
+                + Nova publicação
+              </LinkButton>
+              <ProfileEditDialog displayName={displayName} handle={handle} bio={bio} />
+            </>
+          ) : viewerLoggedIn ? (
+            <>
+              <FollowToggle
+                userId={userId}
+                initialFollowing={initialFollowing}
+                onChange={(following) => setFollowerCount((c) => c + (following ? 1 : -1))}
+              />
+              <ProfileSafetyMenu userId={userId} displayName={displayName} />
+            </>
+          ) : (
+            <Tooltip title="Entre para seguir">
+              <span>
+                <FollowToggle userId={userId} initialFollowing={false} disabled />
+              </span>
+            </Tooltip>
+          )}
+        </Stack>
       </Box>
     </Stack>
   );

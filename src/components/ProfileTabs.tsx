@@ -20,6 +20,7 @@ export function ProfileTabs({ userId, isOwnProfile }: { userId: string; isOwnPro
       <UserPostList
         key={tab}
         userId={userId}
+        timeStyle="clock"
         params={tab === "discussions" ? { kind: "discussions" } : undefined}
         emptyText={
           tab === "discussions"

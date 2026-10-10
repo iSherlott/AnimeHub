@@ -4,7 +4,6 @@ import { useId, useState, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import BlockIcon from "@mui/icons-material/Block";
 import FlagIcon from "@mui/icons-material/Flag";
-import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import {
   Alert,
   Button,
@@ -13,11 +12,9 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  IconButton,
   ListItemIcon,
   Menu,
   MenuItem,
-  Tooltip,
 } from "@mui/material";
 import { ReportDialog } from "@/components/ReportDialog";
 
@@ -53,19 +50,16 @@ export function ProfileSafetyMenu({ userId, displayName }: { userId: string; dis
 
   return (
     <>
-      <Tooltip title="Denunciar / bloquear">
-        <IconButton
-          id={buttonId}
-          size="small"
-          aria-label="Denunciar / bloquear"
-          aria-haspopup="true"
-          aria-controls={anchorEl ? menuId : undefined}
-          aria-expanded={anchorEl ? "true" : undefined}
-          onClick={(e: MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget)}
-        >
-          <MoreHorizIcon />
-        </IconButton>
-      </Tooltip>
+      <Button
+        id={buttonId}
+        aria-haspopup="true"
+        aria-controls={anchorEl ? menuId : undefined}
+        aria-expanded={anchorEl ? "true" : undefined}
+        onClick={(e: MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget)}
+        sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}
+      >
+        ··· Denunciar / bloquear
+      </Button>
       <Menu
         id={menuId}
         anchorEl={anchorEl}

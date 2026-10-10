@@ -77,8 +77,8 @@ export function AvatarUploader({
 
   return (
     <Box>
-      <Box sx={{ position: "relative", width: 96, height: 96 }}>
-        <UserAvatar id={userId} displayName={displayName} avatarUrl={avatarUrl} size={96} />
+      <Box sx={{ position: "relative", width: 64, height: 64 }}>
+        <UserAvatar id={userId} displayName={displayName} avatarUrl={avatarUrl} size={64} />
         <IconButton
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
@@ -86,8 +86,10 @@ export function AvatarUploader({
           size="small"
           sx={{
             position: "absolute",
-            right: -4,
-            bottom: -4,
+            right: -12,
+            bottom: -12,
+            minWidth: 36,
+            minHeight: 36,
             bgcolor: "background.paper",
             border: 1,
             borderColor: "divider",

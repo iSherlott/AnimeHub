@@ -56,10 +56,10 @@ export function FollowToggle({
     <Button
       onClick={toggle}
       disabled={saving || disabled}
-      variant={following ? "outlined" : "contained"}
-      size="small"
+      variant="contained"
+      sx={following ? { bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } } : undefined}
     >
-      {following ? "Seguindo" : "Seguir"}
+      {following ? "Seguindo" : "+ Seguir perfil"}
     </Button>
   );
 }
