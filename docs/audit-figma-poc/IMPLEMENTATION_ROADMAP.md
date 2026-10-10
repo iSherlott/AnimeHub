@@ -196,3 +196,45 @@ no banco de desenvolvimento **ainda não foram aplicadas** (execução bloqueada
 | F13 Admin de dados | **13a feita**; 13b–13e **bloqueadas** (D-30/D-17) | Execuções (`IngestionRun`) e Catálogo Franquia→Produção, somente leitura; teste 60. Importação por HTML, matching, conflitos, overrides e scrapers **não** iniciados |
 | F14 Visual/acessibilidade | **Feita** (parcial) | Skip-link, foco global, alvos ≥ 44 px em ícones, contraste AA (primário claro para texto), `<h1>` na Comunidade, auditoria axe em 11 telas; teste 61. **Adiado:** biblioteca de estados e tokens do Figma como fonte única (GAP-V-16), centralização em 1920 |
 | F15 Regressão/CI | **Parcial** | Workflow `.github/workflows/ci.yml` (tipos, lint, unit, Playwright+axe); suíte de regressão = suíte atual. **Não feito:** testes de usabilidade VT-U com pessoas e medição das metas ≤ 2 s / ≤ 10 s (exigem participantes/instrumentação) |
+
+## 6. Redesenho rev.3 do Figma (atualizado em 2026-10-10)
+
+O Figma foi revisado de novo (páginas `10:41`…`10:45`). Esta rodada leva o app às telas novas; **nada foi enviado a remoto** e as migrações novas
+(`20261010130000_add_admin_import_pipeline`) são aplicadas no banco de testes, mas **ainda não** no de desenvolvimento.
+
+| Tela / fluxo | Estado | Observações |
+| --- | --- | --- |
+| Explorar `8:1361`, Busca `8:1606` | **Feita** | Filtros em linha (gênero/temporada/ano) + modal "Mais filtros" com rascunho (Esc/Cancelar não aplica), destaque da temporada, "Em destaque", "Novas histórias, outros tempos" e chips de temporadas; a busca vira "Resultado da busca" com "Seu próximo lançamento". Cartões nunca inventam horário (`exploreGroups.ts`). **Lacuna:** o filtro "Tipo" depende de `format` no catálogo (não existe em `CatalogEntry`). |
+| Temporada `8:1733` | **Feita** | `/temporada/[slug]` (`autumn2026`): "Em exibição" × "Estreias e datas a confirmar", filtros de gênero/status, "Todas as temporadas". |
+| Calendário `8:2106` + preview `28:1940` | **Feita** | Colunas por dia em ordem de horário (sem eixo de horas), escala ultrawide em `em`, "Previsão atrasada", painéis "Sem horário definido"/"Data não definida" e "Adiado" derivados do catálogo (D-25: dia 1 = data parcial, nunca tratada como exata). |
+| Login `8:2371`, Cadastro | **Feita** | Painel de arte + formulário; senha com mostrar/ocultar. A arte é um degradê CSS (o asset do Figma é ilustrativo). |
+| Detalhe `8:1953` | **Mantida** (rev.2) | Já segue o Figma 14; a posição das abas ainda difere (abas antes da sinopse). |
+| Dashboard `8:2442`, Minha Lista `8:2608` | **Feita** | Contadores, linhas com horário/episódio, "Depois de hoje", "Atualizações da sua lista"; Minha Lista agrupa por data e leva atrasados/adiados/sem horário/sem data a painéis (`myListState.ts`). **Pendente:** "+ Discussões sobre meus animes" (depende de D-23). |
+| Estados `10:44` | **Feita** | `StatePanels.tsx`: `EmptyState`, `Notice`/`ErrorNotice`, `ConfirmDialog` (foco em Cancelar, "Efeito da ação", "Confirmando…"); Loading com esqueletos na geometria dos cartões. |
+| Admin `10:43` (11 telas) | **Feita** (com limites) | Casca com barra lateral; Dashboard, Catálogo, Importações (HTML colado → prévia), Resultado, Matching (score ponderado), Conflitos, Overrides (aplicados no calendário e na Minha Lista), Scrapers, Jobs, Job Detail, Logs. Pipeline em `src/lib/adminImport/`. A área antiga (convites, usuários, denúncias) foi para `/admin/acesso`. |
+| Fundações, Componentes, Padrões, Protótipos (`10:35`…`10:40`, `10:45`, `13:44907`…`13:44911`) | **Conferidas** | São pranchas de especificação, não telas: tokens e componentes já vivem em `muiTheme.ts`/`globals.css` e nos componentes citados acima. |
+
+**Política de coleta (D-30) preservada:** o "Scrapers" do Figma NÃO coleta sites de terceiros. A fonte AniDB é o HTML colado por um administrador
+(tratado como texto, com origem, versão do parser e job registrados) e o calendário continua vindo da API pública da AniList via `calendar-loader`.
+Não há botão "Executar"; a tela mostra saúde, histórico e a razão.
+
+**Limites conhecidos do Admin:** o commit vincula `Production.anidbId` e cria `CatalogEntry` (fonte `anidb`) para registros novos; não cria `Production`
+(exige `anilistId`). Overrides valem por episódio (`airingAt`) e não alcançam o serviço `notifier`.
+
+### 6.1 Ajustes pós-redesenho (2026-10-10)
+
+- **Preview do calendário:** não trava mais a rolagem da página (`disableScrollLock`); "+ Acompanhar" adiciona direto à lista (`POST /api/anime`) e o item da grade passa a contar como da lista.
+- **Onde assistir:** `Production.streamingLinksJson` (links `STREAMING` da AniList, só http/https, sem desativados) aparece em `/obra/[id]` e em `/anime/[id]`; produções antigas são reconsultadas uma vez.
+- **Imagens dos episódios:** `EpisodeImage` + job diário às 00:00 America/Sao_Paulo no `cache-updater` (recupera o dia se o serviço estava fora do ar) e botão "Executar agora" em Admin → Scrapers. Fonte: API pública da Kitsu pelo mapeamento oficial AniList → Kitsu (não é coleta de site, D-30 segue valendo). Sem imagem do episódio, o calendário mostra a capa do anime. Migração `20261010150000`.
+
+### 6.2 Ajustes de uso real (2026-10-10)
+
+- **Importação da temporada (AniDB):** o parser agora lê a listagem real do AniDB (caixas `g_bubble box`: nome, "25th September", "TV Series, 12 eps", sinopse e ícones de streaming); o ano vem da temporada do lote. O contrato `<article>` continua aceito (ParserVersion 2.0.0). O matching considera as produções **e** o catálogo da temporada (AniList) — obras ainda sem página entram como candidato `ce:<anilistId>` e a `Production` só é criada no commit. O commit leva sinopse e sites de streaming do AniDB (`ImportRecord.description/linksJson/episodes/imageUrl`); os sites sobrevivem à atualização pela AniList (`mergeStreamingLinks`).
+- **Catálogo completo:** `getSeasonalAnime` pagina (50 por página, até 400) e inclui TV, curtas, filmes, ONA, OVA e especiais; `idMal` fica em `CatalogEntry.malId`. Admin → Catálogo lista também as obras do catálogo da temporada que ainda não têm produção.
+- **Kana/Furigana:** `/api/readings` (kuroshiro, cache `TitleReading`) alimenta `useTitleLines`/`PrimaryTitle` — "kanji + kana" mostra o original e a leitura em kana; "kanji + furigana" mostra `<ruby>`. Antes caía no romaji.
+- **Sinopse no idioma da preferência:** `/api/synopsis` traduz uma vez (MyMemory, ou LibreTranslate via `LIBRETRANSLATE_URL`) e guarda em `SynopsisTranslation`. Português segue os títulos em português; inglês mostra o original; com títulos em japonês vale `User.synopsisLanguage` (padrão português; Configurações → "Idioma da sinopse"). Falha de tradução mostra o original e não grava nada.
+- **Onde eu assisto:** em `/obra/[id]` quem acompanha a obra cadastra o site onde assiste (`PlatformLinksManager`); o link abre direto no site.
+- **Calendário:** "AO VIVO" só para o que está no ar (sem selo para os demais); o destaque vermelho só aparece na aba "Todos".
+- **Notificações:** o notificador avisa lançamentos das próximas 24 h (janela `notifyRangeForNow`), e o sino mostra "EP03 vai ao ar · hoje às HH:mm".
+- **Navegação:** "Minha lista" do menu virou "Meus animes"; "Administração" saiu do menu (acesso pelo menu do perfil); o painel ganhou "Voltar ao Anime Hub"; botão flutuante "Voltar ao topo".
+- **Notícias (serviço secundário):** `services/news-fetcher` (porta 4005, `NEWS_FETCHER_URL`) busca na Jikan (MyAnimeList) as notícias das obras da temporada atual — chamado por Admin → Scrapers → "Buscar notícias" e uma vez por dia. Resultado em `AnimeNews`/`NewsRun`; Comunidade → Notícias (`/noticias`) lista por "Todas", "Que sigo" e busca. Migração `20261010170000`.
