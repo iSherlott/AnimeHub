@@ -4,7 +4,6 @@ import { LinkButton } from "@/components/LinkButton";
 import { Header } from "@/components/Header";
 import { FeedView } from "@/components/FeedView";
 import { CommunitySearchBox } from "@/components/CommunitySearchBox";
-import { CommunityNav } from "@/components/CommunityNav";
 import { CommunitySidebar } from "@/components/CommunitySidebar";
 import { PageContainer, PageIntro, TwoColumn } from "@/components/PageShell";
 
@@ -29,7 +28,6 @@ export default function Home() {
             </LinkButton>
           }
         />
-        <CommunityNav current="feed" />
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", lg: "minmax(0,1fr) 320px" }, columnGap: 5, rowGap: 2, alignItems: "start" }}>
           <CommunitySearchBox />
           <Box sx={{ pt: { lg: "26px" }, display: "flex", flexDirection: "column", gap: 1 }}>

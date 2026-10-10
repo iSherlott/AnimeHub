@@ -294,8 +294,12 @@ model Hashtag {
   display   String
   /// WORK | SEASON | GENRE | TOPIC (ver src/lib/hashtags.ts#classifyHashtag).
   kind      String        @default("TOPIC")
+  /// Obra à qual a # está vinculada (as # das notícias do NewsHub sempre têm uma).
+  anilistId Int?
   createdAt DateTime      @default(now())
   posts     PostHashtag[]
+
+  @@index([anilistId])
 }
 
 model PostHashtag {

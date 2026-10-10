@@ -98,30 +98,69 @@ export function groupByUrl(rows: Unpublished[]): Unpublished[][] {
   return Array.from(byUrl.values());
 }
 
+type AnimeForNews = {
+  anilistId: number | null;
+  titleRomaji: string;
+  titleEnglish: string | null;
+  coverImage: string | null;
+  bannerImage: string | null;
+};
+
+/** Imagem da notícia: a da própria matéria; sem ela, o banner (ou a capa) da obra — toda notícia sai com imagem. */
+export function newsImageFor(newsImage: string | null, anime: Pick<AnimeForNews, "coverImage" | "bannerImage">): string | null {
+  const candidates = [newsImage, anime.bannerImage, anime.coverImage];
+  return candidates.find((u): u is string => Boolean(u) && /^https:\/\//i.test(u as string)) ?? null;
+}
+
+/** Amarra a # ao anime (Hashtag.anilistId): "obra em contexto" e a ligação da tag com a obra não dependem de adivinhação. */
+async function linkTagToAnime(tagKey: string, anilistId: number): Promise<void> {
+  await prisma.hashtag.updateMany({ where: { key: tagKey, anilistId: null }, data: { anilistId, kind: "WORK" } });
+}
+
 /**
- * Publica no feed (como NewsHub) as notícias que ainda não viraram publicação.
- * Idempotente: `AnimeNews.postId` marca o que já foi publicado.
+ * Publica no feed (como NewsHub) as notícias que ainda não viraram publicação:
+ * cada uma sai com imagem e com a # de um anime, e essa # fica vinculada ao anime.
+ * Idempotente: `AnimeNews.postId` marca o que já foi publicado. Também corrige
+ * publicações antigas do NewsHub que ficaram sem imagem ou com # sem vínculo.
  */
 export async function publishNewsPosts(now: Date = new Date()): Promise<number> {
   const since = new Date(now.getTime() - PUBLISH_WINDOW_DAYS * 86400_000);
-  const pending = await prisma.animeNews.findMany({ where: { postId: null, publishedAt: { gte: since } }, orderBy: { publishedAt: "asc" } });
-  if (pending.length === 0) return 0;
-
   const hub = await ensureNewsHub();
-  const ids = Array.from(new Set(pending.map((p) => p.anilistId)));
-  const catalog = await prisma.catalogEntry.findMany({ where: { anilistId: { in: ids } }, select: { anilistId: true, titleRomaji: true, titleEnglish: true, coverImage: true } });
+  const pending = await prisma.animeNews.findMany({ where: { postId: null, publishedAt: { gte: since } }, orderBy: { publishedAt: "asc" } });
+
+  const existing = await prisma.post.findMany({ where: { userId: hub.id, deletedAt: null, anilistId: { not: null } }, select: { id: true, anilistId: true, imageUrls: true } });
+  const ids = Array.from(new Set([...pending.map((p) => p.anilistId), ...existing.map((p) => p.anilistId as number)]));
+  const catalog = ids.length
+    ? await prisma.catalogEntry.findMany({ where: { anilistId: { in: ids } }, select: { anilistId: true, titleRomaji: true, titleEnglish: true, coverImage: true, bannerImage: true } })
+    : [];
   const animeById = new Map(catalog.map((c) => [c.anilistId as number, c]));
+
+  // Reparo das já publicadas: imagem e vínculo da #.
+  for (const post of existing) {
+    const anime = animeById.get(post.anilistId as number);
+    if (!anime) continue;
+    if (post.imageUrls.length === 0) {
+      const image = newsImageFor(null, anime);
+      if (image) await prisma.post.update({ where: { id: post.id }, data: { imageUrls: [image] } });
+    }
+    const tag = animeHashtagFor(anime);
+    if (tag && anime.anilistId !== null) await linkTagToAnime(tag.slice(1), anime.anilistId);
+  }
 
   let published = 0;
   for (const group of groupByUrl(pending)) {
     const first = group[0];
-    const animes = group.map((g) => animeById.get(g.anilistId)).filter((a): a is NonNullable<typeof a> => Boolean(a));
-    const primary = animes[0];
-    if (!primary) continue; // obra fora do catálogo: sem # confiável, não publica
-    const tags = animes.map((a) => animeHashtagFor(a)).filter((t): t is string => Boolean(t));
-    if (tags.length === 0) continue;
+    // Cada obra citada com a sua # (a ligação # → obra não pode se perder no filtro).
+    const pairs = group
+      .map((g) => ({ anime: animeById.get(g.anilistId) }))
+      .filter((p): p is { anime: NonNullable<typeof p.anime> } => Boolean(p.anime))
+      .map((p) => ({ anime: p.anime, tag: animeHashtagFor(p.anime) }))
+      .filter((p): p is { anime: (typeof p)["anime"]; tag: string } => Boolean(p.tag) && p.anime.anilistId !== null);
+    const primary = pairs[0]?.anime;
+    if (!primary || primary.anilistId === null) continue; // sem obra no catálogo = sem # vinculada: não publica
 
-    const body = buildNewsPostBody({ title: first.title, excerpt: first.excerpt, url: first.url, source: first.source, hashtags: tags });
+    const body = buildNewsPostBody({ title: first.title, excerpt: first.excerpt, url: first.url, source: first.source, hashtags: pairs.map((p) => p.tag) });
+    const image = newsImageFor(first.imageUrl, primary);
     const post = await prisma.post.create({
       data: {
         userId: hub.id,
@@ -130,12 +169,13 @@ export async function publishNewsPosts(now: Date = new Date()): Promise<number> 
         animeTitleEnglish: primary.titleEnglish,
         animeCoverImage: primary.coverImage,
         body,
-        imageUrls: first.imageUrl && /^https:\/\//i.test(first.imageUrl) ? [first.imageUrl] : [],
+        imageUrls: image ? [image] : [],
         // A hora da publicação é a da notícia: o feed fica em ordem cronológica de verdade.
         createdAt: first.publishedAt > now ? now : first.publishedAt,
       },
     });
-    await linkHashtagsToPost(post.id, extractHashtags(body).slice(0, MAX_HASHTAGS_PER_POST), animes.flatMap((a) => [a.titleRomaji, a.titleEnglish]));
+    await linkHashtagsToPost(post.id, extractHashtags(body).slice(0, MAX_HASHTAGS_PER_POST), pairs.flatMap((p) => [p.anime.titleRomaji, p.anime.titleEnglish]));
+    for (const pair of pairs.slice(0, MAX_HASHTAGS_PER_POST)) await linkTagToAnime(pair.tag.slice(1), pair.anime.anilistId as number);
     await prisma.animeNews.updateMany({ where: { id: { in: group.map((g) => g.id) } }, data: { postId: post.id } });
     published += 1;
   }

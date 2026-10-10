@@ -40,7 +40,6 @@ const NAV_ITEMS: Array<{ href: string; label: string; match: (p: string) => bool
     label: "Comunidade",
     match: (p) =>
       p === "/" ||
-      p.startsWith("/noticias") ||
       p.startsWith("/publicar") ||
       p.startsWith("/buscar") ||
       p.startsWith("/hashtag") ||

@@ -30,15 +30,19 @@ export async function GET(_request: Request, { params }: Params) {
   // "Obra em contexto" (Figma 13:42068): só para hashtags do tipo OBRA, pela
   // produção mais citada nas publicações explicitamente associadas.
   let work: { anilistId: number; titleNative: string | null; titleRomaji: string; titleEnglish: string | null; format: string | null; seasonNumber: number; seasonYear: number | null } | null = null;
-  if (hashtag.kind === "WORK") {
-    const top = await prisma.post.groupBy({
-      by: ["anilistId"],
-      where: { deletedAt: null, anilistId: { not: null }, hashtags: { some: { hashtagId: hashtag.id } } },
-      _count: { _all: true },
-      orderBy: { _count: { anilistId: "desc" } },
-      take: 1,
-    });
-    const anilistId = top[0]?.anilistId;
+  if (hashtag.kind === "WORK" || hashtag.anilistId !== null) {
+    // Vínculo explícito (# das notícias) primeiro; senão, a obra mais citada nas publicações que a usam.
+    let anilistId = hashtag.anilistId;
+    if (anilistId === null) {
+      const top = await prisma.post.groupBy({
+        by: ["anilistId"],
+        where: { deletedAt: null, anilistId: { not: null }, hashtags: { some: { hashtagId: hashtag.id } } },
+        _count: { _all: true },
+        orderBy: { _count: { anilistId: "desc" } },
+        take: 1,
+      });
+      anilistId = top[0]?.anilistId ?? null;
+    }
     if (anilistId) {
       const p = await prisma.production.findUnique({ where: { anilistId } });
       if (p) {
@@ -51,6 +55,12 @@ export async function GET(_request: Request, { params }: Params) {
           seasonNumber: p.seasonNumber,
           seasonYear: p.seasonYear,
         };
+      } else {
+        // Obra do catálogo da temporada que ainda não tem produção: a página dela abre (e cria a produção) em /obra/<id>.
+        const c = await prisma.catalogEntry.findUnique({ where: { anilistId } });
+        if (c) {
+          work = { anilistId, titleNative: c.titleNative, titleRomaji: c.titleRomaji, titleEnglish: c.titleEnglish, format: null, seasonNumber: 1, seasonYear: c.seasonYear };
+        }
       }
     }
   }

@@ -1,4 +1,4 @@
-# IMPLEMENTATION_ROADMAP — Sequência sugerida por fatias verticais (rev.2)
+﻿# IMPLEMENTATION_ROADMAP — Sequência sugerida por fatias verticais (rev.2)
 
 > Auditoria de 2026-10-08, **revisão 2** (Figma completo inspecionado: D-01 resolvida; novos requisitos e decisões D-28…D-31 incorporados às fatias). **Isto é um plano, não uma autorização para implementar.** Nada aqui deve começar sem a
 > aprovação explícita do responsável pelo produto. Toda decisão marcada D-xx está em `OPEN_DECISIONS.md`; requisitos em
@@ -237,4 +237,4 @@ Não há botão "Executar"; a tela mostra saúde, histórico e a razão.
 - **Calendário:** "AO VIVO" só para o que está no ar (sem selo para os demais); o destaque vermelho só aparece na aba "Todos".
 - **Notificações:** o notificador avisa lançamentos das próximas 24 h (janela `notifyRangeForNow`), e o sino mostra "EP03 vai ao ar · hoje às HH:mm".
 - **Navegação:** "Minha lista" do menu virou "Meus animes"; "Administração" saiu do menu (acesso pelo menu do perfil); o painel ganhou "Voltar ao Anime Hub"; botão flutuante "Voltar ao topo".
-- **Notícias (serviço secundário):** `services/news-fetcher` (porta 4005, `NEWS_FETCHER_URL`) busca na Jikan (MyAnimeList) as notícias das obras da temporada atual — chamado por Admin → Scrapers → "Buscar notícias" e uma vez por dia. Resultado em `AnimeNews`/`NewsRun`; Comunidade → Notícias (`/noticias`) lista por "Todas", "Que sigo" e busca. Migração `20261010170000`.
+- **Notícias (serviço secundário):** `services/news-fetcher` (porta 4005, `NEWS_FETCHER_URL`) busca as notícias das obras da temporada atual no feed RSS do Anime News Network (ligado às obras pelo título) e na Jikan/MyAnimeList — chamado por Admin → Scrapers → "Buscar notícias" e uma vez por dia. Cada notícia vira uma **publicação comum do perfil NewsHub** (`@newshub`, conta sem login): mesmo cartão, curtir/comentar/repostar/denunciar, rolagem infinita no feed. Sai sempre **com imagem** (a da matéria; senão o banner/capa da obra) e com a **# de um anime, vinculada a ele** (`Hashtag.anilistId`; a página da # mostra "Obra em contexto" e leva a `/obra/<id>`, mesmo sem produção). Sem seção separada "Notícias" na Comunidade. Migrações `20261010170000`, `…190000` (`AnimeNews.postId`) e `…200000` (`Hashtag.anilistId`).
