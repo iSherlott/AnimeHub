@@ -1,107 +1,113 @@
 "use client";
 
-import { useState } from "react";
-import { Box, Button, Stack, Typography } from "@mui/material";
+import { useEffect, useMemo, useState } from "react";
+import { Box, Typography } from "@mui/material";
 import { CalendarEntryCard } from "@/components/CalendarEntryCard";
 import type { CalendarItem } from "@/lib/calendarItem";
+import { HOURS_PER_DAY, layoutDayEvents, minutesFromClock } from "@/lib/calendarGrid";
+import { formatTimeInZone } from "@/lib/timeZone";
 
-const OTHERS_PREVIEW_COUNT = 4;
+/** Altura de um bloco em `em` (64 px com a base de 14 px do Figma). */
+const BLOCK_HEIGHT_EM = 64 / 14;
 
-
+/**
+ * Uma coluna de dia da agenda semanal (Figma `8:2165`): cabeçalho "SEG 05"
+ * (hoje: "HOJE" em acento sobre fundo avermelhado) e a faixa de 24 horas com
+ * linhas de 2 em 2 horas. Cada lançamento é posicionado pelo horário local;
+ * blocos que se tocam dividem a largura. `--hh` (altura da hora) vem da grade.
+ */
 export function CalendarDayColumn({
   day,
   items,
-  showAll,
   isToday,
   timeZone,
 }: {
   day: Date;
   items: CalendarItem[];
-  showAll: boolean;
   isToday: boolean;
   /** Fuso em que o dia foi montado (instante 00:00 nesse fuso). */
   timeZone: string;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const weekday = new Intl.DateTimeFormat("pt-BR", { timeZone, weekday: "short" }).format(day).replace(".", "").toUpperCase();
+  const dayOfMonth = new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit" }).format(day);
 
-  const mine = items.filter((item) => item.inMyList);
-  const others = showAll ? items.filter((item) => !item.inMyList) : [];
-  const visibleOthers = expanded ? others : others.slice(0, OTHERS_PREVIEW_COUNT);
-  const hiddenCount = others.length - visibleOthers.length;
-  const totalCount = mine.length + others.length;
+  const placed = useMemo(() => {
+    const entries = items.map((item) => ({
+      item,
+      minutes: minutesFromClock(formatTimeInZone(new Date(item.airingAt), timeZone)),
+    }));
+    const layout = layoutDayEvents(entries.map((e) => e.minutes));
+    return entries.map((e, i) => ({ ...e, ...layout[i] }));
+  }, [items, timeZone]);
+
+  // Linha do "agora" (só no dia de hoje); calculada no cliente, após montar.
+  const [nowMinutes, setNowMinutes] = useState<number | null>(null);
+  useEffect(() => {
+    if (!isToday) return;
+    const update = () => setNowMinutes(minutesFromClock(formatTimeInZone(new Date(), timeZone)));
+    update();
+    const interval = setInterval(update, 60_000);
+    return () => clearInterval(interval);
+  }, [isToday, timeZone]);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-      <Stack
-        direction="row"
-        spacing={1}
+    <Box sx={{ display: "flex", flexDirection: "column", minWidth: 0 }} data-testid={`calendar-day-${weekday}`}>
+      <Box
         sx={{
-          alignItems: "baseline",
-          borderBottom: 2,
-          borderColor: isToday ? "primary.main" : "divider",
-          pb: 1,
+          height: "4.571em",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "0.286em",
+          bgcolor: isToday ? "#2c111b" : "background.paper",
+          borderTopLeftRadius: "0.857em",
+          borderTopRightRadius: "0.857em",
         }}
       >
-        <Typography variant="body2" className="font-display" sx={{ textTransform: "uppercase", color: isToday ? "primary.main" : "text.secondary" }}>
-          {new Intl.DateTimeFormat("pt-BR", { timeZone, weekday: "short" }).format(day).replace(".", "").toUpperCase()}
+        <Typography sx={{ fontSize: "0.929em", fontWeight: 700, lineHeight: 1.5, whiteSpace: "nowrap" }}>
+          {weekday} {dayOfMonth}
         </Typography>
-        <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          {new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit", month: "2-digit" }).format(day)}
-        </Typography>
-      </Stack>
+        {isToday && (
+          <Typography sx={{ fontSize: "0.714em", fontWeight: 700, lineHeight: 1.5, color: "primary.main" }}>HOJE</Typography>
+        )}
+      </Box>
 
-      {mine.length > 0 ? (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          {mine.map((item) => (
-            <CalendarEntryCard key={item.key} item={item} />
-          ))}
-        </Box>
-      ) : !showAll ? (
-        <Box sx={{ border: 1, borderStyle: "dashed", borderColor: "divider", bgcolor: "background.paper", px: 1, py: 2 }}>
-          <Typography variant="caption" sx={{ display: "block", textAlign: "center", lineHeight: 1.6, color: "text.secondary" }}>
-            Nada da sua lista
-            <br />
-            por aqui
-          </Typography>
-        </Box>
-      ) : null}
+      <Box
+        sx={{
+          position: "relative",
+          height: `calc(${HOURS_PER_DAY} * var(--hh))`,
+          bgcolor: isToday ? "#130d13" : "background.paper",
+          border: 1,
+          borderColor: "divider",
+          // Linhas de 2 em 2 horas (uma a cada 2 * --hh).
+          backgroundImage: "linear-gradient(to bottom, #272832 1px, transparent 1px)",
+          backgroundSize: "100% calc(2 * var(--hh))",
+        }}
+      >
+        {placed.map(({ item, minutes, lane, lanes }) => (
+          <CalendarEntryCard
+            key={item.key}
+            item={item}
+            style={{
+              top: `calc(${minutes / 60} * var(--hh))`,
+              height: `${BLOCK_HEIGHT_EM}em`,
+              left: `calc(${(lane / lanes) * 100}% + 0.357em)`,
+              width: `calc(${100 / lanes}% - 0.714em)`,
+            }}
+          />
+        ))}
 
-      {showAll && others.length > 0 && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
-          {mine.length > 0 && (
-            <Typography variant="caption" className="font-display" sx={{ mt: 0.5, textTransform: "uppercase", color: "text.secondary" }}>
-              Outros lançamentos
-            </Typography>
-          )}
-          {visibleOthers.map((item) => (
-            <CalendarEntryCard key={item.key} item={item} />
-          ))}
-          {hiddenCount > 0 && (
-            <Button
-              onClick={() => setExpanded(true)}
-              size="small"
-              sx={{ justifyContent: "flex-start", px: 0, minWidth: 0, fontSize: 10, color: "text.secondary" }}
-            >
-              + {hiddenCount} mais
-            </Button>
-          )}
-          {expanded && others.length > OTHERS_PREVIEW_COUNT && (
-            <Button
-              onClick={() => setExpanded(false)}
-              size="small"
-              sx={{ justifyContent: "flex-start", px: 0, minWidth: 0, fontSize: 10, color: "text.secondary" }}
-            >
-              Mostrar menos
-            </Button>
-          )}
-        </Box>
-      )}
-
-      {showAll && totalCount === 0 && (
-        <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          Nada previsto
-        </Typography>
-      )}
+        {isToday && nowMinutes !== null && (
+          <Box
+            aria-hidden
+            data-testid="calendar-now-line"
+            sx={{ position: "absolute", left: 0, right: 0, height: "1px", bgcolor: "primary.main", pointerEvents: "none", zIndex: 1 }}
+            style={{ top: `calc(${nowMinutes / 60} * var(--hh))` }}
+          />
+        )}
+      </Box>
     </Box>
   );
 }
+

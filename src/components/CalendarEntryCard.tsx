@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import NextLink from "next/link";
-import Image from "next/image";
 import { Box, Popover, Typography } from "@mui/material";
 import type { CalendarItem } from "@/lib/calendarItem";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
@@ -11,36 +10,32 @@ import { CalendarEntryPreview } from "@/components/CalendarEntryPreview";
 import { formatTimeInZone } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
 
-/** Reavalia a cada minuto — sem isso, um card aberto numa aba esquecida
+/** Reavalia a cada minuto — sem isso, um bloco aberto numa aba esquecida
  * ficaria com o selo "NO AR" preso muito depois da janela real ter passado. */
 const RECHECK_INTERVAL_MS = 60 * 1000;
 
-/** Atraso entre sair do card (ou do próprio preview) e fechar de verdade —
- * sem isso, mover o mouse do card até o botão de favoritar dentro do
+/** Atraso entre sair do bloco (ou do próprio preview) e fechar de verdade —
+ * sem isso, mover o mouse do bloco até o botão de favoritar dentro do
  * preview fecharia ele no meio do caminho. */
 const CLOSE_DELAY_MS = 150;
 
 /**
- * Uma linha só, pro item da lista (`inMyList`) e pros demais lançamentos —
- * antes eram 2 tratamentos bem diferentes (pôster 3:4 cheio vs. linha
- * pequena); trocados por 1 layout único, diferenciado só pela borda
- * esquerda (lote 2 do Epic 27 — pedido explícito do usuário: só um
- * destaque em volta, sem pôster grande nem selo flutuante).
+ * Bloco de lançamento posicionado na grade semanal (Figma `8:2181`):
+ * "20:00 · EP02" + título, barra lateral de 3 px; os da minha lista ganham o
+ * destaque de acento (fundo #2c111b + "✦ NOVO EPISÓDIO"). As medidas são em
+ * `em` (a grade escala com o monitor), e `style` traz topo/altura/faixa.
+ * Passar o mouse (ou focar) abre o preview com sinopse (lote 2 do Epic 27).
  */
-export function CalendarEntryCard({ item }: { item: CalendarItem }) {
+export function CalendarEntryCard({ item, style }: { item: CalendarItem; style?: CSSProperties }) {
   const { preference } = useTitlePreference();
   const title = resolveTitleText(preference, item) || "Sem título";
   const timeZone = useTimeZone();
   const time = formatTimeInZone(new Date(item.airingAt), timeZone);
 
-  // Começa false (em vez de calcular já no useState) e só decide de verdade
-  // dentro do efeito — esse componente é renderizado no servidor também, e
-  // o relógio do servidor pode discordar do navegador bem na borda da
-  // janela, o que causaria um mismatch de hidratação.
+  // Começa false e só decide de verdade dentro do efeito — esse componente é
+  // renderizado no servidor também, e o relógio do servidor pode discordar do
+  // navegador bem na borda da janela (mismatch de hidratação).
   const [airingNow, setAiringNow] = useState(false);
-  // Ver AnimeCard — mesma correção pro ícone quebrado cru numa URL de capa
-  // que 404 (achado real da 6ª rodada de auditoria, Epic 18).
-  const [coverBroken, setCoverBroken] = useState(false);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -64,7 +59,7 @@ export function CalendarEntryCard({ item }: { item: CalendarItem }) {
       closeTimer.current = null;
     }
   }
-  function openPreview(e: MouseEvent<HTMLElement>) {
+  function openPreview(e: MouseEvent<HTMLElement> | { currentTarget: HTMLElement }) {
     cancelClose();
     setAnchorEl(e.currentTarget);
   }
@@ -74,94 +69,61 @@ export function CalendarEntryCard({ item }: { item: CalendarItem }) {
   }
 
   const isInternal = Boolean(item.inMyList && item.animeId);
+  const href = isInternal ? `/anime/${item.animeId}` : `/obra/${item.anilistId}`;
   // Anúncio de leitor de tela pra role="status" dispara fora do contexto de
-  // onde o usuário está navegando — sem nomear o anime/episódio, um selo
-  // genérico "No ar agora" fica sem sentido quando escutado sozinho, ainda
-  // mais com vários cards podendo entrar na janela por perto um do outro.
+  // onde a pessoa está navegando — sem nomear o anime/episódio, um selo
+  // genérico "No ar agora" fica sem sentido quando escutado sozinho.
   const airingNowLabel = `${title}, episódio ${item.episode}, no ar agora`;
+  const highlighted = item.inMyList;
 
-  const content = (
+  return (
     <>
-      <Box sx={{ position: "relative", height: 60, width: 44, flexShrink: 0, overflow: "hidden", bgcolor: "background.default" }}>
-        {item.coverImage && !coverBroken ? (
-          <Image
-            src={item.coverImage}
-            alt=""
-            fill
-            sizes="44px"
-            style={{ objectFit: "cover" }}
-            onError={() => setCoverBroken(true)}
-          />
-        ) : null}
-      </Box>
-      <Box sx={{ minWidth: 0, flex: 1 }}>
-        <Typography
-          sx={{
-            fontSize: 13,
-            fontWeight: 700,
-            lineHeight: 1.3,
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-            color: "text.primary",
-          }}
-        >
-          {title}
-        </Typography>
-        <Typography sx={{ mt: 0.25, fontSize: 11, color: "text.secondary" }}>
-          {time} · EP {item.episode}
+      <Box
+        component={NextLink}
+        href={href}
+        data-testid={`calendar-entry-${item.key}`}
+        onMouseEnter={openPreview}
+        onMouseLeave={scheduleClose}
+        onFocus={(e: React.FocusEvent<HTMLElement>) => openPreview({ currentTarget: e.currentTarget })}
+        onBlur={scheduleClose}
+        style={style}
+        sx={{
+          position: "absolute",
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.143em",
+          overflow: "hidden",
+          boxSizing: "border-box",
+          p: "0.571em",
+          borderLeft: "3px solid",
+          borderColor: highlighted ? "primary.main" : "divider",
+          borderRadius: "0.571em",
+          bgcolor: highlighted ? "#2c111b" : "#171820",
+          color: "text.primary",
+          textDecoration: "none",
+          transition: "background-color 0.15s ease, outline-color 0.15s ease",
+          "&:hover": { bgcolor: highlighted ? "#3a1423" : "#1d1e28" },
+          // zIndex só no hover/foco para o bloco aberto ficar acima dos vizinhos.
+          "&:hover, &:focus-visible": { zIndex: 2 },
+        }}
+      >
+        <Typography component="span" sx={{ fontSize: "0.786em", lineHeight: 1.3 }} noWrap>
+          {time} · EP{String(item.episode).padStart(2, "0")}
           {airingNow && (
-            <Box
-              component="span"
-              role="status"
-              aria-label={airingNowLabel}
-              sx={{ ml: 0.5, fontWeight: 700, color: "error.main" }}
-            >
+            <Box component="span" role="status" aria-label={airingNowLabel} sx={{ ml: 0.5, fontWeight: 700, color: "primary.main" }}>
               · NO AR
             </Box>
           )}
         </Typography>
+        <Typography component="span" lang={item.titleNative && title === item.titleNative ? "ja" : undefined} sx={{ fontSize: "0.857em", lineHeight: 1.3 }} noWrap>
+          {title}
+        </Typography>
+        {highlighted && (
+          <Typography component="span" sx={{ fontSize: "0.643em", fontWeight: 700, color: "primary.main", whiteSpace: "nowrap" }}>
+            ✦ NOVO EPISÓDIO
+          </Typography>
+        )}
       </Box>
-    </>
-  );
-
-  const linkSx = {
-    display: "flex",
-    alignItems: "center",
-    gap: 1,
-    borderLeft: item.inMyList ? 3 : 1,
-    borderColor: item.inMyList ? "secondary.main" : "divider",
-    bgcolor: "background.paper",
-    p: 0.75,
-    textDecoration: "none",
-    transition: "background-color 0.15s ease",
-    "&:hover": { bgcolor: "background.default", borderColor: item.inMyList ? "secondary.main" : "primary.main" },
-  } as const;
-
-  return (
-    <>
-      {isInternal ? (
-        <Box
-          component={NextLink}
-          href={`/anime/${item.animeId}`}
-          sx={linkSx}
-          onMouseEnter={openPreview}
-          onMouseLeave={scheduleClose}
-        >
-          {content}
-        </Box>
-      ) : (
-        <Box
-          component={NextLink}
-          href={`/obra/${item.anilistId}`}
-          sx={linkSx}
-          onMouseEnter={openPreview}
-          onMouseLeave={scheduleClose}
-        >
-          {content}
-        </Box>
-      )}
       <Popover
         open={Boolean(anchorEl)}
         anchorEl={anchorEl}
