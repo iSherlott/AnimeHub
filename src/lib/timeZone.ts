@@ -107,3 +107,25 @@ export function dayKeyInZone(date: Date, timeZone: string): string {
 export function formatTimeInZone(date: Date, timeZone: string, locale = "pt-BR"): string {
   return new Intl.DateTimeFormat(locale, { timeZone, hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
 }
+
+/** "Sábado", "Segunda" — nome do dia no fuso, capitalizado e sem "-feira" (como no Figma). */
+export function weekdayName(date: Date, timeZone: string, locale = "pt-BR"): string {
+  const name = new Intl.DateTimeFormat(locale, { timeZone, weekday: "long" }).format(date).replace(/-feira$/, "");
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+/**
+ * Converte um horário de parede (`YYYY-MM-DDTHH:mm`, como o `<input type="datetime-local">`)
+ * no fuso dado para o instante UTC — respeitando horário de verão. `null` se inválido.
+ */
+export function zonedLocalToUtc(local: string, timeZone: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(local);
+  if (!m) return null;
+  const [y, mo, d, h, mi] = m.slice(1).map(Number);
+  const civil = Date.UTC(y, mo - 1, d, h, mi);
+  if (Number.isNaN(civil)) return null;
+  let guess = civil;
+  for (let i = 0; i < 3; i += 1) guess = civil - zoneOffsetMs(new Date(guess), timeZone);
+  const result = new Date(guess);
+  return Number.isNaN(result.getTime()) ? null : result;
+}

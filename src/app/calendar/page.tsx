@@ -5,15 +5,22 @@ import { useRouter } from "next/navigation";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import { Alert, Box, Button, Typography } from "@mui/material";
+import EventBusyIcon from "@mui/icons-material/EventBusy";
+import EventNoteIcon from "@mui/icons-material/EventNote";
+import EventRepeatIcon from "@mui/icons-material/EventRepeat";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import { Box, Button, Link as MuiLink, Typography } from "@mui/material";
+import { ErrorNotice } from "@/components/StatePanels";
+import NextLink from "next/link";
 import { Header } from "@/components/Header";
 import { CalendarDayColumn } from "@/components/CalendarDayColumn";
 import { PageContainer, PageIntro } from "@/components/PageShell";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { CalendarItem } from "@/lib/calendarItem";
-import { HOURS_PER_DAY } from "@/lib/calendarGrid";
+import type { OffGridItem } from "@/lib/calendarOffGrid";
+import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 import { loginHref } from "@/lib/safeRedirect";
-import { buildWeekDaysInZone, dayKeyInZone } from "@/lib/timeZone";
+import { buildWeekDaysInZone, dayKeyInZone, formatTimeInZone, weekdayName } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
 
 const MAX_WEEK_OFFSET = 8;
@@ -24,18 +31,64 @@ const buttonSx = (selected = false) =>
     ? { bgcolor: "primary.main", color: "primary.contrastText", border: 1, borderColor: "primary.main", "&:hover": { bgcolor: "primary.dark" } }
     : { bgcolor: "#171820", color: "text.primary", border: 1, borderColor: "divider", "&:hover": { bgcolor: "#1d1e28" } };
 
+function OffGridTitle({ item }: { item: OffGridItem }) {
+  const { preference } = useTitlePreference();
+  const title = resolveTitleText(preference, { ...item, titlePortuguese: null }) || "Sem título";
+  return (
+    <MuiLink
+      component={NextLink}
+      href={`/obra/${item.anilistId}`}
+      underline="hover"
+      color="inherit"
+      lang={item.titleNative && title === item.titleNative ? "ja" : undefined}
+      sx={{ fontSize: 20, fontWeight: 700, lineHeight: 1.5 }}
+    >
+      {title}
+    </MuiLink>
+  );
+}
+
+function StateChip({ tone = "neutral", icon, children }: { tone?: "neutral" | "warning"; icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <Box
+      sx={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 1,
+        alignSelf: "flex-start",
+        px: 1,
+        py: 0.75,
+        borderRadius: "6px",
+        bgcolor: "#171820",
+        color: tone === "warning" ? "warning.main" : "text.secondary",
+        "& svg": { fontSize: 14 },
+      }}
+    >
+      {icon}
+      <Typography component="span" sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1.5, color: "inherit" }}>
+        {children}
+      </Typography>
+    </Box>
+  );
+}
+
+const panelSx = { display: "flex", flexDirection: "column", gap: 2, p: 3, borderRadius: "16px", bgcolor: "background.paper", border: 1, borderColor: "divider", minWidth: 0 } as const;
+
 /**
- * Calendário (Figma `8:2106`): agenda semanal em GRADE DE HORAS — eixo de
- * 00:00 a 22:00, sete colunas (segunda → domingo) e cada lançamento num bloco
- * posicionado pelo horário local. A grade ocupa a largura toda da tela e
- * escala com o monitor (ultrawide incluso): todas as medidas internas são em
- * `em`, e a base cresce de 14 px (1440 px) até 22 px.
+ * Calendário (Figma `8:2106`): agenda semanal em COLUNAS por dia (segunda →
+ * domingo), cada lançamento numa lista em ordem de horário. O que não tem
+ * horário confiável nunca ganha posição na grade: "Previsão atrasada" e os
+ * painéis "Sem horário definido" / "Data não definida". A grade ocupa a
+ * largura toda da tela e escala com o monitor (ultrawide incluso): todas as
+ * medidas internas são em `em` e a base cresce de 14 px (1440 px) até 22 px.
  */
 export default function CalendarPage() {
   const router = useRouter();
   const user = useCurrentUser();
   const timeZone = useTimeZone();
+  const { preference } = useTitlePreference();
   const [items, setItems] = useState<CalendarItem[]>([]);
+  const [offGrid, setOffGrid] = useState<OffGridItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -62,6 +115,11 @@ export default function CalendarPage() {
     }
   }, [user]);
 
+  // "Acompanhar" no preview adiciona direto à lista: o item passa a contar como da lista sem recarregar.
+  function markFollowed(anilistId: number, animeId: string) {
+    setItems((current) => current.map((i) => (i.anilistId === anilistId ? { ...i, inMyList: true, animeId } : i)));
+  }
+
   const weekDays = useMemo(() => buildWeekDaysInZone(weekOffset, timeZone), [weekOffset, timeZone]);
   const todayKey = useMemo(() => dayKeyInZone(new Date(), timeZone), [timeZone]);
 
@@ -86,6 +144,7 @@ export default function CalendarPage() {
           return;
         }
         setItems(data.results ?? []);
+        setOffGrid(data.offGrid ?? []);
       })
       .catch(() => {
         if (!cancelled) setError("Falha ao carregar o calendário");
@@ -132,7 +191,31 @@ export default function CalendarPage() {
     setShowAll(false);
   }
 
-  const hourLabels = Array.from({ length: HOURS_PER_DAY / 2 }, (_, i) => `${String(i * 2).padStart(2, "0")}:00`);
+  const delayedItems = useMemo(() => visibleItems.filter((i) => i.delayed), [visibleItems]);
+
+  const weekKeys = useMemo(() => new Set(weekDays.map((d) => dayKeyInZone(d, timeZone))), [weekDays, timeZone]);
+  const visibleOffGrid = useMemo(() => offGrid.filter((o) => showAll || o.inMyList), [offGrid, showAll]);
+  const noTimeItems = useMemo(
+    () => visibleOffGrid.filter((o) => o.kind === "dated" && o.startDate !== null && weekKeys.has(o.startDate)),
+    [visibleOffGrid, weekKeys]
+  );
+  const noDateItems = useMemo(() => visibleOffGrid.filter((o) => o.kind !== "dated"), [visibleOffGrid]);
+
+  /** "Sex 09, 21:00" — o dia/horário original preservado do atrasado. */
+  function previousSlot(item: CalendarItem): string {
+    const d = new Date(item.airingAt);
+    const weekday = new Intl.DateTimeFormat("pt-BR", { timeZone, weekday: "short" }).format(d).replace(".", "").replace(/^./, (c) => c.toUpperCase());
+    const day = new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit" }).format(d);
+    return `${weekday} ${day}, ${formatTimeInZone(d, timeZone)}`;
+  }
+
+  /** "Domingo, 11 out" do dia civil `YYYY-MM-DD` (sem fuso — é uma data, não um instante). */
+  function civilLabel(day: string): string {
+    const d = new Date(`${day}T12:00:00Z`);
+    const weekday = weekdayName(d, "UTC");
+    const rest = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", day: "2-digit", month: "short" }).format(d).replace(".", "");
+    return `${weekday}, ${rest.replace(" de ", " ")}`;
+  }
 
   return (
     <Box sx={{ minHeight: "100%", bgcolor: "background.default" }}>
@@ -195,17 +278,9 @@ export default function CalendarPage() {
         {loading ? (
           <Typography sx={{ color: "text.secondary", fontSize: 14 }}>Carregando calendário...</Typography>
         ) : error ? (
-          <Alert
-            severity="error"
-            role="alert"
-            action={
-              <Button color="inherit" size="small" onClick={() => setReloadKey((k) => k + 1)}>
-                Tentar novamente
-              </Button>
-            }
-          >
-            {error}. A semana e o filtro foram mantidos.
-          </Alert>
+          <ErrorNotice title={error} onRetry={() => setReloadKey((k) => k + 1)}>
+            A semana e o filtro foram mantidos.
+          </ErrorNotice>
         ) : (
           <>
             {/* Em telas estreitas a grade rola na horizontal (colunas com largura mínima). */}
@@ -216,42 +291,30 @@ export default function CalendarPage() {
                 data-testid="calendar-grid"
                 sx={{
                   // Base de tipografia da grade: 14 px a 1440 px de largura, crescendo até 22 px
-                  // (monitores largos), e tudo abaixo está em `em`.
-                  // --u é a unidade-base em px (sem em, para não mudar de valor dentro de filhos
-                  // com outro font-size); --hh = altura de 1 hora (40 px quando --u = 14 px).
+                  // (monitores largos); tudo abaixo está em `em`.
                   "--u": "clamp(14px, 0.9722vw, 22px)",
-                  "--hh": "calc(var(--u) * 2.857)",
                   fontSize: "var(--u)",
-                  display: "flex",
-                  gap: "0.571em",
-                  alignItems: "flex-start",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+                  gap: "1px",
+                  minHeight: "33.93em",
                   minWidth: { xs: 760, md: 0 },
+                  borderRadius: "0.857em",
+                  overflow: "hidden",
+                  bgcolor: "background.default",
                 } as Record<string, unknown>}
               >
-                <Box aria-hidden sx={{ width: "4em", flexShrink: 0 }}>
-                  <Box sx={{ height: "4.571em" }} />
-                  <Box sx={{ position: "relative", height: `calc(${HOURS_PER_DAY} * var(--hh))` }}>
-                    {hourLabels.map((label, i) => (
-                      <Typography
-                        key={label}
-                        sx={{ position: "absolute", left: 0, top: `calc(${i * 2} * var(--hh))`, fontSize: "0.857em", lineHeight: 1, color: "text.secondary" }}
-                      >
-                        {label}
-                      </Typography>
-                    ))}
-                  </Box>
-                </Box>
-                <Box sx={{ flex: 1, minWidth: 0, display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: "0.571em" }}>
-                  {weekDays.map((day, i) => (
-                    <CalendarDayColumn
-                      key={day.toISOString()}
-                      day={day}
-                      items={itemsByDay[i]}
-                      isToday={dayKeyInZone(day, timeZone) === todayKey}
-                      timeZone={timeZone}
-                    />
-                  ))}
-                </Box>
+                {weekDays.map((day, i) => (
+                  <CalendarDayColumn
+                    key={day.toISOString()}
+                    day={day}
+                    items={itemsByDay[i]}
+                    isToday={dayKeyInZone(day, timeZone) === todayKey}
+                    timeZone={timeZone}
+                    onFollowed={markFollowed}
+                    highlightMine={showAll}
+                  />
+                ))}
               </Box>
             </Box>
 
@@ -259,6 +322,74 @@ export default function CalendarPage() {
               <Typography sx={{ color: "text.secondary", fontSize: 14 }} data-testid="calendar-empty">
                 {showAll ? "Nenhum lançamento previsto nesta semana." : "Nada da sua lista nesta semana. Veja Todos para o resto da programação."}
               </Typography>
+            )}
+
+            {delayedItems.length > 0 && (
+              <Box
+                data-testid="calendar-delayed-alert"
+                sx={{ display: "flex", gap: 2, p: 2.5, borderRadius: "12px", bgcolor: "background.paper", border: 1, borderColor: "divider" }}
+              >
+                <InfoOutlinedIcon sx={{ fontSize: 20, color: "warning.main", mt: 0.25 }} />
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 0 }}>
+                  <Typography component="h2" sx={{ fontSize: 16, lineHeight: 1.5 }}>
+                    Previsão atrasada
+                  </Typography>
+                  {delayedItems.map((item) => (
+                    <Typography key={item.key} sx={{ fontSize: 14, color: "text.secondary" }}>
+                      <span lang={item.titleNative ? "ja" : undefined}>{resolveTitleText(preference, item) || "Sem título"}</span> ·{" "}
+                      <span suppressHydrationWarning>{previousSlot(item)}</span> · EP{String(item.episode).padStart(2, "0")}. A previsão original é
+                      preservada, mas o lançamento ainda não foi confirmado. Não foi deslocado para um horário inventado.
+                    </Typography>
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            {(noTimeItems.length > 0 || noDateItems.length > 0) && (
+              <Box
+                data-testid="calendar-off-grid"
+                sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" }, gap: 3, alignItems: "start" }}
+              >
+                {noTimeItems.length > 0 && (
+                  <Box component="section" aria-labelledby="calendar-no-time" sx={panelSx}>
+                    <Typography id="calendar-no-time" component="h2" sx={{ fontSize: 18, lineHeight: 1.5, textTransform: "uppercase" }}>
+                      Sem horário definido
+                    </Typography>
+                    {noTimeItems.map((item) => (
+                      <Box key={item.key} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <StateChip icon={<EventNoteIcon />}>DATA CONHECIDA</StateChip>
+                        <OffGridTitle item={item} />
+                        <Typography sx={{ fontSize: 16 }}>
+                          {civilLabel(item.startDate!)}
+                          {item.episode ? ` · EP${String(item.episode).padStart(2, "0")}` : ""}
+                        </Typography>
+                        <Typography sx={{ fontSize: 16, color: "text.secondary" }}>
+                          Horário ainda não informado. Não ocupa uma posição na grade.
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+                {noDateItems.length > 0 && (
+                  <Box component="section" aria-labelledby="calendar-no-date" sx={panelSx}>
+                    <Typography id="calendar-no-date" component="h2" sx={{ fontSize: 18, lineHeight: 1.5, textTransform: "uppercase" }}>
+                      Data não definida
+                    </Typography>
+                    {noDateItems.map((item) => (
+                      <Box key={item.key} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <OffGridTitle item={item} />
+                        {item.kind === "postponed" ? (
+                          <StateChip tone="warning" icon={<EventRepeatIcon />}>
+                            Adiado · nova data a confirmar
+                          </StateChip>
+                        ) : (
+                          <StateChip icon={<EventBusyIcon />}>Data não definida</StateChip>
+                        )}
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </Box>
             )}
           </>
         )}

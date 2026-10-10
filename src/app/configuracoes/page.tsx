@@ -21,7 +21,7 @@ import { SOCIAL_OFF_PATCH, type UserPreferences } from "@/lib/userSettings";
 type Draft = Pick<
   UserPreferences,
   "notifyReleases" | "notifyReplies" | "notifyComments" | "notifyFollowers" | "notifyLikes"
-> & { titleFormat: "ja" | "romaji"; timeZone: string };
+> & { titleFormat: "ja" | "romaji"; synopsisLanguage: "pt" | "ja"; timeZone: string };
 
 const SOCIAL_TOGGLES: Array<{ key: keyof Draft; label: string; hint: string }> = [
   { key: "notifyReplies", label: "Respostas às minhas publicações", hint: "Avisos sem trecho sensível. Padrão ativado." },
@@ -57,7 +57,7 @@ const hiddenInput = {
 } as const;
 
 /** Opção de título: pílula com o círculo ◉/○ — acento quando selecionada, "elevated" quando não. */
-function TitleOption({ value, current, label, onSelect }: { value: Draft["titleFormat"]; current: Draft["titleFormat"]; label: string; onSelect: () => void }) {
+function TitleOption({ name = "titleFormat", value, current, label, onSelect }: { name?: string; value: string; current: string; label: string; onSelect: () => void }) {
   const selected = value === current;
   return (
     <Box
@@ -78,7 +78,7 @@ function TitleOption({ value, current, label, onSelect }: { value: Draft["titleF
         "&:focus-within": { outline: "2px solid #ffd400", outlineOffset: 2 },
       }}
     >
-      <input type="radio" name="titleFormat" value={value} checked={selected} onChange={onSelect} aria-label={label} style={hiddenInput as React.CSSProperties} />
+      <input type="radio" name={name} value={value} checked={selected} onChange={onSelect} aria-label={label} style={hiddenInput as React.CSSProperties} />
       <span aria-hidden>{selected ? "◉" : "○"}</span>
       <span aria-hidden>{label}</span>
     </Box>
@@ -137,6 +137,7 @@ export default function SettingsPage() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setDraft({
         titleFormat: p.titleFormat ?? "ja",
+        synopsisLanguage: p.synopsisLanguage ?? "pt",
         timeZone: p.timeZone ?? DEFAULT_TIME_ZONE,
         notifyReleases: p.notifyReleases,
         notifyReplies: p.notifyReplies,
@@ -192,6 +193,16 @@ export default function SettingsPage() {
               </Box>
               <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
                 Muda a apresentação dos títulos, não o idioma da interface. Kana é a leitura em kana.
+              </Typography>
+            </Card>
+
+            <Card title="Idioma da sinopse" labelledBy="synopsis-heading">
+              <Box role="radiogroup" aria-labelledby="synopsis-heading" sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <TitleOption name="synopsisLanguage" value="pt" current={draft.synopsisLanguage} label="Português" onSelect={() => update("synopsisLanguage", "pt")} />
+                <TitleOption name="synopsisLanguage" value="ja" current={draft.synopsisLanguage} label="日本語 (japonês)" onSelect={() => update("synopsisLanguage", "ja")} />
+              </Box>
+              <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+                Vale quando os títulos estão em japonês. Em português ou inglês, a sinopse segue o idioma dos títulos.
               </Typography>
             </Card>
 

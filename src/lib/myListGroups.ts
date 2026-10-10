@@ -1,3 +1,5 @@
+import { weekdayName } from "@/lib/timeZone";
+
 /**
  * Agrupamento de Minha Lista por data do próximo lançamento (Figma `8:2608`):
  * "Hoje", "Amanhã", dias da semana seguinte, "Depois" e "Sem previsão
@@ -56,4 +58,97 @@ export function groupByRelease<T extends ListItemForGrouping>(
   }
   for (const item of withoutDate) push("unknown", "Sem previsão confirmada", item);
   return groups;
+}
+
+/** Seção de Minha Lista no modo "Próximo lançamento" (Figma `8:2608`). */
+export type MyListSection<T> = {
+  key: string;
+  /** Título da seção ("Sábado, 10 outubro", "Amanhã · Domingo, 11 outubro", …). */
+  label: string;
+  /** Selo ao lado do título ("HOJE · 4 LANÇAMENTOS"). */
+  badge?: string;
+  /** Subseção dentro de "Depois de hoje". */
+  nested: boolean;
+  items: T[];
+};
+
+const cap = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/**
+ * Seções por data para itens COM horário confirmado: hoje; depois de hoje
+ * (amanhã, os próximos dias numa faixa só, e cada dia a partir de uma semana).
+ * Sem nenhuma data inventada — o que não tem horário vai para os painéis.
+ */
+export function sectionsByRelease<T extends { at: string }>(
+  items: T[],
+  now: Date,
+  timeZone: string,
+  locale = "pt-BR"
+): MyListSection<T>[] {
+  const sorted = [...items].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  const fmt = (date: Date, opts: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat(locale, { timeZone, ...opts }).format(date).replace(/ de /g, " ").replace(/-feira/g, "");
+  const today: T[] = [];
+  const tomorrow: T[] = [];
+  const week: T[] = [];
+  const later = new Map<string, T[]>();
+  for (const item of sorted) {
+    const date = new Date(item.at);
+    const diff = dayDiff(date, now, timeZone);
+    if (diff <= 0) today.push(item);
+    else if (diff === 1) tomorrow.push(item);
+    else if (diff <= 6) week.push(item);
+    else {
+      const key = dayKey(date, timeZone);
+      later.set(key, [...(later.get(key) ?? []), item]);
+    }
+  }
+
+  const sections: MyListSection<T>[] = [];
+  if (today.length) {
+    sections.push({
+      key: "today",
+      label: cap(fmt(now, { weekday: "long", day: "numeric", month: "long" })),
+      badge: `HOJE · ${today.length} ${today.length === 1 ? "LANÇAMENTO" : "LANÇAMENTOS"}`,
+      nested: false,
+      items: today,
+    });
+  }
+  if (tomorrow.length) {
+    sections.push({ key: "tomorrow", label: `Amanhã · ${cap(fmt(new Date(tomorrow[0].at), { weekday: "long", day: "numeric", month: "long" }))}`, nested: true, items: tomorrow });
+  }
+  if (week.length) {
+    const first = new Date(week[0].at);
+    const last = new Date(week[week.length - 1].at);
+    const sameMonth = fmt(first, { month: "long" }) === fmt(last, { month: "long" });
+    const range = sameMonth
+      ? `${fmt(first, { day: "numeric" })}–${fmt(last, { day: "numeric" })} ${fmt(last, { month: "long" })}`
+      : `${fmt(first, { day: "numeric", month: "long" })} – ${fmt(last, { day: "numeric", month: "long" })}`;
+    const days = `${cap(fmt(first, { weekday: "long" }))} a ${fmt(last, { weekday: "long" })}`;
+    sections.push({ key: "week", label: `${range} · ${days}`, nested: true, items: week });
+  }
+  for (const [key, group] of later) {
+    const date = new Date(group[0].at);
+    const diff = dayDiff(date, now, timeZone);
+    const dm = fmt(date, { day: "numeric", month: "long" });
+    sections.push({
+      key: `later-${key}`,
+      label: diff === 7 ? `Próximo ${fmt(date, { weekday: "long" })} · ${dm}` : `${cap(fmt(date, { weekday: "long" }))}, ${dm}`,
+      nested: true,
+      items: group,
+    });
+  }
+  return sections;
+}
+
+/** Rótulo do horário numa linha: só a hora no próprio dia; senão o dia da semana (e a data, de uma semana em diante). */
+export function rowTimeLabel(iso: string, now: Date, timeZone: string, locale = "pt-BR"): string {
+  const date = new Date(iso);
+  const diff = dayDiff(date, now, timeZone);
+  const time = new Intl.DateTimeFormat(locale, { timeZone, hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
+  if (diff <= 1) return time;
+  const weekday = weekdayName(date, timeZone, locale);
+  if (diff < 7) return `${weekday} · ${time}`;
+  const dm = new Intl.DateTimeFormat(locale, { timeZone, day: "numeric", month: "short" }).format(date).replace(".", "").replace(" de ", " ");
+  return `${dm} · ${weekday} · ${time}`;
 }

@@ -8,6 +8,7 @@ function anilistToCatalogData(media: AniListMedia, popularityRank: number | null
 
   return {
     anilistId: media.id,
+    malId: media.idMal ?? null,
     titleRomaji: media.title.romaji,
     titleEnglish: media.title.english,
     titleNative: media.title.native,
@@ -42,14 +43,15 @@ export async function cacheAniListMedia(
   list: AniListMedia[],
   { rankFromOrder = false }: { rankFromOrder?: boolean } = {}
 ): Promise<void> {
-  for (let i = 0; i < list.length; i++) {
-    const media = list[i];
-    const data = anilistToCatalogData(media, rankFromOrder ? i + 1 : null);
-    await prisma.catalogEntry.upsert({
-      where: { anilistId: media.id },
-      create: data,
-      update: data,
-    });
+  // Em lotes de 10: uma temporada inteira (~300 obras) não pode virar 300 idas e voltas em fila.
+  const BATCH = 10;
+  for (let start = 0; start < list.length; start += BATCH) {
+    await Promise.all(
+      list.slice(start, start + BATCH).map((media, offset) => {
+        const data = anilistToCatalogData(media, rankFromOrder ? start + offset + 1 : null);
+        return prisma.catalogEntry.upsert({ where: { anilistId: media.id }, create: data, update: data });
+      })
+    );
   }
 }
 

@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import NextLink from "next/link";
+import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
+import EventRepeatIcon from "@mui/icons-material/EventRepeat";
 import { Box, Popover, Typography } from "@mui/material";
 import type { CalendarItem } from "@/lib/calendarItem";
-import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
+import { PrimaryTitle, useTitleLines } from "@/components/ExploreCard";
 import { isAiringNow } from "@/lib/airingWindow";
 import { CalendarEntryPreview } from "@/components/CalendarEntryPreview";
+import { CoverImage } from "@/components/CoverImage";
 import { formatTimeInZone } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
 
@@ -14,23 +17,57 @@ import { useTimeZone } from "@/lib/useTimeZone";
  * ficaria com o selo "NO AR" preso muito depois da janela real ter passado. */
 const RECHECK_INTERVAL_MS = 60 * 1000;
 
-/** Atraso entre sair do bloco (ou do próprio preview) e fechar de verdade —
- * sem isso, mover o mouse do bloco até o botão de favoritar dentro do
- * preview fecharia ele no meio do caminho. */
+/** Atraso entre sair do item (ou do próprio preview) e fechar de verdade —
+ * sem isso, mover o mouse até o botão dentro do preview fecharia no caminho. */
 const CLOSE_DELAY_MS = 150;
 
+/** Selo do Figma (`10:23` Atrasado / `10:28` Novo episódio): 11 px bold, raio 6. */
+function Badge({ tone, icon, children }: { tone: "accent" | "warning"; icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <Box
+      sx={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "0.571em",
+        alignSelf: "flex-start",
+        px: "0.571em",
+        py: "0.429em",
+        borderRadius: "0.429em",
+        bgcolor: tone === "accent" ? "#2c111b" : "#171820",
+        color: tone === "accent" ? "primary.main" : "warning.main",
+        "& svg": { fontSize: "1em" },
+      }}
+    >
+      {icon}
+      <Typography component="span" sx={{ fontSize: "0.786em", fontWeight: 700, lineHeight: 1.5, whiteSpace: "nowrap", color: "inherit" }}>
+        {children}
+      </Typography>
+    </Box>
+  );
+}
+
 /**
- * Bloco de lançamento posicionado na grade semanal (Figma `8:2181`):
- * "20:00 · EP02" + título, barra lateral de 3 px; os da minha lista ganham o
- * destaque de acento (fundo #2c111b + "✦ NOVO EPISÓDIO"). As medidas são em
- * `em` (a grade escala com o monitor), e `style` traz topo/altura/faixa.
- * Passar o mouse (ou focar) abre o preview com sinopse (lote 2 do Epic 27).
+ * Item de lançamento na coluna do dia (Figma `8:2106`, "Item"/"Item novo ep"/
+ * "Item atrasado"): horário, título e EP; os da minha lista ganham o fundo de
+ * acento + selo "NOVO EPISÓDIO EPnn", os atrasados a barra âmbar + "Atrasado".
+ * As medidas são em `em` (a grade escala com o monitor). Passar o mouse (ou
+ * focar) abre o preview com sinopse.
  */
-export function CalendarEntryCard({ item, style }: { item: CalendarItem; style?: CSSProperties }) {
-  const { preference } = useTitlePreference();
-  const title = resolveTitleText(preference, item) || "Sem título";
+export function CalendarEntryCard({
+  item,
+  onFollowed,
+  highlightMine = false,
+}: {
+  item: CalendarItem;
+  onFollowed?: (anilistId: number, animeId: string) => void;
+  /** Destaca (vermelho) o que é da minha lista — só faz sentido em "Todos"; em "Minha Lista" tudo seria vermelho. */
+  highlightMine?: boolean;
+}) {
+  const titleLines = useTitleLines(item);
+  const title = titleLines.primary;
   const timeZone = useTimeZone();
   const time = formatTimeInZone(new Date(item.airingAt), timeZone);
+  const episode = `EP${String(item.episode).padStart(2, "0")}`;
 
   // Começa false e só decide de verdade dentro do efeito — esse componente é
   // renderizado no servidor também, e o relógio do servidor pode discordar do
@@ -74,7 +111,9 @@ export function CalendarEntryCard({ item, style }: { item: CalendarItem; style?:
   // onde a pessoa está navegando — sem nomear o anime/episódio, um selo
   // genérico "No ar agora" fica sem sentido quando escutado sozinho.
   const airingNowLabel = `${title}, episódio ${item.episode}, no ar agora`;
-  const highlighted = item.inMyList;
+  const highlighted = highlightMine && item.inMyList;
+  const image = item.episodeImage ?? item.coverImage;
+  const barColor = item.delayed ? "warning.main" : highlighted ? "primary.main" : "transparent";
 
   return (
     <>
@@ -82,46 +121,67 @@ export function CalendarEntryCard({ item, style }: { item: CalendarItem; style?:
         component={NextLink}
         href={href}
         data-testid={`calendar-entry-${item.key}`}
+        data-delayed={item.delayed ? "true" : undefined}
         onMouseEnter={openPreview}
         onMouseLeave={scheduleClose}
         onFocus={(e: React.FocusEvent<HTMLElement>) => openPreview({ currentTarget: e.currentTarget })}
         onBlur={scheduleClose}
-        style={style}
         sx={{
-          position: "absolute",
           display: "flex",
           flexDirection: "column",
-          gap: "0.143em",
-          overflow: "hidden",
+          gap: "0.286em",
+          minHeight: "7.429em",
           boxSizing: "border-box",
-          p: "0.571em",
+          px: "0.857em",
+          py: "0.714em",
           borderLeft: "3px solid",
-          borderColor: highlighted ? "primary.main" : "divider",
-          borderRadius: "0.571em",
-          bgcolor: highlighted ? "#2c111b" : "#171820",
+          borderColor: barColor,
+          bgcolor: highlighted ? "#2c111b" : "background.paper",
           color: "text.primary",
           textDecoration: "none",
-          transition: "background-color 0.15s ease, outline-color 0.15s ease",
-          "&:hover": { bgcolor: highlighted ? "#3a1423" : "#1d1e28" },
-          // zIndex só no hover/foco para o bloco aberto ficar acima dos vizinhos.
-          "&:hover, &:focus-visible": { zIndex: 2 },
+          transition: "background-color 0.15s ease",
+          "&:hover": { bgcolor: highlighted ? "#3a1423" : "#171820" },
+          "&:focus-visible": { outlineOffset: -2 },
         }}
       >
-        <Typography component="span" sx={{ fontSize: "0.786em", lineHeight: 1.3 }} noWrap>
-          {time} · EP{String(item.episode).padStart(2, "0")}
-          {airingNow && (
-            <Box component="span" role="status" aria-label={airingNowLabel} sx={{ ml: 0.5, fontWeight: 700, color: "primary.main" }}>
-              · NO AR
-            </Box>
-          )}
+        <Typography component="span" sx={{ fontSize: "0.786em", fontWeight: 600, lineHeight: 1.3, color: "text.secondary", whiteSpace: "nowrap" }}>
+          {time}
         </Typography>
-        <Typography component="span" lang={item.titleNative && title === item.titleNative ? "ja" : undefined} sx={{ fontSize: "0.857em", lineHeight: 1.3 }} noWrap>
-          {title}
-        </Typography>
-        {highlighted && (
-          <Typography component="span" sx={{ fontSize: "0.643em", fontWeight: 700, color: "primary.main", whiteSpace: "nowrap" }}>
-            ✦ NOVO EPISÓDIO
-          </Typography>
+        <Box sx={{ display: "flex", gap: "0.643em", alignItems: "flex-start", minWidth: 0 }}>
+          {/* Imagem do episódio; sem ela, a capa do anime — dá a noção de qual obra/episódio é. */}
+          <Box
+            aria-hidden
+            data-testid={`calendar-entry-image-${item.key}`}
+            data-image-kind={item.episodeImage ? "episode" : item.coverImage ? "cover" : "none"}
+            sx={{ position: "relative", flexShrink: 0, width: "3.714em", aspectRatio: "3 / 4", borderRadius: "0.357em", overflow: "hidden", bgcolor: "#171820" }}
+          >
+            {image && <CoverImage src={image} sizes="96px" />}
+          </Box>
+          <Box sx={{ minWidth: 0, display: "flex", flexDirection: "column", gap: "0.286em" }}>
+            <Typography
+              component="span"
+              lang={titleLines.primaryLang}
+              sx={{ fontSize: "0.929em", fontWeight: 700, lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}
+            >
+              <PrimaryTitle lines={titleLines} />
+            </Typography>
+            <Typography component="span" sx={{ fontSize: "0.714em", lineHeight: 1.3, color: "text.secondary" }}>
+              {episode}
+            </Typography>
+          </Box>
+        </Box>
+        {/* Só quem está sendo exibido agora ganha selo; os demais ficam sem nenhuma marca. */}
+        {airingNow && (
+          <Box role="status" aria-label={airingNowLabel}>
+            <Badge tone="accent" icon={<FiberManualRecordIcon />}>
+              AO VIVO
+            </Badge>
+          </Box>
+        )}
+        {item.delayed && (
+          <Badge tone="warning" icon={<EventRepeatIcon />}>
+            Atrasado
+          </Badge>
         )}
       </Box>
       <Popover
@@ -131,18 +191,20 @@ export function CalendarEntryCard({ item, style }: { item: CalendarItem; style?:
         disableAutoFocus
         disableEnforceFocus
         disableRestoreFocus
-        anchorOrigin={{ vertical: "center", horizontal: "right" }}
-        transformOrigin={{ vertical: "center", horizontal: "left" }}
+        // O preview abre ao passar o mouse: travar a rolagem do <body> impedia descer a página com a roda do mouse.
+        disableScrollLock
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "left" }}
         sx={{ pointerEvents: "none" }}
         slotProps={{
           paper: {
             onMouseEnter: cancelClose,
             onMouseLeave: scheduleClose,
-            sx: { pointerEvents: "auto" },
+            sx: { pointerEvents: "auto", bgcolor: "#171820", border: 1, borderColor: "divider", borderRadius: "12px", backgroundImage: "none" },
           },
         }}
       >
-        <CalendarEntryPreview item={item} />
+        <CalendarEntryPreview item={item} onFollowed={onFollowed} />
       </Popover>
     </>
   );

@@ -146,7 +146,19 @@ describe("AniList GraphQL requests", () => {
 
     const [, init] = vi.mocked(fetch).mock.calls[0];
     const body = JSON.parse((init as RequestInit).body as string);
-    expect(body.variables).toEqual({ season: "FALL", seasonYear: 2026 });
+    expect(body.variables).toEqual({ season: "FALL", seasonYear: 2026, page: 1 });
+  });
+
+  it("getSeasonalAnime follows pagination until the last page", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(jsonResponse({ data: { Page: { pageInfo: { hasNextPage: true }, media: [makeMedia({ id: 1 })] } } }))
+      .mockResolvedValueOnce(jsonResponse({ data: { Page: { pageInfo: { hasNextPage: false }, media: [makeMedia({ id: 2 })] } } }));
+
+    const result = await getSeasonalAnime("FALL", 2026);
+
+    expect(result.map((m) => m.id)).toEqual([1, 2]);
+    const pages = vi.mocked(fetch).mock.calls.map(([, init]) => JSON.parse((init as RequestInit).body as string).variables.page);
+    expect(pages).toEqual([1, 2]);
   });
 
   // Epic 3: gêneros crus da AniList são normalizados pro vocabulário

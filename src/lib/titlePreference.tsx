@@ -129,12 +129,11 @@ export function resolveTitleText(preference: TitlePreference, titles: TitleSet):
   if (preference.language === "en") {
     return titles.titleEnglish || titles.titleRomaji;
   }
-  // japonês
-  if (preference.japaneseScript === "kanji") {
+  // japonês: "kanji" e "kanji + furigana" mostram o título original (a leitura vai
+  // em ruby/linha de kana nos componentes que a suportam); só "romaji" usa o romaji.
+  if (preference.japaneseScript === "kanji" || preference.japaneseScript === "furigana") {
     return titles.titleNative || titles.titleRomaji;
   }
-  // "romaji" e "furigana" caem pro romaji em contexto de texto puro —
-  // a versão com <ruby> só é usada pelo componente <AnimeTitle>.
   return titles.titleRomaji;
 }
 
@@ -165,7 +164,7 @@ export function resolveTitleTextLenient(
       ? ["titlePortuguese", "titleEnglish", "titleRomaji"]
       : preference.language === "en"
         ? ["titleEnglish", "titleRomaji"]
-        : preference.japaneseScript === "kanji"
+        : preference.japaneseScript === "kanji" || preference.japaneseScript === "furigana"
           ? ["titleNative", "titleRomaji", "titleEnglish", "titlePortuguese"]
           : ["titleRomaji", "titleNative", "titleEnglish", "titlePortuguese"];
 

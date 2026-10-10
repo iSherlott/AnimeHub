@@ -4,7 +4,7 @@ import NextLink from "next/link";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import { Box, Button, Link as MuiLink, Typography } from "@mui/material";
 import { CoverImage } from "@/components/CoverImage";
-import { formatTimeInZone } from "@/lib/timeZone";
+import { formatTimeInZone, weekdayName } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
 
 /**
@@ -35,8 +35,7 @@ export function RelatedWorkCard({
   const when = nextAiringAt
     ? (() => {
         const d = new Date(nextAiringAt);
-        const weekday = new Intl.DateTimeFormat("pt-BR", { timeZone, weekday: "long" }).format(d).replace(/^./, (c) => c.toUpperCase());
-        return `${weekday} · ${formatTimeInZone(d, timeZone)}`;
+        return `${weekdayName(d, timeZone)} · ${formatTimeInZone(d, timeZone)}`;
       })()
     : (note ?? "Data não definida");
   const primary = titleNative ?? titleRomaji;

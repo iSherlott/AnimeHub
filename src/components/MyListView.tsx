@@ -1,116 +1,356 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Box, MenuItem, Select, Stack, TextField, Typography } from "@mui/material";
-import { AnimeCard } from "@/components/AnimeCard";
-import { Row } from "@/components/Row";
-import { groupByRelease } from "@/lib/myListGroups";
+import { useMemo, useState, type ReactNode } from "react";
+import NextLink from "next/link";
+import CheckIcon from "@mui/icons-material/Check";
+import EventBusyIcon from "@mui/icons-material/EventBusy";
+import EventNoteIcon from "@mui/icons-material/EventNote";
+import EventRepeatIcon from "@mui/icons-material/EventRepeat";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import { Box, Button, Link as MuiLink, Typography } from "@mui/material";
+import { ELEVATED_BUTTON_SX, lineLang, PrimaryTitle, useTitleLines } from "@/components/ExploreCard";
+import { FavoriteToggle } from "@/components/FavoriteToggle";
+import { SearchField, SelectField } from "@/components/FilterField";
+import { ListRow } from "@/components/ListRow";
+import type { MyListEntry } from "@/lib/myList";
+import { rowTimeLabel, sectionsByRelease } from "@/lib/myListGroups";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
+import { formatTimeInZone, weekdayName } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
 
-export type MyListEntry = {
-  id: string;
-  anilistId: number;
-  titleRomaji: string;
-  titleEnglish: string | null;
-  titleNative: string | null;
-  titlePortuguese: string | null;
-  coverImage: string | null;
-  isFavorite: boolean;
-  createdAt: string;
-  nextAiringAt: string | null;
-  nextEpisode: number | null;
-};
+export type { MyListEntry } from "@/lib/myList";
 
 type SortMode = "next" | "recent" | "title";
 
+const STATUS_LABELS: Record<string, string> = {
+  RELEASING: "Em exibição",
+  NOT_YET_RELEASED: "Em breve",
+  FINISHED: "Finalizado",
+  HIATUS: "Adiado",
+  CANCELLED: "Cancelado",
+};
+
+const pad = (n: number) => String(n).padStart(2, "0");
+
 /**
- * Minha Lista (Figma `8:2608`): agrupada por data do próximo lançamento,
- * com busca e ordenação. Privada e sem qualquer métrica de consumo.
+ * "✓ Acompanhando" (Figma `8:2608`): leva ao detalhe pessoal, onde se deixa de
+ * acompanhar. A estrela de favorito (anterior ao Figma) continua ao lado.
+ */
+function FollowingButton({ entry }: { entry: MyListEntry }) {
+  return (
+    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 1 }}>
+      <FavoriteToggle animeId={entry.id} initialFavorite={entry.isFavorite} size="small" />
+      <Button component={NextLink} href={`/anime/${entry.id}`} startIcon={<CheckIcon />} sx={ELEVATED_BUTTON_SX}>
+        Acompanhando
+      </Button>
+    </Box>
+  );
+}
+
+function Chip({ tone = "neutral", icon, children }: { tone?: "neutral" | "warning"; icon: ReactNode; children: ReactNode }) {
+  return (
+    <Box
+      sx={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 1,
+        alignSelf: "flex-start",
+        px: 1,
+        py: 0.75,
+        borderRadius: "6px",
+        bgcolor: "#171820",
+        color: tone === "warning" ? "warning.main" : "text.secondary",
+        "& svg": { fontSize: 14 },
+      }}
+    >
+      {icon}
+      <Typography suppressHydrationWarning component="span" sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1.5, color: "inherit" }}>
+        {children}
+      </Typography>
+    </Box>
+  );
+}
+
+const panelSx = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 2.5,
+  p: 3,
+  borderRadius: "16px",
+  bgcolor: "background.paper",
+  border: 1,
+  borderColor: "divider",
+  minWidth: 0,
+} as const;
+
+/** Título (nativo em destaque) + apoio, como link para o detalhe pessoal. */
+function EntryTitle({ entry, size = 20 }: { entry: MyListEntry; size?: number }) {
+  const titleLines = useTitleLines(entry);
+  const { secondary, primaryLang } = titleLines;
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, minWidth: 0 }}>
+      <Typography lang={primaryLang} sx={{ fontSize: size, fontWeight: 700, lineHeight: 1.4, overflowWrap: "anywhere" }}>
+        <MuiLink component={NextLink} href={`/anime/${entry.id}`} underline="hover" color="inherit">
+          <PrimaryTitle lines={titleLines} />
+        </MuiLink>
+      </Typography>
+      {secondary.map((line) => (
+        <Typography key={line} lang={lineLang(line)} sx={{ fontSize: 13, color: "text.secondary" }}>
+          {line}
+        </Typography>
+      ))}
+    </Box>
+  );
+}
+
+/**
+ * Minha Lista (Figma `8:2608`): agrupada por data do próximo lançamento
+ * (hoje, depois de hoje) e, fora da grade, "Sem horário definido",
+ * "Adiado / Atrasado" e "Data não definida" — nunca com horário inventado.
+ * Com busca, ordenação e status. Privada e sem qualquer métrica de consumo.
  */
 export function MyListView({ entries }: { entries: MyListEntry[] }) {
   const { preference } = useTitlePreference();
+  const timeZone = useTimeZone();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortMode>("next");
-  const timeZone = useTimeZone();
+  const [status, setStatus] = useState("");
+
+  const statuses = useMemo(() => Array.from(new Set(entries.map((e) => e.status).filter((s): s is string => s !== null && s in STATUS_LABELS))), [entries]);
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return entries;
-    return entries.filter((e) =>
-      [e.titleRomaji, e.titleEnglish, e.titleNative, e.titlePortuguese]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(needle)
+    return entries.filter((e) => {
+      if (status && e.status !== status) return false;
+      if (!needle) return true;
+      return [e.titleRomaji, e.titleEnglish, e.titleNative, e.titlePortuguese].filter(Boolean).join(" ").toLowerCase().includes(needle);
+    });
+  }, [entries, query, status]);
+
+  const now = new Date();
+
+  const sections = useMemo(() => {
+    const timed = visible.flatMap((entry) => (entry.state.kind === "scheduled" ? [{ at: entry.state.at, entry, episode: entry.state.episode }] : []));
+    return sectionsByRelease(timed, new Date(), timeZone);
+  }, [visible, timeZone]);
+  const noTime = visible.filter((e) => e.state.kind === "dated");
+  const delayed = visible.filter((e) => e.state.kind === "delayed" || e.state.kind === "postponed");
+  const unknown = visible.filter((e) => e.state.kind === "undated" || e.state.kind === "none");
+
+  function renderRow(item: { at: string; entry: MyListEntry; episode: number }) {
+    return (
+      <ListRow
+        key={item.entry.id}
+        testId={`anime-card-${item.entry.id}`}
+        timeTestId="card-next"
+        href={`/anime/${item.entry.id}`}
+        time={rowTimeLabel(item.at, now, timeZone)}
+        episodeLabel={`Episódio ${pad(item.episode)}`}
+        cover={item.entry.coverImage}
+        titles={item.entry}
+        trailing={<FollowingButton entry={item.entry} />}
+      />
     );
-  }, [entries, query]);
+  }
 
+  function stateText(entry: MyListEntry): string {
+    switch (entry.state.kind) {
+      case "dated":
+        return "Sem horário";
+      case "delayed":
+        return "Atrasado";
+      case "postponed":
+        return "Adiado";
+      case "none":
+        return "Sem lançamentos";
+      default:
+        return "Data não definida";
+    }
+  }
 
-  const groups = useMemo(() => {
-    if (sort === "next") return groupByRelease(visible, new Date(), timeZone);
-    const sorted = [...visible].sort((a, b) =>
+  const flat = useMemo(() => {
+    if (sort === "next") return null;
+    return [...visible].sort((a, b) =>
       sort === "recent"
         ? Date.parse(b.createdAt) - Date.parse(a.createdAt)
         : resolveTitleText(preference, a).localeCompare(resolveTitleText(preference, b), "pt-BR")
     );
-    return [{ key: "all", label: sort === "recent" ? "Adicionados recentemente" : "Em ordem alfabética", items: sorted }];
-  }, [visible, sort, timeZone, preference]);
+  }, [visible, sort, preference]);
 
   return (
-    <Box>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ px: { xs: 3, sm: 5 }, py: 2, alignItems: { sm: "center" } }}>
-        <TextField
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar na minha lista…"
-          size="small"
-          slotProps={{ htmlInput: { "aria-label": "Buscar na minha lista" } }}
-          sx={{ minWidth: 260 }}
-        />
-        <Select
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "flex-end" }}>
+        <SearchField label="Buscar na minha lista" value={query} onChange={setQuery} placeholder="Buscar anime..." />
+        <SelectField
+          label="Ordenação"
           value={sort}
-          onChange={(e) => setSort(e.target.value as SortMode)}
-          size="small"
-          aria-label="Ordenar"
-          data-testid="sort-select"
-        >
-          <MenuItem value="next">Próximo lançamento</MenuItem>
-          <MenuItem value="recent">Adicionados recentemente</MenuItem>
-          <MenuItem value="title">Título</MenuItem>
-        </Select>
-      </Stack>
+          onChange={(v) => setSort(v as SortMode)}
+          width={260}
+          testId="sort-select"
+          options={[
+            { value: "next", label: "Próximo lançamento" },
+            { value: "recent", label: "Adicionados recentemente" },
+            { value: "title", label: "Título" },
+          ]}
+        />
+        <SelectField
+          label="Status"
+          value={status}
+          onChange={setStatus}
+          width={204}
+          options={[{ value: "", label: "Todos" }, ...statuses.map((s) => ({ value: s, label: STATUS_LABELS[s] }))]}
+        />
+      </Box>
 
       {visible.length === 0 ? (
-        <Typography sx={{ px: { xs: 3, sm: 5 }, color: "text.secondary" }}>
-          Nenhum anime da sua lista bate com essa busca.
-        </Typography>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {groups.map((group) => (
-            <div key={group.key} data-testid={`group-${group.key}`}>
-            <Row title={group.label}>
-              {group.items.map((e) => (
-                <AnimeCard
-                  key={e.id}
-                  id={e.id}
-                  href={`/anime/${e.id}`}
-                  titles={{
-                    titleRomaji: e.titleRomaji,
-                    titleEnglish: e.titleEnglish,
-                    titleNative: e.titleNative,
-                    titlePortuguese: e.titlePortuguese,
-                  }}
-                  coverImage={e.coverImage}
-                  isFavorite={e.isFavorite}
-                  next={e.nextAiringAt && e.nextEpisode ? { airingAt: e.nextAiringAt, episode: e.nextEpisode } : null}
+        <Typography sx={{ color: "text.secondary" }}>Nenhum anime da sua lista bate com essa busca.</Typography>
+      ) : flat ? (
+        <Box data-testid="group-all" sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <Typography component="h2" sx={{ fontSize: 24, lineHeight: 1.5 }}>
+            {sort === "recent" ? "Adicionados recentemente" : "Em ordem alfabética"}
+          </Typography>
+          <Box component="ul" sx={{ display: "flex", flexDirection: "column", gap: 2, p: 0, m: 0 }}>
+            {flat.map((entry) =>
+              entry.state.kind === "scheduled" ? (
+                renderRow({ at: entry.state.at, entry, episode: entry.state.episode })
+              ) : (
+                <ListRow
+                  key={entry.id}
+                  testId={`anime-card-${entry.id}`}
+                  timeTestId="card-next"
+                  href={`/anime/${entry.id}`}
+                  time={stateText(entry)}
+                  cover={entry.coverImage}
+                  titles={entry}
+                  trailing={<FollowingButton entry={entry} />}
                 />
-              ))}
-            </Row>
-            </div>
-          ))}
-        </div>
+              )
+            )}
+          </Box>
+        </Box>
+      ) : (
+        <>
+          {sections.map((section, index) => {
+            const firstNested = section.nested && !sections.slice(0, index).some((s) => s.nested);
+            return (
+              <Box key={section.key} data-testid={`group-${section.key}`} sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+                {firstNested && (
+                  <Typography component="h2" sx={{ fontSize: 24, lineHeight: 1.5, mt: 1 }}>
+                    Depois de hoje
+                  </Typography>
+                )}
+                {section.nested ? (
+                  <Typography component="h3" sx={{ fontSize: 13, color: "text.secondary" }}>
+                    {section.label}
+                  </Typography>
+                ) : (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+                    <Typography component="h2" sx={{ fontSize: 24, lineHeight: 1.5 }}>
+                      {section.label}
+                    </Typography>
+                    {section.badge && (
+                      <Box sx={{ px: 1, py: 0.75, borderRadius: "6px", bgcolor: "#2c111b" }}>
+                        <Typography component="span" sx={{ fontSize: 11, fontWeight: 700, color: "primary.main", whiteSpace: "nowrap" }}>
+                          {section.badge}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+                )}
+                <Box component="ul" sx={{ display: "flex", flexDirection: "column", gap: 2, p: 0, m: 0 }}>
+                  {section.items.map(renderRow)}
+                </Box>
+              </Box>
+            );
+          })}
+
+          {(noTime.length > 0 || delayed.length > 0) && (
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" }, gap: 3, alignItems: "start" }}>
+              {noTime.length > 0 && (
+                <Box component="section" aria-labelledby="my-no-time" data-testid="group-no-time" sx={panelSx}>
+                  <Typography id="my-no-time" component="h2" sx={{ fontSize: 18, textTransform: "uppercase" }}>
+                    Sem horário definido
+                  </Typography>
+                  {noTime.map((entry) => (
+                    <Box key={entry.id} data-testid={`anime-card-${entry.id}`} sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                      <EntryTitle entry={entry} />
+                      {entry.state.kind === "dated" && (
+                        <Typography suppressHydrationWarning sx={{ fontSize: 16 }}>
+                          {datedLabel(entry.state.day)}
+                          {entry.state.episode ? ` · EP${pad(entry.state.episode)}` : ""}
+                        </Typography>
+                      )}
+                      <Chip icon={<EventNoteIcon />}>Horário não definido</Chip>
+                      <Box>
+                        <FollowingButton entry={entry} />
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+              {delayed.length > 0 && (
+                <Box component="section" aria-labelledby="my-delayed" data-testid="group-delayed" sx={panelSx}>
+                  <Typography id="my-delayed" component="h2" sx={{ fontSize: 18, textTransform: "uppercase" }}>
+                    Adiado / Atrasado
+                  </Typography>
+                  {delayed.map((entry) => (
+                    <Box key={entry.id} data-testid={`anime-card-${entry.id}`} sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                      <EntryTitle entry={entry} />
+                      {entry.state.kind === "delayed" ? (
+                        <>
+                          <Chip tone="warning" icon={<WarningAmberIcon />}>
+                            Atrasado · previsão {previousSlot(entry.state.at, timeZone)}
+                          </Chip>
+                          <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Não atribuir novo horário sem confirmação da fonte.</Typography>
+                        </>
+                      ) : (
+                        <Chip tone="warning" icon={<EventRepeatIcon />}>
+                          Adiado · nova data a confirmar
+                        </Chip>
+                      )}
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
+          )}
+
+          {unknown.length > 0 && (
+            <Box component="section" aria-labelledby="my-unknown" data-testid="group-unknown" sx={panelSx}>
+              <Typography id="my-unknown" component="h2" sx={{ fontSize: 18, textTransform: "uppercase" }}>
+                Data não definida
+              </Typography>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(3, minmax(0, 1fr))" }, gap: 3 }}>
+                {unknown.map((entry) => (
+                  <Box
+                    key={entry.id}
+                    data-testid={`anime-card-${entry.id}`}
+                    sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2.5, borderRadius: "12px", border: 1, borderColor: "divider", minWidth: 0 }}
+                  >
+                    <EntryTitle entry={entry} />
+                    <Chip icon={<EventBusyIcon />}>{entry.state.kind === "none" ? "Sem lançamentos previstos" : "Data não definida"}</Chip>
+                    <Box>
+                      <FollowingButton entry={entry} />
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
+        </>
       )}
     </Box>
   );
+}
+
+function datedLabel(day: string): string {
+  const d = new Date(`${day}T12:00:00Z`);
+  const rest = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", day: "2-digit", month: "short" }).format(d).replace(".", "").replace(" de ", " ");
+  return `${weekdayName(d, "UTC")}, ${rest}`;
+}
+
+function previousSlot(iso: string, timeZone: string): string {
+  const d = new Date(iso);
+  const dm = new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit", month: "short" }).format(d).replace(".", "").replace(" de ", " ");
+  return `${dm}, ${formatTimeInZone(d, timeZone)}`;
 }

@@ -32,3 +32,9 @@ export async function toFuriganaHtml(text: string): Promise<string> {
   const kuroshiro = await getKuroshiro();
   return kuroshiro.convert(text, { to: "hiragana", mode: "furigana" });
 }
+
+/** Leitura do título em hiragana (a linha "kana" do Figma: くすりやのひとりごと). */
+export async function toKana(text: string): Promise<string> {
+  const kuroshiro = await getKuroshiro();
+  return kuroshiro.convert(text, { to: "hiragana", mode: "normal" });
+}

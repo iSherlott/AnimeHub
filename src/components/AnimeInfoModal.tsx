@@ -4,7 +4,7 @@ import { useId, useState } from "react";
 import CloseIcon from "@mui/icons-material/Close";
 import Image from "next/image";
 import NextLink from "next/link";
-import { htmlToPlainText } from "@/lib/plainText";
+import { useSynopsis } from "@/components/SynopsisText";
 import { Box, Chip, Dialog, IconButton, Link as MuiLink, Skeleton, Stack, Typography } from "@mui/material";
 import type { DiscoverItem } from "@/lib/discoverItem";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
@@ -27,6 +27,7 @@ export function AnimeInfoModal({
   onClose: () => void;
 }) {
   const { preference } = useTitlePreference();
+  const synopsis = useSynopsis(item.description, item.anilistId);
   const title = resolveTitleText(preference, item) || "Sem título";
   const titleId = useId();
   const [coverLoaded, setCoverLoaded] = useState(false);
@@ -139,7 +140,7 @@ export function AnimeInfoModal({
           variant="body2"
           sx={{ mt: 2, px: 3, pb: 1, color: "text.secondary", lineHeight: 1.6, whiteSpace: "pre-wrap" }}
         >
-          {htmlToPlainText(item.description)}
+          {synopsis}
         </Typography>
       ) : (
         <Typography variant="body2" sx={{ mt: 2, px: 3, pb: 1, color: "text.secondary" }}>

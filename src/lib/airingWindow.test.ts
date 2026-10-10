@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   isAiringNow,
+  notifyRangeForNow,
   airingAtRangeForNow,
   AIRING_WINDOW_BEFORE_MS,
   AIRING_WINDOW_AFTER_MS,
@@ -65,5 +66,19 @@ describe("airingAtRangeForNow", () => {
   it("spans exactly AIRING_WINDOW_AFTER_MS before now and AIRING_WINDOW_BEFORE_MS after now", () => {
     expect(from.getTime()).toBe(now.getTime() - AIRING_WINDOW_AFTER_MS);
     expect(to.getTime()).toBe(now.getTime() + AIRING_WINDOW_BEFORE_MS);
+  });
+});
+
+describe("notifyRangeForNow", () => {
+  const now = new Date("2026-10-10T12:00:00Z");
+
+  it("covers today's upcoming releases (24 h ahead) and the ones that just aired", () => {
+    const { from, to } = notifyRangeForNow(now);
+    expect(from.getTime()).toBe(now.getTime() - 30 * 60 * 1000);
+    expect(to.getTime()).toBe(now.getTime() + 24 * 60 * 60 * 1000);
+  });
+
+  it("is wider than the on-air window, so a reminder exists long before the episode starts", () => {
+    expect(notifyRangeForNow(now).to.getTime()).toBeGreaterThan(airingAtRangeForNow(now).to.getTime());
   });
 });

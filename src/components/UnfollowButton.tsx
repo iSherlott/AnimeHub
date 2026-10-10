@@ -2,16 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Alert,
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-} from "@mui/material";
+import { Box, Button } from "@mui/material";
+import { ConfirmDialog } from "@/components/StatePanels";
 
 /**
  * "Deixar de acompanhar" com o diálogo de confirmação do Figma (`8:5802`):
@@ -54,36 +46,23 @@ export function UnfollowButton({ animeId, title }: { animeId: string; title: str
       >
         Deixar de acompanhar
       </Button>
-      <Dialog
+      <ConfirmDialog
         open={open}
-        onClose={() => (busy ? undefined : setOpen(false))}
-        aria-labelledby="unfollow-title"
-        aria-describedby="unfollow-desc"
-      >
-        <DialogTitle id="unfollow-title">Remover acompanhamento?</DialogTitle>
-        <DialogContent>
-          <DialogContentText id="unfollow-desc" sx={{ mb: 1 }}>
+        title="Remover acompanhamento?"
+        subject={
+          <>
             <strong>{title}</strong> está na sua lista pessoal.
-          </DialogContentText>
-          <DialogContentText>
-            As próximas datas e notificações deste anime deixam sua agenda. A produção permanece no catálogo e você
-            pode acompanhar novamente.
-          </DialogContentText>
-          {error && (
-            <Alert severity="error" role="alert" sx={{ mt: 2 }}>
-              {error}
-            </Alert>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button autoFocus onClick={() => setOpen(false)} disabled={busy}>
-            Cancelar
-          </Button>
-          <Button variant="contained" onClick={confirmRemove} disabled={busy} data-testid="unfollow-confirm">
-            {busy ? "Removendo…" : "Remover acompanhamento"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+          </>
+        }
+        effect="As próximas datas e notificações deste anime deixam sua agenda. A produção permanece no catálogo e você pode acompanhar novamente. Nenhum episódio assistido será alterado, pois não há tracking de consumo."
+        confirmLabel="Remover acompanhamento"
+        busyLabel="Removendo…"
+        busy={busy}
+        error={error}
+        onCancel={() => setOpen(false)}
+        onConfirm={confirmRemove}
+        confirmTestId="unfollow-confirm"
+      />
     </Box>
   );
 }

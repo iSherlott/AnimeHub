@@ -37,4 +37,9 @@ describe("SOCIAL_OFF_PATCH", () => {
     expect(SOCIAL_OFF_PATCH).not.toHaveProperty("notifyReleases");
     expect(Object.values(SOCIAL_OFF_PATCH).every((v) => v === false)).toBe(true);
   });
+  it("validates the synopsis language", () => {
+    expect(validateSettingsPatch({ synopsisLanguage: "ja" })).toEqual({ ok: true, patch: { synopsisLanguage: "ja" } });
+    expect(validateSettingsPatch({ synopsisLanguage: null })).toEqual({ ok: true, patch: { synopsisLanguage: null } });
+    expect(validateSettingsPatch({ synopsisLanguage: "fr" }).ok).toBe(false);
+  });
 });

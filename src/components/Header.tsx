@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
+import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
+import PersonOutlineIcon from "@mui/icons-material/PersonOutlined";
 import TuneIcon from "@mui/icons-material/Tune";
 import {
   AppBar,
@@ -31,13 +33,14 @@ const DESKTOP_QUERY = "@media (min-width:1240px)";
 const NAV_ITEMS: Array<{ href: string; label: string; match: (p: string) => boolean }> = [
   { href: "/discover", label: "Explorar", match: (p) => p === "/discover" },
   { href: "/calendar", label: "Calendário", match: (p) => p === "/calendar" },
-  { href: "/minha-lista", label: "Minha lista", match: (p) => p === "/minha-lista" },
+  { href: "/minha-lista", label: "Meus animes", match: (p) => p === "/minha-lista" },
   // "Comunidade" cobre o feed e as telas sociais (publicar, buscar, hashtag, discussão, perfis).
   {
     href: "/",
     label: "Comunidade",
     match: (p) =>
       p === "/" ||
+      p.startsWith("/noticias") ||
       p.startsWith("/publicar") ||
       p.startsWith("/buscar") ||
       p.startsWith("/hashtag") ||
@@ -48,19 +51,15 @@ const NAV_ITEMS: Array<{ href: string; label: string; match: (p: string) => bool
 
 function NavLinks({
   pathname,
-  user,
   onNavigate,
   direction = "row",
 }: {
   pathname: string;
-  user: PublicUser | null | undefined;
   onNavigate?: () => void;
   direction?: "row" | "column";
 }) {
+  // "Administração" não fica mais aqui: o acesso é pelo menu do perfil (avatar).
   const items = [...NAV_ITEMS];
-  if (user?.role === "ADMIN") {
-    items.push({ href: "/admin", label: "Administração", match: (p) => p === "/admin" });
-  }
 
   return (
     <Stack
@@ -112,9 +111,23 @@ function AccountArea({ user, onLogout, pathname }: { user: PublicUser | null | u
   if (user === undefined) return <Skeleton variant="rounded" width={64} height={30} />;
   if (!user) {
     return (
-      <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+      <Stack direction="row" spacing={3} sx={{ alignItems: "center" }}>
+        {/* Visitante (Figma "Header público"): sino, preferências e "Entrar". */}
+        <IconButton
+          component={NextLink}
+          href={loginHref(pathname)}
+          aria-label="Notificações — entre para acompanhar lançamentos"
+          sx={{ color: "text.secondary" }}
+        >
+          <NotificationsNoneIcon sx={{ fontSize: 20 }} />
+        </IconButton>
         <TitleLanguageMenu />
-        <Button component={NextLink} href={loginHref(pathname)} color="inherit" size="small">
+        <Button
+          component={NextLink}
+          href={loginHref(pathname)}
+          startIcon={<PersonOutlineIcon />}
+          sx={{ bgcolor: "#171820", color: "text.primary", border: 1, borderColor: "divider", "&:hover": { bgcolor: "#1d1e28" } }}
+        >
           Entrar
         </Button>
       </Stack>
@@ -192,7 +205,7 @@ export function Header() {
         {/* Abaixo de 1240 px o nav completo não cabe com folga (medido ao
             vivo na 3ª rodada de auditoria, Epic 18) e vira hambúrguer. */}
         <Box component="nav" aria-label="Navegação principal" sx={{ display: "none", [DESKTOP_QUERY]: { display: "block" } }}>
-          <NavLinks pathname={pathname} user={user} />
+          <NavLinks pathname={pathname} />
         </Box>
 
         <Box sx={{ display: "none", [DESKTOP_QUERY]: { display: "flex" }, alignItems: "center" }}>
@@ -221,7 +234,7 @@ export function Header() {
           }}
         >
           <Box component="nav" aria-label="Navegação principal">
-            <NavLinks pathname={pathname} user={user} onNavigate={() => setMobileOpen(false)} direction="column" />
+            <NavLinks pathname={pathname} onNavigate={() => setMobileOpen(false)} direction="column" />
           </Box>
           <Divider />
           <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>

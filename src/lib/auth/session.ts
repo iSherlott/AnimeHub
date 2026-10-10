@@ -28,6 +28,7 @@ export function toPublicUser(user: User): PublicUser {
     role: user.role,
     preferences: {
       titleFormat: user.titleFormat === "ja" || user.titleFormat === "romaji" ? user.titleFormat : null,
+      synopsisLanguage: user.synopsisLanguage === "pt" || user.synopsisLanguage === "ja" ? user.synopsisLanguage : null,
       timeZone: user.timeZone,
       notifyReleases: user.notifyReleases,
       notifyReplies: user.notifyReplies,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState, type MouseEvent } from "react";
-import SettingsIcon from "@mui/icons-material/Settings";
+import TuneIcon from "@mui/icons-material/Tune";
 import CheckIcon from "@mui/icons-material/Check";
 import { IconButton, ListItemIcon, Menu, MenuItem, Typography, Divider } from "@mui/material";
 import {
@@ -107,7 +107,7 @@ export function TitleLanguageMenu() {
         aria-expanded={open ? "true" : undefined}
         sx={{ width: 44, height: 44 }}
       >
-        <SettingsIcon fontSize="small" />
+        <TuneIcon fontSize="small" />
       </IconButton>
 
       <Menu

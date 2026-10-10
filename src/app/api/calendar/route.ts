@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCachedAiringSchedule } from "@/lib/airingCache";
 import { calendarItemFromCache } from "@/lib/calendarItem";
+import { applyAiringOverrides, loadActiveOverrides } from "@/lib/airingOverrides";
+import { animeSeasonOf, civilDay, classifyOffGrid, DELAY_GRACE_MS, isDelayed, type OffGridItem } from "@/lib/calendarOffGrid";
 import { getCurrentUser } from "@/lib/auth/session";
 import { startOfWeekMonday } from "@/lib/calendarWeek";
 
@@ -62,7 +64,9 @@ export async function GET(request: NextRequest) {
   const from = weekStart - BUFFER_SECONDS;
   const to = weekStart + WEEK_SECONDS + BUFFER_SECONDS;
 
-  const entries = await getCachedAiringSchedule(new Date(from * 1000), new Date(to * 1000));
+  const cached = await getCachedAiringSchedule(new Date(from * 1000), new Date(to * 1000));
+  // Horário efetivo: overrides manuais ativos (Admin → Overrides) valem sobre o da fonte.
+  const entries = applyAiringOverrides(cached, await loadActiveOverrides(Array.from(new Set(cached.map((e) => e.anilistId)))));
 
   // Navegar o calendário nunca exige login — sem sessão, ninguém aparece
   // marcado como "já está na minha lista" (não existe "minha lista" pra
@@ -86,7 +90,97 @@ export async function GET(request: NextRequest) {
     ])
   );
 
+  // Miniatura do episódio: só obras da lista têm episódios carregados (Episode.thumbnail).
+  const ownedIdToAnilist = new Map(myAnime.map((a) => [a.id, a.anilistId]));
+  const weekEpisodes = Array.from(new Set(entries.map((e) => e.episode)));
+  const thumbnails = ownedIdToAnilist.size
+    ? await prisma.episode.findMany({
+        where: { animeId: { in: Array.from(ownedIdToAnilist.keys()) }, thumbnail: { not: null }, number: { in: weekEpisodes } },
+        select: { animeId: true, number: true, thumbnail: true },
+        orderBy: { seasonNumber: "desc" },
+      })
+    : [];
+  const episodeImages = new Map<string, string>();
+  for (const t of thumbnails) {
+    const key = `${ownedIdToAnilist.get(t.animeId)}-${t.number}`;
+    if (t.thumbnail && !episodeImages.has(key)) episodeImages.set(key, t.thumbnail);
+  }
+  // Imagens de qualquer anime do calendário (job diário das 00:00); a miniatura da própria lista tem prioridade.
+  const cachedImages = weekAnilistIds.length
+    ? await prisma.episodeImage.findMany({ where: { anilistId: { in: weekAnilistIds }, episode: { in: weekEpisodes } }, select: { anilistId: true, episode: true, thumbnail: true } })
+    : [];
+  for (const img of cachedImages) {
+    const key = `${img.anilistId}-${img.episode}`;
+    if (!episodeImages.has(key)) episodeImages.set(key, img.thumbnail);
+  }
+
+  // "Atrasado": só vale checar quem já passou da tolerância — uma busca curta no catálogo.
+  const now = new Date();
+  const pastIds = Array.from(
+    new Set(entries.filter((e) => e.airingAt.getTime() <= now.getTime() - DELAY_GRACE_MS).map((e) => e.anilistId))
+  );
+  const catalogNext = pastIds.length
+    ? await prisma.catalogEntry.findMany({
+        where: { anilistId: { in: pastIds } },
+        select: { anilistId: true, nextEpisodeNumber: true, nextEpisodeAt: true },
+      })
+    : [];
+  const catalogNextById = new Map(catalogNext.map((c) => [c.anilistId as number, c]));
+
+  // Fora da grade (D-25): nunca ganham posição inventada. Só estreias com dia
+  // exato perto desta semana ("dated"), e — da temporada da semana — o que não
+  // tem data confiável ("undated") ou está em hiato ("postponed").
+  const weekMid = new Date((weekStart + WEEK_SECONDS / 2) * 1000);
+  const { season, year } = animeSeasonOf(weekMid);
+  const offGridRows = await prisma.catalogEntry.findMany({
+    where: {
+      anilistId: { not: null, notIn: weekAnilistIds },
+      status: { in: ["NOT_YET_RELEASED", "HIATUS"] },
+      OR: [
+        { season, seasonYear: year },
+        { startDate: { gte: new Date((weekStart - 86400) * 1000), lt: new Date((weekStart + WEEK_SECONDS + 86400) * 1000) } },
+      ],
+    },
+    orderBy: [{ popularityRank: "asc" }, { titleRomaji: "asc" }],
+    take: 60,
+  });
+  const offGridIds = offGridRows.map((r) => r.anilistId as number);
+  const ownedOffGrid =
+    user && offGridIds.length
+      ? await prisma.anime.findMany({ where: { userId: user.id, anilistId: { in: offGridIds } }, select: { anilistId: true } })
+      : [];
+  const ownedOffGridIds = new Set(ownedOffGrid.map((a) => a.anilistId));
+  let undatedBudget = 6;
+  const offGrid: OffGridItem[] = [];
+  for (const row of offGridRows) {
+    const kind = classifyOffGrid(row);
+    if (!kind) continue;
+    if (kind !== "dated") {
+      if (undatedBudget === 0) continue;
+      undatedBudget -= 1;
+    }
+    offGrid.push({
+      key: `offgrid-${row.anilistId}`,
+      anilistId: row.anilistId as number,
+      titleRomaji: row.titleRomaji,
+      titleEnglish: row.titleEnglish,
+      titleNative: row.titleNative,
+      kind,
+      startDate: kind === "dated" && row.startDate ? civilDay(row.startDate) : null,
+      episode: kind === "dated" ? row.nextEpisodeNumber : null,
+      inMyList: ownedOffGridIds.has(row.anilistId as number),
+    });
+  }
+
   return NextResponse.json({
-    results: entries.map((e) => calendarItemFromCache(e, myAnimeByAnilistId)),
+    results: entries.map((e) =>
+      calendarItemFromCache(
+        e,
+        myAnimeByAnilistId,
+        isDelayed(e.airingAt, e.episode, catalogNextById.get(e.anilistId), now),
+        episodeImages.get(`${e.anilistId}-${e.episode}`) ?? null
+      )
+    ),
+    offGrid,
   });
 }

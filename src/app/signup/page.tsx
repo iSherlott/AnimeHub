@@ -4,8 +4,9 @@ import { loginHref, readNextFromLocation } from "@/lib/safeRedirect";
 import { Suspense, useEffect, useState } from "react";
 import NextLink from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Box, Button, Alert, Link as MuiLink, TextField, Typography } from "@mui/material";
-import { Header } from "@/components/Header";
+import MailOutlinedIcon from "@mui/icons-material/MailOutlined";
+import { Box, Button, Alert, Link as MuiLink, Typography } from "@mui/material";
+import { AuthField, AuthShell } from "@/components/AuthShell";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 
 function SignupForm() {
@@ -50,79 +51,48 @@ function SignupForm() {
   }
 
   return (
-    <Box sx={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", maxWidth: 384, width: "100%", mx: "auto", px: 3, py: 8 }}>
-      <Typography variant="h4" component="h1" sx={{ mb: 0.5 }}>
-        Criar conta
-      </Typography>
-      <Typography variant="caption" sx={{ display: "block", mb: 3, color: "text.secondary" }}>
-        Cadastro é só por convite — peça o código a um administrador. (A
-        primeiríssima conta do sistema não precisa de convite.)
-      </Typography>
-      <Box
-        component="form"
-        onSubmit={handleSubmit}
-        sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-      >
-        <TextField
-          type="text"
+    <AuthShell
+      title="Criar conta no ANIME HUB"
+      subtitle="Cadastro é só por convite — peça o código a um administrador. (A primeiríssima conta do sistema não precisa de convite.)"
+    >
+      <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        {/* O rótulo dizia "(opcional)" incondicionalmente, mas a rota só aceita em branco
+            pra primeiríssima conta do sistema — enganoso pra quem recebeu um convite
+            (achado real da 14ª rodada de auditoria, Epic 18). */}
+        <AuthField
           label="Código de convite"
-          // O rótulo dizia "(opcional)" incondicionalmente, mas a rota
-          // (POST /api/auth/signup) só aceita em branco pra primeiríssima
-          // conta do sistema — enganoso pra qualquer pessoa recebendo um
-          // convite de verdade, a esmagadora maioria de quem vê esta tela
-          // (achado real da 14ª rodada de auditoria, Epic 18).
-          helperText="Peça a um administrador — só fica em branco na 1ª conta do sistema"
           value={inviteCode}
-          onChange={(e) => setInviteCode(e.target.value)}
-          fullWidth
+          onChange={setInviteCode}
+          helper="Peça a um administrador — só fica em branco na 1ª conta do sistema"
         />
-        <TextField
-          type="text"
-          required
-          label="Nome de exibição"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          fullWidth
-        />
-        <TextField
-          type="email"
-          required
-          label="E-mail"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          fullWidth
-        />
-        <TextField
-          type="password"
-          required
-          slotProps={{ htmlInput: { minLength: 8 } }}
-          label="Senha (mín. 8 caracteres)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          fullWidth
-        />
-        {error && <Alert severity="error">{error}</Alert>}
-        <Button type="submit" variant="contained" loading={loading} sx={{ mt: 1 }}>
-          Criar conta
-        </Button>
+        <AuthField label="Nome de exibição" required value={displayName} onChange={setDisplayName} />
+        <AuthField label="E-mail" type="email" required autoComplete="email" value={email} onChange={setEmail} endIcon={<MailOutlinedIcon />} />
+        <AuthField label="Senha (mín. 8 caracteres)" type="password" required minLength={8} autoComplete="new-password" value={password} onChange={setPassword} />
+        {error && (
+          <Alert severity="error" role="alert">
+            {error}
+          </Alert>
+        )}
+        <Box>
+          <Button type="submit" variant="contained" loading={loading} sx={{ textTransform: "uppercase" }}>
+            Criar conta
+          </Button>
+        </Box>
+        <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+          Já tem conta?{" "}
+          <MuiLink component={NextLink} href="/login" onClick={(e: React.MouseEvent) => { e.preventDefault(); router.push(loginHref(new URLSearchParams(window.location.search).get("next"))); }} color="inherit">
+            Entrar
+          </MuiLink>
+        </Typography>
       </Box>
-      <Typography variant="body2" sx={{ mt: 3, color: "text.secondary" }}>
-        Já tem conta?{" "}
-        <MuiLink component={NextLink} href="/login" onClick={(e: React.MouseEvent) => { e.preventDefault(); router.push(loginHref(new URLSearchParams(window.location.search).get("next"))); }} color="inherit">
-          Entrar
-        </MuiLink>
-      </Typography>
-    </Box>
+    </AuthShell>
   );
 }
 
 export default function SignupPage() {
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", display: "flex", flexDirection: "column" }}>
-      <Header />
-      <Suspense fallback={null}>
-        <SignupForm />
-      </Suspense>
-    </Box>
+    <Suspense fallback={null}>
+      <SignupForm />
+    </Suspense>
   );
 }

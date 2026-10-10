@@ -4,6 +4,7 @@ import {
   getAnimeById,
   getMediaRelations,
   getOfficialSiteUrl,
+  getStreamingLinks,
   type AniListMedia,
 } from "@/lib/anilist";
 import { resolveFranchise, type MediaRelations } from "@/lib/franchise";
@@ -18,7 +19,8 @@ export type ProductionWithFranchise = Production & { franchise: Franchise };
 
 const REFRESH_AFTER_MS = 7 * 24 * 3600 * 1000;
 
-export type ProductionFields = Omit<Production, "id" | "franchiseId" | "createdAt" | "fetchedAt" | "updatedAt">;
+/** `anidbId` fica de fora: é vinculado pela importação revisada e a atualização via AniList não pode apagá-lo. */
+export type ProductionFields = Omit<Production, "id" | "franchiseId" | "anidbId" | "createdAt" | "fetchedAt" | "updatedAt">;
 
 export function productionFieldsFromMedia(
   media: AniListMedia,
@@ -41,6 +43,7 @@ export function productionFieldsFromMedia(
     seasonYear: media.seasonYear,
     genres: media.genres.join(","),
     officialSite: getOfficialSiteUrl(media),
+    streamingLinksJson: JSON.stringify(getStreamingLinks(media)),
     relationsJson: relations?.related?.length ? JSON.stringify(relations.related) : null,
   };
 }
@@ -51,6 +54,19 @@ async function upsertFranchise(rootAnilistId: number, name: string): Promise<Fra
     create: { rootAnilistId, name },
     update: {},
   });
+}
+
+/** Junta duas listas de "onde assistir": a primeira manda; da segunda entram só os sites que faltam. */
+export function mergeStreamingLinks(primary: Array<{ site: string; url: string }>, extra: Array<{ site: string; url: string }>): Array<{ site: string; url: string }> {
+  const seen = new Set(primary.map((l) => l.site.toLowerCase()));
+  const merged = [...primary];
+  for (const link of extra) {
+    const key = link.site.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(link);
+  }
+  return merged;
 }
 
 async function fromAniList(anilistId: number): Promise<ProductionWithFranchise | null> {
@@ -72,6 +88,9 @@ async function fromAniList(anilistId: number): Promise<ProductionWithFranchise |
     resolution.rootTitleRomaji || media.title.romaji
   );
   const fields = productionFieldsFromMedia(media, cache.get(anilistId) ?? null, resolution.seasonNumber);
+  // Sites que vieram de outra fonte (importação do AniDB) sobrevivem à atualização pela AniList.
+  const prior = await prisma.production.findUnique({ where: { anilistId }, select: { streamingLinksJson: true } });
+  fields.streamingLinksJson = JSON.stringify(mergeStreamingLinks(getStreamingLinks(media), parseStreamingLinks(prior?.streamingLinksJson ?? null)));
   const production = await prisma.production.upsert({
     where: { anilistId },
     create: { ...fields, franchiseId: franchise.id },
@@ -117,7 +136,8 @@ export async function ensureProduction(anilistId: number): Promise<ProductionWit
     where: { anilistId },
     include: { franchise: true },
   });
-  if (existing && Date.now() - existing.fetchedAt.getTime() < REFRESH_AFTER_MS) return existing;
+  // `streamingLinksJson === null` = produção criada antes de existir "Onde assistir": consulta uma vez.
+  if (existing && existing.streamingLinksJson !== null && Date.now() - existing.fetchedAt.getTime() < REFRESH_AFTER_MS) return existing;
 
   try {
     const fresh = await fromAniList(anilistId);
@@ -136,6 +156,20 @@ export function parseRelations(json: string | null): RelatedProduction[] {
   try {
     const parsed = JSON.parse(json);
     return Array.isArray(parsed) ? (parsed as RelatedProduction[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Lê o JSON salvo em `Production.streamingLinksJson` (inválido/ausente = nenhum link). */
+export function parseStreamingLinks(json: string | null): Array<{ site: string; url: string }> {
+  if (!json) return [];
+  try {
+    const parsed = JSON.parse(json);
+    return Array.isArray(parsed)
+      ? (parsed as Array<{ site?: unknown; url?: unknown }>)
+          .filter((l): l is { site: string; url: string } => typeof l.site === "string" && typeof l.url === "string" && /^https?:\/\//i.test(l.url))
+      : [];
   } catch {
     return [];
   }

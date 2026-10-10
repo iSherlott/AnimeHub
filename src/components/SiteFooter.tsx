@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { Box, Typography } from "@mui/material";
 import { useTimeZone } from "@/lib/useTimeZone";
 
@@ -8,6 +9,7 @@ import { useTimeZone } from "@/lib/useTimeZone";
  * esquerda e a data de hoje no fuso efetivo da pessoa à direita.
  */
 export function SiteFooter() {
+  const pathname = usePathname();
   const timeZone = useTimeZone();
   const today = new Intl.DateTimeFormat("pt-BR", {
     timeZone,
@@ -20,6 +22,9 @@ export function SiteFooter() {
     .replace(/\./g, "")
     .replace(",", "")
     .replace(/^./, (c) => c.toUpperCase());
+
+  // A área Admin tem a própria casca (barra lateral + rodapé de revisão).
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) return null;
 
   return (
     <Box

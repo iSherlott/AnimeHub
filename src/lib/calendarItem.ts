@@ -14,6 +14,9 @@ export type CalendarItem = {
    * Anime do usuário. */
   titlePortuguese: string | null;
   coverImage: string | null;
+  /** Miniatura do EPISÓDIO (só existe para obras da lista com episódios carregados);
+   * sem ela, a interface mostra a capa do anime. */
+  episodeImage: string | null;
   genres: string[];
   inMyList: boolean;
   /** Sinopse (Epic 29) — vem da própria linha de Anime do usuário
@@ -25,6 +28,9 @@ export type CalendarItem = {
   description: string | null;
   descriptionPortuguese: string | null;
   isFavorite: boolean;
+  /** "Atrasado" (Figma `8:2106`): o horário previsto passou e a fonte ainda
+   * não confirmou o episódio — ver `isDelayed`. A previsão original é mantida. */
+  delayed: boolean;
 };
 
 export type OwnedAnimeCalendarInfo = {
@@ -37,7 +43,9 @@ export type OwnedAnimeCalendarInfo = {
 
 export function calendarItemFromCache(
   entry: AiringScheduleEntry,
-  myAnimeByAnilistId: Map<number, OwnedAnimeCalendarInfo>
+  myAnimeByAnilistId: Map<number, OwnedAnimeCalendarInfo>,
+  delayed = false,
+  episodeImage: string | null = null
 ): CalendarItem {
   const owned = myAnimeByAnilistId.get(entry.anilistId) ?? null;
   return {
@@ -51,10 +59,12 @@ export function calendarItemFromCache(
     titleNative: entry.titleNative,
     titlePortuguese: owned?.titlePortuguese ?? null,
     coverImage: entry.coverImage,
+    episodeImage,
     genres: entry.genres ? entry.genres.split(",").filter(Boolean) : [],
     inMyList: owned !== null,
     description: owned?.description ?? entry.description ?? null,
     descriptionPortuguese: owned?.descriptionPortuguese ?? null,
     isFavorite: owned?.isFavorite ?? false,
+    delayed,
   };
 }

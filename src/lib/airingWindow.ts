@@ -31,3 +31,18 @@ export function airingAtRangeForNow(now: Date = new Date()): { from: Date; to: D
     to: new Date(now.getTime() + AIRING_WINDOW_BEFORE_MS),
   };
 }
+
+/** Quanto antes do horário o aviso "hoje tem episódio" já aparece no sino. */
+export const NOTIFY_LOOKAHEAD_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Faixa de `airingAt` que gera aviso no sino: de "acabou de ir ao ar" (a mesma
+ * cauda da janela de exibição) até 24 h à frente — assim a pessoa é avisada dos
+ * lançamentos de HOJE desde cedo, e não só nos 5 minutos antes de cada um.
+ */
+export function notifyRangeForNow(now: Date = new Date()): { from: Date; to: Date } {
+  return {
+    from: new Date(now.getTime() - AIRING_WINDOW_AFTER_MS),
+    to: new Date(now.getTime() + NOTIFY_LOOKAHEAD_MS),
+  };
+}

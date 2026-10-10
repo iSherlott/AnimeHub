@@ -3,8 +3,7 @@ import { notFound } from "next/navigation";
 import { Box, Typography } from "@mui/material";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
-import { ensureProduction, parseRelations } from "@/lib/production";
-import { htmlToPlainText } from "@/lib/plainText";
+import { ensureProduction, parseRelations, parseStreamingLinks } from "@/lib/production";
 import { Header } from "@/components/Header";
 import { AnimeTitle } from "@/components/AnimeTitle";
 import { AppLink } from "@/components/AppLink";
@@ -14,8 +13,11 @@ import { HashtagRow } from "@/components/HashtagRow";
 import { NextEpisodeBlock } from "@/components/NextEpisodeBlock";
 import { PageContainer } from "@/components/PageShell";
 import { PublishAboutButton } from "@/components/PublishAboutButton";
+import { SynopsisText } from "@/components/SynopsisText";
 import { RelatedWorkCard } from "@/components/RelatedWorkCard";
 import { UserPostList } from "@/components/UserPostList";
+import { PlatformLinksManager } from "@/components/PlatformLinksManager";
+import { WatchLinks } from "@/components/WatchLinks";
 
 /**
  * Detalhe PÚBLICO da produção (D-03, aprovada; Figma `8:1953`): visitante
@@ -88,7 +90,7 @@ export default async function ProductionPage({ params }: Params) {
     user
       ? prisma.anime.findUnique({
           where: { userId_anilistId: { userId: user.id, anilistId: id } },
-          select: { id: true },
+          select: { id: true, platformLinks: { orderBy: { createdAt: "asc" }, select: { id: true, platform: true, url: true } } },
         })
       : Promise.resolve(null),
     prisma.production.findMany({
@@ -111,7 +113,6 @@ export default async function ProductionPage({ params }: Params) {
   const orderedTags = topTags.map((t) => tagRows.find((r) => r.id === t.hashtagId)).filter((t): t is NonNullable<typeof t> => Boolean(t));
 
   const genres = production.genres ? production.genres.split(",").filter(Boolean) : [];
-  const synopsis = htmlToPlainText(production.description);
   const related = parseRelations(production.relationsJson);
   const knownSiblingIds = new Set(siblings.map((s) => s.anilistId));
   const unknownRelated = related.filter((r) => !knownSiblingIds.has(r.id));
@@ -236,7 +237,7 @@ export default async function ProductionPage({ params }: Params) {
               <Typography id="sinopse-heading" component="h2" sx={{ fontSize: 26, lineHeight: 1.5 }}>
                 Sinopse
               </Typography>
-              <Typography sx={{ whiteSpace: "pre-wrap", fontSize: 16 }}>{synopsis || "Sem sinopse disponível."}</Typography>
+              <SynopsisText description={production.description} anilistId={production.anilistId} sx={{ fontSize: 16 }} />
             </Box>
             {genres.length > 0 && (
               <Box component="section" aria-labelledby="generos-heading" sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -268,6 +269,24 @@ export default async function ProductionPage({ params }: Params) {
                 </Box>
               ))}
             </Box>
+            <Box component="section" aria-labelledby="watch-heading" sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+              <Typography id="watch-heading" component="h3" sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", textTransform: "uppercase" }}>
+                Onde assistir
+              </Typography>
+              <WatchLinks links={parseStreamingLinks(production.streamingLinksJson)} />
+            </Box>
+            <Box component="section" aria-labelledby="my-source-heading" data-testid="my-watch-source" sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+              <Typography id="my-source-heading" component="h3" sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", textTransform: "uppercase" }}>
+                Onde eu assisto
+              </Typography>
+              {owned ? (
+                <PlatformLinksManager animeId={owned.id} initialLinks={owned.platformLinks} />
+              ) : (
+                <Typography data-testid="my-watch-source-hint" sx={{ fontSize: 14, color: "text.secondary" }}>
+                  {user ? "Acompanhe esta obra para guardar o link do site onde você assiste." : "Entre e acompanhe esta obra para guardar o link do site onde você assiste."}
+                </Typography>
+              )}
+            </Box>
             {production.officialSite && (
               <Box>
                 <AppLink
@@ -283,7 +302,7 @@ export default async function ProductionPage({ params }: Params) {
               </Box>
             )}
             {production.officialSite && (
-              <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Único destino externo desta página.</Typography>
+              <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Links externos abrem em outra aba.</Typography>
             )}
           </Box>
         </Box>

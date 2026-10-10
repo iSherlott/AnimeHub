@@ -64,7 +64,7 @@ export function discoverItemFromCatalogEntry(
   entry: CatalogEntry
 ): DiscoverItem {
   return {
-    key: entry.anilistId ? `anilist-${entry.anilistId}` : `kitsu-${entry.kitsuId}`,
+    key: entry.anilistId ? `anilist-${entry.anilistId}` : entry.kitsuId ? `kitsu-${entry.kitsuId}` : `anidb-${entry.anidbId}`,
     anilistId: entry.anilistId,
     kitsuId: entry.kitsuId,
     titleRomaji: entry.titleRomaji,

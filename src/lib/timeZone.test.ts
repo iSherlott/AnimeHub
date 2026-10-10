@@ -3,6 +3,7 @@ import {
   buildWeekDaysInZone,
   dayKeyInZone,
   formatTimeInZone,
+  zonedLocalToUtc,
   isValidTimeZone,
   resolveTimeZone,
   startOfDayInZone,
@@ -78,5 +79,18 @@ describe("formatTimeInZone", () => {
     expect(formatTimeInZone(instant, "America/Sao_Paulo")).toBe("13:00");
     expect(formatTimeInZone(instant, "Asia/Tokyo")).toBe("01:00");
     expect(formatTimeInZone(instant, "UTC")).toBe("16:00");
+  });
+});
+
+describe("zonedLocalToUtc", () => {
+  it("converts wall-clock time in the zone to the UTC instant", () => {
+    expect(zonedLocalToUtc("2026-10-10T13:00", "America/Sao_Paulo")?.toISOString()).toBe("2026-10-10T16:00:00.000Z");
+    expect(zonedLocalToUtc("2026-10-10T13:00", "Asia/Tokyo")?.toISOString()).toBe("2026-10-10T04:00:00.000Z");
+    expect(zonedLocalToUtc("2026-07-01T09:30", "Europe/London")?.toISOString()).toBe("2026-07-01T08:30:00.000Z");
+  });
+
+  it("rejects malformed input", () => {
+    expect(zonedLocalToUtc("2026-10-10 13:00", "UTC")).toBeNull();
+    expect(zonedLocalToUtc("", "UTC")).toBeNull();
   });
 });

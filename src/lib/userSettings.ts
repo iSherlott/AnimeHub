@@ -6,9 +6,13 @@ import { isValidTimeZone, DEVICE_TIME_ZONE } from "@/lib/timeZone";
  */
 export const TITLE_FORMATS = ["ja", "romaji"] as const;
 export type TitleFormat = (typeof TITLE_FORMATS)[number];
+/** Idioma da sinopse quando os títulos estão em japonês (pt é o padrão). */
+export const SYNOPSIS_LANGUAGES = ["pt", "ja"] as const;
+export type SynopsisLanguage = (typeof SYNOPSIS_LANGUAGES)[number];
 
 export type UserPreferences = {
   titleFormat: TitleFormat | null;
+  synopsisLanguage: SynopsisLanguage | null;
   timeZone: string | null;
   notifyReleases: boolean;
   notifyReplies: boolean;
@@ -35,6 +39,13 @@ export function validateSettingsPatch(body: unknown): ValidationResult {
     if (v === null) patch.titleFormat = null;
     else if (typeof v === "string" && (TITLE_FORMATS as readonly string[]).includes(v)) patch.titleFormat = v as TitleFormat;
     else return { ok: false, error: "Formato de título inválido" };
+  }
+
+  if ("synopsisLanguage" in input) {
+    const v = input.synopsisLanguage;
+    if (v === null) patch.synopsisLanguage = null;
+    else if (typeof v === "string" && (SYNOPSIS_LANGUAGES as readonly string[]).includes(v)) patch.synopsisLanguage = v as SynopsisLanguage;
+    else return { ok: false, error: "Idioma da sinopse inválido" };
   }
 
   if ("timeZone" in input) {

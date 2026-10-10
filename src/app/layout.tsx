@@ -5,6 +5,7 @@ import { MuiProviders } from "@/components/MuiProviders";
 import { TitlePreferenceProvider } from "@/lib/titlePreference";
 import { CurrentUserProvider } from "@/lib/auth/useCurrentUser";
 import { SiteFooter } from "@/components/SiteFooter";
+import { ScrollToTop } from "@/components/ScrollToTop";
 import "./globals.css";
 
 const anton = Anton({
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                   {children}
                 </main>
                 <SiteFooter />
+                <ScrollToTop />
               </TitlePreferenceProvider>
             </CurrentUserProvider>
           </MuiProviders>

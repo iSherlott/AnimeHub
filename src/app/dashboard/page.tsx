@@ -3,14 +3,22 @@
 import { useEffect, useMemo, useState } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
-import { Alert, Box, Button, Skeleton, Stack, Typography } from "@mui/material";
+import ArrowOutwardIcon from "@mui/icons-material/ArrowOutward";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import { Box, Button, Skeleton, Typography } from "@mui/material";
+import { ErrorNotice } from "@/components/StatePanels";
 import { Header } from "@/components/Header";
-import { LocalDateTime } from "@/components/LocalDateTime";
+import { PageContainer, PageIntro } from "@/components/PageShell";
+import { ELEVATED_BUTTON_SX, PrimaryTitle, useTitleLines } from "@/components/ExploreCard";
+import { ListRow, NewEpisodeBadge } from "@/components/ListRow";
+import { SectionHeader } from "@/components/ExploreParts";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { CalendarItem } from "@/lib/calendarItem";
-import { dayKeyInZone, formatTimeInZone, startOfWeekMondayInZone } from "@/lib/timeZone";
+import type { MyListEntry } from "@/lib/myList";
+import { dayKeyInZone, formatTimeInZone, startOfWeekMondayInZone, weekdayName } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
-import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
+import { resolveTitleTextLenient, useTitlePreference } from "@/lib/titlePreference";
 import { loginHref } from "@/lib/safeRedirect";
 
 /**
@@ -19,10 +27,24 @@ import { loginHref } from "@/lib/safeRedirect";
  * enquanto carregam nem quando a busca falha (`8:5323`, `8:5448`), e
  * "Minha lista" conta vínculos — não consumo.
  */
+type AlertItem = {
+  id: string;
+  anilistId: number;
+  episode: number;
+  airingAt: string;
+  previousAiringAt: string | null;
+  titleRomaji: string | null;
+  titleEnglish: string | null;
+  titleNative: string | null;
+  titlePortuguese: string | null;
+};
+
 type LoadState =
   | { kind: "loading" }
   | { kind: "error" }
-  | { kind: "ready"; items: CalendarItem[]; followCount: number };
+  | { kind: "ready"; items: CalendarItem[]; entries: MyListEntry[]; alerts: AlertItem[] };
+
+const pad = (n: number) => String(n).padStart(2, "0");
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -45,14 +67,17 @@ export default function DashboardPage() {
     Promise.all([
       fetch(`/api/calendar?weekOffset=0&weekStart=${weekStart(0)}`),
       fetch(`/api/calendar?weekOffset=1&weekStart=${weekStart(1)}`),
-      fetch("/api/anime"),
+      fetch("/api/my-list"),
+      // Alertas são complemento: se falharem, o resto do painel continua valendo.
+      fetch("/api/notifications").catch(() => null),
     ])
-      .then(async ([w0, w1, list]) => {
+      .then(async ([w0, w1, list, notifications]) => {
         if (!w0.ok || !w1.ok || !list.ok) throw new Error("falha");
         const [a, b, l] = await Promise.all([w0.json(), w1.json(), list.json()]);
+        const alerts: AlertItem[] = notifications && notifications.ok ? ((await notifications.json()).alerts ?? []) : [];
         if (cancelled) return;
         const items: CalendarItem[] = [...(a.results ?? []), ...(b.results ?? [])];
-        setState({ kind: "ready", items, followCount: (l.animes ?? []).length });
+        setState({ kind: "ready", items, entries: l.entries ?? [], alerts });
       })
       .catch(() => {
         if (!cancelled) setState({ kind: "error" });
@@ -71,9 +96,10 @@ export default function DashboardPage() {
     const todayKey = dayKeyInZone(now, timeZone);
     const isToday = (i: CalendarItem) => dayKeyInZone(new Date(i.airingAt), timeZone) === todayKey;
     const today = mine.filter(isToday);
-    const later = mine.filter((i) => new Date(i.airingAt) > now && !isToday(i)).slice(0, 6);
+    const later = mine.filter((i) => new Date(i.airingAt) > now && !isToday(i)).slice(0, 2);
     const available = today.filter((i) => new Date(i.airingAt) <= now);
-    return { today, later, available };
+    const undated = state.entries.filter((e) => e.state.kind === "undated").length;
+    return { today, later, available, undated, now };
   }, [state, timeZone]);
 
   const retry = () => {
@@ -81,141 +107,253 @@ export default function DashboardPage() {
     setReloadKey((k) => k + 1);
   };
 
-  const todayLabel = new Intl.DateTimeFormat("pt-BR", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(new Date());
+  const now = new Date();
+  const kicker = `今日 / ${weekdayName(now, timeZone).toUpperCase()}, ${new Intl.DateTimeFormat("pt-BR", { timeZone, day: "numeric", month: "long", year: "numeric" })
+    .format(now)
+    .replace(/ de /g, " ")
+    .toUpperCase()}`;
+  const todayChip = `${new Intl.DateTimeFormat("pt-BR", { timeZone, weekday: "short" }).format(now).replace(".", "").toUpperCase()} ${new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit" }).format(now)} · HORÁRIO LOCAL`;
 
   return (
-    <div className="min-h-screen bg-ink pb-16">
+    <Box sx={{ minHeight: "100%", bgcolor: "background.default" }}>
       <Header />
-      <Box component="main" sx={{ px: { xs: 3, sm: 5 }, py: 4, maxWidth: 960 }}>
-        <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1 }} suppressHydrationWarning>
-          {todayLabel}
-        </Typography>
-        <Typography variant="h3" component="h1" className="font-display" sx={{ textTransform: "uppercase" }}>
-          Seu dia, em anime.
-        </Typography>
-        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-          Os lançamentos da sua lista. Sem perder de vista o próximo horário.
-        </Typography>
-        <Button component={NextLink} href="/calendar" variant="outlined" size="small" sx={{ mt: 2 }}>
-          Abrir calendário
-        </Button>
+      <PageContainer wide>
+        <PageIntro
+          kicker={kicker}
+          title="Seu dia, em anime."
+          subtitle="Os lançamentos da sua lista. Sem perder de vista o próximo horário."
+          action={
+            <Button component={NextLink} href="/calendar" startIcon={<CalendarMonthIcon />} sx={ELEVATED_BUTTON_SX}>
+              Abrir calendário
+            </Button>
+          }
+        />
 
         {state.kind === "error" && (
-          <Alert
-            severity="error"
-            role="alert"
-            sx={{ mt: 3 }}
-            action={
-              <Button color="inherit" size="small" onClick={retry}>
-                Tentar novamente
-              </Button>
-            }
-          >
-            Não foi possível carregar os lançamentos. Sua lista está segura — tente novamente para consultar os horários de hoje.
-          </Alert>
+          <ErrorNotice title="Não foi possível carregar os lançamentos." onRetry={retry}>
+            Sua lista está segura. Tente novamente para consultar os horários de hoje.
+          </ErrorNotice>
         )}
 
         {(state.kind === "loading" || user === undefined) && (
-          <Box aria-busy="true" sx={{ mt: 3 }} data-testid="dashboard-loading">
-            <Stack direction="row" spacing={2}>
+          <Box aria-busy="true" role="status" aria-label="Carregando" data-testid="dashboard-loading" sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 3 }}>
               {[0, 1, 2].map((i) => (
-                <Skeleton key={i} variant="rectangular" animation={false} width={160} height={72} />
+                <Skeleton key={i} variant="rounded" animation="wave" height={176} sx={{ borderRadius: "16px", bgcolor: "#171820" }} />
               ))}
-            </Stack>
-            <Skeleton variant="rectangular" animation={false} height={56} sx={{ mt: 2 }} />
-            <Skeleton variant="rectangular" animation={false} height={56} sx={{ mt: 1 }} />
+            </Box>
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} variant="rounded" animation="wave" height={120} sx={{ borderRadius: "12px", bgcolor: "#171820" }} />
+            ))}
           </Box>
         )}
 
         {state.kind === "ready" && view && (
           <>
-            <Stack direction="row" spacing={2} sx={{ mt: 3, flexWrap: "wrap", rowGap: 2 }} data-testid="dashboard-counters">
-              <Counter label="Hoje" value={view.today.length} hint="lançamentos" id="today" />
-              <Counter label="Novos episódios" value={view.available.length} hint="já disponíveis" id="available" />
-              <Counter label="Minha lista" value={state.followCount} hint="animes acompanhando" id="following" />
-            </Stack>
-
-            <Box component="section" aria-labelledby="hoje-heading" sx={{ mt: 4 }}>
-              <Typography id="hoje-heading" variant="h6" component="h2" sx={{ textTransform: "uppercase", mb: 1 }}>
-                Hoje
-              </Typography>
-              {view.today.length === 0 ? (
-                <Typography sx={{ color: "text.secondary" }} data-testid="today-empty">
-                  Nenhum lançamento da sua lista hoje.
-                </Typography>
-              ) : (
-                <Stack component="ul" spacing={1} sx={{ listStyle: "none", p: 0, m: 0 }} data-testid="today-list">
-                  {view.today.map((item) => (
-                    <Row key={item.key} item={item} title={resolveTitleText(preference, item) || "Sem título"} />
-                  ))}
-                </Stack>
-              )}
+            <Box data-testid="dashboard-counters" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, gap: 3 }}>
+              <Counter
+                label="Hoje"
+                value={view.today.length}
+                hint={`${view.today.length === 1 ? "lançamento" : "lançamentos"} · ${weekdayName(now, timeZone).toLowerCase()} ${new Intl.DateTimeFormat("pt-BR", { timeZone, day: "numeric" }).format(now)}`}
+                id="today"
+              />
+              <Counter
+                label="Novos episódios"
+                value={view.available.length}
+                hint={
+                  view.available.length === 0
+                    ? "nenhum disponível ainda hoje"
+                    : `${joinEpisodes(view.available.map((i) => i.episode))} ${view.available.length === 1 ? "disponível" : "disponíveis"}`
+                }
+                id="available"
+              />
+              <Counter label="Minha lista" value={state.entries.length} hint="animes acompanhando" id="following" />
             </Box>
 
-            {view.later.length > 0 && (
-              <Box component="section" aria-labelledby="depois-heading" sx={{ mt: 4 }}>
-                <Typography id="depois-heading" variant="h6" component="h2" sx={{ textTransform: "uppercase", mb: 1 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(0, 1fr) 396px" }, gap: 4, alignItems: "start" }}>
+              <Box component="section" aria-labelledby="hoje-heading" sx={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+                  <Typography id="hoje-heading" component="h2" sx={{ fontSize: 24, lineHeight: 1.5, textTransform: "uppercase" }}>
+                    Hoje
+                  </Typography>
+                  <Box sx={{ px: 1, py: 0.75, borderRadius: "6px", bgcolor: "#2c111b" }}>
+                    <Typography component="span" suppressHydrationWarning sx={{ fontSize: 11, fontWeight: 700, color: "primary.main", whiteSpace: "nowrap" }}>
+                      {todayChip}
+                    </Typography>
+                  </Box>
+                </Box>
+                {view.today.length === 0 ? (
+                  <Typography sx={{ color: "text.secondary" }} data-testid="today-empty">
+                    Nenhum lançamento da sua lista hoje.
+                  </Typography>
+                ) : (
+                  <>
+                    <Box component="ul" data-testid="today-list" sx={{ display: "flex", flexDirection: "column", gap: 2, p: 0, m: 0 }}>
+                      {view.today.map((item) => {
+                        const aired = new Date(item.airingAt) <= view.now;
+                        return (
+                          <ListRow
+                            key={item.key}
+                            linkWhole
+                            href={item.animeId ? `/anime/${item.animeId}` : `/obra/${item.anilistId}`}
+                            time={formatTimeInZone(new Date(item.airingAt), timeZone)}
+                            episodeLabel={`Episódio ${pad(item.episode)}`}
+                            cover={item.coverImage}
+                            titles={item}
+                            highlighted={aired}
+                            badge={aired ? <NewEpisodeBadge>NOVO EPISÓDIO EP{pad(item.episode)}</NewEpisodeBadge> : undefined}
+                          />
+                        );
+                      })}
+                    </Box>
+                    <Typography sx={{ fontSize: 12, color: "text.secondary" }}>
+                      {view.available.length === 0
+                        ? "Nenhum episódio disponível ainda; "
+                        : `${view.available.length} ${view.available.length === 1 ? "novo episódio destacado" : "novos episódios destacados"}; `}
+                      {view.today.length === 1 ? "o evento pertence" : `os ${view.today.length} eventos pertencem`} a hoje.
+                    </Typography>
+                  </>
+                )}
+              </Box>
+
+              <Box
+                component="aside"
+                aria-labelledby="depois-heading"
+                sx={{ display: "flex", flexDirection: "column", gap: 2.5, p: 3, borderRadius: "16px", bgcolor: "background.paper", border: 1, borderColor: "divider" }}
+              >
+                <Typography id="depois-heading" component="h2" sx={{ fontSize: 20, lineHeight: 1.5 }}>
                   Depois de hoje
                 </Typography>
-                <Stack component="ul" spacing={1} sx={{ listStyle: "none", p: 0, m: 0 }} data-testid="later-list">
-                  {view.later.map((item) => (
-                    <Row key={item.key} item={item} title={resolveTitleText(preference, item) || "Sem título"} withDay />
-                  ))}
-                </Stack>
+                {view.later.length === 0 ? (
+                  <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Nenhum outro lançamento da sua lista nos próximos dias.</Typography>
+                ) : (
+                  <Box component="ul" data-testid="later-list" sx={{ display: "flex", flexDirection: "column", gap: 2.5, p: 0, m: 0, listStyle: "none" }}>
+                    {view.later.map((item) => (
+                      <LaterItem key={item.key} item={item} now={view.now} href={item.animeId ? `/anime/${item.animeId}` : `/obra/${item.anilistId}`} />
+                    ))}
+                  </Box>
+                )}
+                {view.undated > 0 && (
+                  <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+                    Sem data definida: {view.undated} {view.undated === 1 ? "anime" : "animes"}. {view.undated === 1 ? "Ele permanece" : "Eles permanecem"} fora da agenda.
+                  </Typography>
+                )}
+                <Box>
+                  <Button component={NextLink} href="/minha-lista" startIcon={<ArrowOutwardIcon />} sx={ELEVATED_BUTTON_SX}>
+                    Ver Minha Lista
+                  </Button>
+                </Box>
               </Box>
-            )}
+            </Box>
+
+            <UpdatesSection alerts={state.alerts} titleOf={(a) => resolveTitleTextLenient(preference, a, "Anime")} timeZone={timeZone} />
           </>
         )}
-      </Box>
-    </div>
+      </PageContainer>
+    </Box>
   );
+}
+
+function joinEpisodes(episodes: number[]): string {
+  const labels = episodes.map((e) => `EP${pad(e)}`);
+  if (labels.length <= 1) return labels.join("");
+  return `${labels.slice(0, -1).join(", ")} e ${labels[labels.length - 1]}`;
 }
 
 function Counter({ label, value, hint, id }: { label: string; value: number; hint: string; id: string }) {
   return (
-    <Box sx={{ minWidth: 150, p: 2, border: 1, borderColor: "divider", borderRadius: 1 }} data-testid={`counter-${id}`}>
-      <Typography variant="overline" sx={{ color: "text.secondary" }}>
+    <Box
+      data-testid={`counter-${id}`}
+      sx={{ display: "flex", flexDirection: "column", gap: 2.5, p: 3, borderRadius: "16px", bgcolor: "background.paper", border: 1, borderColor: "divider" }}
+    >
+      <Typography component="p" sx={{ fontSize: 12, fontWeight: 600, color: "text.secondary", textTransform: "uppercase" }}>
         {label}
       </Typography>
-      <Typography variant="h4" component="p" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
+      <Typography component="p" sx={{ fontSize: 40, lineHeight: 1.2 }}>
         {value}
       </Typography>
-      <Typography variant="caption" sx={{ color: "text.secondary" }}>
+      <Typography suppressHydrationWarning component="p" sx={{ fontSize: 14, color: "text.secondary" }}>
         {hint}
       </Typography>
     </Box>
   );
 }
 
-function Row({ item, title, withDay = false }: { item: CalendarItem; title: string; withDay?: boolean }) {
+function LaterItem({ item, now, href }: { item: CalendarItem; now: Date; href: string }) {
   const timeZone = useTimeZone();
-  const time = formatTimeInZone(new Date(item.airingAt), timeZone);
+  const titleLines = useTitleLines(item);
+  const { secondary, primaryLang } = titleLines;
+  const date = new Date(item.airingAt);
+  const tomorrow = new Date(now.getTime() + 86400_000);
+  const isTomorrow = dayKeyInZone(date, timeZone) === dayKeyInZone(tomorrow, timeZone);
+  const dayNumber = new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit" }).format(date);
+  const kicker = isTomorrow
+    ? `AMANHÃ / ${new Intl.DateTimeFormat("pt-BR", { timeZone, weekday: "short" }).format(date).replace(".", "").toUpperCase()} ${dayNumber}`
+    : `${weekdayName(date, timeZone).toUpperCase()} / ${dayNumber} ${new Intl.DateTimeFormat("pt-BR", { timeZone, month: "short" }).format(date).replace(".", "").toUpperCase()}`;
   return (
     <li>
-      <Box
-        component={NextLink}
-        href={item.animeId ? `/anime/${item.animeId}` : `/obra/${item.anilistId}`}
-        sx={{
-          display: "flex",
-          alignItems: "baseline",
-          gap: 2,
-          p: 1.5,
-          border: 1,
-          borderColor: "divider",
-          borderRadius: 1,
-          textDecoration: "none",
-          color: "text.primary",
-          "&:hover": { borderColor: "primary.main" },
-        }}
-      >
-        <Typography sx={{ fontWeight: 800, fontSize: 20, minWidth: 64 }} suppressHydrationWarning>
-          {withDay ? <LocalDateTime iso={item.airingAt} compact /> : time}
+      <Box component={NextLink} href={href} sx={{ display: "flex", flexDirection: "column", gap: 1, color: "text.primary", textDecoration: "none", "&:hover .later-title": { textDecoration: "underline" } }}>
+        <Typography suppressHydrationWarning component="p" sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary" }}>
+          {kicker}
         </Typography>
-        <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", minWidth: 96 }}>
-          Episódio {item.episode}
+        <Typography suppressHydrationWarning component="p" sx={{ fontSize: 32, lineHeight: 1.3 }}>
+          {formatTimeInZone(date, timeZone)} · EP{pad(item.episode)}
         </Typography>
-        <Typography sx={{ fontWeight: 600 }}>{title}</Typography>
+        <Typography className="later-title" lang={primaryLang} sx={{ fontSize: 20, fontWeight: 700, lineHeight: 1.4 }}>
+          <PrimaryTitle lines={titleLines} />
+        </Typography>
+        {secondary[0] && <Typography sx={{ fontSize: 13, color: "text.secondary" }}>{secondary[secondary.length - 1]}</Typography>}
       </Box>
     </li>
+  );
+}
+
+/** "Atualizações da sua lista" (Figma `8:2442`): o alerta de novo episódio e o de data alterada mais recentes. */
+function UpdatesSection({
+  alerts,
+  titleOf,
+  timeZone,
+}: {
+  alerts: AlertItem[];
+  titleOf: (a: AlertItem) => string;
+  timeZone: string;
+}) {
+  const newEpisode = alerts.find((a) => !a.previousAiringAt);
+  const changed = alerts.find((a) => a.previousAiringAt);
+  if (!newEpisode && !changed) return null;
+  const slot = (iso: string) => `${weekdayName(new Date(iso), timeZone).toLowerCase()}, ${formatTimeInZone(new Date(iso), timeZone)}`;
+  const dm = (iso: string) => new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit", month: "2-digit" }).format(new Date(iso));
+  return (
+    <Box component="section" sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <SectionHeader title="Atualizações da sua lista" />
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" }, gap: 3, alignItems: "start" }}>
+        {newEpisode && (
+          <Box sx={{ display: "flex", gap: 2, p: 2.5, borderRadius: "12px", bgcolor: "background.paper", border: 1, borderColor: "divider" }}>
+            <InfoOutlinedIcon sx={{ fontSize: 20, color: "text.secondary", mt: 0.25 }} />
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+              <Typography component="h3" sx={{ fontSize: 16 }}>
+                NOVO EPISÓDIO · EP{pad(newEpisode.episode)} disponível
+              </Typography>
+              <Typography suppressHydrationWarning sx={{ fontSize: 14, color: "text.secondary" }}>
+                {titleOf(newEpisode)} · {slot(newEpisode.airingAt)}. Abra o detalhe para consultar a previsão.
+              </Typography>
+            </Box>
+          </Box>
+        )}
+        {changed && changed.previousAiringAt && (
+          <Box sx={{ display: "flex", gap: 2, p: 2.5, borderRadius: "12px", bgcolor: "background.paper", border: 1, borderColor: "divider" }}>
+            <InfoOutlinedIcon sx={{ fontSize: 20, color: "warning.main", mt: 0.25 }} />
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+              <Typography suppressHydrationWarning component="h3" sx={{ fontSize: 16 }}>
+                DATA ALTERADA · {slot(changed.airingAt)}
+              </Typography>
+              <Typography suppressHydrationWarning sx={{ fontSize: 14, color: "text.secondary" }}>
+                {titleOf(changed)} · a previsão mudou de {dm(changed.previousAiringAt)} para {dm(changed.airingAt)}. Horário local atualizado.
+              </Typography>
+            </Box>
+          </Box>
+        )}
+      </Box>
+    </Box>
   );
 }

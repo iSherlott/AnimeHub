@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AniListMedia } from "./anilist";
-import { parseRelations, productionFieldsFromMedia } from "./production";
+import { mergeStreamingLinks, parseRelations, productionFieldsFromMedia } from "./production";
 
 const media: AniListMedia = {
   id: 7,
@@ -49,5 +49,25 @@ describe("parseRelations", () => {
   });
   it("parses a stored list", () => {
     expect(parseRelations('[{"id":1,"titleRomaji":"x","format":null,"relationType":"SEQUEL"}]')).toHaveLength(1);
+  });
+});
+
+describe("mergeStreamingLinks", () => {
+  it("mantém os links principais e acrescenta só os sites que faltam", () => {
+    const merged = mergeStreamingLinks(
+      [{ site: "Crunchyroll", url: "https://crunchyroll.com/a" }],
+      [
+        { site: "crunchyroll", url: "https://crunchyroll.com/b" },
+        { site: "Netflix", url: "https://netflix.com/x" },
+      ]
+    );
+    expect(merged).toEqual([
+      { site: "Crunchyroll", url: "https://crunchyroll.com/a" },
+      { site: "Netflix", url: "https://netflix.com/x" },
+    ]);
+  });
+
+  it("aceita listas vazias", () => {
+    expect(mergeStreamingLinks([], [])).toEqual([]);
   });
 });

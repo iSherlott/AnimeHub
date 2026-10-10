@@ -11,6 +11,8 @@ export type AniListFuzzyDate = {
 
 export type AniListMedia = {
   id: number;
+  /** ID na MyAnimeList (chave das notícias). */
+  idMal?: number | null;
   title: {
     romaji: string;
     english: string | null;
@@ -33,8 +35,24 @@ export type AniListMedia = {
   startDate: AniListFuzzyDate | null;
   endDate: AniListFuzzyDate | null;
   nextAiringEpisode: { episode: number; airingAt: number } | null;
-  externalLinks: { site: string; url: string | null }[];
+  externalLinks: { site: string; url: string | null; type?: string | null; isDisabled?: boolean | null }[];
 };
+
+export type StreamingLink = { site: string; url: string };
+
+/** Sites onde assistir (links `STREAMING` da AniList): só http(s), sem desativados e sem repetir o site. */
+export function getStreamingLinks(media: Pick<AniListMedia, "externalLinks">): StreamingLink[] {
+  const seen = new Set<string>();
+  const links: StreamingLink[] = [];
+  for (const link of media.externalLinks ?? []) {
+    if (link.type !== "STREAMING" || link.isDisabled || !link.url || !/^https?:\/\//i.test(link.url)) continue;
+    const key = link.site.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    links.push({ site: link.site, url: link.url });
+  }
+  return links;
+}
 
 /** A própria AniList usa esse nome de site como convenção pro link do site
  * oficial dentro de externalLinks — não tem um `type` dedicado pra isso. */
@@ -44,6 +62,7 @@ export function getOfficialSiteUrl(media: Pick<AniListMedia, "externalLinks">): 
 
 const MEDIA_FIELDS = `
   id
+  idMal
   title {
     romaji
     english
@@ -77,6 +96,8 @@ const MEDIA_FIELDS = `
   externalLinks {
     site
     url
+    type
+    isDisabled
   }
 `;
 
@@ -160,30 +181,45 @@ export async function searchAnime(search: string): Promise<AniListMedia[]> {
   return data.Page.media.map(normalizeMedia);
 }
 
+/** Formatos de uma temporada completa (TV, curtas, filmes, web, OVA e especiais); só MUSIC fica de fora. */
+const SEASON_FORMATS = "[TV, TV_SHORT, MOVIE, ONA, OVA, SPECIAL]";
+const SEASON_PAGE_SIZE = 50;
+/** 8 × 50 = 400 obras: mais do que qualquer temporada real, e impede laço infinito. */
+const SEASON_MAX_PAGES = 8;
+
+/** Todas as obras da temporada, da mais popular para a menos (a AniList pagina em até 50). */
 export async function getSeasonalAnime(
   season: "WINTER" | "SPRING" | "SUMMER" | "FALL",
   seasonYear: number
 ): Promise<AniListMedia[]> {
   const query = `
-    query ($season: MediaSeason, $seasonYear: Int) {
-      Page(perPage: 24) {
+    query ($season: MediaSeason, $seasonYear: Int, $page: Int) {
+      Page(page: $page, perPage: ${SEASON_PAGE_SIZE}) {
+        pageInfo {
+          hasNextPage
+        }
         media(
           season: $season
           seasonYear: $seasonYear
           type: ANIME
           sort: POPULARITY_DESC
-          format_in: [TV, TV_SHORT]
+          format_in: ${SEASON_FORMATS}
         ) {
           ${MEDIA_FIELDS}
         }
       }
     }
   `;
-  const data = await anilistRequest<{ Page: { media: AniListMedia[] } }>(
-    query,
-    { season, seasonYear }
-  );
-  return data.Page.media.map(normalizeMedia);
+  const all: AniListMedia[] = [];
+  for (let page = 1; page <= SEASON_MAX_PAGES; page += 1) {
+    const data = await anilistRequest<{ Page: { pageInfo?: { hasNextPage?: boolean }; media: AniListMedia[] } }>(
+      query,
+      { season, seasonYear, page }
+    );
+    all.push(...data.Page.media.map(normalizeMedia));
+    if (!data.Page.pageInfo?.hasNextPage) break;
+  }
+  return all;
 }
 
 export type AniListTrailer = { id: string; site: string } | null;

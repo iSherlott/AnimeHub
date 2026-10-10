@@ -77,8 +77,8 @@ type KitsuEpisodesResponse = {
   links?: { next?: string };
 };
 
-async function kitsuFetch<T>(path: string): Promise<T> {
-  const res = await fetch(`${KITSU_API_BASE_URL}${path}`, {
+async function kitsuFetch<T>(path: string, baseUrl: string = KITSU_API_BASE_URL): Promise<T> {
+  const res = await fetch(`${baseUrl}${path}`, {
     headers: { Accept: "application/vnd.api+json" },
   });
   if (!res.ok) {
@@ -185,4 +185,36 @@ export async function getKitsuEpisodes(
   }
 
   return episodes;
+}
+
+type KitsuMappingsResponse = {
+  data?: Array<{ relationships?: { item?: { data?: { id?: string; type?: string } | null } } }>;
+};
+
+/** Base própria do job de imagens de episódios (permite apontar para uma Kitsu falsa nos testes). */
+const EPISODE_IMAGES_BASE = () => process.env.EPISODE_IMAGES_KITSU_BASE_URL ?? KITSU_API_BASE_URL;
+
+/** AniList id → Kitsu id pelo mapeamento oficial da Kitsu (exato, sem adivinhar por título). `null` = sem mapeamento. */
+export async function getKitsuIdByAnilistId(anilistId: number): Promise<number | null> {
+  const json = await kitsuFetch<KitsuMappingsResponse>(
+    `/mappings?filter[externalSite]=anilist/anime&filter[externalId]=${anilistId}&include=item`,
+    EPISODE_IMAGES_BASE()
+  );
+  const item = json.data?.[0]?.relationships?.item?.data;
+  const id = item && item.type === "anime" ? Number(item.id) : NaN;
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+/** Miniatura do episódio `number` (a Kitsu devolve uma por temporada interna; fica a primeira com imagem). */
+export async function getKitsuEpisodeThumbnail(kitsuId: number, number: number): Promise<string | null> {
+  const json = await kitsuFetch<KitsuEpisodesResponse>(
+    `/anime/${kitsuId}/episodes?filter[number]=${number}&page[limit]=5`,
+    EPISODE_IMAGES_BASE()
+  );
+  for (const entry of json.data ?? []) {
+    const thumb: KitsuImage = entry.attributes.thumbnail ?? {};
+    const url = thumb.original ?? thumb.large ?? thumb.medium ?? null;
+    if (url) return url;
+  }
+  return null;
 }

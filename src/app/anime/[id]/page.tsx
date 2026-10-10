@@ -17,6 +17,8 @@ import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { CommentSection } from "@/components/CommentSection";
 import { CastSection } from "@/components/CastSection";
 import { TrailerEmbed } from "@/components/TrailerEmbed";
+import { WatchLinks } from "@/components/WatchLinks";
+import { ensureProduction, parseStreamingLinks } from "@/lib/production";
 import { Row } from "@/components/Row";
 import { RecommendationCard, type RecommendationData } from "@/components/RecommendationCard";
 import { CoverImage, BackdropImage } from "@/components/CoverImage";
@@ -42,6 +44,8 @@ export default async function AnimeDetailPage({
   if (!anime || anime.userId !== user.id) notFound();
 
   const genres = anime.genres ? anime.genres.split(",").filter(Boolean) : [];
+  // Sites de streaming do catálogo (AniList) — a produção é criada/atualizada sob demanda.
+  const catalogStreamingLinks = parseStreamingLinks((await ensureProduction(anime.anilistId).catch(() => null))?.streamingLinksJson ?? null);
   const cast: AniListCharacterEntry[] = anime.castJson ? JSON.parse(anime.castJson) : [];
   const rawRecommendations: AniListRecommendation[] = anime.recommendationsJson
     ? JSON.parse(anime.recommendationsJson)
@@ -254,6 +258,7 @@ export default async function AnimeDetailPage({
             <AnimeDescription
               description={anime.description}
               descriptionPortuguese={anime.descriptionPortuguese}
+              anilistId={anime.anilistId}
             />
           )}
 
@@ -305,6 +310,12 @@ export default async function AnimeDetailPage({
               animeId={anime.id}
               initialLinks={anime.platformLinks}
             />
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="caption" sx={{ display: "block", mb: 1, color: "text.secondary" }}>
+                Sites de streaming deste título
+              </Typography>
+              <WatchLinks links={catalogStreamingLinks} emptyText="Nenhum site de streaming informado pela fonte." />
+            </Box>
           </Box>
         </Box>
       </Box>

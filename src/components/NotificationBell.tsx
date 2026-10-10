@@ -219,10 +219,13 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
 
         {channel === "releases" ? (
           alerts.length === 0 ? (
-            <Typography sx={{ py: 2, color: "text.secondary", fontSize: 14 }}>Nada da sua lista no ar agora.</Typography>
+            <Typography sx={{ py: 2, color: "text.secondary", fontSize: 14 }}>Nenhum lançamento da sua lista hoje nem no ar agora.</Typography>
           ) : (
             alerts.map((alert) => {
               const when = new Date(alert.airingAt);
+              // Aviso antecipado: o episódio ainda vai ao ar (lembrete de hoje).
+              const upcoming = when > new Date();
+              const today = new Intl.DateTimeFormat("en-CA", { timeZone }).format(when) === new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date());
               const changed = Boolean(alert.previousAiringAt);
               const before = alert.previousAiringAt ? new Date(alert.previousAiringAt) : null;
               return (
@@ -243,8 +246,9 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
                     </Typography>
                   )}
                   <Typography sx={{ fontSize: 14 }}>
-                    EP{String(alert.episode).padStart(2, "0")} {changed ? "· Nova data: " : "disponível · "}
-                    {formatInZone(when, timeZone)}
+                    EP{String(alert.episode).padStart(2, "0")}{" "}
+                    {changed ? "· Nova data: " : upcoming ? "vai ao ar · " : "disponível · "}
+                    {upcoming && today && !changed ? `hoje às ${formatTimeInZone(when, timeZone)}` : formatInZone(when, timeZone)}
                   </Typography>
                   {changed && before && (
                     <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Antes: {formatInZone(before, timeZone)}</Typography>

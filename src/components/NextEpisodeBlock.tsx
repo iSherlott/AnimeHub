@@ -1,7 +1,7 @@
 "use client";
 
 import { Box, Typography } from "@mui/material";
-import { formatTimeInZone } from "@/lib/timeZone";
+import { formatTimeInZone, weekdayName } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
 
 /**
@@ -29,7 +29,7 @@ export function NextEpisodeBlock({ iso, episode }: { iso: string | null; episode
 
 function NextEpisodeDetails({ iso, episode, timeZone }: { iso: string; episode: number; timeZone: string }) {
   const date = new Date(iso);
-  const weekday = new Intl.DateTimeFormat("pt-BR", { timeZone, weekday: "long" }).format(date).replace(/^./, (c) => c.toUpperCase());
+  const weekday = weekdayName(date, timeZone);
   const dayMonth = new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit", month: "short" }).format(date).replace(".", "").toUpperCase();
   const dayKey = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone }).format(d);
   const isToday = dayKey(date) === dayKey(new Date());

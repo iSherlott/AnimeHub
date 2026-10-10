@@ -4,8 +4,10 @@ import { readNextFromLocation, signupHref } from "@/lib/safeRedirect";
 import { useEffect, useState } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
-import { Box, Button, Alert, Link as MuiLink, TextField, Typography } from "@mui/material";
-import { Header } from "@/components/Header";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import MailOutlinedIcon from "@mui/icons-material/MailOutlined";
+import { Box, Button, Alert, Link as MuiLink, Typography } from "@mui/material";
+import { AuthField, AuthShell } from "@/components/AuthShell";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 
 export default function LoginPage() {
@@ -47,45 +49,30 @@ export default function LoginPage() {
   }
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", display: "flex", flexDirection: "column" }}>
-      <Header />
-      <Box sx={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", maxWidth: 384, width: "100%", mx: "auto", px: 3, py: 8 }}>
-        <Typography variant="h4" component="h1" sx={{ mb: 3 }}>
-          Entrar
-        </Typography>
-        <Box
-          component="form"
-          onSubmit={handleSubmit}
-          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-        >
-          <TextField
-            type="email"
-            required
-            label="E-mail"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            fullWidth
-          />
-          <TextField
-            type="password"
-            required
-            label="Senha"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            fullWidth
-          />
-          {error && <Alert severity="error">{error}</Alert>}
-          <Button type="submit" variant="contained" loading={loading} sx={{ mt: 1 }}>
+    <AuthShell title="Entrar no ANIME HUB" subtitle="Sua lista e seus próximos lançamentos, em um só lugar.">
+      <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        <AuthField label="E-mail" type="email" required autoComplete="email" value={email} onChange={setEmail} endIcon={<MailOutlinedIcon />} />
+        <AuthField label="Senha" type="password" required autoComplete="current-password" value={password} onChange={setPassword} />
+        {error && (
+          <Alert severity="error" role="alert">
+            {error}
+          </Alert>
+        )}
+        <Box>
+          <Button type="submit" variant="contained" loading={loading} startIcon={<ArrowForwardIcon />} sx={{ textTransform: "uppercase" }}>
             Entrar
           </Button>
         </Box>
-        <Typography variant="body2" sx={{ mt: 3, color: "text.secondary" }}>
+        <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+          Após entrar, você volta ao anime que queria acompanhar. O vínculo só é criado quando você confirmar + Acompanhar.
+        </Typography>
+        <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
           Não tem conta?{" "}
           <MuiLink component={NextLink} href="/signup" onClick={(e: React.MouseEvent) => { e.preventDefault(); router.push(signupHref(new URLSearchParams(window.location.search).get("next"))); }} color="inherit">
             Criar conta
           </MuiLink>
         </Typography>
       </Box>
-    </Box>
+    </AuthShell>
   );
 }

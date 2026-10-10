@@ -1,8 +1,10 @@
 import { Box, Typography } from "@mui/material";
-import { prisma } from "@/lib/prisma";
 import { Header } from "@/components/Header";
 import { LinkButton } from "@/components/LinkButton";
-import { MyListView, type MyListEntry } from "@/components/MyListView";
+import AddIcon from "@mui/icons-material/Add";
+import { PageContainer, PageIntro } from "@/components/PageShell";
+import { MyListView } from "@/components/MyListView";
+import { loadMyListEntries } from "@/lib/myList";
 import { getCurrentUser } from "@/lib/auth/session";
 
 /**
@@ -33,23 +35,9 @@ export default async function MinhaListaPage() {
     );
   }
 
-  const animes = await prisma.anime.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      anilistId: true,
-      titleRomaji: true,
-      titleEnglish: true,
-      titleNative: true,
-      titlePortuguese: true,
-      coverImage: true,
-      isFavorite: true,
-      createdAt: true,
-    },
-  });
+  const entries = await loadMyListEntries(user.id);
 
-  if (animes.length === 0) {
+  if (entries.length === 0) {
     return (
       <Box sx={{ minHeight: "100vh", bgcolor: "background.default", display: "flex", flexDirection: "column" }}>
         <Header />
@@ -68,46 +56,26 @@ export default async function MinhaListaPage() {
     );
   }
 
-  // Próximo episódio com data confirmada de cada obra da lista (um por obra).
-  const upcoming = await prisma.airingScheduleEntry.findMany({
-    where: { anilistId: { in: animes.map((a) => a.anilistId) }, airingAt: { gte: new Date() } },
-    orderBy: { airingAt: "asc" },
-    select: { anilistId: true, episode: true, airingAt: true },
-  });
-  const nextByAnilistId = new Map<number, { episode: number; airingAt: Date }>();
-  for (const entry of upcoming) {
-    if (!nextByAnilistId.has(entry.anilistId)) nextByAnilistId.set(entry.anilistId, entry);
-  }
-
-  const entries: MyListEntry[] = animes.map((a) => {
-    const next = nextByAnilistId.get(a.anilistId);
-    return {
-      id: a.id,
-      anilistId: a.anilistId,
-      titleRomaji: a.titleRomaji,
-      titleEnglish: a.titleEnglish,
-      titleNative: a.titleNative,
-      titlePortuguese: a.titlePortuguese,
-      coverImage: a.coverImage,
-      isFavorite: a.isFavorite,
-      createdAt: a.createdAt.toISOString(),
-      nextAiringAt: next ? next.airingAt.toISOString() : null,
-      nextEpisode: next ? next.episode : null,
-    };
-  });
-
   return (
-    <div className="min-h-screen bg-ink pb-16">
+    <Box sx={{ minHeight: "100%", bgcolor: "background.default" }}>
       <Header />
-      <Box sx={{ px: { xs: 3, sm: 5 }, pt: 4 }}>
-        <Typography variant="h4" component="h1" sx={{ textTransform: "uppercase" }}>
-          Minha Lista
-        </Typography>
-        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }} data-testid="list-count">
-          {entries.length} {entries.length === 1 ? "anime acompanhando" : "animes acompanhando"} · só você vê esta lista
-        </Typography>
-      </Box>
-      <MyListView entries={entries} />
-    </div>
+      <PageContainer wide>
+        <PageIntro
+          kicker="マイリスト / ORGANIZAÇÃO PESSOAL"
+          title="MINHA LISTA"
+          subtitle={
+            <span data-testid="list-count">
+              {entries.length} {entries.length === 1 ? "anime acompanhando" : "animes acompanhando"}. A próxima data é o que importa.
+            </span>
+          }
+          action={
+            <LinkButton href="/discover" startIcon={<AddIcon />} sx={{ bgcolor: "#171820", color: "text.primary", border: 1, borderColor: "divider", "&:hover": { bgcolor: "#1d1e28" } }}>
+              Explorar animes
+            </LinkButton>
+          }
+        />
+        <MyListView entries={entries} />
+      </PageContainer>
+    </Box>
   );
 }
