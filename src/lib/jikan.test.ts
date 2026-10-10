@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { searchJikanAnime } from "@/lib/jikan";
+import { getJikanAnimeNews, JikanError, searchJikanAnime } from "@/lib/jikan";
 
 function jsonResponse(body: unknown, ok = true, status = 200) {
   return {
@@ -128,5 +128,35 @@ describe("searchJikanAnime", () => {
     await expect(searchJikanAnime("Some Anime")).rejects.toThrow(
       /Jikan request failed \(429\)/
     );
+  });
+});
+
+describe("getJikanAnimeNews", () => {
+  it("maps news, keeping only https links with title and a valid date", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({
+        data: [
+          { url: "https://myanimelist.net/news/1", title: " Season 2 announced ", date: "2026-10-01T12:00:00+00:00", author_username: "reporter", excerpt: "Details...", images: { jpg: { image_url: "https://cdn.myanimelist.net/a.jpg" } } },
+          { url: "http://insecure.example/2", title: "No https", date: "2026-10-01T12:00:00+00:00" },
+          { url: "https://myanimelist.net/news/3", title: "Bad date", date: "not-a-date" },
+          { url: "https://myanimelist.net/news/4", title: "", date: "2026-10-02T00:00:00+00:00" },
+          { url: "https://myanimelist.net/news/5", title: "No image", date: "2026-10-03T00:00:00+00:00", images: { jpg: { image_url: "http://x/y.jpg" } } },
+        ],
+      })
+    );
+
+    const news = await getJikanAnimeNews(55);
+
+    expect(vi.mocked(fetch).mock.calls[0][0]).toContain("/anime/55/news");
+    expect(news.map((n) => n.url)).toEqual(["https://myanimelist.net/news/1", "https://myanimelist.net/news/5"]);
+    expect(news[0]).toMatchObject({ title: "Season 2 announced", author: "reporter", imageUrl: "https://cdn.myanimelist.net/a.jpg", excerpt: "Details..." });
+    expect(news[1].imageUrl).toBeNull();
+  });
+
+  it("exposes the HTTP status so callers can wait on 429", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({}, false, 429));
+
+    await expect(getJikanAnimeNews(1)).rejects.toMatchObject({ status: 429 });
+    expect(new JikanError(429, "x")).toBeInstanceOf(Error);
   });
 });

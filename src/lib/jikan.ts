@@ -37,10 +37,19 @@ type JikanSearchResponse = {
   }>;
 };
 
+export class JikanError extends Error {
+  constructor(
+    readonly status: number,
+    message: string
+  ) {
+    super(message);
+  }
+}
+
 async function jikanFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${JIKAN_BASE_URL}${path}`);
   if (!res.ok) {
-    throw new Error(`Jikan request failed (${res.status}): ${await res.text()}`);
+    throw new JikanError(res.status, `Jikan request failed (${res.status}): ${await res.text()}`);
   }
   return res.json();
 }
@@ -72,4 +81,44 @@ export async function searchJikanAnime(title: string): Promise<JikanAnimeMatch |
     score: entry.score ?? null,
     episodes: entry.episodes ?? null,
   };
+}
+
+export type JikanNewsItem = {
+  url: string;
+  title: string;
+  excerpt: string | null;
+  imageUrl: string | null;
+  author: string | null;
+  publishedAt: Date;
+};
+
+type JikanNewsResponse = {
+  data?: Array<{
+    url?: string | null;
+    title?: string | null;
+    date?: string | null;
+    author_username?: string | null;
+    excerpt?: string | null;
+    images?: { jpg?: { image_url?: string | null } | null } | null;
+  }>;
+};
+
+/** Notícias da MyAnimeList sobre uma obra (API pública da Jikan; só https, título e data obrigatórios). */
+export async function getJikanAnimeNews(malId: number): Promise<JikanNewsItem[]> {
+  const json = await jikanFetch<JikanNewsResponse>(`/anime/${malId}/news`);
+  const items: JikanNewsItem[] = [];
+  for (const entry of json.data ?? []) {
+    const publishedAt = entry.date ? new Date(entry.date) : null;
+    if (!entry.url || !/^https:\/\//i.test(entry.url) || !entry.title || !publishedAt || Number.isNaN(publishedAt.getTime())) continue;
+    const image = entry.images?.jpg?.image_url;
+    items.push({
+      url: entry.url,
+      title: entry.title.trim().slice(0, 300),
+      excerpt: entry.excerpt?.trim().slice(0, 400) || null,
+      imageUrl: image && /^https:\/\//i.test(image) ? image : null,
+      author: entry.author_username?.trim().slice(0, 80) || null,
+      publishedAt,
+    });
+  }
+  return items;
 }
