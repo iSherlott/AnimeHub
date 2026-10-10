@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Alert, Box, Button, Typography } from "@mui/material";
 import { PostCard } from "@/components/PostCard";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
+import { quoteHref } from "@/lib/publishLinks";
 import type { PostDTO } from "@/lib/postDto";
 
 /** Evento global: "a lista de publicações mudou, recarregue". */
@@ -20,7 +21,10 @@ export function UserPostList({
   endpoint,
   params,
   emptyText = "Nenhum post ainda.",
+  timeStyle = "relative",
 }: {
+  /** "clock" mostra HH:mm no fuso da conta (Figma: hashtag, Seguindo, Recentes). */
+  timeStyle?: "relative" | "clock";
   /** Perfil público: posts desta pessoa. */
   userId?: string;
   /** Alternativa genérica (ex.: discussões de uma obra): GET que devolve { posts, nextCursor }. */
@@ -140,18 +144,11 @@ export function UserPostList({
     setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, reportedByMe: reported } : p)));
   }, []);
 
-  // Esta tela (perfil público de outra pessoa) não tem compositor próprio
-  // — "Citar" volta pro Feed (única tela com compositor) já em modo
-  // citação, via parâmetros de URL que o FeedView consome uma vez ao
-  // montar (PostCard já garante, antes de chamar isto, que o viewer está
-  // logado — ver handleQuoteClick lá).
+  // Esta tela não tem compositor próprio — "Citar" abre o editor
+  // "Nova publicação" (/publicar) já referenciando o post (PostCard já
+  // garante, antes de chamar isto, que o viewer está logado).
   function handleQuote(post: PostDTO) {
-    const params = new URLSearchParams({
-      quotePostId: post.id,
-      quoteAuthor: post.author.displayName,
-      quoteSnippet: post.body.slice(0, 80),
-    });
-    router.push(`/?${params.toString()}`);
+    router.push(quoteHref(post));
   }
 
   if (loading) {
@@ -194,6 +191,7 @@ export function UserPostList({
         <PostCard
           key={`${post.id}:${post.repostedBy?.id ?? "self"}`}
           post={post}
+          timeStyle={timeStyle}
           onDeleted={handlePostDeleted}
           onQuote={handleQuote}
           onCommentCountChange={handleCommentCountChange}

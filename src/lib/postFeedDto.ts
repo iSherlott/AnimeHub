@@ -3,7 +3,7 @@ import { toPostDto, type PostDTO } from "@/lib/postDto";
 import type { Post } from "@prisma/client";
 import { blockedUserIdSet } from "@/lib/blocks";
 
-type Author = { id: string; displayName: string; avatarUrl: string | null };
+type Author = { id: string; displayName: string; handle: string | null; avatarUrl: string | null };
 type QuotedPostRow = Post & { user: Author };
 
 /**
@@ -20,8 +20,8 @@ export type PostRow = Post & {
 };
 
 export const POST_ROW_INCLUDE = {
-  user: { select: { id: true, displayName: true, avatarUrl: true } },
-  quotedPost: { include: { user: { select: { id: true, displayName: true, avatarUrl: true } } } },
+  user: { select: { id: true, displayName: true, handle: true, avatarUrl: true } },
+  quotedPost: { include: { user: { select: { id: true, displayName: true, handle: true, avatarUrl: true } } } },
   // PostComment tem soft delete (deletedAt) — contar a relação crua sem
   // filtro incluía comentários apagados no contador exibido no card
   // (achado real de verificação ao vivo: um comentário apagado
@@ -55,7 +55,7 @@ async function resolveRepostRows(
       if (!original || original.deletedAt) return null;
       return {
         effective: original,
-        repostedBy: { id: row.user.id, displayName: row.user.displayName, avatarUrl: row.user.avatarUrl },
+        repostedBy: { id: row.user.id, displayName: row.user.displayName, handle: row.user.handle, avatarUrl: row.user.avatarUrl },
       };
     })
     .filter((r): r is { effective: PostRow; repostedBy: Author | null } => r !== null);
@@ -99,6 +99,14 @@ export async function toDtoPage(page: PostRow[], viewerId: string | null): Promi
         }),
       ])
     : [[], [], [], []];
+  // Título original e formato vêm da produção canônica (Figma mostra "葬送のフリーレン · TV").
+  const productions = postAnilistIds.length
+    ? await prisma.production.findMany({
+        where: { anilistId: { in: postAnilistIds } },
+        select: { anilistId: true, titleNative: true, format: true },
+      })
+    : [];
+  const productionById = new Map(productions.map((p) => [p.anilistId, p]));
   const likedSet = new Set(myLikes.map((l) => l.postId));
   const reportedSet = new Set(myOpenReports.map((r) => r.postId));
   const repostedSet = new Set(myReposts.map((r) => r.repostOfId));
@@ -115,6 +123,7 @@ export async function toDtoPage(page: PostRow[], viewerId: string | null): Promi
       repostedBy,
       repostedByMe: repostedSet.has(effective.id),
       favoritedByMe: effective.anilistId !== null && favoritedAnilistIdSet.has(effective.anilistId),
+      production: effective.anilistId !== null ? (productionById.get(effective.anilistId) ?? null) : null,
     })
   );
 }

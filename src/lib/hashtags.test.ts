@@ -60,3 +60,27 @@ describe("splitBodyByHashtags", () => {
     expect(segments.map((s) => s.value).join("")).toBe("<img src=x onerror=alert(1)> #ok");
   });
 });
+
+import { splitTrailingHashtags } from "./hashtags";
+
+describe("splitTrailingHashtags", () => {
+  it("separa a última linha quando só tem hashtags", () => {
+    const r = splitTrailingHashtags("Frieren sabe deixar uma pausa.\n#Frieren #Narrativa");
+    expect(r.body).toBe("Frieren sabe deixar uma pausa.");
+    expect(r.tags.map((t) => t.display)).toEqual(["Frieren", "Narrativa"]);
+  });
+
+  it("mantém hashtags no meio do texto", () => {
+    const r = splitTrailingHashtags("Gostei de #Frieren hoje");
+    expect(r).toEqual({ body: "Gostei de #Frieren hoje", tags: [] });
+  });
+
+  it("não separa quando a última linha mistura texto e hashtag", () => {
+    const r = splitTrailingHashtags("Primeira linha\nfim #Tag");
+    expect(r.tags).toEqual([]);
+  });
+
+  it("texto só de hashtags (uma linha) fica como está", () => {
+    expect(splitTrailingHashtags("#A #B").tags).toEqual([]);
+  });
+});

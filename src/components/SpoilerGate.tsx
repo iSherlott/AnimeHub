@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState, type ReactNode } from "react";
-import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import { Alert, Box, Button, Stack, Typography } from "@mui/material";
 
 /**
@@ -10,6 +10,9 @@ import { Alert, Box, Button, Stack, Typography } from "@mui/material";
  * `revealUrl` apenas quando a pessoa clica em "Revelar conteúdo (spoilers)"
  * e some de novo em "Ocultar novamente". Revelar um item nunca revela outro,
  * e erro de rede nunca mostra texto parcial.
+ *
+ * Visual do Figma "Spoiler / Hidden": bloco "surface" com raio 12 e
+ * respiro de 24 px, aviso com ícone de olho cortado e botão "elevated".
  */
 export function SpoilerGate<T>({
   revealUrl,
@@ -43,7 +46,7 @@ export function SpoilerGate<T>({
   if (data !== null) {
     return (
       <Box data-testid="spoiler-revealed">
-        <Typography variant="overline" sx={{ color: "text.secondary", display: "block" }}>
+        <Typography component="p" sx={{ color: "text.secondary", fontSize: 12, fontWeight: 700, mb: 1 }}>
           Spoilers revelados
         </Typography>
         {render(data)}
@@ -51,7 +54,7 @@ export function SpoilerGate<T>({
           onClick={() => setData(null)}
           size="small"
           aria-expanded="true"
-          sx={{ px: 0, minWidth: 0, textTransform: "none", mt: 0.5 }}
+          sx={{ px: 0, minWidth: 0, mt: 0.5, color: "text.secondary" }}
         >
           Ocultar novamente
         </Button>
@@ -62,30 +65,31 @@ export function SpoilerGate<T>({
   return (
     <Box
       data-testid="spoiler-notice"
-      sx={{ p: 2, border: 1, borderColor: "divider", borderRadius: 1.5, bgcolor: "background.default" }}
+      sx={{ p: 3, bgcolor: "background.paper", borderRadius: "12px", display: "flex", flexDirection: "column", gap: 2 }}
     >
-      <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 0.5 }}>
-        <VisibilityOffIcon fontSize="small" aria-hidden />
-        <Typography sx={{ fontWeight: 700 }}>Conteúdo com spoilers</Typography>
+      <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
+        <VisibilityOffOutlinedIcon sx={{ fontSize: 18, mt: "3px" }} aria-hidden />
+        <Typography sx={{ fontWeight: 700, fontSize: 14 }}>Conteúdo com spoilers</Typography>
       </Stack>
-      <Typography id={descId} variant="body2" sx={{ color: "text.secondary", mb: 1 }}>
-        {context ? `${context}. ` : ""}O texto fica oculto até você escolher revelar.
+      <Typography id={descId} sx={{ color: "text.secondary", fontSize: 14 }}>
+        {context ? `${context} · ` : ""}O texto fica oculto até você escolher revelar.
       </Typography>
       {failed && (
-        <Alert severity="error" role="alert" sx={{ mb: 1 }}>
+        <Alert severity="error" role="alert">
           Não foi possível carregar o conteúdo. Tente novamente.
         </Alert>
       )}
-      <Button
-        onClick={reveal}
-        disabled={loading}
-        variant="outlined"
-        size="small"
-        aria-expanded="false"
-        aria-describedby={descId}
-      >
-        {loading ? "Carregando…" : "Revelar conteúdo (spoilers)"}
-      </Button>
+      <Box>
+        <Button
+          onClick={reveal}
+          disabled={loading}
+          aria-expanded="false"
+          aria-describedby={descId}
+          sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}
+        >
+          {loading ? "Carregando…" : "Revelar conteúdo (spoilers)"}
+        </Button>
+      </Box>
     </Box>
   );
 }

@@ -1,29 +1,27 @@
 "use client";
 
 import { loginHref } from "@/lib/safeRedirect";
-import { useCallback, useState } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
-import DeleteIcon from "@mui/icons-material/Delete";
-import FlagIcon from "@mui/icons-material/Flag";
-import FormatQuoteIcon from "@mui/icons-material/FormatQuoteOutlined";
 import RepeatIcon from "@mui/icons-material/Repeat";
-import RepeatOutlinedIcon from "@mui/icons-material/RepeatOutlined";
 import StarIcon from "@mui/icons-material/Star";
 import NextLink from "next/link";
 import { SpoilerGate } from "@/components/SpoilerGate";
 import { PostBodyText } from "@/components/PostBodyText";
+import { HashtagRow } from "@/components/HashtagRow";
 import { ReportDialog } from "@/components/ReportDialog";
-import { Box, Button, Chip, IconButton, Link as MuiLink, Stack, Tooltip, Typography } from "@mui/material";
+import { Box, ButtonBase, Link as MuiLink, Menu, MenuItem, Stack, Typography, Button } from "@mui/material";
 import { LikeToggle } from "@/components/LikeToggle";
 import { PostComments } from "@/components/PostComments";
 import { PostImageCarousel } from "@/components/PostImageCarousel";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
-import { coverColor, readableTextColor } from "@/lib/avatarColor";
+import { splitTrailingHashtags } from "@/lib/hashtags";
 import { formatRelativeTime } from "@/lib/relativeTime";
-import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
+import { formatTimeInZone } from "@/lib/timeZone";
+import { useTimeZone } from "@/lib/useTimeZone";
+import { resolveTitleTextLenient, useTitlePreference } from "@/lib/titlePreference";
 import type { PostDTO } from "@/lib/postDto";
 
 // Ponto de corte do "ver mais" pra legenda de post com imagem — mesmo
@@ -31,6 +29,23 @@ import type { PostDTO } from "@/lib/postDto";
 // comentários longos.
 const LONG_CAPTION_THRESHOLD = 220;
 
+/** Ação textual do Figma (ReplyAction/ShareAction): ícone de 16 px + texto de 12 px, alvo de 44 px. */
+const actionSx = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 1,
+  minHeight: 44,
+  fontSize: 12,
+  color: "text.secondary",
+  borderRadius: "6px",
+} as const;
+
+/**
+ * Publicação do feed, no formato "SocialPost / Compacta" do Figma
+ * (`13:41204`): sem cartão — identidade (avatar, nome, @identificador ·
+ * tempo, menu "···"), texto, obra com link, hashtags e a fileira
+ * Curtir · Responder · Compartilhar internamente · Denunciar/Excluir.
+ */
 export function PostCard({
   post,
   onDeleted,
@@ -40,57 +55,65 @@ export function PostCard({
   onLikeChange,
   onReportChange,
   initialCommentsOpen = false,
+  commentsHeading = false,
+  timeStyle = "relative",
+  followingLabel = false,
 }: {
   post: PostDTO;
+  /** "relative" = "há 18 min" (Para você); "clock" = "12:42" no fuso da conta (Seguindo/Recentes). */
+  timeStyle?: "relative" | "clock";
+  /** Aba Seguindo: acrescenta "· Seguindo usuário" à linha de identidade. */
+  followingLabel?: boolean;
   /** Página dedicada de discussão abre as respostas direto. */
   initialCommentsOpen?: boolean;
+  /** Mostra o título "Respostas" acima da lista (página de discussão). */
+  commentsHeading?: boolean;
   onDeleted: (id: string) => void;
-  /** Sobe até o FeedView, que abre o compositor em modo citação (Epic 25). */
+  /** Abre o editor de nova publicação em modo citação (Epic 25). */
   onQuote: (post: PostDTO) => void;
   /** Sobe até o FeedView/UserPostList — ver comentário logo abaixo sobre
    * por que a contagem não pode viver só no estado local deste card. */
   onCommentCountChange: (postId: string, count: number) => void;
   /** Idem, pro estado de repost (ver comentário em handleRepostToggle).
-   * `confirmed` distingue a atualização otimista (só troca o ícone,
+   * `confirmed` distingue a atualização otimista (só troca o estado,
    * nunca remove nada — segura de desfazer se a requisição falhar) da
    * confirmação do servidor (só aí é seguro remover do feed a entrada
    * "eu repostei" que acabou de ser desfeita). */
   onRepostChange: (postId: string, reposted: boolean, confirmed: boolean) => void;
-  /** Idem, pro estado de curtida — ver comentário em LikeToggle.tsx
-   * (achado real da 19ª rodada de auditoria, Epic 18: este era o único
-   * dos 3 estados "por post" que ainda tinha ficado de fora da correção
-   * da 18ª rodada). */
+  /** Idem, pro estado de curtida — ver comentário em LikeToggle.tsx. */
   onLikeChange: (postId: string, liked: boolean, likeCount: number) => void;
-  /** Idem, pro estado de denúncia — o último campo "por post" que ainda
-   * vivia em `useState` local deste card, achado real da 20ª rodada de
-   * auditoria (Epic 18): denunciar numa instância (ex.: a de "Fulano
-   * repostou") não refletia "Denunciado" na outra instância do mesmo
-   * post. */
+  /** Idem, pro estado de denúncia (achado real da 20ª rodada, Epic 18). */
   onReportChange: (postId: string, reported: boolean) => void;
 }) {
   const user = useCurrentUser();
   const router = useRouter();
   const loggedOut = user === null;
   const { preference } = useTitlePreference();
+  const timeZone = useTimeZone();
   // Post só congela romaji/inglês na criação (Epic 22 — sem nativo/
-  // português), mas o card ainda ignorava a preferência de idioma por
-  // completo, sempre mostrando romaji cru mesmo com "Inglês" selecionado
-  // (achado real da 6ª rodada de auditoria, Epic 18).
-  const animeTitle = post.animeTitleRomaji === null ? null : resolveTitleText(preference, {
-    titleRomaji: post.animeTitleRomaji,
-    titleEnglish: post.animeTitleEnglish,
-  });
+  // português), mas o card respeita a preferência de idioma (6ª rodada).
+  const animeTitle =
+    post.animeTitleRomaji === null
+      ? null
+      : resolveTitleTextLenient(
+          preference,
+          { titleRomaji: post.animeTitleRomaji, titleEnglish: post.animeTitleEnglish, titleNative: post.animeTitleNative },
+          post.animeTitleRomaji
+        );
   const [commentsOpen, setCommentsOpen] = useState(initialCommentsOpen);
   const [reposting, setReposting] = useState(false);
-  // Ver AnimeCard — mesma correção pro ícone quebrado cru numa URL de capa
-  // que 404 (achado real da 6ª rodada de auditoria, Epic 18). Campo da
-  // capa do anime (chip), não das imagens do post (PostImageCarousel
-  // cuida das suas próprias, uma por índice).
-  const [coverBroken, setCoverBroken] = useState(false);
   const [quotedCoverBroken, setQuotedCoverBroken] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [captionExpanded, setCaptionExpanded] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [shareAnchor, setShareAnchor] = useState<HTMLElement | null>(null);
+  const [moreAnchor, setMoreAnchor] = useState<HTMLElement | null>(null);
+  const shareMenuId = useId();
+  const moreMenuId = useId();
+
+  // Fileira final de hashtags separada do texto (Figma: texto primeiro,
+  // hashtags numa linha própria); hashtags no meio do texto seguem inline.
+  const { body: displayBody, tags: trailingTags } = useMemo(() => splitTrailingHashtags(post.body), [post.body]);
 
   async function handleDelete() {
     try {
@@ -106,40 +129,32 @@ export function PostCard({
     }
   }
 
-  async function handleReport() {
-    // Mesmo padrão do LikeToggle: o ícone continua visível pra quem não
-    // tem conta, o clique é que leva pro login (Feed público estilo
-    // Instagram/Twitter) em vez de ficar `disabled`.
-    if (loggedOut) {
-      router.push(loginHref(window.location.pathname + window.location.search));
-      return;
-    }
+  function goLogin() {
+    router.push(loginHref(window.location.pathname + window.location.search));
+  }
+
+  function handleReport() {
+    // O botão continua visível pra quem não tem conta, o clique é que leva
+    // pro login (Feed público) em vez de ficar `disabled`.
+    if (loggedOut) return goLogin();
     // Motivo + confirmação antes de enviar (Figma 13:43571, fluxo G).
     setReportOpen(true);
   }
 
   function handleQuoteClick() {
-    if (loggedOut) {
-      router.push(loginHref(window.location.pathname + window.location.search));
-      return;
-    }
+    setShareAnchor(null);
+    if (loggedOut) return goLogin();
     onQuote(post);
   }
 
-  // O estado de repost sobe pro pai (FeedView/UserPostList) em vez de
-  // viver só neste card — o MESMO post pode aparecer 2x na mesma página
-  // (uma vez como ele mesmo, outra como repost de alguém, ver
-  // src/lib/postFeedDto.ts), e as 2 instâncias de PostCard precisam
-  // concordar sobre "eu repostei isso?" e sobre a entrada "Fulano
-  // repostou" continuar válida. Sem isso, desfazer um repost deixava a
-  // faixa/o card da entrada antiga presos na tela até recarregar, e uma
-  // 2ª instância do mesmo post ficava com o ícone de repost desatualizado
+  // O estado de repost sobe pro pai (FeedView/UserPostList) em vez de viver
+  // só neste card — o MESMO post pode aparecer 2x na mesma página (uma vez
+  // como ele mesmo, outra como repost de alguém, ver src/lib/postFeedDto.ts),
+  // e as 2 instâncias precisam concordar sobre "eu repostei isso?"
   // (achado real da 18ª rodada de auditoria, Epic 18).
   async function handleRepostToggle() {
-    if (loggedOut) {
-      router.push(loginHref(window.location.pathname + window.location.search));
-      return;
-    }
+    setShareAnchor(null);
+    if (loggedOut) return goLogin();
     if (reposting) return;
     const next = !post.repostedByMe;
     onRepostChange(post.id, next, false);
@@ -165,120 +180,88 @@ export function PostCard({
     }
   }
 
+  async function copyLink() {
+    setMoreAnchor(null);
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/publicacao/${post.id}`);
+    } catch {
+      setError("Não foi possível copiar o link");
+    }
+  }
+
   // useCallback pra manter a mesma referência entre renders — o efeito de
-  // carregamento do PostComments depende disso pra não refazer o fetch
-  // toda vez que o PostCard re-renderiza por outro motivo (imagem
-  // quebrada, erro, etc.) enquanto a thread está aberta. Recebe a
-  // contagem ABSOLUTA (não mais um delta ±1, achado da 17ª rodada) e sobe
-  // pro pai (`onCommentCountChange`) em vez de guardar num estado local
-  // deste card — o MESMO post pode aparecer 2x na mesma página (uma vez
-  // como ele mesmo, outra como repost de alguém), e as 2 instâncias
-  // precisam mostrar a mesma contagem; um estado só local nunca soube da
-  // atividade na OUTRA instância (achado real da 18ª rodada de
-  // auditoria, Epic 18).
+  // carregamento do PostComments depende disso pra não refazer o fetch toda
+  // vez que o PostCard re-renderiza por outro motivo enquanto a thread está
+  // aberta. Recebe a contagem ABSOLUTA e sobe pro pai (achados das 17ª/18ª
+  // rodadas de auditoria, Epic 18).
   const handleCommentCountChange = useCallback(
     (count: number) => onCommentCountChange(post.id, count),
     [post.id, onCommentCountChange]
   );
 
   const hasImages = post.imageUrls.length > 0;
+  const when = timeStyle === "clock" ? formatTimeInZone(new Date(post.createdAt), timeZone) : formatRelativeTime(post.createdAt);
+  const handleAndTime = `${post.author.handle ? `@${post.author.handle} · ` : ""}${when}${followingLabel ? " · Seguindo usuário" : ""}`;
 
   return (
     <Box
+      component="article"
       data-testid={`post-card-${post.id}`}
       sx={{
-        border: 1,
+        borderBottom: 1,
         borderColor: "divider",
-        borderRadius: 2,
-        p: 2,
-        mb: 2,
-        bgcolor: "background.paper",
+        py: 3,
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
       }}
     >
       {post.repostedBy && (
-        <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", mb: 1, color: "text.secondary" }}>
-          <RepeatIcon fontSize="small" />
-          <Typography variant="caption">{post.repostedBy.displayName} repostou</Typography>
+        <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", color: "text.secondary" }}>
+          <RepeatIcon sx={{ fontSize: 14 }} />
+          <Typography sx={{ fontSize: 12 }}>{post.repostedBy.displayName} repostou</Typography>
         </Stack>
       )}
 
-      <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start", justifyContent: "space-between", mb: 1 }}>
-        <Stack direction="row" spacing={1.25} sx={{ alignItems: "center", minWidth: 0 }}>
-          <UserAvatar id={post.author.id} displayName={post.author.displayName} avatarUrl={post.author.avatarUrl} size={36} />
-          <Stack direction="row" spacing={1} sx={{ alignItems: "baseline", flexWrap: "wrap" }}>
-            <MuiLink
-              component={NextLink}
-              href={`/users/${post.author.id}`}
-              underline="hover"
-              sx={{ fontWeight: 700, fontSize: 14, color: "text.primary" }}
-            >
-              {post.author.displayName}
-            </MuiLink>
-            <MuiLink
-              component={NextLink}
-              href={`/publicacao/${post.id}`}
-              underline="hover"
-              variant="caption"
-              aria-label="Abrir discussão"
-              sx={{ color: "text.secondary" }}
-            >
-              · {formatRelativeTime(post.createdAt)}
-            </MuiLink>
-          </Stack>
-        </Stack>
-
-        {post.isMine && (
-          <Tooltip title="Apagar post">
-            <IconButton onClick={handleDelete} size="small" aria-label="Apagar post">
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        )}
+      {/* Identidade: avatar 28 · nome · @identificador · tempo · menu "···" */}
+      <Stack direction="row" spacing={1} sx={{ alignItems: "center", minWidth: 0 }}>
+        <UserAvatar id={post.author.id} displayName={post.author.displayName} avatarUrl={post.author.avatarUrl} size={28} />
+        <MuiLink
+          component={NextLink}
+          href={`/users/${post.author.id}`}
+          underline="hover"
+          sx={{ fontWeight: 700, fontSize: 12, color: "text.primary", whiteSpace: "nowrap" }}
+        >
+          {post.author.displayName}
+        </MuiLink>
+        <MuiLink
+          component={NextLink}
+          href={`/publicacao/${post.id}`}
+          underline="hover"
+          aria-label="Abrir discussão"
+          sx={{ fontSize: 12, color: "text.secondary", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+        >
+          {handleAndTime}
+        </MuiLink>
+        <Box sx={{ flex: 1 }} />
+        <ButtonBase
+          onClick={(e) => setMoreAnchor(e.currentTarget)}
+          aria-label="Mais opções"
+          aria-haspopup="true"
+          aria-controls={moreAnchor ? moreMenuId : undefined}
+          sx={{ minWidth: 44, minHeight: 44, borderRadius: "6px", fontSize: 14, fontWeight: 700, color: "text.secondary" }}
+        >
+          ···
+        </ButtonBase>
+        <Menu id={moreMenuId} anchorEl={moreAnchor} open={Boolean(moreAnchor)} onClose={() => setMoreAnchor(null)}>
+          <MenuItem component={NextLink} href={`/publicacao/${post.id}`} onClick={() => setMoreAnchor(null)}>
+            Abrir discussão
+          </MenuItem>
+          <MenuItem onClick={copyLink}>Copiar link da publicação</MenuItem>
+        </Menu>
       </Stack>
 
-      {animeTitle !== null && (
-      <Chip
-        size="small"
-        variant="outlined"
-        avatar={
-          post.animeCoverImage && !coverBroken ? (
-            <Box sx={{ position: "relative", width: 20, height: 20 }}>
-              <Image
-                src={post.animeCoverImage}
-                alt=""
-                fill
-                sizes="20px"
-                style={{ objectFit: "cover", borderRadius: "50%" }}
-                onError={() => setCoverBroken(true)}
-              />
-            </Box>
-          ) : undefined
-        }
-        // Destaque sutil (borda + estrela) quando o post é sobre um anime
-        // que o viewer favoritou — puramente informativo, não afeta quais
-        // posts aparecem em nenhuma aba (Epic 27, lote 3). Estrela composta
-        // dentro do `label`, não no prop `icon` — Chip só renderiza UM dos
-        // dois (`avatar` ganha de `icon`), e a maioria dos posts já usa
-        // `avatar` pra capa do anime; mesma solução já usada no chip de
-        // "Site oficial" da página de detalhe (anime/[id]/page.tsx).
-        label={
-          post.favoritedByMe ? (
-            <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
-              <StarIcon role="img" aria-label="Anime favoritado" sx={{ fontSize: 14 }} />
-              <span>{animeTitle}</span>
-            </Stack>
-          ) : (
-            animeTitle
-          )
-        }
-        sx={{
-          mb: 1.5,
-          maxWidth: "100%",
-          ...(post.favoritedByMe && { borderColor: "secondary.main", color: "secondary.main" }),
-        }}
-      />
-      )}
-
+      {/* Corpo: spoiler fechado, imagens + legenda, ou texto */}
       {post.isSpoiler ? (
         <SpoilerGate<{ body: string; imageUrls: string[] }>
           revealUrl={`/api/posts/${post.id}/reveal`}
@@ -286,207 +269,135 @@ export function PostCard({
           render={(d) => (
             <Box>
               {d.imageUrls.length > 0 && <PostImageCarousel imageUrls={d.imageUrls} />}
-              <Typography variant="body1" sx={{ whiteSpace: "pre-wrap", mt: d.imageUrls.length > 0 ? 1.5 : 0 }}>
-                {d.body}
-              </Typography>
+              <Typography sx={{ whiteSpace: "pre-wrap", fontSize: 16, mt: d.imageUrls.length > 0 ? 1.5 : 0 }}>{d.body}</Typography>
             </Box>
           )}
         />
-      ) : hasImages ? (
-        <PostImageCarousel imageUrls={post.imageUrls} />
       ) : (
-        // Sem imagem, o próprio texto do post ocupa o espaço visual
-        // principal do card em vez de aparecer só como legenda pequena
-        // embaixo (achado do pedido de redesenho, Epic 25) — cor de
-        // fundo consistente por anime (ver coverColor acima). Mesma
-        // proporção (4/5) do PostImageCarousel, não mais um `minHeight`
-        // solto — card com foto e card só-texto precisam ocupar o MESMO
-        // tamanho de bloco visual pra manter um padrão entre eles (pedido
-        // direto). Post longo rola dentro do próprio bloco em vez de
-        // esticar a altura (que quebraria esse padrão de novo).
-        <Box
-          sx={{
-            width: "100%",
-            aspectRatio: "4 / 5",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            overflowY: "auto",
-            p: 3,
-            borderRadius: 2,
-            bgcolor: coverColor(post.anilistId ?? 0),
-          }}
-        >
-          <Typography
-            variant="h6"
-            sx={{ color: readableTextColor(coverColor(post.anilistId ?? 0)), textAlign: "center", whiteSpace: "pre-wrap", fontWeight: 600 }}
-          >
-            <PostBodyText text={post.body} />
-          </Typography>
-        </Box>
-      )}
-
-      {!post.isSpoiler && hasImages && (
-        // Legenda logo depois da imagem (não mais depois da linha de
-        // ações) — mesma ordem que redes sociais convencionais já usam, e
-        // que o caso sem imagem (acima) já seguia. Post longo trunca com
-        // "ver mais", mesmo padrão de CommentSection.tsx (lote 1 do
-        // Epic 27).
-        <Box sx={{ mt: 1.5 }}>
-          <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
-            <PostBodyText
-              text={
-                captionExpanded || post.body.length <= LONG_CAPTION_THRESHOLD
-                  ? post.body
-                  : `${post.body.slice(0, LONG_CAPTION_THRESHOLD)}…`
-              }
-            />
-          </Typography>
-          {post.body.length > LONG_CAPTION_THRESHOLD && (
-            <Button
-              onClick={() => setCaptionExpanded((v) => !v)}
-              size="small"
-              sx={{ px: 0, minWidth: 0, textTransform: "none" }}
-            >
-              {captionExpanded ? "ver menos" : "ver mais"}
-            </Button>
-          )}
-        </Box>
-      )}
-
-      <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", mt: 1 }}>
-        <LikeToggle
-          postId={post.id}
-          liked={post.likedByMe}
-          likeCount={post.likeCount}
-          onChange={onLikeChange}
-        />
-
-        <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
-          <Tooltip title={commentsOpen ? "Fechar comentários" : "Comentários"}>
-            <IconButton onClick={() => setCommentsOpen((v) => !v)} size="small" aria-label="Comentários">
-              <ChatBubbleOutlineIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Typography variant="caption" sx={{ color: "text.secondary", minWidth: 16 }}>
-            {post.commentCount}
-          </Typography>
-        </Stack>
-
-        <Tooltip title={loggedOut ? "Entre para citar" : "Citar"}>
-          <IconButton onClick={handleQuoteClick} size="small" aria-label="Citar">
-            <FormatQuoteIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-
-        <Tooltip title={loggedOut ? "Entre para repostar" : post.repostedByMe ? "Desfazer repost" : "Repostar"}>
-          <IconButton
-            onClick={handleRepostToggle}
-            disabled={reposting}
-            size="small"
-            aria-label={post.repostedByMe ? "Desfazer repost" : "Repostar"}
-          >
-            {post.repostedByMe ? (
-              <RepeatIcon fontSize="small" sx={{ color: "success.main" }} />
-            ) : (
-              <RepeatOutlinedIcon fontSize="small" />
+        <>
+          {hasImages && <PostImageCarousel imageUrls={post.imageUrls} />}
+          <Box>
+            <Typography sx={{ whiteSpace: "pre-wrap", fontSize: 16, color: "text.primary", overflowWrap: "anywhere" }}>
+              <PostBodyText
+                text={
+                  hasImages && !captionExpanded && displayBody.length > LONG_CAPTION_THRESHOLD
+                    ? `${displayBody.slice(0, LONG_CAPTION_THRESHOLD)}…`
+                    : displayBody
+                }
+              />
+            </Typography>
+            {hasImages && displayBody.length > LONG_CAPTION_THRESHOLD && (
+              <Button onClick={() => setCaptionExpanded((v) => !v)} size="small" sx={{ px: 0, minWidth: 0, minHeight: 0, color: "text.secondary" }}>
+                {captionExpanded ? "ver menos" : "ver mais"}
+              </Button>
             )}
-          </IconButton>
-        </Tooltip>
+          </Box>
+        </>
+      )}
 
-        {!post.isMine && (
-          <Tooltip
-            title={loggedOut ? "Entre para denunciar" : post.reportedByMe ? "Denunciado" : "Denunciar post"}
-          >
-            <span>
-              <IconButton
-                onClick={handleReport}
-                disabled={post.reportedByMe}
-                size="small"
-                aria-label={post.reportedByMe ? "Denunciado" : "Denunciar post"}
-              >
-                <FlagIcon fontSize="small" />
-              </IconButton>
+      {/* Obra (contexto explícito) — link para o detalhe público */}
+      {animeTitle !== null && post.anilistId !== null && (
+        <Typography component="div" className="font-jp" sx={{ fontSize: 12, color: "text.secondary" }}>
+          <MuiLink component={NextLink} href={`/obra/${post.anilistId}`} underline="hover" color="inherit" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
+            {post.favoritedByMe && <StarIcon role="img" aria-label="Anime favoritado" sx={{ fontSize: 14, color: "secondary.main" }} />}
+            <span lang={post.animeTitleNative && animeTitle === post.animeTitleNative ? "ja" : undefined}>
+              {animeTitle}
+              {post.animeFormat ? ` · ${post.animeFormat}` : ""} ↗
             </span>
-          </Tooltip>
-        )}
-      </Stack>
+          </MuiLink>
+        </Typography>
+      )}
 
+      {/* Citação: "Referência interna" (Figma 13:41325) */}
       {post.quotedUnavailable && !post.quotedPost && (
         <Box
           data-testid="quoted-unavailable"
-          sx={{ mt: 1.5, p: 1.5, border: 1, borderColor: "divider", borderRadius: 1.5, color: "text.secondary" }}
+          sx={{ p: 2, bgcolor: "background.paper", borderRadius: "10px", color: "text.secondary", display: "flex", flexDirection: "column", gap: 1 }}
         >
-          <Typography variant="body2" sx={{ fontWeight: 700 }}>
-            ↗ Publicação original indisponível
-          </Typography>
-          <Typography variant="caption">
+          <Typography sx={{ fontWeight: 700, fontSize: 12 }}>↗ Publicação original indisponível</Typography>
+          <Typography sx={{ fontSize: 14 }}>
             Conteúdo removido ou não acessível. Nenhum trecho ou texto do autor original é exibido.
           </Typography>
         </Box>
       )}
 
       {post.quotedPost && (
-        // Sem link pro post citado em si (decisão de escopo do Epic 25 —
-        // este app não tem página de post avulso), mas o autor citado TEM
-        // uma página própria e ficou totalmente inerte, ao contrário do
-        // autor do post de fora (link logo acima) — achado real da 22ª
-        // rodada de auditoria, Epic 18.
-        <Box
-          sx={{
-            mt: 1.5,
-            p: 1.5,
-            border: 1,
-            borderColor: "divider",
-            borderRadius: 1.5,
-          }}
-        >
-          <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 0.5 }}>
+        <Box sx={{ p: 2, bgcolor: "background.paper", borderRadius: "10px", display: "flex", flexDirection: "column", gap: 1 }}>
+          <Typography sx={{ fontWeight: 700, fontSize: 12, color: "text.secondary" }}>
+            ↗ Publicação de{" "}
+            <MuiLink component={NextLink} href={`/users/${post.quotedPost.author.id}`} underline="hover" color="inherit">
+              {post.quotedPost.author.displayName}
+            </MuiLink>
+            {post.quotedPost.author.handle ? ` · @${post.quotedPost.author.handle}` : ""}
+          </Typography>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: "flex-start" }}>
             {post.quotedPost.imageUrl && !quotedCoverBroken && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={post.quotedPost.imageUrl}
                 alt=""
                 onError={() => setQuotedCoverBroken(true)}
-                style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 4, flexShrink: 0 }}
+                style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
               />
             )}
             <Box sx={{ minWidth: 0 }}>
-              <MuiLink
-                component={NextLink}
-                href={`/users/${post.quotedPost.author.id}`}
-                underline="hover"
-                sx={{ fontWeight: 700, fontSize: 12, color: "text.primary", display: "block" }}
-              >
-                {post.quotedPost.author.displayName}
-              </MuiLink>
               {post.quotedPost.isSpoiler ? (
                 <SpoilerGate<{ body: string }>
                   revealUrl={`/api/posts/${post.quotedPost.id}/reveal`}
-                  render={(d) => (
-                    <Typography variant="caption" sx={{ color: "text.secondary", whiteSpace: "pre-wrap" }}>
-                      {d.body}
-                    </Typography>
-                  )}
+                  render={(d) => <Typography sx={{ fontSize: 14, whiteSpace: "pre-wrap" }}>{d.body}</Typography>}
                 />
               ) : (
                 <Typography
-                  variant="caption"
-                  sx={{
-                    color: "text.secondary",
-                    display: "-webkit-box",
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                  }}
+                  sx={{ fontSize: 14, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
                 >
-                  {post.quotedPost.body}
+                  {splitTrailingHashtags(post.quotedPost.body).body}
                 </Typography>
               )}
+              <MuiLink component={NextLink} href={`/publicacao/${post.quotedPost.id}`} underline="hover" sx={{ fontSize: 14, color: "text.primary" }}>
+                Abrir publicação original
+              </MuiLink>
             </Box>
           </Stack>
         </Box>
       )}
+
+      <HashtagRow tags={trailingTags} />
+
+      {/* Interações: Curtir · Responder · Compartilhar internamente · Denunciar/Excluir */}
+      <Stack direction="row" spacing={3} sx={{ alignItems: "center" }}>
+        <LikeToggle postId={post.id} liked={post.likedByMe} likeCount={post.likeCount} onChange={onLikeChange} />
+
+        <ButtonBase onClick={() => setCommentsOpen((v) => !v)} aria-expanded={commentsOpen} sx={actionSx}>
+          <ChatBubbleOutlineIcon sx={{ fontSize: 16 }} />
+          <span>Responder · {post.commentCount}</span>
+        </ButtonBase>
+
+        <ButtonBase
+          onClick={(e) => setShareAnchor(e.currentTarget)}
+          aria-haspopup="true"
+          aria-controls={shareAnchor ? shareMenuId : undefined}
+          disabled={reposting}
+          sx={actionSx}
+        >
+          <RepeatIcon sx={{ fontSize: 16, color: post.repostedByMe ? "primary.main" : undefined }} />
+          <span>Compartilhar internamente</span>
+        </ButtonBase>
+        <Menu id={shareMenuId} anchorEl={shareAnchor} open={Boolean(shareAnchor)} onClose={() => setShareAnchor(null)}>
+          <MenuItem onClick={handleRepostToggle}>{post.repostedByMe ? "Desfazer repost" : "Repostar"}</MenuItem>
+          <MenuItem onClick={handleQuoteClick}>Citar publicação</MenuItem>
+        </Menu>
+
+        <Box sx={{ flex: 1 }} />
+        {post.isMine ? (
+          <ButtonBase onClick={handleDelete} sx={actionSx}>
+            Excluir
+          </ButtonBase>
+        ) : (
+          <ButtonBase onClick={handleReport} disabled={post.reportedByMe} sx={actionSx}>
+            {post.reportedByMe ? "Denunciado" : "Denunciar"}
+          </ButtonBase>
+        )}
+      </Stack>
 
       <ReportDialog
         open={reportOpen}
@@ -497,11 +408,11 @@ export function PostCard({
       />
 
       {commentsOpen && (
-        <PostComments postId={post.id} commentCount={post.commentCount} onCountChange={handleCommentCountChange} />
+        <PostComments postId={post.id} commentCount={post.commentCount} onCountChange={handleCommentCountChange} withHeading={commentsHeading} />
       )}
 
       {error && (
-        <Typography variant="caption" sx={{ color: "error.main", display: "block", mt: 0.5 }}>
+        <Typography role="alert" sx={{ color: "error.main", fontSize: 12 }}>
           {error}
         </Typography>
       )}

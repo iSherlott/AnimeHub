@@ -23,6 +23,7 @@ const PUBLIC_BY_DESIGN = new Set([
   "catalog/ranking/route.ts",
   "catalog/route.ts",
   "feed/trending-posts/route.ts",
+  "hashtags/route.ts", // populares e sugestões (só metadados)
   "hashtags/[key]/route.ts", // página pública da hashtag (só metadados e contagem)
   "uploads/[...path]/route.ts", // serve arquivos já publicados
   "users/[id]/posts/route.ts", // perfil público

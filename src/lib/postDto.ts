@@ -7,7 +7,7 @@ import type { Post } from "@prisma/client";
  */
 export type PostSummaryDTO = {
   id: string;
-  author: { id: string; displayName: string; avatarUrl: string | null };
+  author: { id: string; displayName: string; handle: string | null; avatarUrl: string | null };
   /** Vazio quando `isSpoiler` — o texto só sai pela rota de revelar. */
   body: string;
   isSpoiler: boolean;
@@ -29,8 +29,11 @@ export type PostDTO = {
   anilistId: number | null;
   animeTitleRomaji: string | null;
   animeTitleEnglish: string | null;
+  /** Título original e formato (TV, filme…) da produção canônica, quando conhecida. */
+  animeTitleNative: string | null;
+  animeFormat: string | null;
   animeCoverImage: string | null;
-  author: { id: string; displayName: string; avatarUrl: string | null };
+  author: { id: string; displayName: string; handle: string | null; avatarUrl: string | null };
   isMine: boolean;
   likeCount: number;
   likedByMe: boolean;
@@ -54,12 +57,12 @@ export type PostDTO = {
   favoritedByMe: boolean;
 };
 
-type PostWithAuthor = Post & { user: { id: string; displayName: string; avatarUrl: string | null } };
+type PostWithAuthor = Post & { user: { id: string; displayName: string; handle?: string | null; avatarUrl: string | null } };
 
 export function toPostSummaryDto(post: PostWithAuthor): PostSummaryDTO {
   return {
     id: post.id,
-    author: { id: post.user.id, displayName: post.user.displayName, avatarUrl: post.user.avatarUrl },
+    author: { id: post.user.id, displayName: post.user.displayName, handle: post.user.handle ?? null, avatarUrl: post.user.avatarUrl },
     body: post.isSpoiler ? "" : post.body,
     isSpoiler: post.isSpoiler,
     imageUrl: post.isSpoiler ? null : (post.imageUrls[0] ?? null),
@@ -89,6 +92,7 @@ export function toPostDto(
     repostedBy?: { id: string; displayName: string } | null;
     repostedByMe?: boolean;
     favoritedByMe?: boolean;
+    production?: { titleNative: string | null; format: string | null } | null;
   }
 ): PostDTO {
   return {
@@ -100,8 +104,10 @@ export function toPostDto(
     anilistId: post.anilistId,
     animeTitleRomaji: post.animeTitleRomaji,
     animeTitleEnglish: post.animeTitleEnglish,
+    animeTitleNative: opts.production?.titleNative ?? null,
+    animeFormat: opts.production?.format ?? null,
     animeCoverImage: post.animeCoverImage,
-    author: { id: post.user.id, displayName: post.user.displayName, avatarUrl: post.user.avatarUrl },
+    author: { id: post.user.id, displayName: post.user.displayName, handle: post.user.handle ?? null, avatarUrl: post.user.avatarUrl },
     isMine: post.user.id === opts.viewerId,
     likeCount: opts.likeCount,
     likedByMe: opts.likedByMe,

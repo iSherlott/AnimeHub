@@ -11,8 +11,8 @@ const WEEK = 7 * DAY;
 export function formatRelativeTime(iso: string, now: Date = new Date()): string {
   const diff = now.getTime() - new Date(iso).getTime();
   if (diff < MINUTE) return "agora";
-  if (diff < HOUR) return `${Math.floor(diff / MINUTE)} min`;
-  if (diff < DAY) return `${Math.floor(diff / HOUR)} h`;
-  if (diff < WEEK) return `${Math.floor(diff / DAY)} d`;
+  if (diff < HOUR) return `há ${Math.floor(diff / MINUTE)} min`;
+  if (diff < DAY) return `há ${Math.floor(diff / HOUR)} h`;
+  if (diff < WEEK) return `há ${Math.floor(diff / DAY)} d`;
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }

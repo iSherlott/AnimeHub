@@ -69,3 +69,20 @@ export function splitBodyByHashtags(text: string): BodySegment[] {
   if (cursor < text.length) segments.push({ type: "text", value: text.slice(cursor) });
   return segments;
 }
+
+/**
+ * Separa a linha FINAL de hashtags do corpo (Figma `13:41204`: o texto vem
+ * primeiro e as hashtags numa fileira própria embaixo). Só vale quando a
+ * última linha é composta apenas por hashtags; hashtags no meio do texto
+ * continuam inline (como links) no corpo.
+ */
+export function splitTrailingHashtags(text: string): { body: string; tags: Array<{ key: string; display: string }> } {
+  const lines = text.replace(/\s+$/, "").split("\n");
+  const last = lines[lines.length - 1] ?? "";
+  const tokens = last.trim().split(/\s+/).filter(Boolean);
+  const onlyTags = tokens.length > 0 && tokens.every((t) => /^#[\p{L}\p{N}_\p{M}]+$/u.test(t));
+  if (!onlyTags || lines.length === 1) return { body: text, tags: [] };
+  const tags = extractHashtags(last);
+  if (tags.length !== tokens.length) return { body: text, tags: [] };
+  return { body: lines.slice(0, -1).join("\n").replace(/\s+$/, ""), tags };
+}

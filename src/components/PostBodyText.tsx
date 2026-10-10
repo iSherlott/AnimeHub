@@ -1,3 +1,5 @@
+"use client";
+
 import NextLink from "next/link";
 import { Link as MuiLink } from "@mui/material";
 import { splitBodyByHashtags } from "@/lib/hashtags";
