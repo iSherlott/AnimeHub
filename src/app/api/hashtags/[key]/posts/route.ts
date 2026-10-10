@@ -23,7 +23,8 @@ export async function GET(request: Request, { params }: Params) {
   const key = canonicalHashtagKey(decodeURIComponent(rawKey));
   const hashtag = await prisma.hashtag.findUnique({ where: { key }, select: { id: true } });
   if (!hashtag) {
-    return NextResponse.json({ error: "Hashtag não encontrada" }, { status: 404 });
+    // A página da hashtag existe para qualquer ID canônico; sem publicações, lista vazia.
+    return NextResponse.json({ posts: [], nextCursor: null });
   }
 
   const { searchParams } = new URL(request.url);

@@ -27,11 +27,40 @@ export async function GET(_request: Request, { params }: Params) {
     }),
   ]);
 
+  // "Obra em contexto" (Figma 13:42068): só para hashtags do tipo OBRA, pela
+  // produção mais citada nas publicações explicitamente associadas.
+  let work: { anilistId: number; titleNative: string | null; titleRomaji: string; titleEnglish: string | null; format: string | null; seasonNumber: number; seasonYear: number | null } | null = null;
+  if (hashtag.kind === "WORK") {
+    const top = await prisma.post.groupBy({
+      by: ["anilistId"],
+      where: { deletedAt: null, anilistId: { not: null }, hashtags: { some: { hashtagId: hashtag.id } } },
+      _count: { _all: true },
+      orderBy: { _count: { anilistId: "desc" } },
+      take: 1,
+    });
+    const anilistId = top[0]?.anilistId;
+    if (anilistId) {
+      const p = await prisma.production.findUnique({ where: { anilistId } });
+      if (p) {
+        work = {
+          anilistId: p.anilistId,
+          titleNative: p.titleNative,
+          titleRomaji: p.titleRomaji,
+          titleEnglish: p.titleEnglish,
+          format: p.format,
+          seasonNumber: p.seasonNumber,
+          seasonYear: p.seasonYear,
+        };
+      }
+    }
+  }
+
   const byKind: Record<string, Array<{ key: string; display: string }>> = {};
   for (const h of popular) (byKind[h.kind] ||= []).push({ key: h.key, display: h.display });
 
   return NextResponse.json({
     hashtag: { key: hashtag.key, display: hashtag.display, kind: hashtag.kind, postCount },
     related: byKind,
+    work,
   });
 }

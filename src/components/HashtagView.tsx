@@ -1,39 +1,55 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import NextLink from "next/link";
-import { Box, Chip, Link as MuiLink, Stack, Tab, Tabs, Typography } from "@mui/material";
+import { Box, Stack, Tab, Tabs, Typography } from "@mui/material";
+import { AppLink } from "@/components/AppLink";
+import { CommunitySearchBox } from "@/components/CommunitySearchBox";
+import { HashtagRow } from "@/components/HashtagRow";
+import { TwoColumn } from "@/components/PageShell";
 import { UserPostList } from "@/components/UserPostList";
 
-type Related = Record<string, Array<{ key: string; display: string }>>;
-
-const KIND_LABEL: Record<string, string> = {
-  WORK: "OBRAS",
-  SEASON: "TEMPORADA",
-  GENRE: "GÊNEROS",
-  TOPIC: "TÓPICOS",
+type Tag = { key: string; display: string };
+type Related = Record<string, Tag[]>;
+type Work = {
+  anilistId: number;
+  titleNative: string | null;
+  titleRomaji: string;
+  titleEnglish: string | null;
+  format: string | null;
+  seasonNumber: number;
+  seasonYear: number | null;
 };
-const KIND_ORDER = ["WORK", "SEASON", "GENRE", "TOPIC"];
+
+const GROUPS: Array<{ kind: string; label: string }> = [
+  { kind: "WORK", label: "OBRAS" },
+  { kind: "SEASON", label: "TEMPORADA" },
+  { kind: "GENRE", label: "GÊNEROS" },
+  { kind: "TOPIC", label: "TÓPICOS" },
+];
 
 /**
- * Página de hashtag (Figma `13:42068`): "Recentes" (cronológico) e "Em alta"
- * (atividade recente NESTA tag — critério/janela pendentes, proposta 72 h),
- * com a lateral "Encontre outra conversa" por tipo. A hashtag não associa
- * nenhuma obra.
+ * Página de hashtag (Figma `13:42068`): busca preenchida, contagem, abas
+ * "Recentes" (cronológico) e "Em alta" (atividade recente NESTA tag — critério/
+ * janela pendentes, proposta 72 h), lateral "Encontre outra conversa" por tipo
+ * e "Obra em contexto" quando a tag é de uma obra. A hashtag não associa
+ * nenhuma obra por si só.
  */
-export function HashtagView({ hashtagKey, display, kind }: { hashtagKey: string; display: string; kind: string }) {
+export function HashtagView({ hashtagKey, display }: { hashtagKey: string; display: string }) {
   const [tab, setTab] = useState<"recent" | "trending">("recent");
   const [count, setCount] = useState<number | null>(null);
   const [related, setRelated] = useState<Related>({});
+  const [work, setWork] = useState<Work | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/hashtags/${encodeURIComponent(hashtagKey)}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (cancelled || !data) return;
+        if (cancelled) return;
+        if (!data) return setCount(0);
         setCount(data.hashtag.postCount);
         setRelated(data.related ?? {});
+        setWork(data.work ?? null);
       })
       .catch(() => undefined);
     return () => {
@@ -41,65 +57,74 @@ export function HashtagView({ hashtagKey, display, kind }: { hashtagKey: string;
     };
   }, [hashtagKey]);
 
-  return (
-    <Box>
-      <Typography variant="overline" sx={{ color: "text.secondary" }}>
-        {KIND_LABEL[kind] ?? "TÓPICOS"}
-      </Typography>
-      <Typography variant="h3" component="h1" sx={{ fontWeight: 800 }}>
-        #{display}
-      </Typography>
-      <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }} data-testid="hashtag-count">
+  const main = (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <CommunitySearchBox initialQuery={`#${display}`} scope="posts" />
+      <Typography sx={{ fontSize: 14, color: "text.secondary" }} data-testid="hashtag-count">
         {count === null ? "" : `${count} ${count === 1 ? "publicação" : "publicações"}`}
       </Typography>
-      <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mb: 2 }}>
+
+      <Tabs value={tab} onChange={(_, v) => setTab(v)} aria-label="Ordem das publicações">
+        <Tab label="Recentes" value="recent" />
+        <Tab label="Em alta" value="trending" />
+      </Tabs>
+      <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
         Recentes: ordem cronológica. Em alta: descoberta por atividade recente nesta hashtag; critérios e janela de tempo ainda
         em definição.
       </Typography>
 
-      <Stack direction={{ xs: "column", md: "row" }} spacing={4} sx={{ alignItems: "flex-start" }}>
-        <Box sx={{ flex: 1, minWidth: 0, width: "100%" }}>
-          <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
-            <Tab label="Recentes" value="recent" />
-            <Tab label="Em alta" value="trending" />
-          </Tabs>
-          <UserPostList
-            key={tab}
-            endpoint={`/api/hashtags/${encodeURIComponent(hashtagKey)}/posts`}
-            params={{ tab }}
-            emptyText={tab === "trending" ? "Nada em alta nesta hashtag nas últimas 72 horas." : "Nenhuma publicação por enquanto."}
-          />
-        </Box>
+      <UserPostList
+        key={tab}
+        endpoint={`/api/hashtags/${encodeURIComponent(hashtagKey)}/posts`}
+        params={{ tab }}
+        timeStyle="clock"
+        emptyText={tab === "trending" ? "Nada em alta nesta hashtag nas últimas 72 horas." : "Nenhuma publicação por enquanto."}
+      />
 
-        <Box component="aside" aria-label="Encontre outra conversa" sx={{ width: { xs: "100%", md: 280 }, flexShrink: 0 }}>
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            Encontre outra conversa
-          </Typography>
-          {KIND_ORDER.filter((k) => related[k]?.length).map((k) => (
-            <Box key={k} sx={{ mb: 1.5 }}>
-              <Typography variant="overline" sx={{ color: "text.secondary" }}>
-                {KIND_LABEL[k]}
-              </Typography>
-              <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.75 }}>
-                {related[k].map((h) => (
-                  <Chip
-                    key={h.key}
-                    size="small"
-                    variant="outlined"
-                    component={NextLink}
-                    href={`/hashtag/${encodeURIComponent(h.key)}`}
-                    clickable
-                    label={`#${h.display}`}
-                  />
-                ))}
-              </Stack>
-            </Box>
-          ))}
-          <MuiLink component={NextLink} href="/" underline="hover" variant="caption">
-            ← Comunidade
-          </MuiLink>
-        </Box>
-      </Stack>
+      <Typography sx={{ fontSize: 14, color: "text.secondary", pt: 2 }}>
+        Normalização: #{hashtagKey} e #{display} resolvem para um único ID canônico. O nome de exibição é preservado; não há páginas duplicadas por caixa.
+      </Typography>
     </Box>
   );
+
+  const aside = (
+    <>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <Typography component="h2" sx={{ fontSize: 26, lineHeight: 1.5 }}>
+          Encontre outra conversa
+        </Typography>
+        {GROUPS.filter((g) => related[g.kind]?.length).map((g) => (
+          <Stack key={g.kind} spacing={1}>
+            <Typography sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary" }}>{g.label}</Typography>
+            <HashtagRow tags={related[g.kind]} />
+          </Stack>
+        ))}
+      </Box>
+
+      {work && (
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Typography component="h2" sx={{ fontSize: 26, lineHeight: 1.5 }}>
+            Obra em contexto
+          </Typography>
+          <Typography lang={work.titleNative ? "ja" : undefined} sx={{ fontSize: 20, fontWeight: 700 }}>
+            {work.titleNative ?? work.titleRomaji}
+          </Typography>
+          {work.titleEnglish && <Typography sx={{ fontSize: 12, color: "text.secondary" }}>{work.titleEnglish}</Typography>}
+          <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+            Season {work.seasonNumber}
+            {work.format ? ` · ${work.format}` : ""}
+            {work.seasonYear ? ` · ${work.seasonYear}` : ""}
+          </Typography>
+          <AppLink href={`/obra/${work.anilistId}`} underline="hover" sx={{ fontSize: 14, fontWeight: 700, color: "text.primary" }}>
+            Abrir detalhe do anime ↗
+          </AppLink>
+          <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+            Esta associação vem do catálogo de produções, não de uma hashtag ambígua.
+          </Typography>
+        </Box>
+      )}
+    </>
+  );
+
+  return <TwoColumn main={main} aside={aside} />;
 }
