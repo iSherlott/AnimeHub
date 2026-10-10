@@ -32,6 +32,8 @@ model User {
   titleFormat  String?
   /// IANA (ex.: "America/Sao_Paulo"), "device" ou null (padrão do produto).
   timeZone     String?
+  /// Sinopse quando os títulos estão em japonês: "pt" (padrão) ou "ja".
+  synopsisLanguage String?
   notifyReleases  Boolean  @default(true)
   notifyReplies   Boolean  @default(true)
   notifyComments  Boolean  @default(true)
@@ -245,6 +247,10 @@ model Production {
   seasonYear   Int?
   genres       String?
   officialSite String?
+  /// JSON [{site, url}] — sites onde assistir (links STREAMING da AniList). `null` = ainda não consultado; "[]" = consultado, sem links.
+  streamingLinksJson String?
+  /// ID da produção na AniDB, vinculado pela importação revisada (Admin → Matching).
+  anidbId      Int?      @unique
   /// JSON [{id, titleRomaji, format, relationType}] — relações da AniList (sequências, spin-offs…).
   relationsJson String?
   createdAt    DateTime  @default(now())
@@ -412,6 +418,10 @@ model CatalogEntry {
   id                String    @id @default(cuid())
   anilistId         Int?      @unique
   kitsuId           Int?      @unique
+  /// Entradas criadas pela importação revisada (Admin → Importações) não têm AniList.
+  anidbId           Int?      @unique
+  /// ID na MyAnimeList (idMal da AniList) — chave das notícias (Jikan).
+  malId             Int?
   titleRomaji       String
   titleEnglish      String?
   titleNative       String?
@@ -714,4 +724,238 @@ model Follow {
   @@unique([followerId, followingId])
   @@index([followerId])
   @@index([followingId])
+}
+
+
+/**
+ * Job operacional da área Admin (Figma "Jobs", `8:4740`; Job Detail `8:4919`).
+ * Hoje só existe o job de importação revisada (HTML colado → parse → normalize
+ * → matching → prévia → confirmação → commit). `seq` é o "#185" mostrado na UI.
+ * Nenhum job mede consumo (D-02).
+ */
+model AdminJob {
+  seq           Int               @id @default(autoincrement())
+  /// "IMPORT"
+  kind          String
+  /// "AniDB"
+  source        String
+  /// "Autumn2026"
+  season        String?
+  /// PENDING | RUNNING | SUCCESS | FAILED | CANCELLED
+  state         String
+  /// Etapa atual: PARSE | NORMALIZE | MATCHING | COMMIT | BROADCAST | NOTIFICATION
+  stage         String
+  parserVersion String?
+  total         Int               @default(0)
+  processed     Int               @default(0)
+  error         String?
+  htmlBytes     Int?
+  /// HTML original, preservado para revisão ou nova tentativa (tratado sempre como texto).
+  html          String?
+  adminId       String?
+  adminName     String?
+  createdAt     DateTime          @default(now())
+  finishedAt    DateTime?
+  records       ImportRecord[]
+  conflicts     CatalogConflict[]
+  logs          AdminLog[]
+
+  @@index([createdAt])
+}
+
+/** Registro extraído do HTML e o resultado do matching contra o catálogo (Figma `8:4020`, `8:4179`). */
+model ImportRecord {
+  id                  String   @id @default(cuid())
+  jobSeq              Int
+  job                 AdminJob @relation(fields: [jobSeq], references: [seq], onDelete: Cascade)
+  /// Identificador na fonte (AniDB).
+  sourceKey           String
+  titleRomaji         String
+  titleNative         String?
+  titleEnglish        String?
+  seasonLabel         String?
+  year                Int?
+  format              String?
+  /// Horário de exibição informado pela fonte (ISO) — nunca inventado.
+  airsAt              DateTime?
+  airsAtHasTime       Boolean  @default(false)
+  capturedAt          DateTime @default(now())
+  matchedProductionId String?
+  matchedAnilistId    Int?
+  score               Float?
+  /// JSON {title, season, year, image} (0..1; ausente = sem dado).
+  scoreDetail         String?
+  /// AUTO | NEW | PENDING | CONFIRMED | IGNORED
+  state               String
+  note                String?
+  /// Sinopse e sites de streaming que vieram no HTML (JSON [{site,url}]).
+  description         String?
+  linksJson           String?
+  episodes            Int?
+  imageUrl            String?
+  decidedByName       String?
+  decidedAt           DateTime?
+
+  @@index([jobSeq, state])
+}
+
+/** Divergência entre duas fontes para um mesmo campo (Figma "Conflitos", `8:4327`). */
+model CatalogConflict {
+  id            String    @id @default(cuid())
+  jobSeq        Int?
+  job           AdminJob? @relation(fields: [jobSeq], references: [seq], onDelete: SetNull)
+  anilistId     Int
+  episode       Int
+  /// "airingAt"
+  field         String
+  titleSnapshot String
+  aValue        DateTime
+  aSource       String
+  bValue        DateTime
+  bSource       String
+  bMeta         String?
+  /// PENDING | RESOLVED
+  status        String    @default("PENDING")
+  /// "A" | "B" | "MANUAL"
+  resolution    String?
+  resolvedValue DateTime?
+  reason        String?
+  decidedByName String?
+  decidedAt     DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@index([anilistId, episode])
+}
+
+/** Valor manual com prioridade; origem preservada e trilha de auditoria (Figma "Overrides", `8:4471`). */
+model CatalogOverride {
+  id             String    @id @default(cuid())
+  anilistId      Int
+  episode        Int
+  /// "airingAt"
+  field          String
+  titleSnapshot  String
+  originalValue  DateTime
+  originalSource String
+  value          DateTime
+  reason         String
+  adminName      String
+  createdAt      DateTime  @default(now())
+  removedAt      DateTime?
+  removedByName  String?
+
+  @@index([anilistId, episode, removedAt])
+}
+
+/** Eventos de domínio legíveis (Figma "Logs", `8:5077`): timestamp, fonte, job, evento e contexto. */
+model AdminLog {
+  id        String    @id @default(cuid())
+  at        DateTime  @default(now())
+  jobSeq    Int?
+  job       AdminJob? @relation(fields: [jobSeq], references: [seq], onDelete: SetNull)
+  source    String?
+  /// INFO | WARN | ERROR
+  level     String    @default("INFO")
+  event     String
+  message   String
+  context   String?
+  adminName String?
+
+  @@index([at])
+  @@index([jobSeq, at])
+}
+
+
+/**
+ * Miniatura de um episódio específico (Kitsu), por AniList id + número — o
+ * calendário mostra essa imagem (ou a capa do anime, se não houver). Preenchida
+ * pelo job diário das 00:00 (America/Sao_Paulo) ou pelo botão do Admin.
+ */
+model EpisodeImage {
+  anilistId Int
+  episode   Int
+  thumbnail String
+  source    String   @default("kitsu")
+  fetchedAt DateTime @default(now())
+
+  @@id([anilistId, episode])
+}
+
+/** Cache do vínculo AniList → Kitsu (evita consultar o mesmo mapeamento a cada execução). */
+model EpisodeImageSource {
+  anilistId Int      @id
+  kitsuId   Int?
+  checkedAt DateTime @default(now())
+}
+
+/** Histórico/lock das execuções do job de imagens de episódios (Admin → Scrapers). */
+model EpisodeImageRun {
+  id         String    @id @default(cuid())
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  /// RUNNING | OK | PARTIAL | ERROR
+  status     String
+  /// "schedule" | "manual"
+  trigger    String
+  animes     Int       @default(0)
+  found      Int       @default(0)
+  failed     Int       @default(0)
+  message    String?
+  adminName  String?
+
+  @@index([startedAt])
+}
+
+
+/** Leitura em kana e furigana (<ruby>) de um título japonês, gerada uma vez e reaproveitada. */
+model TitleReading {
+  text         String   @id
+  kana         String
+  furiganaHtml String
+  createdAt    DateTime @default(now())
+}
+
+/** Sinopse traduzida (pt/ja) de uma obra da AniList — traduzida uma vez, na primeira vez que é pedida. */
+model SynopsisTranslation {
+  anilistId Int
+  lang      String
+  text      String
+  source    String
+  updatedAt DateTime @updatedAt
+
+  @@id([anilistId, lang])
+}
+
+/** Notícia sobre uma obra da temporada (Jikan/MyAnimeList), guardada pelo serviço news-fetcher. */
+model AnimeNews {
+  id          String   @id @default(cuid())
+  anilistId   Int
+  url         String
+  title       String
+  excerpt     String?
+  imageUrl    String?
+  author      String?
+  publishedAt DateTime
+  source      String   @default("MyAnimeList")
+  fetchedAt   DateTime @default(now())
+
+  @@unique([anilistId, url])
+  @@index([publishedAt])
+}
+
+/** Histórico/lock das execuções do serviço de notícias (Admin → Scrapers). */
+model NewsRun {
+  id         String    @id @default(cuid())
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  /// RUNNING | OK | PARTIAL | ERROR
+  status     String
+  animes     Int       @default(0)
+  fetched    Int       @default(0)
+  failed     Int       @default(0)
+  message    String?
+  adminName  String?
+
+  @@index([startedAt])
 }
