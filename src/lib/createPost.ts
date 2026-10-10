@@ -114,8 +114,8 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
       quotedPostId,
     },
     include: {
-      user: { select: { id: true, displayName: true, avatarUrl: true } },
-      quotedPost: { include: { user: { select: { id: true, displayName: true, avatarUrl: true } } } },
+      user: { select: { id: true, displayName: true, handle: true, avatarUrl: true } },
+      quotedPost: { include: { user: { select: { id: true, displayName: true, handle: true, avatarUrl: true } } } },
     },
   });
 
