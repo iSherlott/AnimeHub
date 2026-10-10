@@ -51,7 +51,7 @@ export default async function AnimeDetailPage({
     ? JSON.parse(anime.recommendationsJson)
     : [];
 
-  const [seasons, episodesResult, furiganaHtml, ownedRecommendedAnime] = await Promise.all([
+  const [seasons, episodesResult, furiganaHtml, ownedRecommendedAnime, scheduleRows, imageRows] = await Promise.all([
     anime.seriesKey
       ? prisma.anime.findMany({
           where: { seriesKey: anime.seriesKey, userId: user.id },
@@ -77,7 +77,12 @@ export default async function AnimeDetailPage({
           select: { id: true, anilistId: true },
         })
       : Promise.resolve([]),
+    // Data de lançamento (calendário) e imagem de cada episódio: completam o que a Kitsu não traz.
+    prisma.airingScheduleEntry.findMany({ where: { anilistId: anime.anilistId }, select: { episode: true, airingAt: true } }),
+    prisma.episodeImage.findMany({ where: { anilistId: anime.anilistId }, select: { episode: true, thumbnail: true } }),
   ]);
+  const schedule = Object.fromEntries(scheduleRows.map((r) => [r.episode, r.airingAt.toISOString()]));
+  const episodeImages = Object.fromEntries(imageRows.map((r) => [r.episode, r.thumbnail]));
 
   const animeIdByAnilistId = new Map(ownedRecommendedAnime.map((a) => [a.anilistId, a.id]));
   const recommendations: RecommendationData[] = rawRecommendations.map((rec) => {
@@ -351,9 +356,11 @@ export default async function AnimeDetailPage({
             Episódios
           </Typography>
         </Stack>
-        {episodesResult.episodes.length > 0 ? (
+        {episodesResult.episodes.length > 0 || scheduleRows.length > 0 ? (
           <EpisodeGrid
             episodes={episodesResult.episodes}
+            schedule={schedule}
+            episodeImages={episodeImages}
             fallbackImage={anime.coverImage}
             accentColor={anime.accentColor}
           />

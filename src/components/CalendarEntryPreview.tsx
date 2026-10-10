@@ -33,6 +33,7 @@ export function CalendarEntryPreview({ item, onFollowed }: { item: CalendarItem;
   const title = resolveTitleText(preference, item) || "Sem título";
   const description = useSynopsis(item.description, item.anilistId, item.descriptionPortuguese);
   const [coverBroken, setCoverBroken] = useState(false);
+  const hasImage = Boolean(item.episodeImage ?? item.coverImage) && !coverBroken;
 
   // Acompanhar daqui adiciona direto à lista (sem abrir a página da obra).
   const [followedId, setFollowedId] = useState<string | null>(null);
@@ -75,6 +76,15 @@ export function CalendarEntryPreview({ item, onFollowed }: { item: CalendarItem;
   }, [item.airingAt]);
   const weekday = weekdayName(airing, timeZone);
   const secondary = [item.titleNative && title !== item.titleNative ? item.titleNative : null, title !== item.titleRomaji ? item.titleRomaji : null, item.titleEnglish && title !== item.titleEnglish ? item.titleEnglish : null].filter(Boolean)[0];
+  // Favorito: sobreposto ao canto superior direito da imagem; sem imagem, volta para a fileira de ações.
+  const favorite = isInternal ? (
+    <FavoriteToggle
+      animeId={animeId!}
+      initialFavorite={followedId ? false : item.isFavorite}
+      size="small"
+      sx={hasImage ? { position: "absolute", top: 8, right: 8, bgcolor: "rgba(8,8,11,0.72)", "&:hover": { bgcolor: "rgba(8,8,11,0.88)" } } : undefined}
+    />
+  ) : null;
   const tertiary = item.titleEnglish && item.titleEnglish !== title && item.titleEnglish !== secondary ? item.titleEnglish : null;
 
   return (
@@ -89,6 +99,11 @@ export function CalendarEntryPreview({ item, onFollowed }: { item: CalendarItem;
             style={{ objectFit: "cover", objectPosition: "center 25%" }}
             onError={() => setCoverBroken(true)}
           />
+          {favorite && (
+            <Box data-testid="preview-favorite-overlay" sx={{ position: "absolute", top: 0, right: 0, zIndex: 1, width: 48, height: 48 }}>
+              {favorite}
+            </Box>
+          )}
           {live && (
             <Box sx={{ position: "absolute", top: 12, left: 12, display: "inline-flex", alignItems: "center", gap: 1, px: 1, py: 0.75, borderRadius: "6px", bgcolor: "#2c111b", color: "primary.main" }}>
               <FiberManualRecordIcon sx={{ fontSize: 12 }} />
@@ -166,7 +181,7 @@ export function CalendarEntryPreview({ item, onFollowed }: { item: CalendarItem;
                   Acompanhando
                 </Button>
               )}
-              <FavoriteToggle animeId={animeId!} initialFavorite={followedId ? false : item.isFavorite} size="small" />
+              {!hasImage && favorite}
             </>
           ) : user ? (
             <Button variant="contained" size="small" disabled={following} onClick={() => void follow()} data-testid="preview-follow">
