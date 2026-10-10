@@ -4,23 +4,21 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { loginHref } from "@/lib/safeRedirect";
 import NextLink from "next/link";
-import DeleteIcon from "@mui/icons-material/Delete";
-import SendIcon from "@mui/icons-material/Send";
 import {
   Box,
   Button,
+  ButtonBase,
   Checkbox,
-  FormControlLabel,
-  IconButton,
+  InputBase,
   Link as MuiLink,
+  Menu,
+  MenuItem,
   Stack,
-  TextField,
-  Tooltip,
   Typography,
 } from "@mui/material";
+import { UserAvatar } from "@/components/UserAvatar";
 import { SpoilerGate } from "@/components/SpoilerGate";
 import { ReportDialog } from "@/components/ReportDialog";
-import FlagIcon from "@mui/icons-material/Flag";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { formatRelativeTime } from "@/lib/relativeTime";
 
@@ -31,7 +29,7 @@ type CommentItem = {
   body: string;
   isSpoiler?: boolean;
   createdAt: string;
-  author: { id: string; displayName: string };
+  author: { id: string; displayName: string; handle?: string | null; avatarUrl?: string | null };
   isMine: boolean;
 };
 
@@ -66,8 +64,11 @@ export function PostComments({
   postId,
   commentCount,
   onCountChange,
+  withHeading = false,
 }: {
   postId: string;
+  /** Página de discussão: mostra "Respostas · Ordem da conversa" acima da lista. */
+  withHeading?: boolean;
   /** Contagem "oficial" do post, levantada até FeedView/UserPostList —
    * usada só pra notar quando ela muda por uma ação de OUTRA instância
    * desta mesma thread (o mesmo post pode aparecer 2x na página — ele
@@ -214,109 +215,120 @@ export function PostComments({
     }
   }
 
+  const [moreFor, setMoreFor] = useState<{ id: string; anchor: HTMLElement } | null>(null);
+
+  async function copyCommentLink(id: string) {
+    setMoreFor(null);
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/publicacao/${postId}#comentario-${id}`);
+    } catch {
+      setError("Não foi possível copiar o link");
+    }
+  }
+
+  const actionSx = { fontSize: 12, color: "text.secondary", minHeight: 36, borderRadius: "6px", px: 0.5 } as const;
+
   return (
-    <Box sx={{ mt: 1.5, pt: 1.5, borderTop: 1, borderColor: "divider" }}>
+    <Box sx={{ pt: 2, borderTop: 1, borderColor: "divider", display: "flex", flexDirection: "column", gap: 3 }}>
       {error && (
-        <Typography variant="caption" sx={{ color: "error.main", display: "block", mb: 1 }}>
+        <Typography role="alert" sx={{ color: "error.main", fontSize: 12 }}>
           {error}
         </Typography>
       )}
 
+      {withHeading && (
+        <Stack direction="row" sx={{ alignItems: "baseline", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
+          <Typography component="h2" sx={{ fontSize: 26, lineHeight: 1.5 }}>
+            Respostas
+          </Typography>
+          <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+            Ordem da conversa · {comments.length} {comments.length === 1 ? "resposta" : "respostas"}
+          </Typography>
+        </Stack>
+      )}
+
       {loading ? (
-        <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          Carregando comentários...
-        </Typography>
+        <Typography sx={{ color: "text.secondary", fontSize: 14 }}>Carregando comentários...</Typography>
       ) : comments.length === 0 ? (
-        <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          Nenhum comentário ainda. Seja o primeiro.
-        </Typography>
+        <Typography sx={{ color: "text.secondary", fontSize: 14 }}>Nenhum comentário ainda. Seja o primeiro.</Typography>
       ) : (
-        <Stack spacing={1.25} sx={{ mb: 1.5 }}>
-          {threadOrder(comments).map((c) => (
-            <Stack
-              key={c.id}
-              id={`comentario-${c.id}`}
-              data-testid={`comment-${c.id}`}
-              direction="row"
-              spacing={1}
-              sx={{
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                ...(c.parentId && comments.some((p) => p.id === c.parentId)
-                  ? { ml: 3, pl: 1.5, borderLeft: 2, borderColor: "divider" }
-                  : {}),
-              }}
-            >
-              <Box sx={{ minWidth: 0 }}>
-                <Stack direction="row" spacing={1} sx={{ alignItems: "baseline", flexWrap: "wrap" }}>
-                  <MuiLink
-                    component={NextLink}
-                    href={`/users/${c.author.id}`}
-                    underline="hover"
-                    sx={{ fontWeight: 700, fontSize: 13, color: "text.primary" }}
-                  >
+        <Stack spacing={3}>
+          {threadOrder(comments).map((c) => {
+            const nested = Boolean(c.parentId && comments.some((p) => p.id === c.parentId));
+            return (
+              <Box
+                key={c.id}
+                id={`comentario-${c.id}`}
+                data-testid={`comment-${c.id}`}
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1,
+                  scrollMarginTop: 120,
+                  ...(nested ? { ml: 3, pl: 3, borderLeft: 1, borderColor: "divider" } : {}),
+                }}
+              >
+                {c.replyTo && (
+                  <Typography sx={{ fontSize: 12, color: "text.secondary" }}>Em resposta a {c.replyTo.displayName}</Typography>
+                )}
+                <Stack direction="row" spacing={1} sx={{ alignItems: "center", minWidth: 0 }}>
+                  <UserAvatar id={c.author.id} displayName={c.author.displayName} avatarUrl={c.author.avatarUrl} size={28} />
+                  <MuiLink component={NextLink} href={`/users/${c.author.id}`} underline="hover" sx={{ fontWeight: 700, fontSize: 12, color: "text.primary", whiteSpace: "nowrap" }}>
                     {c.author.displayName}
                   </MuiLink>
-                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                  <Typography sx={{ fontSize: 12, color: "text.secondary", whiteSpace: "nowrap" }}>
+                    {c.author.handle ? `@${c.author.handle} · ` : ""}
                     {formatRelativeTime(c.createdAt)}
                   </Typography>
+                  <Box sx={{ flex: 1 }} />
+                  <ButtonBase
+                    onClick={(e) => setMoreFor({ id: c.id, anchor: e.currentTarget })}
+                    aria-label="Mais opções da resposta"
+                    sx={{ minWidth: 44, minHeight: 44, borderRadius: "6px", fontSize: 14, fontWeight: 700, color: "text.secondary" }}
+                  >
+                    ···
+                  </ButtonBase>
                 </Stack>
-                {c.replyTo && (
-                  <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
-                    Em resposta a {c.replyTo.displayName}
-                  </Typography>
-                )}
                 {c.isSpoiler ? (
                   <SpoilerGate<{ body: string }>
                     revealUrl={`/api/posts/${postId}/comments/${c.id}/reveal`}
-                    render={(d) => (
-                      <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                        {d.body}
-                      </Typography>
-                    )}
+                    render={(d) => <Typography sx={{ whiteSpace: "pre-wrap", fontSize: 16 }}>{d.body}</Typography>}
                   />
                 ) : (
-                  <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                    {c.body}
-                  </Typography>
+                  <Typography sx={{ whiteSpace: "pre-wrap", fontSize: 16, overflowWrap: "anywhere" }}>{c.body}</Typography>
                 )}
-                {!loggedOut && (
-                  <Button
-                    onClick={() => setReplyingTo(c)}
-                    size="small"
-                    sx={{ px: 0, minWidth: 0, textTransform: "none", fontSize: 12 }}
-                    aria-label={`Responder a ${c.author.displayName}`}
-                  >
-                    Responder
-                  </Button>
-                )}
-              </Box>
-              {c.isMine ? (
-                <Tooltip title="Apagar comentário">
-                  <IconButton onClick={() => handleDelete(c.id)} size="small" aria-label="Apagar comentário">
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              ) : (
-                !loggedOut && (
-                  <Tooltip title={reportedIds.has(c.id) ? "Denunciado" : "Denunciar comentário"}>
-                    <span>
-                      <IconButton
+                <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+                  {!loggedOut && (
+                    <ButtonBase onClick={() => setReplyingTo(c)} aria-label={`Responder a ${c.author.displayName}`} sx={actionSx}>
+                      Responder
+                    </ButtonBase>
+                  )}
+                  {c.isMine ? (
+                    <ButtonBase onClick={() => handleDelete(c.id)} aria-label="Apagar comentário" sx={actionSx}>
+                      Excluir resposta
+                    </ButtonBase>
+                  ) : (
+                    !loggedOut && (
+                      <ButtonBase
                         onClick={() => setReportingId(c.id)}
                         disabled={reportedIds.has(c.id)}
-                        size="small"
                         aria-label={reportedIds.has(c.id) ? "Comentário denunciado" : "Denunciar comentário"}
+                        sx={actionSx}
                       >
-                        <FlagIcon fontSize="small" />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                )
-              )}
-            </Stack>
-          ))}
+                        {reportedIds.has(c.id) ? "Denunciado" : "Denunciar comentário"}
+                      </ButtonBase>
+                    )
+                  )}
+                </Stack>
+              </Box>
+            );
+          })}
         </Stack>
       )}
+
+      <Menu anchorEl={moreFor?.anchor ?? null} open={Boolean(moreFor)} onClose={() => setMoreFor(null)}>
+        <MenuItem onClick={() => moreFor && copyCommentLink(moreFor.id)}>Copiar link da resposta</MenuItem>
+      </Menu>
 
       {reportingId && (
         <ReportDialog
@@ -329,49 +341,59 @@ export function PostComments({
       )}
 
       {loggedOut ? (
-        <MuiLink component={NextLink} href={loginHref(pathname)} underline="hover" sx={{ fontSize: 13 }}>
+        <MuiLink component={NextLink} href={loginHref(pathname)} underline="hover" sx={{ fontSize: 14 }}>
           Entre para comentar
         </MuiLink>
       ) : (
-        <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start", flexWrap: "wrap" }}>
-          {replyingTo && (
-            <Box sx={{ width: "100%", display: "flex", alignItems: "center", gap: 1 }} role="status" data-testid="replying-to">
-              <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                Em resposta a {replyingTo.author.displayName} · comentário
-              </Typography>
-              <Button size="small" onClick={() => setReplyingTo(null)} sx={{ textTransform: "none", minWidth: 0 }}>
-                Cancelar resposta
-              </Button>
-            </Box>
-          )}
-          <TextField
-            value={draft}
-            onChange={(e) => setDraft(e.target.value.slice(0, MAX_BODY_LENGTH))}
-            placeholder="Escreva um comentário..."
-            size="small"
-            fullWidth
-            multiline
-            maxRows={4}
-          />
-          <FormControlLabel
-            control={<Checkbox size="small" checked={draftSpoiler} onChange={(e) => setDraftSpoiler(e.target.checked)} />}
-            label="Contém spoilers"
-            slotProps={{ typography: { variant: "caption" } }}
-          />
-          <Tooltip title="Comentar">
-            <span>
-              <IconButton
-                onClick={handlePost}
-                disabled={posting || !draft.trim()}
-                aria-label="Comentar"
-                color="primary"
-                size="small"
-              >
-                <SendIcon fontSize="small" />
-              </IconButton>
-            </span>
-          </Tooltip>
-        </Stack>
+        <Box sx={{ bgcolor: "background.paper", borderRadius: "12px", p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
+          <Typography
+            role={replyingTo ? "status" : undefined}
+            data-testid={replyingTo ? "replying-to" : undefined}
+            sx={{ fontWeight: 700, fontSize: 14 }}
+          >
+            {replyingTo ? `Em resposta a ${replyingTo.author.displayName} · comentário` : "Sua resposta"}
+          </Typography>
+          <Box sx={{ bgcolor: "background.default", borderRadius: "10px", p: 2, minHeight: 80 }}>
+            <InputBase
+              value={draft}
+              onChange={(e) => setDraft(e.target.value.slice(0, MAX_BODY_LENGTH))}
+              placeholder="Escreva uma resposta..."
+              multiline
+              minRows={2}
+              maxRows={8}
+              fullWidth
+              inputProps={{ "aria-label": "Escreva uma resposta" }}
+              sx={{ fontSize: 16, p: 0, alignItems: "flex-start" }}
+            />
+          </Box>
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <Checkbox
+              id={`spoiler-${postId}`}
+              checked={draftSpoiler}
+              onChange={(e) => setDraftSpoiler(e.target.checked)}
+              sx={{ p: 0.5, color: "text.secondary" }}
+            />
+            <Typography component="label" htmlFor={`spoiler-${postId}`} sx={{ fontSize: 12, color: "text.secondary" }}>
+              Contém spoilers · desmarcado por padrão
+            </Typography>
+          </Stack>
+          <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}>
+            <Button
+              onClick={() => {
+                setReplyingTo(null);
+                setDraft("");
+                setDraftSpoiler(false);
+              }}
+              disabled={!replyingTo && !draft}
+              sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}
+            >
+              Cancelar resposta
+            </Button>
+            <Button onClick={handlePost} disabled={posting || !draft.trim()} variant="contained">
+              Enviar resposta
+            </Button>
+          </Stack>
+        </Box>
       )}
     </Box>
   );

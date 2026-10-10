@@ -1,21 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Alert, Box, Button, Typography } from "@mui/material";
 import { PostCard } from "@/components/PostCard";
+import { PageIntro, TwoColumn } from "@/components/PageShell";
+import { quoteHref } from "@/lib/publishLinks";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { PostDTO } from "@/lib/postDto";
 
 /**
  * Página dedicada de discussão (Figma `13:42257`): a publicação inteira com
- * as respostas já abertas. Voltar usa o histórico do navegador, que restaura
- * a origem. Erro mantém a origem e oferece "Tentar novamente" sem inventar
- * conteúdo (`13:43963`).
+ * as respostas já abertas e a lateral "Anime da conversa" (`aside`, montada
+ * no servidor). Voltar usa o histórico do navegador, que restaura a origem.
+ * Erro mantém a origem e oferece "Tentar novamente" sem inventar conteúdo
+ * (`13:43963`).
  */
-export function SinglePostView({ postId }: { postId: string }) {
+export function SinglePostView({ postId, aside }: { postId: string; aside?: ReactNode }) {
   const router = useRouter();
   const user = useCurrentUser();
   const [post, setPost] = useState<PostDTO | null>(null);
@@ -50,17 +52,10 @@ export function SinglePostView({ postId }: { postId: string }) {
     else router.push("/");
   }
 
-  return (
+  const main = (
     <Box>
-      <Button onClick={goBack} startIcon={<ArrowBackIcon />} size="small" sx={{ mb: 2 }}>
-        Voltar
-      </Button>
-      <Typography variant="h5" component="h1" sx={{ mb: 2 }}>
-        Discussão
-      </Typography>
-
       {state === "loading" && (
-        <Typography variant="body2" sx={{ color: "text.secondary" }} aria-busy="true">
+        <Typography sx={{ color: "text.secondary", fontSize: 14 }} aria-busy="true">
           Carregando discussão…
         </Typography>
       )}
@@ -78,31 +73,27 @@ export function SinglePostView({ postId }: { postId: string }) {
         </Alert>
       )}
       {state === "missing" && (
-        <Box data-testid="post-unavailable" sx={{ py: 4 }}>
-          <Typography variant="h6" component="h2">
+        <Box data-testid="post-unavailable" sx={{ py: 4, display: "flex", flexDirection: "column", gap: 1 }}>
+          <Typography component="h2" sx={{ fontSize: 20 }}>
             Publicação removida
           </Typography>
-          <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
-            Esta conversa não está mais disponível.
-          </Typography>
-          <Button component={NextLink} href="/" variant="outlined" size="small">
-            Voltar à Comunidade
-          </Button>
+          <Typography sx={{ color: "text.secondary", fontSize: 14, mb: 2 }}>Esta conversa não está mais disponível.</Typography>
+          <Box>
+            <Button component={NextLink} href="/" variant="outlined">
+              Voltar à Comunidade
+            </Button>
+          </Box>
         </Box>
       )}
       {state === "ready" && post && (
         <PostCard
           post={post}
           initialCommentsOpen
+          commentsHeading
           onDeleted={() => router.push("/")}
           onQuote={(p) => {
             if (!user) return;
-            const params = new URLSearchParams({
-              quotePostId: p.id,
-              quoteAuthor: p.author.displayName,
-              quoteSnippet: p.body.slice(0, 80),
-            });
-            router.push(`/?${params.toString()}`);
+            router.push(quoteHref(p));
           }}
           onCommentCountChange={(_, count) => patch({ commentCount: count })}
           onRepostChange={(_, reposted) => patch({ repostedByMe: reposted })}
@@ -111,5 +102,15 @@ export function SinglePostView({ postId }: { postId: string }) {
         />
       )}
     </Box>
+  );
+
+  return (
+    <>
+      <PageIntro kicker="会話 / COMUNIDADE" title="Discussão" subtitle="Uma conversa por inteiro, com a obra sempre em contexto." />
+      <Button onClick={goBack} sx={{ alignSelf: "flex-start", px: 0, color: "text.secondary", fontWeight: 400 }}>
+        ← Voltar à Comunidade / Para você
+      </Button>
+      <TwoColumn main={main} aside={aside} />
+    </>
   );
 }

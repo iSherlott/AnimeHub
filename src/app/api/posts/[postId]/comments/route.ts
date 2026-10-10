@@ -40,7 +40,7 @@ export async function GET(_request: Request, { params }: Params) {
     where: { postId, deletedAt: null, userId: { notIn: [...blocked] } },
     orderBy: { createdAt: "asc" },
     include: {
-      user: { select: { id: true, displayName: true } },
+      user: { select: { id: true, displayName: true, handle: true } },
       replyToUser: { select: { id: true, displayName: true } },
     },
   });
@@ -54,7 +54,7 @@ export async function GET(_request: Request, { params }: Params) {
       body: c.isSpoiler ? "" : c.body,
       isSpoiler: c.isSpoiler,
       createdAt: c.createdAt.toISOString(),
-      author: { id: c.user.id, displayName: c.user.displayName },
+      author: { id: c.user.id, displayName: c.user.displayName, handle: c.user.handle },
       isMine: c.user.id === user?.id,
     })),
   });
@@ -120,7 +120,7 @@ export async function POST(request: Request, { params }: Params) {
   const comment = await prisma.postComment.create({
     data: { postId, userId: user.id, body: text, isSpoiler, parentId, replyToUserId },
     include: {
-      user: { select: { id: true, displayName: true } },
+      user: { select: { id: true, displayName: true, handle: true } },
       replyToUser: { select: { id: true, displayName: true } },
     },
   });
@@ -142,7 +142,7 @@ export async function POST(request: Request, { params }: Params) {
         body: comment.isSpoiler ? "" : comment.body,
         isSpoiler: comment.isSpoiler,
         createdAt: comment.createdAt.toISOString(),
-        author: { id: comment.user.id, displayName: comment.user.displayName },
+        author: { id: comment.user.id, displayName: comment.user.displayName, handle: comment.user.handle },
         isMine: true,
       },
     },
