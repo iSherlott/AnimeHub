@@ -31,6 +31,12 @@ export type CalendarItem = {
   /** "Atrasado" (Figma `8:2106`): o horário previsto passou e a fonte ainda
    * não confirmou o episódio — ver `isDelayed`. A previsão original é mantida. */
   delayed: boolean;
+  /** Episódios exibidos em sequência no mesmo dia viram UM item (ver `mergeConsecutiveEpisodes`): último episódio do bloco... */
+  episodeEnd?: number;
+  /** ...horário do último episódio do bloco... */
+  lastAiringAt?: string;
+  /** ...e quando o bloco termina (último episódio + a duração de um espaço). */
+  endsAt?: string;
 };
 
 export type OwnedAnimeCalendarInfo = {
@@ -67,4 +73,41 @@ export function calendarItemFromCache(
     isFavorite: owned?.isFavorite ?? false,
     delayed,
   };
+}
+
+/** Dois episódios do mesmo anime com até esta distância entre os inícios são "em sequência" (maratona do dia). */
+export const CONSECUTIVE_GAP_MS = 60 * 60 * 1000;
+/** Duração assumida de um episódio quando o bloco só tem um espaço de referência. */
+const DEFAULT_SLOT_MS = 30 * 60 * 1000;
+
+/**
+ * Funde episódios exibidos em sequência no mesmo dia (ex.: EP01 às 13:00 e
+ * EP02 às 13:30) num único item: começa no primeiro, vai até o fim do último
+ * (`endsAt`) e guarda a faixa de episódios (`episode`–`episodeEnd`). A lista de
+ * entrada precisa ser do MESMO dia e estar em ordem de horário; a ordem é mantida.
+ */
+export function mergeConsecutiveEpisodes(items: CalendarItem[], maxGapMs: number = CONSECUTIVE_GAP_MS): CalendarItem[] {
+  const result: CalendarItem[] = [];
+  const open = new Map<number, number>(); // anilistId -> índice do bloco aberto em `result`
+  for (const item of items) {
+    const index = open.get(item.anilistId);
+    const block = index === undefined ? undefined : result[index];
+    const previousAt = block ? new Date(block.lastAiringAt ?? block.airingAt).getTime() : 0;
+    const at = new Date(item.airingAt).getTime();
+    if (block && at - previousAt <= maxGapMs && item.episode > (block.episodeEnd ?? block.episode)) {
+      const slot = at - previousAt > 0 ? at - previousAt : DEFAULT_SLOT_MS;
+      result[index as number] = {
+        ...block,
+        episodeEnd: item.episode,
+        lastAiringAt: item.airingAt,
+        endsAt: new Date(at + slot).toISOString(),
+        delayed: block.delayed || item.delayed,
+        inMyList: block.inMyList || item.inMyList,
+      };
+      continue;
+    }
+    open.set(item.anilistId, result.length);
+    result.push(item);
+  }
+  return result;
 }

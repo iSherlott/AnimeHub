@@ -16,7 +16,7 @@ import { Header } from "@/components/Header";
 import { CalendarDayColumn } from "@/components/CalendarDayColumn";
 import { PageContainer, PageIntro } from "@/components/PageShell";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
-import type { CalendarItem } from "@/lib/calendarItem";
+import { mergeConsecutiveEpisodes, type CalendarItem } from "@/lib/calendarItem";
 import type { OffGridItem } from "@/lib/calendarOffGrid";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 import { loginHref } from "@/lib/safeRedirect";
@@ -174,9 +174,11 @@ export default function CalendarPage() {
   const itemsByDay = useMemo(() => {
     return weekDays.map((day) => {
       const dayKey = dayKeyInZone(day, timeZone);
-      return visibleItems
-        .filter((item) => dayKeyInZone(new Date(item.airingAt), timeZone) === dayKey)
-        .sort((a, b) => new Date(a.airingAt).getTime() - new Date(b.airingAt).getTime());
+      return mergeConsecutiveEpisodes(
+        visibleItems
+          .filter((item) => dayKeyInZone(new Date(item.airingAt), timeZone) === dayKey)
+          .sort((a, b) => new Date(a.airingAt).getTime() - new Date(b.airingAt).getTime())
+      );
     });
   }, [visibleItems, weekDays, timeZone]);
 

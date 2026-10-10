@@ -263,3 +263,33 @@ test.describe("Calendário — 'Ao vivo' e destaque só em 'Todos'", () => {
   });
 });
 
+
+test.describe("Calendário — episódios em sequência no mesmo dia viram um item só", () => {
+  function ep(episode: number, airingAt: Date, anilistId = 962061) {
+    return {
+      key: `${anilistId}-${episode}`, anilistId, animeId: null, episode, airingAt: airingAt.toISOString(),
+      titleRomaji: `Maratona ${anilistId}`, titleEnglish: null, titleNative: null, titlePortuguese: null, coverImage: null, episodeImage: null, genres: [],
+      inMyList: false, description: null, descriptionPortuguese: null, isFavorite: false, delayed: false,
+    };
+  }
+
+  test("2 episódios seguidos aparecem 1 vez, com 'EP01–02' e o horário estendido; horários distantes continuam separados", async ({ page }) => {
+    // Meio-dia de hoje no fuso do navegador: longe da virada do dia.
+    const noon = new Date();
+    noon.setHours(12, 0, 0, 0);
+    const at = (min: number) => new Date(noon.getTime() + min * 60_000);
+    await page.route("**/api/calendar**", (route) =>
+      route.fulfill({ json: { results: [ep(1, at(0)), ep(2, at(30)), ep(3, at(8 * 60)), ep(1, at(10), 962062)], offGrid: [] } })
+    );
+    await page.goto("/calendar");
+    await page.getByRole("button", { name: "Todos", exact: true }).click();
+
+    const merged = page.getByTestId("calendar-entry-962061-1");
+    await expect(merged).toContainText("EP01–02");
+    await expect(merged).toContainText("12:00 – 13:00");
+    await expect(page.getByTestId("calendar-entry-962061-2")).toHaveCount(0);
+    // Mesma obra bem depois no dia: outro item. Outra obra no meio: não é fundida.
+    await expect(page.getByTestId("calendar-entry-962061-3")).toContainText("EP03");
+    await expect(page.getByTestId("calendar-entry-962062-1")).toBeVisible();
+  });
+});

@@ -66,8 +66,12 @@ export function CalendarEntryCard({
   const titleLines = useTitleLines(item);
   const title = titleLines.primary;
   const timeZone = useTimeZone();
-  const time = formatTimeInZone(new Date(item.airingAt), timeZone);
-  const episode = `EP${String(item.episode).padStart(2, "0")}`;
+  const time = item.endsAt
+    ? `${formatTimeInZone(new Date(item.airingAt), timeZone)} – ${formatTimeInZone(new Date(item.endsAt), timeZone)}`
+    : formatTimeInZone(new Date(item.airingAt), timeZone);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  // Episódios em sequência no mesmo dia: um só item, "EP01–02", com o horário estendido.
+  const episode = item.episodeEnd ? `EP${pad(item.episode)}–${pad(item.episodeEnd)}` : `EP${pad(item.episode)}`;
 
   // Começa false e só decide de verdade dentro do efeito — esse componente é
   // renderizado no servidor também, e o relógio do servidor pode discordar do
@@ -77,11 +81,11 @@ export function CalendarEntryCard({
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const check = () => setAiringNow(isAiringNow(item.airingAt));
+    const check = () => setAiringNow(isAiringNow(item.airingAt) || (item.lastAiringAt !== undefined && isAiringNow(item.lastAiringAt)));
     check();
     const interval = setInterval(check, RECHECK_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [item.airingAt]);
+  }, [item.airingAt, item.lastAiringAt]);
 
   useEffect(
     () => () => {
@@ -110,7 +114,7 @@ export function CalendarEntryCard({
   // Anúncio de leitor de tela pra role="status" dispara fora do contexto de
   // onde a pessoa está navegando — sem nomear o anime/episódio, um selo
   // genérico "No ar agora" fica sem sentido quando escutado sozinho.
-  const airingNowLabel = `${title}, episódio ${item.episode}, no ar agora`;
+  const airingNowLabel = `${title}, ${item.episodeEnd ? `episódios ${item.episode} a ${item.episodeEnd}` : `episódio ${item.episode}`}, no ar agora`;
   const highlighted = highlightMine && item.inMyList;
   const image = item.episodeImage ?? item.coverImage;
   const barColor = item.delayed ? "warning.main" : highlighted ? "primary.main" : "transparent";
