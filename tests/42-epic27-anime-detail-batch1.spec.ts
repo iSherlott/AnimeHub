@@ -44,7 +44,7 @@ test.describe("Epic 27 (lote 1) — metadados atrás de 1 ícone único", () => 
     await expect(page.getByRole("button", { name: "Vincular ID da AniDB" })).toBeVisible();
   });
 
-  test("descrição em português salva e passa a exibir no lugar da original quando a preferência é PT", async ({
+  test("descrição em português salva é a sinopse padrão; só com títulos em inglês volta a original", async ({
     page,
   }) => {
     await page.goto(`/anime/${animeId}`);
@@ -62,17 +62,18 @@ test.describe("Epic 27 (lote 1) — metadados atrás de 1 ícone único", () => 
     await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Editar agrupamento de temporada" }).waitFor({ state: "hidden" });
 
-    // Preferência padrão é "en" — ainda mostra a original em inglês.
-    await expect(page.getByText("Descrição original em inglês.")).toBeVisible();
+    // A sinopse é em português por padrão (também com títulos em japonês, salvo escolha no perfil).
+    await expect(page.getByText("Descrição em português salva pelo teste.")).toBeVisible();
+    await expect(page.getByText("Descrição original em inglês.")).toHaveCount(0);
 
-    // Troca pra português via o menu de idioma — que pra quem está logado
+    // Troca pra inglês via o menu de idioma — que pra quem está logado
     // (esta suíte sempre está) mora dentro do menu de conta (avatar) desde
     // o lote 3 do Epic 27, não mais num ícone de engrenagem separado.
     await page.getByRole("button", { name: "Menu da conta" }).click();
-    await page.getByRole("menuitem", { name: "PT" }).click();
+    await page.getByRole("menuitem", { name: "EN" }).click();
 
-    await expect(page.getByText("Descrição em português salva pelo teste.")).toBeVisible();
-    await expect(page.getByText("Descrição original em inglês.")).toHaveCount(0);
+    await expect(page.getByText("Descrição original em inglês.")).toBeVisible();
+    await expect(page.getByText("Descrição em português salva pelo teste.")).toHaveCount(0);
   });
 });
 

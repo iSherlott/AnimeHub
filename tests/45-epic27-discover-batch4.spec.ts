@@ -33,17 +33,16 @@ test.describe("Epic 27 (lote 4) — Descobrir: grade responsiva pros resultados 
   test("resultados filtrados quebram linha numa grade (não ficam numa fileira de scroll horizontal só)", async ({
     page,
   }) => {
-    // Viewport estreito o bastante pra grade (minmax(140px,1fr)) caber só
-    // ~2 colunas — força os 4 itens semeados em 2 linhas. Numa fileira de
-    // scroll horizontal (comportamento antigo), os 4 ficariam sempre na
-    // MESMA linha (`y` igual), só que parte cortada fora da viewport.
+    // Viewport estreito: a grade do Figma cai para 2 colunas — os 4 itens
+    // semeados quebram em 2 linhas. Numa fileira de scroll horizontal
+    // (comportamento antigo), os 4 ficariam sempre na MESMA linha (`y` igual).
     await page.setViewportSize({ width: 480, height: 900 });
     await page.goto("/discover");
-    await page.getByRole("button", { name: GENRE, exact: true }).click();
+    await page.getByLabel("Gênero").selectOption(GENRE);
 
-    const card1 = page.getByRole("button", { name: "Anime Lote4 Grid 1" });
-    const card2 = page.getByRole("button", { name: "Anime Lote4 Grid 2" });
-    const card3 = page.getByRole("button", { name: "Anime Lote4 Grid 3" });
+    const card1 = page.getByRole("link", { name: "Anime Lote4 Grid 1" });
+    const card2 = page.getByRole("link", { name: "Anime Lote4 Grid 2" });
+    const card3 = page.getByRole("link", { name: "Anime Lote4 Grid 3" });
     await expect(card1).toBeVisible();
     await expect(card3).toBeVisible();
 
@@ -59,14 +58,13 @@ test.describe("Epic 27 (lote 4) — Descobrir: grade responsiva pros resultados 
     expect(box3!.y).toBeGreaterThan(box1!.y + 10);
   });
 
-  test("card 'fill' (grade) continua com o popover de adicionar à lista funcionando", async ({ page }) => {
+  test("'+ Acompanhar' do cartão leva ao detalhe público, onde o vínculo é confirmado", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/discover");
-    await page.getByRole("button", { name: GENRE, exact: true }).click();
+    await page.getByLabel("Gênero").selectOption(GENRE);
 
-    const addButton = page.getByRole("button", { name: "Acompanhar", exact: true }).first();
-    await expect(addButton).toBeVisible();
-    await addButton.click();
-    await expect(page.getByRole("button", { name: "Confirmar", exact: true })).toBeVisible();
+    const follow = page.getByRole("link", { name: "+ Acompanhar" }).first();
+    await expect(follow).toBeVisible();
+    await expect(follow).toHaveAttribute("href", /^\/obra\/9120\d\d$/);
   });
 });

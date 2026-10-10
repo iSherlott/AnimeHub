@@ -14,9 +14,11 @@ test.describe("Não-administrador — acesso negado", () => {
     expect(res.status()).toBe(403);
   });
 
-  test("/admin retorna 404 pra quem não é administrador", async ({ page }) => {
-    const res = await page.goto("/admin");
-    expect(res?.status()).toBe(404);
+  test("toda a área /admin retorna 404 pra quem não é administrador", async ({ page }) => {
+    for (const path of ["/admin", "/admin/acesso", "/admin/jobs", "/admin/importacoes"]) {
+      const res = await page.goto(path);
+      expect(res?.status(), path).toBe(404);
+    }
   });
 });
 
@@ -40,8 +42,8 @@ test.describe("Administrador — convites e usuários", () => {
   });
 
   test("acessa o painel de administração", async ({ page }) => {
-    await page.goto("/admin");
-    await expect(page.getByRole("heading", { name: "Administração" })).toBeVisible();
+    await page.goto("/admin/acesso");
+    await expect(page.getByRole("heading", { name: "Acesso e moderação" })).toBeVisible();
     // O cabeçalho não mostra mais o nome como texto (só o avatar com
     // iniciais, desde o lote 3 do Epic 27) — "E2E Admin" aqui só pode vir
     // da lista de usuários do próprio painel, que é o que a página

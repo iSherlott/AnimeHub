@@ -89,7 +89,7 @@ test.describe("Epic 18 — 5ª rodada de auditoria de UX/UI — duplo clique nã
     await page.context().addCookies([
       { name: SESSION_COOKIE_NAME, value: TEST_ADMIN_SESSION_TOKEN, domain: "localhost", path: "/" },
     ]);
-    await page.goto("/admin");
+    await page.goto("/admin/acesso");
     const submit = page.getByRole("button", { name: "+ Gerar convite" });
     await submit.evaluate((el: HTMLElement) => {
       el.click();

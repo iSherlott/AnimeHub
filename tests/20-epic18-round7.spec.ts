@@ -8,7 +8,7 @@ test.describe("Epic 18 — 7ª rodada de auditoria de UX/UI — coluna Nome fixa
     await page.context().addCookies([
       { name: SESSION_COOKIE_NAME, value: TEST_ADMIN_SESSION_TOKEN, domain: "localhost", path: "/" },
     ]);
-    await page.goto("/admin");
+    await page.goto("/admin/acesso");
 
     const container = page.locator(".MuiTableContainer-root").last();
     const firstNameCell = container.locator("tbody tr").first().locator("td").first();

@@ -65,7 +65,7 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     await prisma.$disconnect();
   });
 
-  test("bloco da própria lista tem a barra lateral de destaque (acento) e o de fora a barra neutra", async ({ page }) => {
+  test("item da própria lista tem a barra lateral de destaque (acento) e o de fora não tem barra", async ({ page }) => {
     await page.goto("/calendar");
     await page.getByRole("button", { name: "Todos", exact: true }).click();
 
@@ -74,11 +74,11 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     await expect(mineLink).toBeVisible();
     await expect(otherLink).toBeVisible();
 
-    // Figma 8:2181: todo bloco tem barra lateral de 3 px; o da lista usa o acento, o demais a borda neutra.
+    // Figma 8:2106: o item da lista ganha a barra lateral de acento (e fundo avermelhado); os demais não têm barra.
     await expect(mineLink).toHaveCSS("border-left-width", "3px");
-    await expect(otherLink).toHaveCSS("border-left-width", "3px");
     await expect(mineLink).toHaveCSS("border-left-color", "rgb(255, 22, 79)");
-    await expect(otherLink).toHaveCSS("border-left-color", "rgb(39, 40, 50)");
+    await expect(otherLink).toHaveCSS("border-left-color", "rgba(0, 0, 0, 0)");
+    await expect(mineLink).not.toContainText("NOVO EPISÓDIO"); // o calendário só avisa "Ao vivo"
   });
 
   test("hover num item da lista mostra sinopse e botão de favoritar, que funciona de verdade", async ({
@@ -103,7 +103,7 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     expect(anime.isFavorite).toBe(true);
   });
 
-  test("hover num item de fora da lista mostra 'ver mais detalhes' em vez de sinopse/favoritar", async ({
+  test("hover num item de fora da lista mostra 'Ver detalhes' e '+ Acompanhar' em vez de favoritar", async ({
     page,
   }) => {
     await page.goto("/calendar");
@@ -113,9 +113,11 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     await otherLink.hover();
 
     await expect(page.getByText("Sem sinopse — abra pra ver mais.")).toBeVisible();
-    const seeMore = page.getByRole("link", { name: "Ver mais detalhes" });
+    const seeMore = page.getByRole("link", { name: "Ver detalhes" });
     await expect(seeMore).toBeVisible();
     await expect(seeMore).toHaveAttribute("href", `/obra/${OTHER_ANILIST_ID}`);
+    // "+ Acompanhar" adiciona direto à lista (botão), em vez de abrir a página da obra.
+    await expect(page.getByRole("button", { name: "+ Acompanhar" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Adicionar aos favoritos" })).toHaveCount(0);
   });
 
@@ -130,19 +132,19 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     await page.goto("/calendar");
     await page.getByRole("button", { name: "Todos", exact: true }).click();
 
-    // Preferência padrão "en" — ainda mostra a original.
+    // A sinopse é em português por padrão (a salva pela pessoa tem prioridade sobre a tradução automática).
     const mineLink = page.getByRole("link", { name: "Anime Do Calendario Que Esta Na Lista" });
     await mineLink.hover();
-    await expect(page.getByText("Sinopse original em inglês do calendário.")).toBeVisible();
+    await expect(page.getByText("Sinopse em português do calendário.")).toBeVisible();
     await page.mouse.move(0, 0);
 
     // Idioma mora dentro do menu de conta pra quem está logado (esta
-    // suíte sempre está) desde o lote 3 do Epic 27.
+    // suíte sempre está) desde o lote 3 do Epic 27. Em inglês, vale a original.
     await page.getByRole("button", { name: "Menu da conta" }).click();
-    await page.getByRole("menuitem", { name: "PT" }).click();
+    await page.getByRole("menuitem", { name: "EN" }).click();
 
     await mineLink.hover();
-    await expect(page.getByText("Sinopse em português do calendário.")).toBeVisible();
+    await expect(page.getByText("Sinopse original em inglês do calendário.")).toBeVisible();
 
     await request.patch(`/api/anime/${ownedAnimeId}/description`, {
       data: { descriptionPortuguese: null },

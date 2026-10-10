@@ -133,7 +133,7 @@ test.describe("Epic 18 — 3ª rodada — admin", () => {
   });
 
   test("resetar senha abre num diálogo, sem sobrepor a tabela", async ({ page }) => {
-    await page.goto("/admin");
+    await page.goto("/admin/acesso");
 
     // Nunca o TEST_USER_EMAIL compartilhado aqui — resetar senha derruba
     // TODAS as sessões ativas dessa pessoa de propósito (segurança real,
@@ -190,7 +190,7 @@ test.describe("Epic 18 — 3ª rodada — nav no pior caso real (admin, nome lon
     await prisma.$disconnect();
   });
 
-  test("hambúrguer cobre até o breakpoint, nav completo cabe sem overflow horizontal a partir dele — numa página com scrollbar vertical (/admin)", async ({
+  test("hambúrguer cobre até o breakpoint, nav completo cabe sem overflow horizontal a partir dele — numa página com scrollbar vertical (/discover)", async ({
     page,
   }) => {
     await page.context().addCookies([
@@ -200,8 +200,9 @@ test.describe("Epic 18 — 3ª rodada — nav no pior caso real (admin, nome lon
     // "Sair" vive atrás do menu de conta (avatar) desde o lote 3 do Epic
     // 27 — o próprio botão que abre esse menu ("Menu da conta") é quem
     // aparece/some no breakpoint agora, não mais um botão "Sair" solto.
+    // A área /admin tem a própria casca (barra lateral), então o cabeçalho do site é medido em /discover.
     await page.setViewportSize({ width: 1230, height: 900 });
-    await page.goto("/admin");
+    await page.goto("/discover");
     await expect(page.getByRole("button", { name: "Abrir menu" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Menu da conta" })).toBeHidden();
 
@@ -222,7 +223,7 @@ test.describe("Epic 18 — 3ª rodada — nav no pior caso real (admin, nome lon
       { name: SESSION_COOKIE_NAME, value: LONG_NAME_ADMIN_SESSION_TOKEN, domain: "localhost", path: "/" },
     ]);
     await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto("/admin");
+    await page.goto("/discover");
     await expect(page.getByRole("button", { name: "Abrir menu" })).toBeHidden();
     await expect(page.getByRole("button", { name: "Menu da conta" })).toBeVisible();
   });

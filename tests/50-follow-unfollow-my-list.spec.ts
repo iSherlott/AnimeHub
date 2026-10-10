@@ -67,14 +67,14 @@ test.describe("Minha Lista (Figma 8:2608) e deixar de acompanhar", () => {
     await expect(body).not.toContainText(/\d+\/\d+ eps/);
   });
 
-  test("agrupa por próximo lançamento e deixa quem não tem data em 'Sem previsão confirmada'", async ({ page }) => {
+  test("agrupa por próximo lançamento e deixa quem não tem data em 'Data não definida'", async ({ page }) => {
     await page.goto("/minha-lista");
 
     const withRelease = page.getByTestId("anime-card-" + (await prisma.anime.findFirstOrThrow({ where: { userId, anilistId: WITH_RELEASE_ID } })).id);
-    await expect(withRelease.getByTestId("card-next")).toContainText("EP 7");
+    await expect(withRelease.getByTestId("card-next")).toContainText("Episódio 07");
 
     const unknownGroup = page.getByTestId("group-unknown");
-    await expect(unknownGroup).toContainText("Sem previsão confirmada");
+    await expect(unknownGroup).toContainText("Data não definida");
     await expect(unknownGroup).toContainText("Lista Sem Previsao Nenhuma");
     await expect(unknownGroup).not.toContainText("Lista Com Lancamento Confirmado");
   });
@@ -93,8 +93,7 @@ test.describe("Minha Lista (Figma 8:2608) e deixar de acompanhar", () => {
 
   test("ordenar por título troca o agrupamento por uma lista única em ordem alfabética", async ({ page }) => {
     await page.goto("/minha-lista");
-    await page.getByTestId("sort-select").click();
-    await page.getByRole("option", { name: "Título" }).click();
+    await page.getByTestId("sort-select").selectOption("title");
     await expect(page.getByTestId("group-all")).toContainText("Em ordem alfabética");
   });
 

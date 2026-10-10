@@ -94,7 +94,7 @@ test.describe("Epic 18 — 23ª rodada de auditoria de UX/UI — fila de denúnc
         sameSite: "Lax",
       },
     ]);
-    await page.goto("/admin");
+    await page.goto("/admin/acesso");
 
     const row = page.getByRole("row", { name: /Post do admin, vai ser repostado/ });
     await expect(row).toBeVisible();

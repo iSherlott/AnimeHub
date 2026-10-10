@@ -107,8 +107,8 @@ test.describe("Epic 18 — 6ª rodada — chip de gênero clicável leva ao Desc
     await chip.click();
 
     await expect(page).toHaveURL(`/discover?genre=${GENRE_LABEL}`);
-    // O chip de filtro ativo aparece e o card do catálogo seedado bate.
-    await expect(page.getByText(GENRE_LABEL, { exact: true })).toBeVisible();
-    await expect(page.getByText("Anime Do Teste De Gênero (Catálogo)").first()).toBeVisible();
+    // O seletor de Gênero já vem no valor do link e o card do catálogo seedado bate.
+    await expect(page.getByLabel("Gênero")).toHaveValue(GENRE_LABEL);
+    await expect(page.getByRole("link", { name: "Anime Do Teste De Gênero (Catálogo)" })).toBeVisible();
   });
 });

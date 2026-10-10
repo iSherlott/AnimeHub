@@ -50,7 +50,7 @@ test.describe("Acessibilidade", () => {
     { name: "Comunidade", path: () => "/" },
     { name: "Explorar", path: () => "/discover" },
     { name: "Calendário", path: () => "/calendar" },
-    { name: "Minha lista", path: () => "/minha-lista" },
+    { name: "Meus animes", path: () => "/minha-lista" },
     { name: "Dashboard", path: () => "/dashboard" },
     { name: "Detalhe da obra", path: () => `/obra/${PROD_ID}` },
     { name: "Busca", path: () => "/buscar?q=anime&scope=posts" },

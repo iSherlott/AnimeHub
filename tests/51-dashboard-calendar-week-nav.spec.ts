@@ -42,7 +42,7 @@ test.describe("Dashboard, calendário e navegação", () => {
     await expect(list).not.toContainText("Dashboard Anime Fora Da Lista");
     const row = list.locator("li").filter({ hasText: "Dashboard Anime Da Lista Hoje" });
     await expect(row).toContainText("12:00");
-    await expect(row).toContainText("Episódio 9");
+    await expect(row).toContainText("Episódio 09");
 
     await expect(page.getByTestId("counter-today")).toContainText(/\d+/);
     await expect(page.getByTestId("counter-following")).toContainText("animes acompanhando");
@@ -72,8 +72,8 @@ test.describe("Dashboard, calendário e navegação", () => {
     test("o logo leva o visitante a Explorar e a navegação segue a ordem do Figma", async ({ page }) => {
       await page.goto("/calendar");
       await expect(page.getByRole("link", { name: "Anime Hub" })).toHaveAttribute("href", "/discover");
-      const nav = page.getByRole("link", { name: /^(Explorar|Calendário|Minha lista|Comunidade)$/ });
-      await expect(nav).toHaveText(["Explorar", "Calendário", "Minha lista", "Comunidade"]);
+      const nav = page.getByRole("link", { name: /^(Explorar|Calendário|Meus animes|Comunidade)$/ });
+      await expect(nav).toHaveText(["Explorar", "Calendário", "Meus animes", "Comunidade"]);
     });
   });
 
@@ -86,13 +86,14 @@ test.describe("Dashboard, calendário e navegação", () => {
     await page.goto("/calendar");
     await page.getByRole("button", { name: "Todos", exact: true }).click();
 
-    const headers = page.getByTestId("calendar-grid").locator("p").filter({ hasText: /^(SEG|TER|QUA|QUI|SEX|SÁB|DOM) \d{2}$/ });
-    await expect(headers).toHaveCount(7);
-    await expect(headers.first()).toContainText("SEG");
-    await expect(headers.last()).toContainText("DOM");
+    const days = page.getByTestId("calendar-grid").locator('[data-testid^="calendar-day-"]');
+    await expect(days).toHaveCount(7);
+    await expect(days.first()).toContainText(/^SEG\s*\d{2}/);
+    await expect(days.last()).toContainText(/^DOM\s*\d{2}/);
 
     await expect(page.locator("main")).toContainText("Horários locais em");
     await expect(page.getByTestId("calendar-timezone")).toContainText("America/Sao_Paulo");
-    await expect(page.getByText("12:00 · EP09").first()).toBeVisible();
+    // Horário antes de "EP" (D-05): primeira linha do item é a hora, depois o título e o EP.
+    await expect(page.getByTestId("calendar-entry-906000-9")).toHaveText(/12:00[\s\S]*EP09/);
   });
 });

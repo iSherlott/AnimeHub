@@ -81,7 +81,7 @@ test.describe("Admin: execuções e catálogo", () => {
       storageState: { cookies: [{ name: SESSION_COOKIE_NAME, value: TEST_ADMIN_SESSION_TOKEN, domain: "localhost", path: "/", httpOnly: true, secure: false, sameSite: "Lax", expires: -1 }], origins: [] },
     });
     const page = await ctx.newPage();
-    await page.goto("/admin");
+    await page.goto("/admin/acesso");
     const job = page.getByTestId(`job-${SOURCE}`);
     await expect(job).toContainText("Parcial");
     await expect(page.getByRole("table", { name: "Execuções recentes" })).toContainText("429 da fonte");

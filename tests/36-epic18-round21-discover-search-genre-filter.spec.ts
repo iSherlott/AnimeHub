@@ -67,7 +67,7 @@ test.describe("Epic 18 — 21ª rodada de auditoria de UX/UI — filtro de gêne
   // pras 2 fileiras, mas só a fileira do catálogo local de fato os
   // aplicava. Com "COMEDY" selecionado, a busca ao vivo continuava
   // misturando títulos de qualquer gênero que só batessem o texto.
-  test("selecionar um gênero também filtra a fileira 'Resultados da busca (AniList)'", async ({ page }) => {
+  test("selecionar um gênero também filtra os resultados da busca (AniList)", async ({ page }) => {
     await page.route("**/api/anilist/search*", async (route) => {
       await route.fulfill({
         status: 200,
@@ -84,15 +84,13 @@ test.describe("Epic 18 — 21ª rodada de auditoria de UX/UI — filtro de gêne
 
     await page.goto("/discover");
     await page.getByPlaceholder("Buscar anime...").fill("Round21 Search Hit");
-    // DiscoverCard renderiza o título tanto como legenda quanto como
-    // aria-label do próprio card clicável — escopa pelo role de botão
-    // (aria-label = título inteiro) pra não colidir em modo estrito.
-    const correctCard = page.getByRole("button", { name: "Round21 Search Hit — gênero certo" });
-    const wrongCard = page.getByRole("button", { name: "Round21 Search Hit — gênero errado" });
+    // O título do cartão é um link para o detalhe — escopa por ele.
+    const correctCard = page.getByRole("link", { name: "Round21 Search Hit — gênero certo" });
+    const wrongCard = page.getByRole("link", { name: "Round21 Search Hit — gênero errado" });
     await expect(correctCard).toBeVisible();
     await expect(wrongCard).toBeVisible();
 
-    await page.getByRole("button", { name: GENRE, exact: true }).click();
+    await page.getByLabel("Gênero").selectOption(GENRE);
 
     await expect(correctCard).toBeVisible();
     await expect(wrongCard).not.toBeVisible();
