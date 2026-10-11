@@ -33,7 +33,7 @@ export type PostDTO = {
   animeTitleNative: string | null;
   animeFormat: string | null;
   animeCoverImage: string | null;
-  author: { id: string; displayName: string; handle: string | null; avatarUrl: string | null };
+  author: { id: string; displayName: string; handle: string | null; avatarUrl: string | null; /** Título equipado ("Olhar de boticária"), se houver. */ title?: string | null };
   isMine: boolean;
   likeCount: number;
   likedByMe: boolean;
@@ -93,6 +93,7 @@ export function toPostDto(
     repostedByMe?: boolean;
     favoritedByMe?: boolean;
     production?: { titleNative: string | null; format: string | null } | null;
+    authorTitle?: string | null;
   }
 ): PostDTO {
   return {
@@ -107,7 +108,7 @@ export function toPostDto(
     animeTitleNative: opts.production?.titleNative ?? null,
     animeFormat: opts.production?.format ?? null,
     animeCoverImage: post.animeCoverImage,
-    author: { id: post.user.id, displayName: post.user.displayName, handle: post.user.handle ?? null, avatarUrl: post.user.avatarUrl },
+    author: { id: post.user.id, displayName: post.user.displayName, handle: post.user.handle ?? null, avatarUrl: post.user.avatarUrl, title: opts.authorTitle ?? null },
     isMine: post.user.id === opts.viewerId,
     likeCount: opts.likeCount,
     likedByMe: opts.likedByMe,

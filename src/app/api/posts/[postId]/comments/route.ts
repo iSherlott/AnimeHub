@@ -1,3 +1,4 @@
+import { equippedTitleNames } from "@/lib/quiz";
 import { NextResponse } from "next/server";
 import { notifySocial } from "@/lib/socialNotifications";
 import { prisma } from "@/lib/prisma";
@@ -45,6 +46,7 @@ export async function GET(_request: Request, { params }: Params) {
     },
   });
 
+  const titles = await equippedTitleNames(comments.map((c) => c.user.id));
   return NextResponse.json({
     comments: comments.map((c) => ({
       id: c.id,
@@ -54,7 +56,7 @@ export async function GET(_request: Request, { params }: Params) {
       body: c.isSpoiler ? "" : c.body,
       isSpoiler: c.isSpoiler,
       createdAt: c.createdAt.toISOString(),
-      author: { id: c.user.id, displayName: c.user.displayName, handle: c.user.handle },
+      author: { id: c.user.id, displayName: c.user.displayName, handle: c.user.handle, title: titles.get(c.user.id) ?? null },
       isMine: c.user.id === user?.id,
     })),
   });
@@ -142,7 +144,7 @@ export async function POST(request: Request, { params }: Params) {
         body: comment.isSpoiler ? "" : comment.body,
         isSpoiler: comment.isSpoiler,
         createdAt: comment.createdAt.toISOString(),
-        author: { id: comment.user.id, displayName: comment.user.displayName, handle: comment.user.handle },
+        author: { id: comment.user.id, displayName: comment.user.displayName, handle: comment.user.handle, title: (await equippedTitleNames([user.id])).get(user.id) ?? null },
         isMine: true,
       },
     },

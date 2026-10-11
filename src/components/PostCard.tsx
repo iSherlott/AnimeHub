@@ -18,6 +18,7 @@ import { PostImageCarousel } from "@/components/PostImageCarousel";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { splitTrailingHashtags } from "@/lib/hashtags";
+import { AchievementTitleBadge } from "@/components/AchievementTitleBadge";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { formatTimeInZone } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
@@ -260,6 +261,12 @@ export function PostCard({
           <MenuItem onClick={copyLink}>Copiar link da publicação</MenuItem>
         </Menu>
       </Stack>
+
+      {post.author.title && (
+        <Box sx={{ pl: "36px", mt: -1 }}>
+          <AchievementTitleBadge title={post.author.title} />
+        </Box>
+      )}
 
       {/* Corpo: spoiler fechado, imagens + legenda, ou texto */}
       {post.isSpoiler ? (

@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Box, Typography } from "@mui/material";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { getQuizState } from "@/lib/quiz";
 import { ensureProduction, parseRelations, parseStreamingLinks } from "@/lib/production";
 import { Header } from "@/components/Header";
 import { AnimeTitle } from "@/components/AnimeTitle";
@@ -82,6 +83,7 @@ export default async function ProductionPage({ params }: Params) {
   if (!production) notFound();
 
   const user = await getCurrentUser();
+  const quizState = await getQuizState(id, user?.id ?? null);
   const [nextEpisode, owned, siblings, topTags] = await Promise.all([
     prisma.airingScheduleEntry.findFirst({
       where: { anilistId: id, airingAt: { gte: new Date() } },
@@ -287,6 +289,28 @@ export default async function ProductionPage({ params }: Params) {
                 </Typography>
               )}
             </Box>
+            {quizState.quiz && (
+              <Box component="section" aria-labelledby="quiz-heading" data-testid="quiz-entry" sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                <Typography id="quiz-heading" component="h3" sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary", textTransform: "uppercase" }}>
+                  Quiz do anime
+                </Typography>
+                <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+                  {quizState.quiz.available
+                    ? `10 perguntas · ${quizState.quiz.scope}. Acerte todas para desbloquear o título "${quizState.quiz.titleReward}".`
+                    : "Em preparação: ainda faltam perguntas aprovadas."}
+                </Typography>
+                <Box>
+                  <AppLink
+                    href={`/obra/${production.anilistId}/quiz`}
+                    underline="none"
+                    data-testid="quiz-link"
+                    sx={{ display: "inline-flex", alignItems: "center", minHeight: 44, px: 2, py: 1.5, borderRadius: "10px", bgcolor: "#171820", color: "text.primary", fontSize: 14, fontWeight: 700, "&:hover": { bgcolor: "#1d1e28" } }}
+                  >
+                    {quizState.attempt.status === "COMPLETED" ? "Ver resultado do quiz" : "Ver o quiz"}
+                  </AppLink>
+                </Box>
+              </Box>
+            )}
             {production.officialSite && (
               <Box>
                 <AppLink

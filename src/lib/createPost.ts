@@ -7,6 +7,7 @@ import { isValidHttpUrl } from "@/lib/url";
 import { isBlank } from "@/lib/text";
 import { extractHashtags, MAX_HASHTAGS_PER_POST } from "@/lib/hashtags";
 import { linkHashtagsToPost } from "@/lib/postHashtags";
+import { equippedTitleNames } from "@/lib/quiz";
 
 export const MAX_POST_BODY_LENGTH = 500;
 export const MAX_POST_IMAGES = 6;
@@ -130,6 +131,7 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
         reportedByMe: false,
         commentCount: 0,
         quotedPost: post.quotedPost,
+        authorTitle: (await equippedTitleNames([user.id])).get(user.id) ?? null,
       }),
     },
     { status: 201 }

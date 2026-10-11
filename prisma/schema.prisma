@@ -34,6 +34,10 @@ model User {
   timeZone     String?
   /// Sinopse quando os títulos estão em japonês: "pt" (padrão) ou "ja".
   synopsisLanguage String?
+  /// Banner do perfil (imagem de uma obra que a pessoa acompanha).
+  bannerUrl    String?
+  /// Título (UserTitle) equipado no perfil — um por vez, ou nenhum.
+  equippedTitleId String?
   notifyReleases  Boolean  @default(true)
   notifyReplies   Boolean  @default(true)
   notifyComments  Boolean  @default(true)
@@ -44,6 +48,8 @@ model User {
 
   socialReceived   SocialNotification[] @relation("SocialReceived")
   socialSent       SocialNotification[] @relation("SocialSent")
+  quizAttempts     QuizAttempt[]
+  titles           UserTitle[]
   sessions         Session[]
   animeList        Anime[]
   invitesCreated   Invite[]        @relation("InvitesCreated")
@@ -965,4 +971,70 @@ model NewsRun {
   adminName  String?
 
   @@index([startedAt])
+}
+
+
+/// Quiz de uma obra (Figma "20 — Quiz"): 10 perguntas aprovadas liberam a tentativa; 10/10 desbloqueia `titleReward`.
+model Quiz {
+  id          String         @id @default(cuid())
+  anilistId   Int            @unique
+  /// Recorte do quiz, ex.: "Season 1 — personagens e ambientação".
+  scope       String
+  /// Título cosmético desbloqueado com 10/10, ex.: "Olhar de boticária".
+  titleReward String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  questions   QuizQuestion[]
+  attempts    QuizAttempt[]
+  titles      UserTitle[]
+}
+
+model QuizQuestion {
+  id       String  @id @default(cuid())
+  quizId   String
+  quiz     Quiz    @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  /// 1..10 — ordem da pergunta na tentativa.
+  position Int
+  /// Em caixa alta na tela, ex.: "PERSONAGENS".
+  category String
+  text     String
+  optionA  String
+  optionB  String
+  optionC  String
+  optionD  String
+  /// 0..3 (A..D). Nunca sai da API: o gabarito não é mostrado.
+  correct  Int
+  /// Só perguntas aprovadas contam; com menos de 10 o quiz fica "indisponível".
+  approved Boolean @default(false)
+
+  @@unique([quizId, position])
+}
+
+/// Tentativa de uma pessoa: IN_PROGRESS → COMPLETED (ou ABANDONED). Respostas só por posição, sem gabarito.
+model QuizAttempt {
+  id         String    @id @default(cuid())
+  quizId     String
+  quiz       Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status     String    @default("IN_PROGRESS")
+  /// Escolhas confirmadas (0..3) na ordem das posições 1..N.
+  answers    Int[]     @default([])
+  score      Int?
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  @@index([userId, quizId])
+}
+
+/// Título desbloqueado (conquista): persistente, independe de acompanhar a obra.
+model UserTitle {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizId    String
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  awardedAt DateTime @default(now())
+
+  @@unique([userId, quizId])
 }

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -17,6 +17,7 @@ import {
   Typography,
 } from "@mui/material";
 import { UserAvatar } from "@/components/UserAvatar";
+import { AchievementTitleBadge } from "@/components/AchievementTitleBadge";
 import { SpoilerGate } from "@/components/SpoilerGate";
 import { ReportDialog } from "@/components/ReportDialog";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
@@ -29,7 +30,7 @@ type CommentItem = {
   body: string;
   isSpoiler?: boolean;
   createdAt: string;
-  author: { id: string; displayName: string; handle?: string | null; avatarUrl?: string | null };
+  author: { id: string; displayName: string; handle?: string | null; avatarUrl?: string | null; title?: string | null };
   isMine: boolean;
 };
 
@@ -289,6 +290,11 @@ export function PostComments({
                     ···
                   </ButtonBase>
                 </Stack>
+                {c.author.title && (
+                  <Box sx={{ pl: "36px" }}>
+                    <AchievementTitleBadge title={c.author.title} />
+                  </Box>
+                )}
                 {c.isSpoiler ? (
                   <SpoilerGate<{ body: string }>
                     revealUrl={`/api/posts/${postId}/comments/${c.id}/reveal`}

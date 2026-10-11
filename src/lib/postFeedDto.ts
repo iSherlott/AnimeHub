@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { toPostDto, type PostDTO } from "@/lib/postDto";
 import type { Post } from "@prisma/client";
 import { blockedUserIdSet } from "@/lib/blocks";
+import { equippedTitleNames } from "@/lib/quiz";
 
 type Author = { id: string; displayName: string; handle: string | null; avatarUrl: string | null };
 type QuotedPostRow = Post & { user: Author };
@@ -107,6 +108,7 @@ export async function toDtoPage(page: PostRow[], viewerId: string | null): Promi
       })
     : [];
   const productionById = new Map(productions.map((p) => [p.anilistId, p]));
+  const authorTitles = await equippedTitleNames(resolved.map((r) => r.effective.user.id));
   const likedSet = new Set(myLikes.map((l) => l.postId));
   const reportedSet = new Set(myOpenReports.map((r) => r.postId));
   const repostedSet = new Set(myReposts.map((r) => r.repostOfId));
@@ -124,6 +126,7 @@ export async function toDtoPage(page: PostRow[], viewerId: string | null): Promi
       repostedByMe: repostedSet.has(effective.id),
       favoritedByMe: effective.anilistId !== null && favoritedAnilistIdSet.has(effective.anilistId),
       production: effective.anilistId !== null ? (productionById.get(effective.anilistId) ?? null) : null,
+      authorTitle: authorTitles.get(effective.user.id) ?? null,
     })
   );
 }

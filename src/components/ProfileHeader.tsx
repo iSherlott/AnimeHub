@@ -8,6 +8,7 @@ import { LinkButton } from "@/components/LinkButton";
 import { ProfileEditDialog } from "@/components/ProfileEditDialog";
 import { ProfileSafetyMenu } from "@/components/ProfileSafetyMenu";
 import { UserAvatar } from "@/components/UserAvatar";
+import { AchievementTitleBadge } from "@/components/AchievementTitleBadge";
 
 /**
  * Bloco de identidade do perfil (Figma `13:42598` / `13:42736`): avatar,
@@ -22,6 +23,7 @@ export function ProfileHeader({
   handle,
   avatarUrl,
   bio,
+  title = null,
   postCount,
   initialFollowerCount,
   followingCount,
@@ -34,6 +36,8 @@ export function ProfileHeader({
   handle: string | null;
   avatarUrl: string | null;
   bio: string | null;
+  /** Título equipado (conquista do quiz), se houver. */
+  title?: string | null;
   postCount: number;
   initialFollowerCount: number;
   followingCount: number;
@@ -61,6 +65,7 @@ export function ProfileHeader({
             </Typography>
           )}
         </Box>
+        {title && <AchievementTitleBadge title={title} />}
         {bio && <Typography sx={{ fontSize: 16, whiteSpace: "pre-wrap" }}>{bio}</Typography>}
         <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
           {followerCount} {followerCount === 1 ? "seguidor" : "seguidores"} · {followingCount} seguindo · {postCount}{" "}

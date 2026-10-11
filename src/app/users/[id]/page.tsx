@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { blockRelation } from "@/lib/blocks";
 import { BlockedProfileNotice } from "@/components/BlockedProfileNotice";
+import { equippedTitleNames } from "@/lib/quiz";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -49,7 +50,7 @@ export default async function UserProfilePage({ params }: Params) {
     );
   }
 
-  const [followerCount, followingCount, postCount, isFollowedByMe] = await Promise.all([
+  const [followerCount, followingCount, postCount, isFollowedByMe, titleCount, equippedTitles] = await Promise.all([
     prisma.follow.count({ where: { followingId: id } }),
     prisma.follow.count({ where: { followerId: id } }),
     prisma.post.count({ where: { userId: id, deletedAt: null } }),
@@ -58,6 +59,8 @@ export default async function UserProfilePage({ params }: Params) {
           .findUnique({ where: { followerId_followingId: { followerId: viewer.id, followingId: id } } })
           .then((f) => f !== null)
       : Promise.resolve(false),
+    prisma.userTitle.count({ where: { userId: id } }),
+    equippedTitleNames([id]),
   ]);
 
   const isOwnProfile = viewer?.id === id;
@@ -92,11 +95,12 @@ export default async function UserProfilePage({ params }: Params) {
                 postCount={postCount}
                 initialFollowerCount={followerCount}
                 followingCount={followingCount}
+                title={equippedTitles.get(id) ?? null}
                 isOwnProfile={isOwnProfile}
                 viewerLoggedIn={Boolean(viewer)}
                 initialFollowing={isFollowedByMe}
               />
-              <ProfileTabs userId={id} isOwnProfile={isOwnProfile} />
+              <ProfileTabs userId={id} isOwnProfile={isOwnProfile} titleCount={titleCount} />
             </Box>
           }
           aside={
