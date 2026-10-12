@@ -3,7 +3,9 @@ import { Header } from "@/components/Header";
 import { LinkButton } from "@/components/LinkButton";
 import AddIcon from "@mui/icons-material/Add";
 import { PageContainer, PageIntro } from "@/components/PageShell";
+import { MyListTabs } from "@/components/MyListTabs";
 import { MyListView } from "@/components/MyListView";
+import { prisma } from "@/lib/prisma";
 import { loadMyListEntries } from "@/lib/myList";
 import { getCurrentUser } from "@/lib/auth/session";
 
@@ -35,7 +37,7 @@ export default async function MinhaListaPage() {
     );
   }
 
-  const entries = await loadMyListEntries(user.id);
+  const [entries, pendingCount] = await Promise.all([loadMyListEntries(user.id), prisma.pendingEpisode.count({ where: { userId: user.id } })]);
 
   if (entries.length === 0) {
     return (
@@ -74,7 +76,10 @@ export default async function MinhaListaPage() {
             </LinkButton>
           }
         />
-        <MyListView entries={entries} />
+        <Box sx={{ mt: 4 }}>
+          <MyListTabs active="list" pendingCount={pendingCount} />
+          <MyListView entries={entries} />
+        </Box>
       </PageContainer>
     </Box>
   );

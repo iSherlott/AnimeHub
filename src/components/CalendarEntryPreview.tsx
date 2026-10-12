@@ -8,6 +8,8 @@ import ArrowOutwardIcon from "@mui/icons-material/ArrowOutward";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import CheckIcon from "@mui/icons-material/Check";
 import EventRepeatIcon from "@mui/icons-material/EventRepeat";
+import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
+import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
 import { useSynopsis } from "@/components/SynopsisText";
 import { Box, Button, Typography } from "@mui/material";
 import type { CalendarItem } from "@/lib/calendarItem";
@@ -26,7 +28,15 @@ const buttonSx = { bgcolor: "#171820", color: "text.primary", border: 1, borderC
  * sinopse, gêneros e as ações Ver detalhes / + Acompanhar. O `Popover` em si
  * (abertura por hover, delay de saída) vive em CalendarEntryCard.tsx.
  */
-export function CalendarEntryPreview({ item, onFollowed }: { item: CalendarItem; onFollowed?: (anilistId: number, animeId: string) => void }) {
+export function CalendarEntryPreview({
+  item,
+  onFollowed,
+  onPendingChange,
+}: {
+  item: CalendarItem;
+  onFollowed?: (anilistId: number, animeId: string) => void;
+  onPendingChange?: (anilistId: number, fromEpisode: number | null) => void;
+}) {
   const { preference } = useTitlePreference();
   const user = useCurrentUser();
   const timeZone = useTimeZone();
@@ -67,12 +77,38 @@ export function CalendarEntryPreview({ item, onFollowed }: { item: CalendarItem;
     }
   }
 
+  // "Adiar": o episódio do dia que não deu para ver vira pendência em "Para assistir" (só para obras da lista, depois de ir ao ar).
+  const [pendingBusy, setPendingBusy] = useState(false);
+  const [pendingError, setPendingError] = useState<string | null>(null);
+  async function togglePending() {
+    setPendingBusy(true);
+    setPendingError(null);
+    try {
+      const resolving = item.pendingFrom != null;
+      const res = resolving
+        ? await fetch(`/api/pending/${item.anilistId}`, { method: "DELETE" })
+        : await fetch("/api/pending", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ anilistId: item.anilistId, episode: item.episode }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPendingError(data.error ?? "Não foi possível salvar. Tente novamente.");
+        return;
+      }
+      onPendingChange?.(item.anilistId, resolving ? null : (data.fromEpisode as number));
+    } catch {
+      setPendingError("Não foi possível falar com o servidor. Tente novamente.");
+    } finally {
+      setPendingBusy(false);
+    }
+  }
+
   const airing = new Date(item.airingAt);
   // Só no navegador (o relógio do servidor pode divergir do cliente na borda da janela).
   const [live, setLive] = useState(false);
+  const [released, setReleased] = useState(false);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLive(isAiringNow(item.airingAt));
+    setReleased(new Date(item.airingAt).getTime() <= Date.now());
   }, [item.airingAt]);
   const weekday = weekdayName(airing, timeZone);
   const secondary = [item.titleNative && title !== item.titleNative ? item.titleNative : null, title !== item.titleRomaji ? item.titleRomaji : null, item.titleEnglish && title !== item.titleEnglish ? item.titleEnglish : null].filter(Boolean)[0];
@@ -182,6 +218,18 @@ export function CalendarEntryPreview({ item, onFollowed }: { item: CalendarItem;
                 </Button>
               )}
               {!hasImage && favorite}
+              {(released || item.pendingFrom != null) && (
+                <Button
+                  size="small"
+                  disabled={pendingBusy}
+                  onClick={() => void togglePending()}
+                  startIcon={item.pendingFrom != null ? <BookmarkAddedIcon /> : <BookmarkAddIcon />}
+                  sx={buttonSx}
+                  data-testid={item.pendingFrom != null ? "preview-pending-resolve" : "preview-postpone"}
+                >
+                  {item.pendingFrom != null ? "Já assisti" : "Adiar"}
+                </Button>
+              )}
             </>
           ) : user ? (
             <Button variant="contained" size="small" disabled={following} onClick={() => void follow()} data-testid="preview-follow">
@@ -193,6 +241,16 @@ export function CalendarEntryPreview({ item, onFollowed }: { item: CalendarItem;
             </Button>
           )}
         </Box>
+        {item.pendingFrom != null && (
+          <Typography data-testid="preview-pending-note" sx={{ fontSize: 11, color: "warning.main" }}>
+            Adiado · parei no EP{String(item.pendingFrom).padStart(2, "0")} — está em “Para assistir”.
+          </Typography>
+        )}
+        {pendingError && (
+          <Typography role="alert" sx={{ fontSize: 11, color: "primary.main" }}>
+            {pendingError}
+          </Typography>
+        )}
         {followError && (
           <Typography role="alert" sx={{ fontSize: 11, color: "primary.main" }}>
             {followError}

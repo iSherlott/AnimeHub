@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import NextLink from "next/link";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import EventRepeatIcon from "@mui/icons-material/EventRepeat";
+import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
 import { Box, Popover, Typography } from "@mui/material";
 import type { CalendarItem } from "@/lib/calendarItem";
 import { PrimaryTitle, useTitleLines } from "@/components/ExploreCard";
@@ -56,10 +57,12 @@ function Badge({ tone, icon, children }: { tone: "accent" | "warning"; icon: Rea
 export function CalendarEntryCard({
   item,
   onFollowed,
+  onPendingChange,
   highlightMine = false,
 }: {
   item: CalendarItem;
   onFollowed?: (anilistId: number, animeId: string) => void;
+  onPendingChange?: (anilistId: number, fromEpisode: number | null) => void;
   /** Destaca (vermelho) o que é da minha lista — só faz sentido em "Todos"; em "Minha Lista" tudo seria vermelho. */
   highlightMine?: boolean;
 }) {
@@ -187,6 +190,13 @@ export function CalendarEntryCard({
             Atrasado
           </Badge>
         )}
+        {item.pendingFrom != null && (
+          <Box data-testid={`calendar-pending-${item.key}`}>
+            <Badge tone="warning" icon={<BookmarkAddedIcon />}>
+              Adiado · EP{pad(item.pendingFrom)}
+            </Badge>
+          </Box>
+        )}
       </Box>
       <Popover
         open={Boolean(anchorEl)}
@@ -208,7 +218,7 @@ export function CalendarEntryCard({
           },
         }}
       >
-        <CalendarEntryPreview item={item} onFollowed={onFollowed} />
+        <CalendarEntryPreview item={item} onFollowed={onFollowed} onPendingChange={onPendingChange} />
       </Popover>
     </>
   );

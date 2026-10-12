@@ -38,6 +38,8 @@ model User {
   bannerUrl    String?
   /// Título (UserTitle) equipado no perfil — um por vez, ou nenhum.
   equippedTitleId String?
+  /// A lista de animes acompanhados aparece no perfil para quem o visita (padrão: sim; dá para ocultar em Configurações).
+  animeListPublic Boolean @default(true)
   notifyReleases  Boolean  @default(true)
   notifyReplies   Boolean  @default(true)
   notifyComments  Boolean  @default(true)
@@ -48,6 +50,7 @@ model User {
 
   socialReceived   SocialNotification[] @relation("SocialReceived")
   socialSent       SocialNotification[] @relation("SocialSent")
+  pendingEpisodes  PendingEpisode[]
   quizAttempts     QuizAttempt[]
   titles           UserTitle[]
   sessions         Session[]
@@ -1037,4 +1040,19 @@ model UserTitle {
   awardedAt DateTime @default(now())
 
   @@unique([userId, quizId])
+}
+
+
+/// "Adiar" (Para assistir): a pessoa adiou o episódio do dia. `fromEpisode` é o primeiro que ficou sem ver
+/// ("parei no EP02"); adiar de novo um episódio mais novo não muda isso. Uma pendência por pessoa e obra.
+model PendingEpisode {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anilistId   Int
+  fromEpisode Int
+  postponedAt DateTime @default(now())
+
+  @@unique([userId, anilistId])
+  @@index([userId])
 }

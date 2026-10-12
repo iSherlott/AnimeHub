@@ -6,6 +6,7 @@ import { applyAiringOverrides, loadActiveOverrides } from "@/lib/airingOverrides
 import { animeSeasonOf, civilDay, classifyOffGrid, DELAY_GRACE_MS, isDelayed, type OffGridItem } from "@/lib/calendarOffGrid";
 import { getCurrentUser } from "@/lib/auth/session";
 import { startOfWeekMonday } from "@/lib/calendarWeek";
+import { pendingFromMap } from "@/lib/pending";
 
 const MAX_WEEK_OFFSET = 8;
 
@@ -89,6 +90,9 @@ export async function GET(request: NextRequest) {
       { id: a.id, titlePortuguese: a.titlePortuguese, description: a.description, descriptionPortuguese: a.descriptionPortuguese, isFavorite: a.isFavorite },
     ])
   );
+
+  // "Adiado": em que episódio a pessoa parou, por obra da semana (só quem está logado).
+  const pendingByAnilistId = user && myAnime.length ? await pendingFromMap(user.id, myAnime.map((a) => a.anilistId)) : new Map<number, number>();
 
   // Miniatura do episódio: só obras da lista têm episódios carregados (Episode.thumbnail).
   const ownedIdToAnilist = new Map(myAnime.map((a) => [a.id, a.anilistId]));
@@ -178,7 +182,8 @@ export async function GET(request: NextRequest) {
         e,
         myAnimeByAnilistId,
         isDelayed(e.airingAt, e.episode, catalogNextById.get(e.anilistId), now),
-        episodeImages.get(`${e.anilistId}-${e.episode}`) ?? null
+        episodeImages.get(`${e.anilistId}-${e.episode}`) ?? null,
+        pendingByAnilistId.get(e.anilistId) ?? null
       )
     ),
     offGrid,

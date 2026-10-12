@@ -120,6 +120,11 @@ export default function CalendarPage() {
     setItems((current) => current.map((i) => (i.anilistId === anilistId ? { ...i, inMyList: true, animeId } : i)));
   }
 
+  // "Adiar" no preview: o selo "Adiado · EPnn" aparece (ou some) em todos os itens da obra sem recarregar.
+  function markPending(anilistId: number, fromEpisode: number | null) {
+    setItems((current) => current.map((i) => (i.anilistId === anilistId ? { ...i, pendingFrom: fromEpisode } : i)));
+  }
+
   const weekDays = useMemo(() => buildWeekDaysInZone(weekOffset, timeZone), [weekOffset, timeZone]);
   const todayKey = useMemo(() => dayKeyInZone(new Date(), timeZone), [timeZone]);
 
@@ -314,6 +319,7 @@ export default function CalendarPage() {
                     isToday={dayKeyInZone(day, timeZone) === todayKey}
                     timeZone={timeZone}
                     onFollowed={markFollowed}
+                    onPendingChange={markPending}
                     highlightMine={showAll}
                   />
                 ))}

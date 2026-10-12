@@ -28,6 +28,8 @@ export type CalendarItem = {
   description: string | null;
   descriptionPortuguese: string | null;
   isFavorite: boolean;
+  /** "Adiado": a pessoa parou neste episódio e ainda não viu (ver `PendingEpisode`); só para obras da lista. */
+  pendingFrom?: number | null;
   /** "Atrasado" (Figma `8:2106`): o horário previsto passou e a fonte ainda
    * não confirmou o episódio — ver `isDelayed`. A previsão original é mantida. */
   delayed: boolean;
@@ -51,7 +53,8 @@ export function calendarItemFromCache(
   entry: AiringScheduleEntry,
   myAnimeByAnilistId: Map<number, OwnedAnimeCalendarInfo>,
   delayed = false,
-  episodeImage: string | null = null
+  episodeImage: string | null = null,
+  pendingFrom: number | null = null
 ): CalendarItem {
   const owned = myAnimeByAnilistId.get(entry.anilistId) ?? null;
   return {
@@ -71,6 +74,7 @@ export function calendarItemFromCache(
     description: owned?.description ?? entry.description ?? null,
     descriptionPortuguese: owned?.descriptionPortuguese ?? null,
     isFavorite: owned?.isFavorite ?? false,
+    pendingFrom: owned ? pendingFrom : null,
     delayed,
   };
 }

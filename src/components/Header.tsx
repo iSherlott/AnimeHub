@@ -33,7 +33,7 @@ const DESKTOP_QUERY = "@media (min-width:1240px)";
 const NAV_ITEMS: Array<{ href: string; label: string; match: (p: string) => boolean }> = [
   { href: "/discover", label: "Explorar", match: (p) => p === "/discover" },
   { href: "/calendar", label: "Calendário", match: (p) => p === "/calendar" },
-  { href: "/minha-lista", label: "Meus animes", match: (p) => p === "/minha-lista" },
+  { href: "/minha-lista", label: "Meus animes", match: (p) => p === "/minha-lista" || p.startsWith("/minha-lista/") },
   // "Comunidade" cobre o feed e as telas sociais (publicar, buscar, hashtag, discussão, perfis).
   {
     href: "/",

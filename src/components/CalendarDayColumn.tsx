@@ -16,6 +16,7 @@ export function CalendarDayColumn({
   isToday,
   timeZone,
   onFollowed,
+  onPendingChange,
   highlightMine,
 }: {
   day: Date;
@@ -24,6 +25,7 @@ export function CalendarDayColumn({
   /** Fuso em que o dia foi montado (instante 00:00 nesse fuso). */
   timeZone: string;
   onFollowed?: (anilistId: number, animeId: string) => void;
+  onPendingChange?: (anilistId: number, fromEpisode: number | null) => void;
   highlightMine?: boolean;
 }) {
   const weekday = new Intl.DateTimeFormat("pt-BR", { timeZone, weekday: "short" }).format(day).replace(".", "").toUpperCase();
@@ -57,7 +59,7 @@ export function CalendarDayColumn({
       <Box component="ul" sx={{ listStyle: "none", m: 0, p: 0, flex: 1, display: "flex", flexDirection: "column", gap: "1px", bgcolor: "background.paper" }}>
         {items.map((item) => (
           <li key={item.key}>
-            <CalendarEntryCard item={item} onFollowed={onFollowed} highlightMine={highlightMine} />
+            <CalendarEntryCard item={item} onFollowed={onFollowed} onPendingChange={onPendingChange} highlightMine={highlightMine} />
           </li>
         ))}
       </Box>
