@@ -1,4 +1,4 @@
-# Quiz, títulos (conquistas) e avatar de anime — especificação lida do Figma
+﻿# Quiz, títulos (conquistas) e avatar de anime — especificação lida do Figma
 
 Arquivo `vg9LobYvRnXk2iUmDd7uXa`. Páginas novas (o conector só lista a 1ª página; abrir por id):
 
@@ -25,3 +25,8 @@ Referência de estilo do perfil/avatar: Crunchyroll `/pt-br/discover` ("Editar P
 
 ## Avatar
 - Foto de perfil escolhida entre imagens das obras que a pessoa acompanha (capa e personagens), agrupadas por anime; fica independente do título equipado.
+
+## Carga das perguntas (Admin → Quizzes)
+- JSON (um quiz ou uma lista de vários animes) ou CSV `;` de um anime; modelos em `docs/quizzes/modelo-quiz.json` e `modelo-quiz.csv`. Sempre 10 perguntas, 4 alternativas distintas e a correta de A a D; `scope` (recorte) e `titleReward` (título desbloqueado) por obra.
+- "Validar" só confere; "Carregar" grava tudo ou nada. Por padrão as perguntas entram em **revisão**; o quiz só abre para as pessoas com as 10 **aprovadas** (aprovação individual ou de uma vez na tela de revisão, que é o único lugar que mostra o gabarito).
+- Recarregar um quiz sem tentativas substitui as perguntas; com tentativas, é recusado (e o quiz não pode ser removido). A obra precisa estar no catálogo. Cargas e aprovações vão para os logs do admin.

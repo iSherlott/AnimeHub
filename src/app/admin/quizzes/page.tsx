@@ -1,0 +1,91 @@
+import NextLink from "next/link";
+import { Box, Typography } from "@mui/material";
+import { prisma } from "@/lib/prisma";
+import { AdminPageHeader, AdminPanel, AdminTable, SmallChip } from "@/components/admin/AdminUi";
+import { QuizImportForm } from "@/components/admin/QuizImportForm";
+import { Notice } from "@/components/StatePanels";
+import { requireAdminPage } from "@/lib/adminPage";
+import { QUIZ_LENGTH } from "@/lib/quiz";
+
+export const dynamic = "force-dynamic";
+
+/** Admin → Quizzes: carga das perguntas anime a anime, revisão/aprovação e o estado de cada quiz. */
+export default async function AdminQuizzesPage() {
+  await requireAdminPage();
+  const quizzes = await prisma.quiz.findMany({
+    orderBy: { updatedAt: "desc" },
+    include: { questions: { select: { approved: true } }, _count: { select: { attempts: true, titles: true } } },
+  });
+  const ids = quizzes.map((q) => q.anilistId);
+  const [productions, catalog] = ids.length
+    ? await Promise.all([
+        prisma.production.findMany({ where: { anilistId: { in: ids } }, select: { anilistId: true, titleRomaji: true, titleNative: true } }),
+        prisma.catalogEntry.findMany({ where: { anilistId: { in: ids } }, select: { anilistId: true, titleRomaji: true, titleNative: true } }),
+      ])
+    : [[], []];
+  const names = new Map<number, string>();
+  for (const w of [...catalog, ...productions]) if (w.anilistId !== null) names.set(w.anilistId, w.titleNative ?? w.titleRomaji);
+
+  const rows = quizzes.map((q) => {
+    const approved = q.questions.filter((x) => x.approved).length;
+    return { quiz: q, approved, total: q.questions.length, name: names.get(q.anilistId) ?? `Obra #${q.anilistId}` };
+  });
+
+  return (
+    <>
+      <AdminPageHeader title="Quizzes" subtitle="Carregue as 10 perguntas de cada anime, revise e aprove. O quiz só fica disponível para as pessoas com as 10 aprovadas." />
+
+      <AdminPanel title="Carregar perguntas">
+        <QuizImportForm />
+        <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+          JSON: um objeto <code>{`{ anilistId, scope, titleReward, questions: [{ category, text, options: [A,B,C,D], correct: "A" }] }`}</code> ou uma lista deles
+          (vários animes de uma vez). CSV de um anime, uma pergunta por linha:{" "}
+          <code>categoria;pergunta;A;B;C;D;correta</code>. Sempre {QUIZ_LENGTH} perguntas, 4 alternativas distintas e a correta de A a D. Recarregar um quiz
+          sem tentativas substitui as perguntas.
+        </Typography>
+      </AdminPanel>
+
+      <Notice tone="info" title="Revisão editorial">
+        As perguntas entram aguardando revisão. O gabarito só aparece aqui no admin; nunca é enviado a quem faz o quiz.
+      </Notice>
+
+      {rows.length === 0 ? (
+        <Typography data-testid="quiz-list-empty" sx={{ fontSize: 14, color: "text.secondary" }}>
+          Nenhum quiz carregado ainda.
+        </Typography>
+      ) : (
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <Typography component="h2" sx={{ fontSize: 20 }}>
+            Quizzes carregados
+          </Typography>
+          <AdminTable
+            caption="Quizzes carregados"
+            testId="admin-quiz-table"
+            rows={rows}
+            rowKey={(r) => r.quiz.id}
+            columns={[
+              { key: "work", label: "Obra", render: (r) => (<><div lang="ja">{r.name}</div><div>AniList #{r.quiz.anilistId}</div></>) },
+              { key: "scope", label: "Escopo / Título", render: (r) => (<><div>{r.quiz.scope}</div><div>称号 · {r.quiz.titleReward}</div></>) },
+              { key: "q", label: "Perguntas", render: (r) => `${r.approved}/${QUIZ_LENGTH} aprovadas` },
+              {
+                key: "state",
+                label: "Estado",
+                render: (r) => (r.approved === QUIZ_LENGTH && r.total === QUIZ_LENGTH ? <SmallChip tone="success">Disponível</SmallChip> : <SmallChip tone="warning">Em revisão</SmallChip>),
+              },
+              { key: "att", label: "Tentativas / Títulos", render: (r) => `${r.quiz._count.attempts} / ${r.quiz._count.titles}` },
+              {
+                key: "act",
+                label: "Ação",
+                render: (r) => (
+                  <NextLink href={`/admin/quizzes/${r.quiz.id}`} style={{ color: "inherit" }}>
+                    Revisar
+                  </NextLink>
+                ),
+              },
+            ]}
+          />
+        </Box>
+      )}
+    </>
+  );
+}

@@ -12,6 +12,7 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import FilterListOutlinedIcon from "@mui/icons-material/FilterListOutlined";
 import LibraryBooksOutlinedIcon from "@mui/icons-material/LibraryBooksOutlined";
+import QuizOutlinedIcon from "@mui/icons-material/QuizOutlined";
 import RadarOutlinedIcon from "@mui/icons-material/RadarOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import { Box, Typography } from "@mui/material";
@@ -22,6 +23,7 @@ const NAV: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: <DashboardOutlinedIcon />, crumb: "DASHBOARD" },
   { href: "/admin/catalogo", label: "Catálogo", icon: <LibraryBooksOutlinedIcon />, crumb: "CATÁLOGO" },
   { href: "/admin/importacoes", label: "Importações", icon: <FileDownloadOutlinedIcon />, crumb: "IMPORTAÇÕES" },
+  { href: "/admin/quizzes", label: "Quizzes", icon: <QuizOutlinedIcon />, crumb: "QUIZZES" },
   { href: "/admin/matching", label: "Matching", icon: <CompareArrowsOutlinedIcon />, crumb: "MATCHING" },
   { href: "/admin/scrapers", label: "Scrapers", icon: <RadarOutlinedIcon />, crumb: "SCRAPERS" },
   { href: "/admin/jobs", label: "Jobs", icon: <AccountTreeOutlinedIcon />, crumb: "JOBS" },

@@ -1,0 +1,17 @@
+{
+  "anilistId": 154587,
+  "scope": "Season 1 — personagens e ambientação",
+  "titleReward": "Olhar de boticária",
+  "questions": [
+    { "category": "PERSONAGENS", "text": "Pergunta 1 — substitua pelo enunciado?", "options": ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D"], "correct": "A" },
+    { "category": "PERSONAGENS", "text": "Pergunta 2 — substitua pelo enunciado?", "options": ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D"], "correct": "B" },
+    { "category": "PERSONAGENS", "text": "Pergunta 3 — substitua pelo enunciado?", "options": ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D"], "correct": "C" },
+    { "category": "AMBIENTAÇÃO", "text": "Pergunta 4 — substitua pelo enunciado?", "options": ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D"], "correct": "D" },
+    { "category": "AMBIENTAÇÃO", "text": "Pergunta 5 — substitua pelo enunciado?", "options": ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D"], "correct": "A" },
+    { "category": "AMBIENTAÇÃO", "text": "Pergunta 6 — substitua pelo enunciado?", "options": ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D"], "correct": "B" },
+    { "category": "ENREDO", "text": "Pergunta 7 — substitua pelo enunciado?", "options": ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D"], "correct": "C" },
+    { "category": "ENREDO", "text": "Pergunta 8 — substitua pelo enunciado?", "options": ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D"], "correct": "D" },
+    { "category": "ENREDO", "text": "Pergunta 9 — substitua pelo enunciado?", "options": ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D"], "correct": "A" },
+    { "category": "ENREDO", "text": "Pergunta 10 — substitua pelo enunciado?", "options": ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D"], "correct": "B" }
+  ]
+}
