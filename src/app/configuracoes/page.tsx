@@ -20,7 +20,7 @@ import { SOCIAL_OFF_PATCH, type UserPreferences } from "@/lib/userSettings";
  */
 type Draft = Pick<
   UserPreferences,
-  "notifyReleases" | "notifyReplies" | "notifyComments" | "notifyFollowers" | "notifyLikes"
+  "notifyReleases" | "notifyReplies" | "notifyComments" | "notifyFollowers" | "notifyLikes" | "animeListPublic"
 > & { titleFormat: "ja" | "romaji"; synopsisLanguage: "pt" | "ja"; timeZone: string };
 
 const SOCIAL_TOGGLES: Array<{ key: keyof Draft; label: string; hint: string }> = [
@@ -144,6 +144,7 @@ export default function SettingsPage() {
         notifyComments: p.notifyComments,
         notifyFollowers: p.notifyFollowers,
         notifyLikes: p.notifyLikes,
+        animeListPublic: p.animeListPublic,
       });
     }
   }, [user, draft]);
@@ -267,8 +268,14 @@ export default function SettingsPage() {
 
             <Card title="Sua privacidade">
               <Typography sx={{ fontSize: 16 }}>
-                Minha Lista é privada por padrão. Seus interesses podem ajudar sugestões simples, mas não aparecem automaticamente no perfil.
+                Minha Lista (datas, adiados) é só sua. No perfil, a aba Animes mostra as obras que você acompanha — sem progresso, notas ou episódios vistos.
               </Typography>
+              <PillToggle
+                label="Mostrar meus animes no perfil"
+                hint="Ativado, quem visita seu perfil vê e pesquisa por gênero as obras que você acompanha. Você sempre vê a sua."
+                checked={draft.animeListPublic}
+                onChange={(v) => update("animeListPublic", v)}
+              />
               <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
                 Publicações são públicas. Acompanhar uma obra e seguir uma pessoa nunca publicam uma mensagem por conta própria.
               </Typography>

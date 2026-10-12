@@ -11,6 +11,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { blockRelation } from "@/lib/blocks";
 import { BlockedProfileNotice } from "@/components/BlockedProfileNotice";
 import { equippedTitleNames } from "@/lib/quiz";
+import { visibleAnimeCount } from "@/lib/profileAnimeList";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -50,7 +51,7 @@ export default async function UserProfilePage({ params }: Params) {
     );
   }
 
-  const [followerCount, followingCount, postCount, isFollowedByMe, titleCount, equippedTitles] = await Promise.all([
+  const [followerCount, followingCount, postCount, isFollowedByMe, titleCount, equippedTitles, animeCount] = await Promise.all([
     prisma.follow.count({ where: { followingId: id } }),
     prisma.follow.count({ where: { followerId: id } }),
     prisma.post.count({ where: { userId: id, deletedAt: null } }),
@@ -61,6 +62,7 @@ export default async function UserProfilePage({ params }: Params) {
       : Promise.resolve(false),
     prisma.userTitle.count({ where: { userId: id } }),
     equippedTitleNames([id]),
+    visibleAnimeCount(id, viewer?.id ?? null),
   ]);
 
   const isOwnProfile = viewer?.id === id;
@@ -101,14 +103,14 @@ export default async function UserProfilePage({ params }: Params) {
                 viewerLoggedIn={Boolean(viewer)}
                 initialFollowing={isFollowedByMe}
               />
-              <ProfileTabs userId={id} isOwnProfile={isOwnProfile} titleCount={titleCount} />
+              <ProfileTabs userId={id} isOwnProfile={isOwnProfile} titleCount={titleCount} animeCount={animeCount} />
             </Box>
           }
           aside={
             isOwnProfile ? (
               <SideCard title="Só você vê">
                 <Typography sx={{ fontSize: 14 }}>
-                  Sua Minha Lista não aparece para outras pessoas. Publicar sobre uma obra não publica sua lista completa.
+                  A aba Animes mostra no seu perfil as obras que você acompanha; dá para ocultá-la em Configurações. Sua organização pessoal (datas, adiados) continua só sua.
                 </Typography>
                 <Box>
                   <LinkButton href="/minha-lista" sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}>
@@ -123,7 +125,7 @@ export default async function UserProfilePage({ params }: Params) {
               <>
                 <SideCard title="Perfil público">
                   <Typography sx={{ fontSize: 14 }}>
-                    Você vê apenas publicações e discussões públicas desta pessoa. A lista de animes acompanhados não é pública por padrão.
+                    Você vê as publicações e discussões públicas desta pessoa e, se ela não ocultou, os animes que ela acompanha na aba Animes.
                   </Typography>
                   <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
                     Seguir perfil mostra suas conversas em Seguindo. Para organizar lançamentos, use Acompanhar no detalhe do anime.
