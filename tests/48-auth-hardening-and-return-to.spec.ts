@@ -1,4 +1,4 @@
-import { test, expect, type APIRequestContext } from "@playwright/test";
+﻿import { test, expect, type APIRequestContext } from "@playwright/test";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
 
 // F3: destino pós-login (D-04), cadastro sem enumeração de contas (GAP-S-03)
@@ -79,7 +79,8 @@ test.describe("Destino pós-login", () => {
     await page.getByLabel("E-mail").fill(`seguro-${Date.now()}@test.local`);
     await page.getByLabel(/^Senha/).fill("password123");
     await page.getByRole("button", { name: "Criar conta" }).click();
-    await expect(page).toHaveURL(/localhost:\d+\/$/);
+    // Criar conta gasta scrypt + sessão: com a máquina carregada passa dos 5 s padrão.
+    await expect(page).toHaveURL(/localhost:\d+\/$/, { timeout: 20_000 });
   });
 
   test("os pontos de entrada 'Entrar' levam o caminho atual em ?next=", async ({ page }) => {

@@ -44,8 +44,14 @@ export default async function AnimeDetailPage({
   if (!anime || anime.userId !== user.id) notFound();
 
   const genres = anime.genres ? anime.genres.split(",").filter(Boolean) : [];
-  // Sites de streaming do catálogo (AniList) — a produção é criada/atualizada sob demanda.
-  const catalogStreamingLinks = parseStreamingLinks((await ensureProduction(anime.anilistId).catch(() => null))?.streamingLinksJson ?? null);
+  // Sites de streaming do catálogo (AniList) — a produção é criada/atualizada sob demanda, mas a página NUNCA
+  // espera a AniList além de 1,5 s (ela pode estar lenta ou limitando requisições): sem resposta a tempo, mostra
+  // o que já está no banco e a atualização termina em segundo plano.
+  const refresh = ensureProduction(anime.anilistId).catch(() => null);
+  const catalogProduction = await Promise.race([refresh, new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500))]);
+  const catalogStreamingLinks = parseStreamingLinks(
+    (catalogProduction ?? (await prisma.production.findUnique({ where: { anilistId: anime.anilistId }, select: { streamingLinksJson: true } })))?.streamingLinksJson ?? null
+  );
   const cast: AniListCharacterEntry[] = anime.castJson ? JSON.parse(anime.castJson) : [];
   const rawRecommendations: AniListRecommendation[] = anime.recommendationsJson
     ? JSON.parse(anime.recommendationsJson)
