@@ -12,6 +12,8 @@ export type MyListEntry = {
   titlePortuguese: string | null;
   coverImage: string | null;
   isFavorite: boolean;
+  /** Em modo "Espera": segue na lista e no perfil, mas fora do calendário "Minha Lista" e dos alertas. */
+  waiting: boolean;
   createdAt: string;
   /** Próximo episódio com horário confirmado (atalho de `state.kind === "scheduled"`). */
   nextAiringAt: string | null;
@@ -39,6 +41,7 @@ export async function loadMyListEntries(userId: string, now: Date = new Date()):
       titlePortuguese: true,
       coverImage: true,
       isFavorite: true,
+      waiting: true,
       createdAt: true,
       status: true,
     },
@@ -75,6 +78,7 @@ export async function loadMyListEntries(userId: string, now: Date = new Date()):
       titlePortuguese: a.titlePortuguese,
       coverImage: a.coverImage,
       isFavorite: a.isFavorite,
+      waiting: a.waiting,
       createdAt: a.createdAt.toISOString(),
       nextAiringAt: next ? next.airingAt.toISOString() : null,
       nextEpisode: next ? next.episode : null,

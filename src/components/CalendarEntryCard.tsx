@@ -58,11 +58,15 @@ export function CalendarEntryCard({
   item,
   onFollowed,
   onPendingChange,
+  onUnfollowed,
+  onResumed,
   highlightMine = false,
 }: {
   item: CalendarItem;
   onFollowed?: (anilistId: number, animeId: string) => void;
   onPendingChange?: (anilistId: number, fromEpisode: number | null) => void;
+  onUnfollowed?: (anilistId: number) => void;
+  onResumed?: (anilistId: number) => void;
   /** Destaca (vermelho) o que é da minha lista — só faz sentido em "Todos"; em "Minha Lista" tudo seria vermelho. */
   highlightMine?: boolean;
 }) {
@@ -218,7 +222,7 @@ export function CalendarEntryCard({
           },
         }}
       >
-        <CalendarEntryPreview item={item} onFollowed={onFollowed} onPendingChange={onPendingChange} />
+        <CalendarEntryPreview item={item} onFollowed={onFollowed} onPendingChange={onPendingChange} onUnfollowed={onUnfollowed} onResumed={onResumed} />
       </Popover>
     </>
   );

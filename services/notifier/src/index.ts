@@ -37,8 +37,8 @@ async function tick(): Promise<void> {
       // Uma consulta só pra achar todo mundo que tem algum desses animes na
       // lista, em vez de perguntar usuário por usuário.
       const matchingAnime = await prisma.anime.findMany({
-        // Escopo: toda obra acompanhada, de quem não desligou os avisos de lançamento.
-        where: { anilistId: { in: anilistIds }, userId: { not: null }, user: { is: { notifyReleases: true } } },
+        // Escopo: toda obra acompanhada (fora do modo "Espera"), de quem não desligou os avisos de lançamento.
+        where: { anilistId: { in: anilistIds }, userId: { not: null }, waiting: false, user: { is: { notifyReleases: true } } },
         select: { userId: true, anilistId: true },
       });
 

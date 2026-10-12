@@ -3,14 +3,14 @@
 import { useMemo, useState, type ReactNode } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
-import CheckIcon from "@mui/icons-material/Check";
 import EventBusyIcon from "@mui/icons-material/EventBusy";
 import EventNoteIcon from "@mui/icons-material/EventNote";
 import EventRepeatIcon from "@mui/icons-material/EventRepeat";
+import PauseCircleIcon from "@mui/icons-material/PauseCircle";
+import PauseCircleOutlineIcon from "@mui/icons-material/PauseCircleOutlined";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { Box, Button, Link as MuiLink, Typography } from "@mui/material";
 import { ELEVATED_BUTTON_SX, lineLang, PrimaryTitle, useTitleLines } from "@/components/ExploreCard";
-import { ConfirmDialog } from "@/components/StatePanels";
 import { SearchField, SelectField } from "@/components/FilterField";
 import { ListRow } from "@/components/ListRow";
 import type { MyListEntry } from "@/lib/myList";
@@ -34,27 +34,25 @@ const STATUS_LABELS: Record<string, string> = {
 const pad = (n: number) => String(n).padStart(2, "0");
 
 /**
- * "✓ Acompanhando" (Figma `8:2608`): é o botão de acompanhar da linha — clicar nele deixa de
- * acompanhar (com a confirmação do Figma `8:5802`) e a obra sai da lista na hora.
+ * "Espera": põe a obra em modo de espera (ou a retoma). Em espera ela continua na lista e no perfil, mas é uma obra que
+ * a pessoa não vai acompanhar no lançamento (já viu alguns episódios) — sai do calendário "Minha Lista", dos alertas
+ * e de "Para assistir". Sem confirmação: é reversível com o mesmo botão.
  */
-function FollowingButton({ entry }: { entry: MyListEntry }) {
+function WaitButton({ entry }: { entry: MyListEntry }) {
   const router = useRouter();
-  const titleLines = useTitleLines(entry);
-  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function remove() {
+  async function toggle() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/anime/${entry.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/anime/${entry.id}/waiting`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ waiting: !entry.waiting }) });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "Não foi possível remover. Tente novamente.");
+        setError(data.error ?? "Não foi possível salvar. Tente novamente.");
         return;
       }
-      setOpen(false);
       router.refresh();
     } catch {
       setError("Não foi possível falar com o servidor. Tente novamente.");
@@ -64,28 +62,24 @@ function FollowingButton({ entry }: { entry: MyListEntry }) {
   }
 
   return (
-    <>
-      <Button onClick={() => setOpen(true)} startIcon={<CheckIcon />} aria-pressed="true" data-testid="following-toggle" sx={ELEVATED_BUTTON_SX}>
-        Acompanhando
+    <Box sx={{ display: "inline-flex", flexDirection: "column", gap: 0.5, alignItems: "flex-start" }}>
+      <Button
+        onClick={() => void toggle()}
+        disabled={busy}
+        startIcon={entry.waiting ? <PauseCircleIcon /> : <PauseCircleOutlineIcon />}
+        aria-pressed={entry.waiting}
+        title={entry.waiting ? "Em espera — clique para voltar a acompanhar" : "Pôr em espera: não vou acompanhar no lançamento"}
+        data-testid="wait-toggle"
+        sx={{ ...ELEVATED_BUTTON_SX, ...(entry.waiting ? { color: "warning.main", border: 1, borderColor: "warning.main" } : {}) }}
+      >
+        Espera
       </Button>
-      <ConfirmDialog
-        open={open}
-        title="Remover acompanhamento?"
-        subject={
-          <>
-            <strong>{titleLines.primary}</strong> está na sua lista pessoal.
-          </>
-        }
-        effect="As próximas datas e notificações deste anime deixam sua agenda. A produção permanece no catálogo e você pode acompanhar novamente. Nenhum episódio assistido será alterado, pois não há tracking de consumo."
-        confirmLabel="Remover acompanhamento"
-        busyLabel="Removendo…"
-        busy={busy}
-        error={error}
-        onCancel={() => setOpen(false)}
-        onConfirm={() => void remove()}
-        confirmTestId="following-remove-confirm"
-      />
-    </>
+      {error && (
+        <Typography role="alert" sx={{ fontSize: 12, color: "primary.main" }}>
+          {error}
+        </Typography>
+      )}
+    </Box>
   );
 }
 
@@ -171,13 +165,17 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
 
   const now = new Date();
 
+  // Em espera: continuam na lista, mas fora da agenda por data (têm painel próprio).
+  const active = useMemo(() => visible.filter((e) => !e.waiting), [visible]);
+  const waitingEntries = visible.filter((e) => e.waiting);
+
   const sections = useMemo(() => {
-    const timed = visible.flatMap((entry) => (entry.state.kind === "scheduled" ? [{ at: entry.state.at, entry, episode: entry.state.episode }] : []));
+    const timed = active.flatMap((entry) => (entry.state.kind === "scheduled" ? [{ at: entry.state.at, entry, episode: entry.state.episode }] : []));
     return sectionsByRelease(timed, new Date(), timeZone);
-  }, [visible, timeZone]);
-  const noTime = visible.filter((e) => e.state.kind === "dated");
-  const delayed = visible.filter((e) => e.state.kind === "delayed" || e.state.kind === "postponed");
-  const unknown = visible.filter((e) => e.state.kind === "undated" || e.state.kind === "none");
+  }, [active, timeZone]);
+  const noTime = active.filter((e) => e.state.kind === "dated");
+  const delayed = active.filter((e) => e.state.kind === "delayed" || e.state.kind === "postponed");
+  const unknown = active.filter((e) => e.state.kind === "undated" || e.state.kind === "none");
 
   function renderRow(item: { at: string; entry: MyListEntry; episode: number }) {
     return (
@@ -190,7 +188,7 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
         episodeLabel={`Episódio ${pad(item.episode)}`}
         cover={item.entry.coverImage}
         titles={item.entry}
-        trailing={<FollowingButton entry={item.entry} />}
+        trailing={<WaitButton entry={item.entry} />}
       />
     );
   }
@@ -264,7 +262,7 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
                   time={stateText(entry)}
                   cover={entry.coverImage}
                   titles={entry}
-                  trailing={<FollowingButton entry={entry} />}
+                  trailing={<WaitButton entry={entry} />}
                 />
               )
             )}
@@ -324,7 +322,7 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
                       )}
                       <Chip icon={<EventNoteIcon />}>Horário não definido</Chip>
                       <Box>
-                        <FollowingButton entry={entry} />
+                        <WaitButton entry={entry} />
                       </Box>
                     </Box>
                   ))}
@@ -372,7 +370,33 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
                     <EntryTitle entry={entry} />
                     <Chip icon={<EventBusyIcon />}>{entry.state.kind === "none" ? "Sem lançamentos previstos" : "Data não definida"}</Chip>
                     <Box>
-                      <FollowingButton entry={entry} />
+                      <WaitButton entry={entry} />
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
+
+          {waitingEntries.length > 0 && (
+            <Box component="section" aria-labelledby="my-waiting" data-testid="group-waiting" sx={panelSx}>
+              <Typography id="my-waiting" component="h2" sx={{ fontSize: 18, textTransform: "uppercase" }}>
+                Em espera
+              </Typography>
+              <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
+                Não acompanho no lançamento. Continuam na lista e no perfil; fora do calendário e dos alertas.
+              </Typography>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(3, minmax(0, 1fr))" }, gap: 3 }}>
+                {waitingEntries.map((entry) => (
+                  <Box
+                    key={entry.id}
+                    data-testid={`anime-card-${entry.id}`}
+                    sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2.5, borderRadius: "12px", border: 1, borderColor: "divider", minWidth: 0 }}
+                  >
+                    <EntryTitle entry={entry} />
+                    <Chip icon={<PauseCircleOutlineIcon />}>Em espera</Chip>
+                    <Box>
+                      <WaitButton entry={entry} />
                     </Box>
                   </Box>
                 ))}

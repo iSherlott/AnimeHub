@@ -81,9 +81,8 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     await expect(mineLink).not.toContainText("NOVO EPISÓDIO"); // o calendário só avisa "Ao vivo"
   });
 
-  test("hover num item da lista mostra sinopse e botão de favoritar, que funciona de verdade", async ({
+  test("hover num item da lista mostra sinopse e o botão Acompanhando, que tira a obra da lista ao clicar", async ({
     page,
-    request,
   }) => {
     await page.goto("/calendar");
     await page.getByRole("button", { name: "Todos", exact: true }).click();
@@ -92,18 +91,25 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     await mineLink.hover();
 
     await expect(page.getByText("Sinopse original em inglês do calendário.")).toBeVisible();
-    const favoriteButton = page.getByRole("button", { name: "Adicionar aos favoritos" });
-    await expect(favoriteButton).toBeVisible();
-    await favoriteButton.click();
-    await expect(page.getByRole("button", { name: "Remover dos favoritos" })).toBeVisible();
-
-    const res = await request.get("/api/anime");
-    const data = await res.json();
-    const anime = data.animes.find((a: { id: string }) => a.id === ownedAnimeId);
-    expect(anime.isFavorite).toBe(true);
+    // Já nasce ligado (a obra está na lista); a remoção real é simulada para não apagar a fixture dos outros testes.
+    let deleted: string | null = null;
+    await page.route(`**/api/anime/${ownedAnimeId}`, async (route) => {
+      if (route.request().method() !== "DELETE") return route.continue();
+      deleted = route.request().url();
+      await route.fulfill({ status: 200, json: { ok: true } });
+    });
+    const toggle = page.getByTestId("preview-follow-toggle");
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await expect(toggle).toContainText("Acompanhando");
+    await toggle.click();
+    expect(deleted).toContain(`/api/anime/${ownedAnimeId}`);
+    // Saiu da lista: o preview passa a oferecer "+ Acompanhar".
+    await expect(page.getByRole("button", { name: "+ Acompanhar" })).toBeVisible();
+    await expect(page.getByTestId("preview-follow-toggle")).toHaveCount(0);
   });
 
-  test("hover num item de fora da lista mostra 'Ver detalhes' e '+ Acompanhar' em vez de favoritar", async ({
+  test("hover num item de fora da lista mostra 'Ver detalhes' e '+ Acompanhar' em vez de Acompanhando", async ({
     page,
   }) => {
     await page.goto("/calendar");
@@ -118,7 +124,7 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     await expect(seeMore).toHaveAttribute("href", `/obra/${OTHER_ANILIST_ID}`);
     // "+ Acompanhar" adiciona direto à lista (botão), em vez de abrir a página da obra.
     await expect(page.getByRole("button", { name: "+ Acompanhar" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Adicionar aos favoritos" })).toHaveCount(0);
+    await expect(page.getByTestId("preview-follow-toggle")).toHaveCount(0);
   });
 
   test("descrição do preview acompanha o idioma escolhido, igual à página de detalhe", async ({

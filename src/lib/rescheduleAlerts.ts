@@ -27,7 +27,7 @@ export async function recordRescheduleAlerts(
 ): Promise<number> {
   try {
     const followers = await prisma.anime.findMany({
-      where: { anilistId, userId: { not: null }, user: { is: { notifyReleases: true } } },
+      where: { anilistId, userId: { not: null }, waiting: false, user: { is: { notifyReleases: true } } },
       select: { userId: true },
     });
     let count = 0;

@@ -243,8 +243,8 @@ test.describe("Epic 18 — 5ª rodada — sessão invalidada em uso", () => {
     // de "logado" agora é a própria presença do botão do menu.
     const accountMenuButton = page.getByRole("button", { name: "Menu da conta" });
     await expect(accountMenuButton).toBeVisible();
-    const following = page.getByTestId("following-toggle").first();
-    await expect(following).toBeVisible();
+    const waitToggle = page.getByTestId("wait-toggle").first();
+    await expect(waitToggle).toBeVisible();
 
     // Invalida a sessão "por trás", como expiração/logout em outra aba —
     // a aba atual não sabe disso ainda.
@@ -254,8 +254,7 @@ test.describe("Epic 18 — 5ª rodada — sessão invalidada em uso", () => {
 
     // Qualquer ação autenticada que agora volte 401 precisa refletir no
     // cabeçalho na hora, sem precisar de uma navegação nova.
-    await following.click();
-    await page.getByTestId("following-remove-confirm").click();
+    await waitToggle.click();
     await expect(page.locator("header").getByRole("link", { name: "Entrar" })).toBeVisible();
     await expect(accountMenuButton).toBeHidden();
   });

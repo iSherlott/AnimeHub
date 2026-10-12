@@ -118,16 +118,70 @@ test.describe.serial("Adiar, Para assistir e Animes no perfil", () => {
     await expect(page.getByTestId("tab-pending")).toContainText("Para assistir · 0");
   });
 
-  test("Minha Lista: o botão Acompanhando substitui o favorito e remove da lista depois de confirmar", async ({ page }) => {
+  test("Minha Lista: o botão Espera tira a obra da agenda sem sair da lista, e retoma", async ({ page, request }) => {
     await page.goto("/minha-lista");
-    // Pode estar numa seção sem horário; o botão de acompanhar é o mesmo em toda linha.
-    const toggle = page.getByTestId("following-toggle").first();
-    await expect(toggle).toBeVisible();
+    const card = page.getByTestId(`anime-card-${animeId}`);
+    const toggle = card.getByTestId("wait-toggle");
+    await expect(toggle).toHaveText("Espera");
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
     await expect(page.getByRole("button", { name: "Adicionar aos favoritos" })).toHaveCount(0);
+
     await toggle.click();
-    await expect(page.getByRole("dialog", { name: "Remover acompanhamento?" })).toBeVisible();
-    await page.getByRole("button", { name: "Cancelar" }).click();
-    await expect(page.getByRole("dialog")).toBeHidden();
+    // Em espera: segue na lista, mas num painel próprio, fora da agenda por data.
+    const waiting = page.getByTestId("group-waiting");
+    await expect(waiting.getByTestId(`anime-card-${animeId}`)).toBeVisible();
+    await expect(waiting.getByTestId("wait-toggle").first()).toHaveAttribute("aria-pressed", "true");
+    expect((await prisma.anime.findUniqueOrThrow({ where: { id: animeId } })).waiting).toBe(true);
+    // A API do calendário não a trata mais como "da minha lista".
+    const { results } = await (await request.get("/api/calendar")).json();
+    const item = results.find((r: { anilistId: number }) => r.anilistId === P);
+    if (item) expect(item).toMatchObject({ inMyList: false, waiting: true });
+
+    await waiting.getByTestId(`anime-card-${animeId}`).getByTestId("wait-toggle").click();
+    await expect(page.getByTestId("group-waiting")).toHaveCount(0);
+    expect((await prisma.anime.findUniqueOrThrow({ where: { id: animeId } })).waiting).toBe(false);
+  });
+
+  test("entrar em espera limpa a pendência de 'Para assistir' e a API valida o pedido", async ({ request }) => {
+    await prisma.pendingEpisode.create({ data: { userId, anilistId: P, fromEpisode: 2 } });
+    expect((await request.patch(`/api/anime/${animeId}/waiting`, { data: { waiting: "sim" } })).status()).toBe(400);
+    expect((await request.patch("/api/anime/nao-existe/waiting", { data: { waiting: true } })).status()).toBe(404);
+    expect((await request.patch(`/api/anime/${animeId}/waiting`, { data: { waiting: true } })).status()).toBe(200);
+    expect(await prisma.pendingEpisode.count({ where: { userId, anilistId: P } })).toBe(0);
+    expect((await request.patch(`/api/anime/${animeId}/waiting`, { data: { waiting: false } })).status()).toBe(200);
+  });
+
+  test("calendário: obra em espera não é 'da lista'; o botão Em espera volta a acompanhar", async ({ page }) => {
+    const at = new Date(Date.now() - 2 * 60 * 1000);
+    await page.route("**/api/calendar**", (route) =>
+      route.fulfill({
+        json: {
+          results: [
+            {
+              key: `${P}-3`, anilistId: P, animeId, episode: 3, airingAt: at.toISOString(),
+              titleRomaji: "Pendente Round72", titleEnglish: null, titleNative: null, titlePortuguese: null,
+              coverImage: "https://s4.anilist.co/file/anilistcdn/spec72/p.png", episodeImage: null, genres: [],
+              inMyList: false, waiting: true, description: "Sinopse.", descriptionPortuguese: null, isFavorite: false, delayed: false,
+            },
+          ],
+          offGrid: [],
+        },
+      })
+    );
+    let resumed = false;
+    await page.route(`**/api/anime/${animeId}/waiting`, async (route) => {
+      resumed = route.request().postDataJSON().waiting === false;
+      await route.fulfill({ status: 200, json: { anime: { id: animeId, waiting: false } } });
+    });
+    await page.goto("/calendar");
+    await page.getByRole("button", { name: "Todos", exact: true }).click();
+    await page.getByRole("link", { name: /Pendente Round72/ }).hover();
+    const toggle = page.getByTestId("preview-follow-toggle");
+    await expect(toggle).toHaveAttribute("data-state", "waiting");
+    await expect(toggle).toContainText("Em espera");
+    await toggle.click();
+    await expect(page.getByTestId("preview-follow-toggle")).toHaveAttribute("data-state", "following");
+    expect(resumed).toBe(true);
   });
 
   test("perfil: aba Animes lista as obras, busca por título e filtra por gênero", async ({ page }) => {

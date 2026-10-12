@@ -39,6 +39,9 @@ export default async function MinhaListaPage() {
 
   const [entries, pendingCount] = await Promise.all([loadMyListEntries(user.id), prisma.pendingEpisode.count({ where: { userId: user.id } })]);
 
+  const waitingCount = entries.filter((e) => e.waiting).length;
+  const following = entries.length - waitingCount;
+
   if (entries.length === 0) {
     return (
       <Box sx={{ minHeight: "100vh", bgcolor: "background.default", display: "flex", flexDirection: "column" }}>
@@ -67,7 +70,8 @@ export default async function MinhaListaPage() {
           title="MINHA LISTA"
           subtitle={
             <span data-testid="list-count">
-              {entries.length} {entries.length === 1 ? "anime acompanhando" : "animes acompanhando"}. A próxima data é o que importa.
+              {following} {following === 1 ? "anime acompanhando" : "animes acompanhando"}
+              {waitingCount > 0 ? ` · ${waitingCount} em espera` : ""}. A próxima data é o que importa.
             </span>
           }
           action={

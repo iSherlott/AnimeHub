@@ -75,8 +75,8 @@ test.describe("Episódios: data, sinopse e imagem", () => {
   });
 });
 
-test.describe("Preview do calendário: favorito sobre a imagem", () => {
-  test("o botão de favorito fica no canto superior direito, sobreposto à imagem", async ({ page }) => {
+test.describe("Preview do calendário: Acompanhando sobre a imagem", () => {
+  test("o botão Acompanhando fica no canto superior direito, sobreposto à imagem", async ({ page }) => {
     await page.route(/s4\.anilist\.co/, (route) => route.fulfill({ status: 200, contentType: "image/png", body: PNG }));
     const at = new Date();
     at.setHours(15, 0, 0, 0);
@@ -99,7 +99,7 @@ test.describe("Preview do calendário: favorito sobre a imagem", () => {
     await page.getByRole("link", { name: /Favorito Round68/ }).hover();
     const preview = page.getByTestId("calendar-preview");
     await expect(preview).toBeVisible();
-    const star = preview.getByRole("button", { name: "Adicionar aos favoritos" });
+    const star = preview.getByTestId("preview-follow-toggle");
     await expect(star).toBeVisible();
 
     const box = (await preview.boundingBox())!;

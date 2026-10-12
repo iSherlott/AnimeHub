@@ -7,6 +7,7 @@ import NextLink from "next/link";
 import ArrowOutwardIcon from "@mui/icons-material/ArrowOutward";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import CheckIcon from "@mui/icons-material/Check";
+import PauseCircleIcon from "@mui/icons-material/PauseCircle";
 import EventRepeatIcon from "@mui/icons-material/EventRepeat";
 import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
 import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
@@ -14,7 +15,6 @@ import { useSynopsis } from "@/components/SynopsisText";
 import { Box, Button, Typography } from "@mui/material";
 import type { CalendarItem } from "@/lib/calendarItem";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
-import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { loginHref } from "@/lib/safeRedirect";
 import { formatTimeInZone, weekdayName } from "@/lib/timeZone";
@@ -32,10 +32,16 @@ export function CalendarEntryPreview({
   item,
   onFollowed,
   onPendingChange,
+  onUnfollowed,
+  onResumed,
 }: {
   item: CalendarItem;
   onFollowed?: (anilistId: number, animeId: string) => void;
   onPendingChange?: (anilistId: number, fromEpisode: number | null) => void;
+  /** Deixou de acompanhar pelo botão do preview (a obra sai da lista). */
+  onUnfollowed?: (anilistId: number) => void;
+  /** Voltou a acompanhar uma obra que estava em "Espera". */
+  onResumed?: (anilistId: number) => void;
 }) {
   const { preference } = useTitlePreference();
   const user = useCurrentUser();
@@ -49,7 +55,9 @@ export function CalendarEntryPreview({
   const [followedId, setFollowedId] = useState<string | null>(null);
   const [following, setFollowing] = useState(false);
   const [followError, setFollowError] = useState<string | null>(null);
-  const animeId = item.inMyList && item.animeId ? item.animeId : followedId;
+  // Da lista (acompanhando), em espera ou fora dela — "Acompanhando" é o botão que vale para as duas primeiras.
+  const waiting = Boolean(item.waiting) && !followedId;
+  const animeId = (item.inMyList || waiting) && item.animeId ? item.animeId : followedId;
   const isInternal = Boolean(animeId);
   const detailHref = animeId ? `/anime/${animeId}` : `/obra/${item.anilistId}`;
 
@@ -74,6 +82,34 @@ export function CalendarEntryPreview({
       }
     } finally {
       setFollowing(false);
+    }
+  }
+
+  // "Acompanhando": ligado para tudo o que está na lista; clicar tira da lista (ou retoma, se estava em espera).
+  const [toggleBusy, setToggleBusy] = useState(false);
+  const [toggleError, setToggleError] = useState<string | null>(null);
+  async function toggleFollowing() {
+    if (!animeId) return;
+    setToggleBusy(true);
+    setToggleError(null);
+    try {
+      const res = waiting
+        ? await fetch(`/api/anime/${animeId}/waiting`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ waiting: false }) })
+        : await fetch(`/api/anime/${animeId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setToggleError(data.error ?? "Não foi possível salvar. Tente novamente.");
+        return;
+      }
+      if (waiting) onResumed?.(item.anilistId);
+      else {
+        setFollowedId(null);
+        onUnfollowed?.(item.anilistId);
+      }
+    } catch {
+      setToggleError("Não foi possível falar com o servidor. Tente novamente.");
+    } finally {
+      setToggleBusy(false);
     }
   }
 
@@ -112,14 +148,27 @@ export function CalendarEntryPreview({
   }, [item.airingAt]);
   const weekday = weekdayName(airing, timeZone);
   const secondary = [item.titleNative && title !== item.titleNative ? item.titleNative : null, title !== item.titleRomaji ? item.titleRomaji : null, item.titleEnglish && title !== item.titleEnglish ? item.titleEnglish : null].filter(Boolean)[0];
-  // Favorito: sobreposto ao canto superior direito da imagem; sem imagem, volta para a fileira de ações.
-  const favorite = isInternal ? (
-    <FavoriteToggle
-      animeId={animeId!}
-      initialFavorite={followedId ? false : item.isFavorite}
+  // Acompanhar/Em espera: sobreposto ao canto superior direito da imagem; sem imagem, volta para a fileira de ações.
+  const followToggle = isInternal ? (
+    <Button
       size="small"
-      sx={hasImage ? { position: "absolute", top: 8, right: 8, bgcolor: "rgba(8,8,11,0.72)", "&:hover": { bgcolor: "rgba(8,8,11,0.88)" } } : undefined}
-    />
+      onClick={() => void toggleFollowing()}
+      disabled={toggleBusy}
+      startIcon={waiting ? <PauseCircleIcon /> : <CheckIcon />}
+      aria-pressed
+      aria-label={waiting ? "Em espera: voltar a acompanhar" : "Acompanhando: deixar de acompanhar"}
+      title={waiting ? "Em espera — clique para voltar a acompanhar" : "Acompanhando — clique para deixar de acompanhar"}
+      data-testid="preview-follow-toggle"
+      data-state={waiting ? "waiting" : "following"}
+      sx={{
+        ...buttonSx,
+        color: waiting ? "warning.main" : "primary.main",
+        borderColor: waiting ? "warning.main" : "primary.main",
+        ...(hasImage ? { position: "absolute", top: 8, right: 8, zIndex: 1, bgcolor: "rgba(8,8,11,0.78)", "&:hover": { bgcolor: "rgba(8,8,11,0.92)" } } : {}),
+      }}
+    >
+      {waiting ? "Em espera" : "Acompanhando"}
+    </Button>
   ) : null;
   const tertiary = item.titleEnglish && item.titleEnglish !== title && item.titleEnglish !== secondary ? item.titleEnglish : null;
 
@@ -135,11 +184,7 @@ export function CalendarEntryPreview({
             style={{ objectFit: "cover", objectPosition: "center 25%" }}
             onError={() => setCoverBroken(true)}
           />
-          {favorite && (
-            <Box data-testid="preview-favorite-overlay" sx={{ position: "absolute", top: 0, right: 0, zIndex: 1, width: 48, height: 48 }}>
-              {favorite}
-            </Box>
-          )}
+          {hasImage && followToggle}
           {live && (
             <Box sx={{ position: "absolute", top: 12, left: 12, display: "inline-flex", alignItems: "center", gap: 1, px: 1, py: 0.75, borderRadius: "6px", bgcolor: "#2c111b", color: "primary.main" }}>
               <FiberManualRecordIcon sx={{ fontSize: 12 }} />
@@ -217,7 +262,7 @@ export function CalendarEntryPreview({
                   Acompanhando
                 </Button>
               )}
-              {!hasImage && favorite}
+              {!hasImage && followToggle}
               {(released || item.pendingFrom != null) && (
                 <Button
                   size="small"
@@ -244,6 +289,11 @@ export function CalendarEntryPreview({
         {item.pendingFrom != null && (
           <Typography data-testid="preview-pending-note" sx={{ fontSize: 11, color: "warning.main" }}>
             Adiado · parei no EP{String(item.pendingFrom).padStart(2, "0")} — está em “Para assistir”.
+          </Typography>
+        )}
+        {toggleError && (
+          <Typography role="alert" sx={{ fontSize: 11, color: "primary.main" }}>
+            {toggleError}
           </Typography>
         )}
         {pendingError && (
