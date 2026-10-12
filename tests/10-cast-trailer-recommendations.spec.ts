@@ -8,7 +8,8 @@ import { TEST_USER_EMAIL } from "./test-auth";
 // de detalhe já espera ler (trailerId/trailerSite/castJson/recommendationsJson).
 const ANIME_ANILIST_ID = 900100;
 const RECOMMENDED_INTERNAL_ANILIST_ID = 900101; // já está na lista do usuário
-const RECOMMENDED_EXTERNAL_ANILIST_ID = 900102; // não está na lista do usuário
+const RECOMMENDED_EXTERNAL_ANILIST_ID = 900102; // não está na lista do usuário, mas está na plataforma
+const RECOMMENDED_HIDDEN_ANILIST_ID = 900103; // só cache da AniList: não aparece
 
 test.describe("Trailer, elenco e recomendações (Epic 14)", () => {
   let animeId: string;
@@ -61,12 +62,30 @@ test.describe("Trailer, elenco e recomendações (Epic 14)", () => {
             titleEnglish: null,
             coverImage: null,
           },
+          {
+            anilistId: RECOMMENDED_HIDDEN_ANILIST_ID,
+            titleRomaji: "Anime Recomendado Escondido",
+            titleEnglish: null,
+            coverImage: null,
+          },
         ]),
       },
       update: {},
     });
     animeId = anime.id;
     void internalRecommended;
+
+    // Só se recomenda o que está na plataforma: o externo foi trazido pelo admin; o escondido é só cache da AniList.
+    await prisma.catalogEntry.upsert({
+      where: { anilistId: RECOMMENDED_EXTERNAL_ANILIST_ID },
+      create: { anilistId: RECOMMENDED_EXTERNAL_ANILIST_ID, titleRomaji: "Anime Recomendado Externo", source: "anilist", onPlatform: true },
+      update: { onPlatform: true },
+    });
+    await prisma.catalogEntry.upsert({
+      where: { anilistId: RECOMMENDED_HIDDEN_ANILIST_ID },
+      create: { anilistId: RECOMMENDED_HIDDEN_ANILIST_ID, titleRomaji: "Anime Recomendado Escondido", source: "anilist", onPlatform: false },
+      update: { onPlatform: false },
+    });
 
     await prisma.$disconnect();
   });
@@ -95,5 +114,7 @@ test.describe("Trailer, elenco e recomendações (Epic 14)", () => {
     // Fora da lista agora abre a página pública da obra (D-03), não a AniList.
     await expect(externalLink).toHaveAttribute("href", `/obra/${RECOMMENDED_EXTERNAL_ANILIST_ID}`);
     await expect(externalLink).not.toHaveAttribute("target", "_blank");
+    // O que é só cache da AniList (fora da plataforma) não é recomendado.
+    await expect(page.getByRole("link", { name: "Anime Recomendado Escondido" })).toHaveCount(0);
   });
 });

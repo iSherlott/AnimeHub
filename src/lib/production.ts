@@ -8,6 +8,8 @@ import {
   type AniListMedia,
 } from "@/lib/anilist";
 import { resolveFranchise, type MediaRelations } from "@/lib/franchise";
+import { hasBlockedGenre } from "@/lib/contentPolicy";
+import { isOnPlatform } from "@/lib/platform";
 
 /**
  * Produção canônica compartilhada (D-03/D-18) — base do detalhe público.
@@ -81,6 +83,7 @@ async function fromAniList(anilistId: number): Promise<ProductionWithFranchise |
     throw error;
   });
   if (!media) return null;
+  if (hasBlockedGenre(media.genres)) return null; // conteúdo adulto não entra na plataforma
 
   const resolution = await resolveFranchise(anilistId, fetchRelations);
   const franchise = await upsertFranchise(
@@ -106,7 +109,7 @@ async function fromLocalCache(anilistId: number): Promise<ProductionWithFranchis
     prisma.airingScheduleEntry.findFirst({ where: { anilistId }, orderBy: { airingAt: "desc" } }),
   ]);
   const src = catalog ?? airing;
-  if (!src) return null;
+  if (!src || hasBlockedGenre(src.genres)) return null;
   const franchise = await upsertFranchise(anilistId, src.titleRomaji);
   return prisma.production.upsert({
     where: { anilistId },
@@ -138,6 +141,8 @@ export async function ensureProduction(anilistId: number): Promise<ProductionWit
   });
   // `streamingLinksJson === null` = produção criada antes de existir "Onde assistir": consulta uma vez.
   if (existing && existing.streamingLinksJson !== null && Date.now() - existing.fetchedAt.getTime() < REFRESH_AFTER_MS) return existing;
+  // Obra que não faz parte da plataforma não ganha produção só por alguém abrir o endereço dela.
+  if (!existing && !(await isOnPlatform(anilistId))) return null;
 
   try {
     const fresh = await fromAniList(anilistId);

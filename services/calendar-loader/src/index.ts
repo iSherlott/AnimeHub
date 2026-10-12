@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { getAiringScheduleWindow } from "../../../src/lib/anilist";
 import { cacheAiringSchedule, pruneMissingFutureEntries } from "../../../src/lib/airingCache";
 import { recordIngestionRun } from "../../../src/lib/ingestionRuns";
+import { filterToScope, loadAiringScope, type AiringScope } from "../../../src/lib/airingScope";
 import {
   buildWeekSlices,
   evaluateLoaderHealth,
@@ -43,15 +44,28 @@ async function refreshOnce(): Promise<void> {
   let truncated = 0;
   let failures = 0;
   let pruned = 0;
+  let skippedOutOfScope = 0;
   let lastFailure: string | null = null;
 
+  // Só obras das temporadas ativas (hoje: a atual) entram no calendário; sem catálogo, o ciclo falha sem gravar nada.
+  let scope: AiringScope | null = null;
+  try {
+    scope = await loadAiringScope();
+  } catch (error) {
+    failures += 1;
+    lastFailure = error instanceof Error ? error.message : String(error);
+    console.error("[calendar-loader] escopo indisponível:", error);
+  }
+
   let first = true;
-  for (const slice of buildWeekSlices(now, WEEKS_BACK, WEEKS_AHEAD)) {
+  for (const slice of scope ? buildWeekSlices(now, WEEKS_BACK, WEEKS_AHEAD) : []) {
     if (!first) await new Promise((r) => setTimeout(r, SLICE_PAUSE_MS));
     first = false;
     try {
       // `greater` é exclusivo na AniList: -1 inclui o instante exato do início da fatia.
-      const { entries, truncated: wasTruncated } = await getAiringScheduleWindow(slice.from - 1, slice.to);
+      const { entries: fetched, truncated: wasTruncated } = await getAiringScheduleWindow(slice.from - 1, slice.to);
+      const { kept: entries, skipped } = filterToScope(fetched, scope!.allowedIds);
+      skippedOutOfScope += skipped;
       await cacheAiringSchedule(entries);
       if (!wasTruncated) {
         pruned += await pruneMissingFutureEntries(entries, new Date(slice.from * 1000), new Date(slice.to * 1000));
@@ -94,7 +108,7 @@ async function refreshOnce(): Promise<void> {
           : null,
   });
   console.log(
-    `[calendar-loader] refreshed ${total} entries (${upcoming} futuras, ${truncated} fatias truncadas, ${pruned} removidas por sumirem da fonte, ${failures} falhas)`
+    `[calendar-loader] refreshed ${total} entries (${upcoming} futuras, ${truncated} fatias truncadas, ${pruned} removidas por sumirem da fonte, ${skippedOutOfScope} fora da temporada ignoradas, ${failures} falhas)`
   );
 }
 

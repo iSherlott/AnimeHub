@@ -200,6 +200,10 @@ model Anime {
   /// a ordem do hero rotativo sem ser afetado por outros updatedAt (título,
   /// refresh, etc.) que não têm nada a ver com favoritar.
   favoritedAt     DateTime?
+  /// "Espera": a obra segue na lista (e no perfil), mas a pessoa não vai acompanhá-la no lançamento — fica fora do
+  /// calendário "Minha Lista", dos alertas e de "Para assistir".
+  waiting         Boolean   @default(false)
+  waitingSince    DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -212,6 +216,7 @@ model Anime {
   @@index([seriesKey])
   @@index([userId])
   @@index([userId, isFavorite])
+  @@index([userId, waiting])
 }
 
 /**
@@ -458,10 +463,15 @@ model CatalogEntry {
   /// Kitsu — alimenta a fileira "Em alta" do Descobrir.
   popularityRank    Int?
   source            String
+  /// Faz parte da plataforma (visível no Descobrir, na busca, no calendário e nas recomendações). Obras que a AniList
+  /// devolve só para cache entram com `false` e só viram `true` quando o admin as traz (upload do HTML do AniDB ou
+  /// painel de importação da AniList). Padrão `true` para as demais origens (importação revisada).
+  onPlatform        Boolean   @default(true)
   fetchedAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
   @@index([season, seasonYear])
+  @@index([onPlatform])
 }
 
 /**

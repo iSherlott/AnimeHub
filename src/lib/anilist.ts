@@ -1,7 +1,9 @@
 import { normalizeGenres } from "@/lib/genreTaxonomy";
+import { hasBlockedGenre } from "@/lib/contentPolicy";
 import type { MediaRelations } from "@/lib/franchise";
 
-const ANILIST_ENDPOINT = "https://graphql.anilist.co";
+// Sobrescrevível só para os testes E2E (servidor falso); em produção é sempre a AniList.
+const ANILIST_ENDPOINT = process.env.ANILIST_API_URL ?? "https://graphql.anilist.co";
 
 export type AniListFuzzyDate = {
   year: number | null;
@@ -178,7 +180,8 @@ export async function searchAnime(search: string): Promise<AniListMedia[]> {
     query,
     { search }
   );
-  return data.Page.media.map(normalizeMedia);
+  // Conteúdo adulto (hentai) nunca entra na plataforma.
+  return data.Page.media.map(normalizeMedia).filter((m) => !hasBlockedGenre(m.genres));
 }
 
 /** Formatos de uma temporada completa (TV, curtas, filmes, web, OVA e especiais); só MUSIC fica de fora. */
@@ -190,7 +193,8 @@ const SEASON_MAX_PAGES = 8;
 /** Todas as obras da temporada, da mais popular para a menos (a AniList pagina em até 50). */
 export async function getSeasonalAnime(
   season: "WINTER" | "SPRING" | "SUMMER" | "FALL",
-  seasonYear: number
+  seasonYear: number,
+  { includeBlocked = false }: { includeBlocked?: boolean } = {}
 ): Promise<AniListMedia[]> {
   const query = `
     query ($season: MediaSeason, $seasonYear: Int, $page: Int) {
@@ -219,7 +223,8 @@ export async function getSeasonalAnime(
     all.push(...data.Page.media.map(normalizeMedia));
     if (!data.Page.pageInfo?.hasNextPage) break;
   }
-  return all;
+  // `includeBlocked` existe só para a importação reconhecer (e descartar) o que é hentai; nunca vai para o catálogo.
+  return includeBlocked ? all : all.filter((m) => !hasBlockedGenre(m.genres));
 }
 
 export type AniListTrailer = { id: string; site: string } | null;
@@ -403,21 +408,7 @@ export async function getAiringSchedule(
  */
 const CALENDAR_FORMATS = new Set(["TV", "TV_SHORT", "ONA", "OVA", "SPECIAL", "MOVIE"]);
 
-export async function getAiringScheduleWindow(
-  airingAtGreater: number,
-  airingAtLesser: number
-): Promise<{ entries: AniListAiringEntry[]; truncated: boolean }> {
-  const query = `
-    query ($page: Int, $greater: Int, $lesser: Int) {
-      Page(page: $page, perPage: 50) {
-        pageInfo {
-          hasNextPage
-        }
-        airingSchedules(
-          airingAt_greater: $greater
-          airingAt_lesser: $lesser
-          sort: TIME
-        ) {
+const AIRING_MEDIA_SELECTION = `
           episode
           airingAt
           media {
@@ -435,7 +426,55 @@ export async function getAiringScheduleWindow(
             format
             description(asHtml: false)
           }
+`;
+
+type RawAiringSchedule = {
+  episode: number;
+  airingAt: number;
+  media: {
+    id: number;
+    title: { romaji: string; english: string | null; native: string | null };
+    coverImage: { extraLarge: string | null };
+    bannerImage: string | null;
+    genres: string[];
+    format: string | null;
+    description: string | null;
+  };
+};
+
+/** Mesma regra de formato e normalização para as duas buscas de calendário (janela e por obra). */
+function airingEntryFromRaw(entry: RawAiringSchedule): AniListAiringEntry | null {
+  // Só MUSIC (clipes) fica de fora. ONA (animes de streaming/web, ex.: Magical Explorer), OVA, especiais
+  // e filmes também têm data de lançamento e precisam aparecer no calendário, como no Explorar.
+  if (entry.media.format && !CALENDAR_FORMATS.has(entry.media.format)) return null;
+  if (hasBlockedGenre(entry.media.genres)) return null;
+  return {
+    anilistId: entry.media.id,
+    episode: entry.episode,
+    airingAt: entry.airingAt,
+    title: entry.media.title,
+    coverImage: entry.media.coverImage.extraLarge,
+    bannerImage: entry.media.bannerImage,
+    genres: normalizeGenres(entry.media.genres),
+    description: entry.media.description,
+  };
+}
+
+export async function getAiringScheduleWindow(
+  airingAtGreater: number,
+  airingAtLesser: number
+): Promise<{ entries: AniListAiringEntry[]; truncated: boolean }> {
+  const query = `
+    query ($page: Int, $greater: Int, $lesser: Int) {
+      Page(page: $page, perPage: 50) {
+        pageInfo {
+          hasNextPage
         }
+        airingSchedules(
+          airingAt_greater: $greater
+          airingAt_lesser: $lesser
+          sort: TIME
+        ) {${AIRING_MEDIA_SELECTION}}
       }
     }
   `;
@@ -449,44 +488,51 @@ export async function getAiringScheduleWindow(
     const data = await anilistRequest<{
       Page: {
         pageInfo: { hasNextPage: boolean };
-        airingSchedules: Array<{
-          episode: number;
-          airingAt: number;
-          media: {
-            id: number;
-            title: { romaji: string; english: string | null; native: string | null };
-            coverImage: { extraLarge: string | null };
-            bannerImage: string | null;
-            genres: string[];
-            format: string | null;
-            description: string | null;
-          };
-        }>;
+        airingSchedules: RawAiringSchedule[];
       };
     }>(query, { page, greater: airingAtGreater, lesser: airingAtLesser });
 
-    for (const entry of data.Page.airingSchedules) {
-      // Só MUSIC (clipes) fica de fora. ONA (animes de streaming/web, ex.: Magical Explorer), OVA, especiais
-      // e filmes também têm data de lançamento e precisam aparecer no calendário, como no Explorar.
-      if (entry.media.format && !CALENDAR_FORMATS.has(entry.media.format)) {
-        continue;
-      }
-      entries.push({
-        anilistId: entry.media.id,
-        episode: entry.episode,
-        airingAt: entry.airingAt,
-        title: entry.media.title,
-        coverImage: entry.media.coverImage.extraLarge,
-        bannerImage: entry.media.bannerImage,
-        genres: normalizeGenres(entry.media.genres),
-        description: entry.media.description,
-      });
+    for (const raw of data.Page.airingSchedules) {
+      const entry = airingEntryFromRaw(raw);
+      if (entry) entries.push(entry);
     }
 
     hasNextPage = data.Page.pageInfo.hasNextPage;
     page += 1;
   }
 
+  return { entries, truncated: hasNextPage };
+}
+
+/**
+ * Todos os episódios (passados e futuros) das obras informadas — a carga manual de uma temporada anterior,
+ * cujos episódios já saíram da janela de ±8 semanas do loader. `truncated` avisa se a paginação bateu no teto.
+ */
+export async function getAiringScheduleForMedia(mediaIds: number[]): Promise<{ entries: AniListAiringEntry[]; truncated: boolean }> {
+  if (mediaIds.length === 0) return { entries: [], truncated: false };
+  const query = `
+    query ($page: Int, $ids: [Int]) {
+      Page(page: $page, perPage: 50) {
+        pageInfo {
+          hasNextPage
+        }
+        airingSchedules(mediaId_in: $ids, sort: TIME) {${AIRING_MEDIA_SELECTION}}
+      }
+    }
+  `;
+  const entries: AniListAiringEntry[] = [];
+  let page = 1;
+  let hasNextPage = true;
+  const MAX_PAGES = 30;
+  while (hasNextPage && page <= MAX_PAGES) {
+    const data = await anilistRequest<{ Page: { pageInfo: { hasNextPage: boolean }; airingSchedules: RawAiringSchedule[] } }>(query, { page, ids: mediaIds });
+    for (const raw of data.Page.airingSchedules) {
+      const entry = airingEntryFromRaw(raw);
+      if (entry) entries.push(entry);
+    }
+    hasNextPage = data.Page.pageInfo.hasNextPage;
+    page += 1;
+  }
   return { entries, truncated: hasNextPage };
 }
 

@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { TEST_USER_EMAIL } from "./test-auth";
+import { currentSeason } from "../src/lib/anilist";
 
 // anilistId fora da faixa usada por outras fixtures.
 const RECOMMENDED_SOURCE_ANILIST_ID = 910000;
@@ -47,6 +48,14 @@ const SUGGESTION_NAME = "Epic26 Sidebar Suggestion User";
       },
     });
 
+    // A recomendação só aparece se a obra foi carregada: aqui, no catálogo da temporada atual (carregada sempre).
+    const { season, seasonYear } = currentSeason();
+    await prisma.catalogEntry.upsert({
+      where: { anilistId: RECOMMENDED_TARGET_ANILIST_ID },
+      create: { anilistId: RECOMMENDED_TARGET_ANILIST_ID, titleRomaji: "Anime Round Epic26 Sidebar Recommended", genres: "", season, seasonYear, source: "anilist" },
+      update: { season, seasonYear },
+    });
+
     // "Pessoas pra seguir" — usuário dedicado, nunca seguido pelo
     // TEST_USER, criado por último (a rota ordena por criação mais
     // recente) pra aparecer de forma previsível no topo da lista.
@@ -81,6 +90,7 @@ const SUGGESTION_NAME = "Epic26 Sidebar Suggestion User";
   test.afterAll(async () => {
     const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
     await prisma.comment.deleteMany({ where: { anilistId: THREAD_ANILIST_ID } });
+    await prisma.catalogEntry.deleteMany({ where: { anilistId: RECOMMENDED_TARGET_ANILIST_ID } });
     await prisma.user.deleteMany({ where: { email: SUGGESTION_EMAIL } });
     await prisma.$disconnect();
   });
@@ -114,7 +124,7 @@ test.describe("Epic 26 — GET /api/feed/recommendations", () => {
     expect(res.status()).toBe(200);
     const data = await res.json();
     expect(data.animes).toContainEqual(
-      expect.objectContaining({ anilistId: RECOMMENDED_TARGET_ANILIST_ID, isInternal: false })
+      expect.objectContaining({ anilistId: RECOMMENDED_TARGET_ANILIST_ID, isInternal: true, href: `/obra/${RECOMMENDED_TARGET_ANILIST_ID}` })
     );
   });
 });

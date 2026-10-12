@@ -85,7 +85,7 @@ export async function runNewsSync(options: { trigger: "schedule" | "manual"; adm
     const { season, seasonYear } = currentSeason(now);
     await deps.ensureSeason(season, seasonYear);
     const seasonEntries = await prisma.catalogEntry.findMany({
-      where: { season, seasonYear, anilistId: { not: null } },
+      where: { season, seasonYear, anilistId: { not: null }, onPlatform: true },
       orderBy: [{ popularityRank: "asc" }, { titleRomaji: "asc" }],
       take: NEWS_MAX_ANIMES,
       select: { anilistId: true, malId: true, titleRomaji: true, titleEnglish: true, titleNative: true },

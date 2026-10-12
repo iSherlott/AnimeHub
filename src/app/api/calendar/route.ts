@@ -7,6 +7,8 @@ import { animeSeasonOf, civilDay, classifyOffGrid, DELAY_GRACE_MS, isDelayed, ty
 import { getCurrentUser } from "@/lib/auth/session";
 import { startOfWeekMonday } from "@/lib/calendarWeek";
 import { pendingFromMap } from "@/lib/pending";
+import { hiddenAnilistIds } from "@/lib/platform";
+import { hasBlockedGenre } from "@/lib/contentPolicy";
 
 const MAX_WEEK_OFFSET = 8;
 
@@ -67,7 +69,10 @@ export async function GET(request: NextRequest) {
 
   const cached = await getCachedAiringSchedule(new Date(from * 1000), new Date(to * 1000));
   // Horário efetivo: overrides manuais ativos (Admin → Overrides) valem sobre o da fonte.
-  const entries = applyAiringOverrides(cached, await loadActiveOverrides(Array.from(new Set(cached.map((e) => e.anilistId)))));
+  // Só obras da plataforma (trazidas pelo admin) e nunca conteúdo adulto — o cache pode guardar mais do que isso.
+  const hiddenIds = await hiddenAnilistIds();
+  const visible = cached.filter((e) => !hiddenIds.has(e.anilistId) && !hasBlockedGenre(e.genres));
+  const entries = applyAiringOverrides(visible, await loadActiveOverrides(Array.from(new Set(visible.map((e) => e.anilistId)))));
 
   // Navegar o calendário nunca exige login — sem sessão, ninguém aparece
   // marcado como "já está na minha lista" (não existe "minha lista" pra
@@ -81,13 +86,13 @@ export async function GET(request: NextRequest) {
     user && weekAnilistIds.length
       ? await prisma.anime.findMany({
           where: { userId: user.id, anilistId: { in: weekAnilistIds } },
-          select: { id: true, anilistId: true, titlePortuguese: true, description: true, descriptionPortuguese: true, isFavorite: true },
+          select: { id: true, anilistId: true, titlePortuguese: true, description: true, descriptionPortuguese: true, isFavorite: true, waiting: true },
         })
       : [];
   const myAnimeByAnilistId = new Map(
     myAnime.map((a) => [
       a.anilistId,
-      { id: a.id, titlePortuguese: a.titlePortuguese, description: a.description, descriptionPortuguese: a.descriptionPortuguese, isFavorite: a.isFavorite },
+      { id: a.id, titlePortuguese: a.titlePortuguese, description: a.description, descriptionPortuguese: a.descriptionPortuguese, isFavorite: a.isFavorite, waiting: a.waiting },
     ])
   );
 
@@ -139,6 +144,7 @@ export async function GET(request: NextRequest) {
   const offGridRows = await prisma.catalogEntry.findMany({
     where: {
       anilistId: { not: null, notIn: weekAnilistIds },
+      onPlatform: true,
       status: { in: ["NOT_YET_RELEASED", "HIATUS"] },
       OR: [
         { season, seasonYear: year },

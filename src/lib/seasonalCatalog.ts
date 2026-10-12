@@ -1,9 +1,8 @@
-import { currentSeason, getSeasonalAnime } from "@/lib/anilist";
+import { currentSeason, getSeasonalAnime, type AniListMedia } from "@/lib/anilist";
 import { cacheAniListMedia, getCachedSeason } from "@/lib/catalogCache";
-import { discoverItemFromAniList, discoverItemFromCatalogEntry } from "@/lib/discoverItem";
+import { discoverItemFromCatalogEntry } from "@/lib/discoverItem";
 import type { DiscoverItem } from "@/lib/discoverItem";
-
-const OTHER_SOURCES_DISABLED = process.env.DISABLE_OTHER_SOURCES === "true";
+import { hasBlockedGenre } from "@/lib/contentPolicy";
 
 export type Season = "WINTER" | "SPRING" | "SUMMER" | "FALL";
 
@@ -16,10 +15,9 @@ export type SeasonalResult = {
 };
 
 /**
- * Lançamentos da temporada (Descobrir). Extraído de
- * src/app/api/anilist/season/route.ts pra ser chamado tanto pelo serviço
- * cache-updater (caminho principal) quanto pelo fallback local da rota.
- * `season`/`seasonYear` opcionais — sem eles, usa a temporada atual.
+ * Lançamentos da temporada (Descobrir): SÓ o que a plataforma já tem (catálogo trazido pelo admin). Nada é buscado
+ * na AniList ao abrir uma temporada — carga de obras é ação do admin (upload do HTML do AniDB; painel de
+ * importação da AniList). `season`/`seasonYear` opcionais — sem eles, usa a temporada atual.
  */
 export async function getSeasonalCatalog(
   seasonInput?: Season | null,
@@ -28,28 +26,16 @@ export async function getSeasonalCatalog(
   const fallback = currentSeason();
   const season = seasonInput || fallback.season;
   const seasonYear = seasonYearInput ?? fallback.seasonYear;
+  const cached = await getCachedSeason(season, seasonYear);
+  return { season, seasonYear, results: cached.map(discoverItemFromCatalogEntry), cached: true };
+}
 
-  if (OTHER_SOURCES_DISABLED) {
-    const cached = await getCachedSeason(season, seasonYear);
-    return {
-      season,
-      seasonYear,
-      results: cached.map(discoverItemFromCatalogEntry),
-      cached: true,
-      disabled: true,
-    };
-  }
-
-  try {
-    const media = await getSeasonalAnime(season, seasonYear);
-    await cacheAniListMedia(media, { rankFromOrder: true });
-    return { season, seasonYear, results: media.map(discoverItemFromAniList), cached: false };
-  } catch (error) {
-    console.error(error);
-    const cached = await getCachedSeason(season, seasonYear);
-    if (cached.length > 0) {
-      return { season, seasonYear, results: cached.map(discoverItemFromCatalogEntry), cached: true };
-    }
-    throw error;
-  }
+/**
+ * Traz a temporada da AniList para o CACHE (fora da plataforma) e devolve o que é hentai, para a importação
+ * reconhecer e descartar esses registros. Usado pela análise do HTML do AniDB, para casar os registros com a AniList.
+ */
+export async function prefetchSeasonCache(season: Season, seasonYear: number): Promise<{ blocked: AniListMedia[] }> {
+  const media = await getSeasonalAnime(season, seasonYear, { includeBlocked: true });
+  await cacheAniListMedia(media, { rankFromOrder: false });
+  return { blocked: media.filter((m) => hasBlockedGenre(m.genres)) };
 }

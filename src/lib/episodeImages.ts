@@ -45,7 +45,7 @@ export type SyncDeps = {
   sleep: (ms: number) => Promise<void>;
 };
 
-const defaultDeps: SyncDeps = {
+export const defaultDeps: SyncDeps = {
   getKitsuId: getKitsuIdByAnilistId,
   getThumbnail: getKitsuEpisodeThumbnail,
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
@@ -59,6 +59,76 @@ export type SyncOutcome =
 export async function isRunning(now: Date = new Date()): Promise<boolean> {
   const running = await prisma.episodeImageRun.findFirst({ where: { status: "RUNNING", startedAt: { gt: new Date(now.getTime() - RUN_LOCK_MS) } } });
   return running !== null;
+}
+
+/**
+ * Busca (Kitsu) e grava a imagem de cada episódio dos alvos. Usada pela execução diária (janela de dias) e pela
+ * carga manual de uma temporada (todos os episódios da temporada). Respeita o orçamento de tempo.
+ */
+export async function syncTargets(
+  targets: Target[],
+  options: { now: Date; deps: SyncDeps; started: number }
+): Promise<{ animes: number; found: number; failed: number; note: string }> {
+  const { now, deps, started } = options;
+  let animes = 0;
+  let found = 0;
+  let failed = 0;
+  let note = "";
+  const targetIds = targets.map((t) => t.anilistId);
+  const [sources, catalogHints, animeHints] = await Promise.all([
+    prisma.episodeImageSource.findMany({ where: { anilistId: { in: targetIds } } }),
+    prisma.catalogEntry.findMany({ where: { anilistId: { in: targetIds }, kitsuId: { not: null } }, select: { anilistId: true, kitsuId: true } }),
+    prisma.anime.findMany({ where: { anilistId: { in: targetIds }, kitsuId: { not: null } }, select: { anilistId: true, kitsuId: true }, distinct: ["anilistId"] }),
+  ]);
+  const sourceById = new Map(sources.map((s) => [s.anilistId, s]));
+  const hintById = new Map<number, number>();
+  for (const h of [...catalogHints, ...animeHints]) if (h.anilistId !== null && h.kitsuId !== null) hintById.set(h.anilistId, h.kitsuId);
+
+  for (const target of targets) {
+    if (Date.now() - started > TIME_BUDGET_MS) {
+      note = " Tempo máximo atingido; o restante fica para a próxima execução.";
+      break;
+    }
+    animes += 1;
+    let kitsuId: number | null | undefined;
+    const cached = sourceById.get(target.anilistId);
+    if (cached && (cached.kitsuId !== null || now.getTime() - cached.checkedAt.getTime() < MAPPING_RECHECK_MS)) {
+      kitsuId = cached.kitsuId;
+    } else if (hintById.has(target.anilistId)) {
+      kitsuId = hintById.get(target.anilistId) ?? null;
+      await prisma.episodeImageSource.upsert({ where: { anilistId: target.anilistId }, create: { anilistId: target.anilistId, kitsuId }, update: { kitsuId, checkedAt: now } });
+    } else {
+      try {
+        kitsuId = await deps.getKitsuId(target.anilistId);
+        await deps.sleep(REQUEST_GAP_MS);
+        await prisma.episodeImageSource.upsert({ where: { anilistId: target.anilistId }, create: { anilistId: target.anilistId, kitsuId }, update: { kitsuId, checkedAt: now } });
+      } catch (error) {
+        console.error(`[episode-images] mapeamento falhou para ${target.anilistId}:`, error);
+        failed += 1;
+        continue;
+      }
+    }
+    if (kitsuId === null || kitsuId === undefined) continue; // sem mapeamento: usa a capa do anime
+
+    for (const episode of target.episodes) {
+      try {
+        const thumbnail = await deps.getThumbnail(kitsuId, episode);
+        await deps.sleep(REQUEST_GAP_MS);
+        if (thumbnail) {
+          await prisma.episodeImage.upsert({
+            where: { anilistId_episode: { anilistId: target.anilistId, episode } },
+            create: { anilistId: target.anilistId, episode, thumbnail },
+            update: { thumbnail, fetchedAt: now },
+          });
+          found += 1;
+        }
+      } catch (error) {
+        console.error(`[episode-images] ${target.anilistId} EP${episode} falhou:`, error);
+        failed += 1;
+      }
+    }
+  }
+  return { animes, found, failed, note };
 }
 
 export async function runEpisodeImageSync(options: { trigger: "schedule" | "manual"; adminName?: string | null; now?: Date; deps?: SyncDeps }): Promise<SyncOutcome> {
@@ -87,60 +157,11 @@ export async function runEpisodeImageSync(options: { trigger: "schedule" | "manu
     const existing = ids.length ? await prisma.episodeImage.findMany({ where: { anilistId: { in: ids } }, select: { anilistId: true, episode: true } }) : [];
     const targets = planTargets(entries, new Set(existing.map((e) => `${e.anilistId}-${e.episode}`))).slice(0, MAX_ANIMES);
 
-    const targetIds = targets.map((t) => t.anilistId);
-    const [sources, catalogHints, animeHints] = await Promise.all([
-      prisma.episodeImageSource.findMany({ where: { anilistId: { in: targetIds } } }),
-      prisma.catalogEntry.findMany({ where: { anilistId: { in: targetIds }, kitsuId: { not: null } }, select: { anilistId: true, kitsuId: true } }),
-      prisma.anime.findMany({ where: { anilistId: { in: targetIds }, kitsuId: { not: null } }, select: { anilistId: true, kitsuId: true }, distinct: ["anilistId"] }),
-    ]);
-    const sourceById = new Map(sources.map((s) => [s.anilistId, s]));
-    const hintById = new Map<number, number>();
-    for (const h of [...catalogHints, ...animeHints]) if (h.anilistId !== null && h.kitsuId !== null) hintById.set(h.anilistId, h.kitsuId);
-
-    for (const target of targets) {
-      if (Date.now() - started > TIME_BUDGET_MS) {
-        note = " Tempo máximo atingido; o restante fica para a próxima execução.";
-        break;
-      }
-      animes += 1;
-      let kitsuId: number | null | undefined;
-      const cached = sourceById.get(target.anilistId);
-      if (cached && (cached.kitsuId !== null || now.getTime() - cached.checkedAt.getTime() < MAPPING_RECHECK_MS)) {
-        kitsuId = cached.kitsuId;
-      } else if (hintById.has(target.anilistId)) {
-        kitsuId = hintById.get(target.anilistId) ?? null;
-        await prisma.episodeImageSource.upsert({ where: { anilistId: target.anilistId }, create: { anilistId: target.anilistId, kitsuId }, update: { kitsuId, checkedAt: now } });
-      } else {
-        try {
-          kitsuId = await deps.getKitsuId(target.anilistId);
-          await deps.sleep(REQUEST_GAP_MS);
-          await prisma.episodeImageSource.upsert({ where: { anilistId: target.anilistId }, create: { anilistId: target.anilistId, kitsuId }, update: { kitsuId, checkedAt: now } });
-        } catch (error) {
-          console.error(`[episode-images] mapeamento falhou para ${target.anilistId}:`, error);
-          failed += 1;
-          continue;
-        }
-      }
-      if (kitsuId === null || kitsuId === undefined) continue; // sem mapeamento: usa a capa do anime
-
-      for (const episode of target.episodes) {
-        try {
-          const thumbnail = await deps.getThumbnail(kitsuId, episode);
-          await deps.sleep(REQUEST_GAP_MS);
-          if (thumbnail) {
-            await prisma.episodeImage.upsert({
-              where: { anilistId_episode: { anilistId: target.anilistId, episode } },
-              create: { anilistId: target.anilistId, episode, thumbnail },
-              update: { thumbnail, fetchedAt: now },
-            });
-            found += 1;
-          }
-        } catch (error) {
-          console.error(`[episode-images] ${target.anilistId} EP${episode} falhou:`, error);
-          failed += 1;
-        }
-      }
-    }
+    const synced = await syncTargets(targets, { now, deps, started });
+    animes = synced.animes;
+    found = synced.found;
+    failed = synced.failed;
+    note = synced.note;
 
     const result: "OK" | "PARTIAL" | "ERROR" = failed === 0 ? "OK" : found > 0 ? "PARTIAL" : "ERROR";
     const message = `${animes} ${animes === 1 ? "anime" : "animes"} verificados · ${found} ${found === 1 ? "imagem nova" : "imagens novas"} · ${failed} ${failed === 1 ? "falha" : "falhas"}.${note}`;

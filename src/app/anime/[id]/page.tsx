@@ -19,6 +19,7 @@ import { CastSection } from "@/components/CastSection";
 import { TrailerEmbed } from "@/components/TrailerEmbed";
 import { WatchLinks } from "@/components/WatchLinks";
 import { ensureProduction, parseStreamingLinks } from "@/lib/production";
+import { platformAnilistIds } from "@/lib/platform";
 import { Row } from "@/components/Row";
 import { RecommendationCard, type RecommendationData } from "@/components/RecommendationCard";
 import { CoverImage, BackdropImage } from "@/components/CoverImage";
@@ -53,9 +54,9 @@ export default async function AnimeDetailPage({
     (catalogProduction ?? (await prisma.production.findUnique({ where: { anilistId: anime.anilistId }, select: { streamingLinksJson: true } })))?.streamingLinksJson ?? null
   );
   const cast: AniListCharacterEntry[] = anime.castJson ? JSON.parse(anime.castJson) : [];
-  const rawRecommendations: AniListRecommendation[] = anime.recommendationsJson
-    ? JSON.parse(anime.recommendationsJson)
-    : [];
+  // Só recomenda o que está na plataforma (trazido pelo admin): o resto não tem página para abrir.
+  const platformIds = await platformAnilistIds();
+  const rawRecommendations: AniListRecommendation[] = (anime.recommendationsJson ? (JSON.parse(anime.recommendationsJson) as AniListRecommendation[]) : []).filter((r) => platformIds.has(r.anilistId));
 
   const [seasons, episodesResult, furiganaHtml, ownedRecommendedAnime, scheduleRows, imageRows] = await Promise.all([
     anime.seriesKey

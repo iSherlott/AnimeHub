@@ -65,6 +65,7 @@ export default async function AdminCatalogPage({ searchParams }: { searchParams:
   // lista paginada: nenhuma obra do catálogo fica de fora por causa de um limite.
   const producedIds = (await prisma.production.findMany({ select: { anilistId: true } })).map((p) => p.anilistId);
   const entryWhere: Prisma.CatalogEntryWhereInput = {
+    onPlatform: true,
     ...(fonte ? { source: fonte } : {}),
     ...(status ? { status } : {}),
     AND: [

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { fuzzyDateToISO, type AniListMedia } from "@/lib/anilist";
 import type { CatalogEntry } from "@prisma/client";
+import { hasBlockedGenre, NOT_BLOCKED_GENRE } from "@/lib/contentPolicy";
 
 function anilistToCatalogData(media: AniListMedia, popularityRank: number | null) {
   const startDateISO = fuzzyDateToISO(media.startDate);
@@ -33,7 +34,10 @@ function anilistToCatalogData(media: AniListMedia, popularityRank: number | null
 }
 
 /**
- * Salva/atualiza no cache sempre que a AniList responde com sucesso.
+ * Salva/atualiza no cache sempre que a AniList responde com sucesso. Isto é CACHE: a obra entra com
+ * `onPlatform: false` (não aparece em lugar nenhum) e só vira parte da plataforma quando o admin a traz
+ * (importação do HTML do AniDB ou painel de importação da AniList). Obra já na plataforma continua nela.
+ * Conteúdo adulto (hentai) nunca é guardado.
  * `rankFromOrder`: quando a lista já vem ordenada por popularidade (ex.: a
  * busca de temporada usa sort: POPULARITY_DESC), guarda a posição pra
  * alimentar a fileira "Em alta" — não faz sentido pra resultado de busca
@@ -45,11 +49,12 @@ export async function cacheAniListMedia(
 ): Promise<void> {
   // Em lotes de 10: uma temporada inteira (~300 obras) não pode virar 300 idas e voltas em fila.
   const BATCH = 10;
-  for (let start = 0; start < list.length; start += BATCH) {
+  const allowed = list.filter((media) => !hasBlockedGenre(media.genres));
+  for (let start = 0; start < allowed.length; start += BATCH) {
     await Promise.all(
-      list.slice(start, start + BATCH).map((media, offset) => {
+      allowed.slice(start, start + BATCH).map((media, offset) => {
         const data = anilistToCatalogData(media, rankFromOrder ? start + offset + 1 : null);
-        return prisma.catalogEntry.upsert({ where: { anilistId: media.id }, create: data, update: data });
+        return prisma.catalogEntry.upsert({ where: { anilistId: media.id }, create: { ...data, onPlatform: false }, update: data });
       })
     );
   }
@@ -75,38 +80,19 @@ function dedupeByTitle(entries: CatalogEntry[]): CatalogEntry[] {
 }
 
 /**
- * Prioriza o que bate exatamente com a temporada pedida; completa o resto
- * com o restante do cache (mais recente primeiro) até 24 itens, pra fileira
- * de "Descobrir" nunca ficar vazia/curta enquanto a AniList tá fora do ar.
+ * Obras da plataforma na temporada pedida — só elas, sem completar com outras temporadas: o que não foi trazido
+ * pelo admin (upload do AniDB ou painel da AniList) não aparece.
  */
 export async function getCachedSeason(
   season: string,
   seasonYear: number
 ): Promise<CatalogEntry[]> {
-  const TOTAL = 24;
-
-  const exact = dedupeByTitle(
+  return dedupeByTitle(
     await prisma.catalogEntry.findMany({
-      where: { season, seasonYear },
+      where: { season, seasonYear, onPlatform: true, ...NOT_BLOCKED_GENRE },
       orderBy: { titleRomaji: "asc" },
     })
   );
-  if (exact.length >= TOTAL) return exact;
-
-  const exactTitles = new Set(exact.map((e) => e.titleRomaji.trim().toLowerCase()));
-  const remaining = TOTAL - exact.length;
-  const rest = await prisma.catalogEntry.findMany({
-    where: { NOT: { id: { in: exact.map((e) => e.id) } } },
-    orderBy: { updatedAt: "desc" },
-    // margem: parte do que vier pode ser duplicata (de si mesmo ou de um
-    // título já coberto por `exact`) e ser descartada pelo filtro abaixo.
-    take: remaining * 2,
-  });
-  const filler = dedupeByTitle(rest).filter(
-    (e) => !exactTitles.has(e.titleRomaji.trim().toLowerCase())
-  );
-
-  return [...exact, ...filler.slice(0, remaining)];
 }
 
 export async function searchCachedCatalog(
@@ -115,7 +101,7 @@ export async function searchCachedCatalog(
   const needle = search.trim().toLowerCase();
   if (!needle) return [];
 
-  const all = await prisma.catalogEntry.findMany();
+  const all = await prisma.catalogEntry.findMany({ where: { onPlatform: true, ...NOT_BLOCKED_GENRE } });
   const matches = all.filter((entry) =>
     [entry.titleRomaji, entry.titleEnglish, entry.titleNative]
       .filter(Boolean)
@@ -130,7 +116,7 @@ export async function getTopRanked(limit = 10): Promise<CatalogEntry[]> {
   // de popularidade) em vez de arriscar um "take" curto demais que
   // sub-preenche a fileira se metade colidir na deduplicação.
   const ranked = await prisma.catalogEntry.findMany({
-    where: { popularityRank: { not: null } },
+    where: { popularityRank: { not: null }, onPlatform: true, ...NOT_BLOCKED_GENRE },
     orderBy: { popularityRank: "asc" },
   });
   return dedupeByTitle(ranked).slice(0, limit);

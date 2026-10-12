@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getQuizState } from "@/lib/quiz";
 import { ensureProduction, parseRelations, parseStreamingLinks } from "@/lib/production";
+import { platformAnilistIds } from "@/lib/platform";
 import { Header } from "@/components/Header";
 import { AnimeTitle } from "@/components/AnimeTitle";
 import { AppLink } from "@/components/AppLink";
@@ -117,7 +118,9 @@ export default async function ProductionPage({ params }: Params) {
   const genres = production.genres ? production.genres.split(",").filter(Boolean) : [];
   const related = parseRelations(production.relationsJson);
   const knownSiblingIds = new Set(siblings.map((s) => s.anilistId));
-  const unknownRelated = related.filter((r) => !knownSiblingIds.has(r.id));
+  // Relacionadas só aparecem se estiverem na plataforma (as demais não têm página para abrir).
+  const platformIds = await platformAnilistIds();
+  const unknownRelated = related.filter((r) => !knownSiblingIds.has(r.id) && platformIds.has(r.id));
 
   // Próximo horário de cada obra da franquia (uma consulta só).
   const siblingAirings = siblings.length

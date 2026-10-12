@@ -65,6 +65,8 @@ function makeAnime(overrides: Partial<Anime> = {}): Anime {
     seriesKey: null,
     seasonNumber: 1,
     isFavorite: false,
+    waiting: false,
+    waitingSince: null,
     favoritedAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),

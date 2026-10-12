@@ -7,6 +7,7 @@ import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined
 import { Box, Link as MuiLink, Typography } from "@mui/material";
 import { SectionTitle } from "@/components/PageShell";
 import { HashtagRow } from "@/components/HashtagRow";
+import type { RecommendationItem } from "@/lib/animeRecommendations";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { currentSeasonTag } from "@/lib/season";
 import { resolveTitleTextLenient, useTitlePreference } from "@/lib/titlePreference";
@@ -34,6 +35,7 @@ export function CommunitySidebar() {
   const season = useMemo(() => currentSeasonTag(new Date(), timeZone), [timeZone]);
   const [groups, setGroups] = useState<Record<string, Tag[]>>({});
   const [next, setNext] = useState<CalendarItem | null>(null);
+  const [recommended, setRecommended] = useState<RecommendationItem[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,6 +63,21 @@ export function CommunitySidebar() {
           .filter((i) => i.inMyList && new Date(i.airingAt).getTime() >= now)
           .sort((a, b) => a.airingAt.localeCompare(b.airingAt));
         setNext(mine[0] ?? null);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [loggedIn]);
+
+  // "Animes recomendados": só obras já carregadas (temporada atual + as que o admin carregou), ver animeRecommendations.ts.
+  useEffect(() => {
+    if (!loggedIn) return;
+    let cancelled = false;
+    fetch("/api/feed/recommendations")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) setRecommended(data?.animes ?? []);
       })
       .catch(() => undefined);
     return () => {
@@ -145,9 +162,47 @@ export function CommunitySidebar() {
         </Box>
       )}
 
+      {loggedIn && recommended !== null && (
+        <Box component="section" aria-label="Animes recomendados" data-testid="sidebar-recommendations" sx={{ borderTop: 1, borderColor: "divider", pt: 3, display: "flex", flexDirection: "column", gap: 2 }}>
+          <SectionTitle>Animes recomendados</SectionTitle>
+          {recommended.length === 0 ? (
+            <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+              Acompanhe mais animes da temporada para ver recomendações aqui.
+            </Typography>
+          ) : (
+            <Box component="ul" sx={{ display: "flex", flexDirection: "column", gap: 2, p: 0, m: 0, listStyle: "none" }}>
+              {recommended.map((rec) => (
+                <SidebarRecommendation key={rec.anilistId} rec={rec} />
+              ))}
+            </Box>
+          )}
+        </Box>
+      )}
+
       <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
         Seus interesses não são publicados. Acompanhar uma obra não cria uma publicação.
       </Typography>
     </>
+  );
+}
+
+function SidebarRecommendation({ rec }: { rec: RecommendationItem }) {
+  const { preference } = useTitlePreference();
+  const title = resolveTitleTextLenient(preference, { titleRomaji: rec.titleRomaji, titleEnglish: rec.titleEnglish, titleNative: null, titlePortuguese: null }, "Anime");
+  const reason = rec.becauseTitle ? `Porque você acompanha ${rec.becauseTitle}` : rec.sharedGenres.length > 0 ? `Gêneros em comum: ${rec.sharedGenres.slice(0, 3).join(", ")}` : null;
+  return (
+    <Box component="li" data-testid={`sidebar-recommendation-${rec.anilistId}`}>
+      <Box component={NextLink} href={rec.href} sx={{ display: "flex", gap: 2, alignItems: "center", color: "text.primary", textDecoration: "none", "&:hover .rec-title": { textDecoration: "underline" } }}>
+        <Box sx={{ position: "relative", width: 48, height: 68, borderRadius: "8px", overflow: "hidden", bgcolor: "#171820", flexShrink: 0 }}>
+          {rec.coverImage && <Image src={rec.coverImage} alt="" fill sizes="48px" style={{ objectFit: "cover" }} />}
+        </Box>
+        <Box sx={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 0.25 }}>
+          <Typography className="rec-title" sx={{ fontSize: 14, fontWeight: 700, lineHeight: 1.35, overflowWrap: "anywhere" }}>
+            {title}
+          </Typography>
+          {reason && <Typography sx={{ fontSize: 12, color: "text.secondary" }}>{reason}</Typography>}
+        </Box>
+      </Box>
+    </Box>
   );
 }

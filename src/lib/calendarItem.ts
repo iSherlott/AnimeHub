@@ -28,6 +28,8 @@ export type CalendarItem = {
   description: string | null;
   descriptionPortuguese: string | null;
   isFavorite: boolean;
+  /** Está na lista mas em modo "Espera" (não conta como `inMyList`). */
+  waiting?: boolean;
   /** "Adiado": a pessoa parou neste episódio e ainda não viu (ver `PendingEpisode`); só para obras da lista. */
   pendingFrom?: number | null;
   /** "Atrasado" (Figma `8:2106`): o horário previsto passou e a fonte ainda
@@ -47,6 +49,7 @@ export type OwnedAnimeCalendarInfo = {
   description: string | null;
   descriptionPortuguese: string | null;
   isFavorite: boolean;
+  waiting?: boolean;
 };
 
 export function calendarItemFromCache(
@@ -70,11 +73,12 @@ export function calendarItemFromCache(
     coverImage: entry.coverImage,
     episodeImage,
     genres: entry.genres ? entry.genres.split(",").filter(Boolean) : [],
-    inMyList: owned !== null,
+    inMyList: owned !== null && !owned.waiting,
+    waiting: owned?.waiting ?? false,
     description: owned?.description ?? entry.description ?? null,
     descriptionPortuguese: owned?.descriptionPortuguese ?? null,
     isFavorite: owned?.isFavorite ?? false,
-    pendingFrom: owned ? pendingFrom : null,
+    pendingFrom: owned && !owned.waiting ? pendingFrom : null,
     delayed,
   };
 }

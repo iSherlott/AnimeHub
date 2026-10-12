@@ -2,10 +2,10 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { parseSeasonSlug, seasonLabel, type SeasonRef } from "@/lib/exploreGroups";
 import { recordRescheduleAlerts, RESCHEDULE_THRESHOLD_MS } from "@/lib/rescheduleAlerts";
-import { classifyMatch, rankCandidates, scoreCandidate, type MatchCandidate, type ScoreDetail } from "@/lib/adminImport/matching";
+import { AUTO_THRESHOLD, classifyMatch, rankCandidates, scoreCandidate, type MatchCandidate, type ScoreDetail } from "@/lib/adminImport/matching";
 import { MAX_HTML_BYTES, PARSER_VERSION, parseSeasonHtml } from "@/lib/adminImport/parseSeasonHtml";
 import { ensureProduction, mergeStreamingLinks, parseStreamingLinks } from "@/lib/production";
-import { getSeasonalCatalog } from "@/lib/seasonalCatalog";
+import { prefetchSeasonCache } from "@/lib/seasonalCatalog";
 import type { JobStage, JobState } from "@/lib/adminImport/jobSteps";
 
 /**
@@ -76,10 +76,20 @@ function toCandidate(id: string, p: CandidateSource): MatchCandidate {
  * conjunto, completa o catálogo da temporada — sem isso, obras que a Explorar
  * nunca carregou viravam "novas" e duplicavam o que a AniList já tem.
  */
-export async function loadCandidatePool(season: SeasonRef): Promise<MatchCandidate[]> {
+export async function loadCandidatePool(season: SeasonRef): Promise<{ candidates: MatchCandidate[]; blocked: MatchCandidate[] }> {
+  // A AniList só entra no CACHE (fora da plataforma) para dar com o que casar; o que é hentai volta como "bloqueado".
+  let blocked: MatchCandidate[] = [];
   if (process.env.IMPORT_PREFETCH_SEASON !== "false") {
     try {
-      await getSeasonalCatalog(season.season, season.year);
+      const prefetched = await prefetchSeasonCache(season.season, season.year);
+      blocked = prefetched.blocked.map((m) => ({
+        id: `blocked:${m.id}`,
+        anilistId: m.id,
+        titles: [m.title.romaji, m.title.native, m.title.english].filter((t): t is string => Boolean(t)),
+        season: m.season,
+        seasonYear: m.seasonYear,
+        anidbId: null,
+      }));
     } catch (error) {
       console.error("[admin-import] não foi possível completar o catálogo da temporada:", error);
     }
@@ -92,12 +102,13 @@ export async function loadCandidatePool(season: SeasonRef): Promise<MatchCandida
     }),
   ]);
   const known = new Set(productions.map((p) => p.anilistId));
-  return [
+  const candidates = [
     ...productions.map((p) => toCandidate(p.id, p)),
     ...entries
       .filter((e): e is typeof e & { anilistId: number } => e.anilistId !== null && !known.has(e.anilistId))
       .map((e) => toCandidate(`${CATALOG_CANDIDATE_PREFIX}${e.anilistId}`, e)),
   ];
+  return { candidates, blocked };
 }
 
 /** Candidato por id (Production.id ou `ce:<anilistId>`), já no formato do motor de score. */
@@ -154,7 +165,7 @@ export async function analyzeImport(input: { html: string; source: string; seaso
       return { ok: false, field: "html", error, seq: job.seq };
     }
 
-    const candidates = await loadCandidatePool(seasonRef);
+    const { candidates, blocked: blockedPool } = await loadCandidatePool(seasonRef);
 
     const now = new Date();
     const recordRows: Prisma.ImportRecordCreateManyInput[] = [];
@@ -162,10 +173,37 @@ export async function analyzeImport(input: { html: string; source: string; seaso
     let auto = 0;
     let created = 0;
     let pending = 0;
+    let adult = 0;
 
     for (const rec of parsed.records) {
       const titles = [rec.titleRomaji, rec.titleNative, rec.titleEnglish].filter((t): t is string => Boolean(t));
-      const ranked = rankCandidates({ sourceKey: rec.sourceKey, titles, seasonLabel: label, year: rec.year }, candidates);
+      const matchInput = { sourceKey: rec.sourceKey, titles, seasonLabel: label, year: rec.year };
+      // Conteúdo adulto (hentai) não entra na plataforma: o registro já nasce ignorado, com o motivo.
+      const adultMatch = rankCandidates(matchInput, blockedPool, 1)[0];
+      if (adultMatch && adultMatch.score >= AUTO_THRESHOLD) {
+        adult += 1;
+        recordRows.push({
+          jobSeq: job.seq,
+          sourceKey: rec.sourceKey,
+          titleRomaji: rec.titleRomaji,
+          titleNative: rec.titleNative,
+          titleEnglish: rec.titleEnglish,
+          seasonLabel: label,
+          year: rec.year,
+          format: rec.format,
+          airsAt: rec.airsAt,
+          airsAtHasTime: rec.airsAtHasTime,
+          description: rec.description,
+          episodes: rec.episodes,
+          imageUrl: rec.imageUrl,
+          linksJson: null,
+          capturedAt: now,
+          state: "IGNORED",
+          note: "Conteúdo adulto (hentai): fora da plataforma.",
+        });
+        continue;
+      }
+      const ranked = rankCandidates(matchInput, candidates);
       const outcome = classifyMatch(ranked);
       if (outcome.state === "AUTO") auto += 1;
       else if (outcome.state === "NEW") created += 1;
@@ -235,6 +273,9 @@ export async function analyzeImport(input: { html: string; source: string; seaso
     });
     await logEvent({ jobSeq: job.seq, source, event: `${parsed.records.length} parsed`, message: `${parsed.records.length} registros extraídos e normalizados.`, context: `Job #${job.seq} · ${label}`, actor: input.actor });
     await logEvent({ jobSeq: job.seq, source, event: `${auto} matches detected`, message: `${auto} correspondências automáticas detectadas.`, context: `Job #${job.seq} · ${created} novos + ${pending} revisão`, actor: input.actor });
+    if (adult > 0) {
+      await logEvent({ jobSeq: job.seq, source, level: "WARN", event: `${adult} adult titles ignored`, message: `${adult} registro(s) de conteúdo adulto foram ignorados automaticamente.`, context: `Job #${job.seq} · política de conteúdo`, actor: input.actor });
+    }
     if (conflictRows.length) {
       await logEvent({ jobSeq: job.seq, source, event: `${conflictRows.length} conflicts`, message: `${conflictRows.length} conflitos registrados para revisão antes de confirmar.`, context: `Job #${job.seq} · decisões auditadas`, actor: input.actor });
     }
@@ -430,6 +471,8 @@ export async function commitImport(seq: number, actor: AdminActor): Promise<Acti
         await logEvent({ jobSeq: seq, source: job.source, level: "WARN", event: "Link skipped", message: `AniList #${rec.matchedAnilistId} não foi encontrada para ${rec.titleRomaji}.`, context: ctx, actor });
         continue;
       }
+      // A obra casada passa a fazer parte da plataforma (antes era só cache da AniList).
+      await prisma.catalogEntry.updateMany({ where: { anilistId: rec.matchedAnilistId }, data: { onPlatform: true } });
       const links = mergeStreamingLinks(parseStreamingLinks(production.streamingLinksJson), parseStreamingLinks(rec.linksJson));
       try {
         await prisma.production.update({

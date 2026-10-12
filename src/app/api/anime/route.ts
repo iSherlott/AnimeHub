@@ -7,6 +7,8 @@ import { resolveAnimeMedia, type NormalizedMedia } from "@/lib/resolveAnimeMedia
 import { callInternalService } from "@/lib/serviceDelegate";
 import { extractAccentColor } from "@/lib/accentColor";
 import { isValidHttpUrl } from "@/lib/url";
+import { BLOCKED_CONTENT_MESSAGE, hasBlockedGenre } from "@/lib/contentPolicy";
+import { isOnPlatform } from "@/lib/platform";
 
 export async function GET() {
   const { user, response } = await requireUser();
@@ -42,6 +44,10 @@ export async function POST(request: NextRequest) {
   if (existing) {
     return NextResponse.json({ error: "Anime já está na sua lista" }, { status: 409 });
   }
+  // Só se acompanha o que está na plataforma (trazido pelo admin).
+  if (!(await isOnPlatform(anilistId))) {
+    return NextResponse.json({ error: "Esta obra não faz parte da plataforma." }, { status: 403 });
+  }
 
   const delegated = await callInternalService<NormalizedMedia>(
     process.env.CACHE_UPDATER_URL,
@@ -62,6 +68,10 @@ export async function POST(request: NextRequest) {
         { status: 502 }
       );
     }
+  }
+
+  if (hasBlockedGenre(media.genres)) {
+    return NextResponse.json({ error: BLOCKED_CONTENT_MESSAGE }, { status: 403 });
   }
 
   const platform: string | undefined = body.platform;
