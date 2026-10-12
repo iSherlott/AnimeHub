@@ -1,0 +1,67 @@
+{
+  "anilistId": 195516,
+  "scope": "Personagens e ambientação — sem spoilers além da 1ª temporada",
+  "titleReward": "Olhar de boticária",
+  "questions": [
+    {
+      "category": "PERSONAGENS",
+      "text": "Qual é o nome da jovem boticária que investiga os mistérios da corte?",
+      "options": ["Maomao", "Gyokuyou", "Lihua", "Xiaolan"],
+      "correct": "A"
+    },
+    {
+      "category": "PERSONAGENS",
+      "text": "Quem é o belo oficial do palácio que percebe o talento de Maomao e a coloca a serviço de uma consorte?",
+      "options": ["Gaoshun", "Luomen", "Jinshi", "Lakan"],
+      "correct": "C"
+    },
+    {
+      "category": "PERSONAGENS",
+      "text": "Qual é o nome do fiel assistente de Jinshi?",
+      "options": ["Luomen", "Gaoshun", "Pairin", "Hongniang"],
+      "correct": "B"
+    },
+    {
+      "category": "PERSONAGENS",
+      "text": "Quem criou Maomao como filha adotiva no distrito de prazer?",
+      "options": ["Lakan", "Gaoshun", "Jinshi", "Luomen"],
+      "correct": "D"
+    },
+    {
+      "category": "AMBIENTAÇÃO",
+      "text": "Como se chama a casa de prazer onde Maomao cresceu?",
+      "options": ["Casa Verdigris", "Casa do Jade", "Casa da Peônia", "Casa da Lanterna Vermelha"],
+      "correct": "A"
+    },
+    {
+      "category": "PERSONAGENS",
+      "text": "Qual destas é uma das cortesãs de maior destaque da Casa Verdigris?",
+      "options": ["Lihua", "Gyokuyou", "Pairin", "Xiaolan"],
+      "correct": "C"
+    },
+    {
+      "category": "ENREDO",
+      "text": "Que função Maomao passa a exercer ao servir a Dama Gyokuyou no palácio?",
+      "options": ["Dançarina da corte", "Provadora de venenos", "Guarda real", "Cozinheira-chefe"],
+      "correct": "B"
+    },
+    {
+      "category": "ENREDO",
+      "text": "Segundo a dedução de Maomao, que substância na maquiagem branca adoecia os bebês da corte?",
+      "options": ["Mercúrio", "Arsênico", "Cinábrio", "Chumbo"],
+      "correct": "D"
+    },
+    {
+      "category": "PERSONAGENS",
+      "text": "O que a curiosidade de Maomao por venenos a leva a fazer com frequência?",
+      "options": ["Testar venenos em si mesma", "Vendê-los para a corte", "Escondê-los no jardim", "Ensiná-los às outras criadas"],
+      "correct": "A"
+    },
+    {
+      "category": "PERSONAGENS",
+      "text": "O que Maomao desenha no próprio rosto para parecer menos atraente?",
+      "options": ["Cicatrizes", "Marcas de nascença", "Sardas", "Rugas"],
+      "correct": "C"
+    }
+  ]
+}
