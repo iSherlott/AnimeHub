@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+﻿import { test, expect } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { TEST_USER_EMAIL } from "./test-auth";
@@ -42,9 +42,9 @@ test.describe("Epic 20 — 2ª rodada de auditoria de UX/UI", () => {
     await prisma.$disconnect();
   });
 
-  test("estrela de favorito no card da home alterna sem navegar pra outra página", async ({ page }) => {
-    await page.goto("/minha-lista");
-    const card = page.getByTestId(`anime-card-${animeId}`);
+  test("estrela de favorito no detalhe da obra alterna sem navegar pra outra página (em Minha Lista o botão é Acompanhando)", async ({ page }) => {
+    await page.goto(`/anime/${animeId}`);
+    const card = page.locator("main");
     await expect(card).toBeVisible();
 
     const star = card.getByRole("button", { name: "Adicionar aos favoritos" });
@@ -57,7 +57,7 @@ test.describe("Epic 20 — 2ª rodada de auditoria de UX/UI", () => {
 
     // Continua na mesma página (o clique na estrela não deve disparar a
     // navegação do CardActionArea que cobre o resto do card).
-    await expect(page).toHaveURL("/minha-lista");
+    await expect(page).toHaveURL(`/anime/${animeId}`);
     await expect(card.getByRole("button", { name: "Remover dos favoritos" })).toBeVisible();
 
     const res = await page.request.get("/api/anime");

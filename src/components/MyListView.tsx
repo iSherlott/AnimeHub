@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import NextLink from "next/link";
+import { useRouter } from "next/navigation";
 import CheckIcon from "@mui/icons-material/Check";
 import EventBusyIcon from "@mui/icons-material/EventBusy";
 import EventNoteIcon from "@mui/icons-material/EventNote";
@@ -9,7 +10,7 @@ import EventRepeatIcon from "@mui/icons-material/EventRepeat";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { Box, Button, Link as MuiLink, Typography } from "@mui/material";
 import { ELEVATED_BUTTON_SX, lineLang, PrimaryTitle, useTitleLines } from "@/components/ExploreCard";
-import { FavoriteToggle } from "@/components/FavoriteToggle";
+import { ConfirmDialog } from "@/components/StatePanels";
 import { SearchField, SelectField } from "@/components/FilterField";
 import { ListRow } from "@/components/ListRow";
 import type { MyListEntry } from "@/lib/myList";
@@ -33,17 +34,58 @@ const STATUS_LABELS: Record<string, string> = {
 const pad = (n: number) => String(n).padStart(2, "0");
 
 /**
- * "✓ Acompanhando" (Figma `8:2608`): leva ao detalhe pessoal, onde se deixa de
- * acompanhar. A estrela de favorito (anterior ao Figma) continua ao lado.
+ * "✓ Acompanhando" (Figma `8:2608`): é o botão de acompanhar da linha — clicar nele deixa de
+ * acompanhar (com a confirmação do Figma `8:5802`) e a obra sai da lista na hora.
  */
 function FollowingButton({ entry }: { entry: MyListEntry }) {
+  const router = useRouter();
+  const titleLines = useTitleLines(entry);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function remove() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/anime/${entry.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Não foi possível remover. Tente novamente.");
+        return;
+      }
+      setOpen(false);
+      router.refresh();
+    } catch {
+      setError("Não foi possível falar com o servidor. Tente novamente.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 1 }}>
-      <FavoriteToggle animeId={entry.id} initialFavorite={entry.isFavorite} size="small" />
-      <Button component={NextLink} href={`/anime/${entry.id}`} startIcon={<CheckIcon />} sx={ELEVATED_BUTTON_SX}>
+    <>
+      <Button onClick={() => setOpen(true)} startIcon={<CheckIcon />} aria-pressed="true" data-testid="following-toggle" sx={ELEVATED_BUTTON_SX}>
         Acompanhando
       </Button>
-    </Box>
+      <ConfirmDialog
+        open={open}
+        title="Remover acompanhamento?"
+        subject={
+          <>
+            <strong>{titleLines.primary}</strong> está na sua lista pessoal.
+          </>
+        }
+        effect="As próximas datas e notificações deste anime deixam sua agenda. A produção permanece no catálogo e você pode acompanhar novamente. Nenhum episódio assistido será alterado, pois não há tracking de consumo."
+        confirmLabel="Remover acompanhamento"
+        busyLabel="Removendo…"
+        busy={busy}
+        error={error}
+        onCancel={() => setOpen(false)}
+        onConfirm={() => void remove()}
+        confirmTestId="following-remove-confirm"
+      />
+    </>
   );
 }
 

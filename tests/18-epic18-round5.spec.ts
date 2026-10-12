@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+﻿import { test, expect } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
@@ -243,8 +243,8 @@ test.describe("Epic 18 — 5ª rodada — sessão invalidada em uso", () => {
     // de "logado" agora é a própria presença do botão do menu.
     const accountMenuButton = page.getByRole("button", { name: "Menu da conta" });
     await expect(accountMenuButton).toBeVisible();
-    const star = page.getByRole("button", { name: "Adicionar aos favoritos" }).first();
-    await expect(star).toBeVisible();
+    const following = page.getByTestId("following-toggle").first();
+    await expect(following).toBeVisible();
 
     // Invalida a sessão "por trás", como expiração/logout em outra aba —
     // a aba atual não sabe disso ainda.
@@ -254,7 +254,8 @@ test.describe("Epic 18 — 5ª rodada — sessão invalidada em uso", () => {
 
     // Qualquer ação autenticada que agora volte 401 precisa refletir no
     // cabeçalho na hora, sem precisar de uma navegação nova.
-    await star.click();
+    await following.click();
+    await page.getByTestId("following-remove-confirm").click();
     await expect(page.locator("header").getByRole("link", { name: "Entrar" })).toBeVisible();
     await expect(accountMenuButton).toBeHidden();
   });

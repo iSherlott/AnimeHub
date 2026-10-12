@@ -58,6 +58,64 @@ body {
   background: var(--color-ink);
   color: var(--color-text-body);
   font-family: var(--font-sans), system-ui, sans-serif;
+  /* Texto que não é campo não ganha o cursor/barra de digitação (I-beam, caret): só quem recebe texto. */
+  cursor: default;
+  caret-color: transparent;
+}
+a,
+button,
+summary,
+select,
+label[for],
+[role="button"],
+[role="tab"],
+[role="menuitem"],
+[role="radio"],
+[role="checkbox"],
+[role="switch"],
+[role="option"] {
+  cursor: pointer;
+}
+input[type="checkbox"],
+input[type="radio"],
+input[type="file"],
+input[type="submit"] {
+  cursor: pointer;
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="submit"]):not([type="button"]),
+textarea,
+[contenteditable=""],
+[contenteditable="true"] {
+  cursor: text;
+  caret-color: auto;
+}
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+/* Barras de rolagem no tema: trilho escuro, polegar discreto que ganha o acento ao passar o mouse. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2f303b #0b0b0f;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #0b0b0f;
+}
+::-webkit-scrollbar-thumb {
+  background: #2f303b;
+  border-radius: 8px;
+  border: 2px solid #0b0b0f;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-jump-red);
+}
+::-webkit-scrollbar-corner {
+  background: #0b0b0f;
 }
 
 .font-display {

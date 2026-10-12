@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import CloseIcon from "@mui/icons-material/Close";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { Box, ButtonBase, Dialog, IconButton, Typography } from "@mui/material";
+import { ScrollCarousel } from "@/components/ScrollCarousel";
 import { UserAvatar } from "@/components/UserAvatar";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 import { uploadAvatar } from "@/lib/uploadImage";
@@ -195,7 +195,7 @@ export function AvatarPickerDialog({
                 <Typography lang={preference.language === "ja" && group.titleNative ? "ja" : undefined} sx={{ fontSize: 18, mb: 2 }}>
                   {title}
                 </Typography>
-                <Box sx={{ display: "flex", gap: 3, alignItems: "center", overflowX: "auto", pb: 1 }}>
+                <ScrollCarousel label={`${isAvatar ? "Avatares" : "Banners"} de ${title}`}>
                   {items.map((item) => {
                     const on = selected === item.url;
                     return (
@@ -221,8 +221,7 @@ export function AvatarPickerDialog({
                       </ButtonBase>
                     );
                   })}
-                  {items.length > 5 && <ChevronRightIcon aria-hidden sx={{ color: "text.secondary", flexShrink: 0 }} />}
-                </Box>
+                </ScrollCarousel>
               </Box>
             );
           })
