@@ -28,7 +28,7 @@ export default async function UserProfilePage({ params }: Params) {
   const { id } = await params;
   const target = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, displayName: true, handle: true, avatarUrl: true, bio: true },
+    select: { id: true, displayName: true, handle: true, avatarUrl: true, bannerUrl: true, bio: true },
   });
   if (!target) notFound();
 
@@ -91,6 +91,7 @@ export default async function UserProfilePage({ params }: Params) {
                 displayName={target.displayName}
                 handle={target.handle}
                 avatarUrl={target.avatarUrl}
+                bannerUrl={target.bannerUrl}
                 bio={target.bio}
                 postCount={postCount}
                 initialFollowerCount={followerCount}

@@ -67,14 +67,16 @@ test.describe("Perfil: nome, @identificador e discussões", () => {
       await expect(page.getByText(`Sem obra ${SUFFIX}`)).toHaveCount(0);
       if (about.status() === 201) await expect(page.getByText(`Com obra ${SUFFIX}`)).toBeVisible();
 
+      // Editar Perfil (estilo Crunchyroll): página própria; o identificador inválido mostra o erro sem perder o que foi digitado.
       await page.getByTestId("profile-edit-open").click();
-      const dialog = page.getByRole("dialog", { name: "Editar perfil" });
-      await dialog.getByLabel("Identificador").fill("ab");
-      await dialog.getByTestId("profile-edit-save").click();
-      await expect(dialog.getByRole("alert")).toContainText("3 a 20");
-      await dialog.getByLabel("Identificador").fill(`${HANDLE}x`);
-      await dialog.getByTestId("profile-edit-save").click();
-      await expect(dialog).toBeHidden();
+      await expect(page).toHaveURL(/\/perfil\/editar$/);
+      await expect(page.getByRole("heading", { name: "Editar Perfil" })).toBeVisible();
+      await page.getByLabel("Nome de usuário (opcional)").fill("ab");
+      await page.getByTestId("profile-edit-save").click();
+      await expect(page.getByTestId("profile-edit-error")).toContainText("3 a 20");
+      await page.getByLabel("Nome de usuário (opcional)").fill(`${HANDLE}x`);
+      await page.getByTestId("profile-edit-save").click();
+      await expect(page).toHaveURL(new RegExp(`/users/${userId}$`));
       await expect(page.getByTestId("profile-handle")).toHaveText(`@${HANDLE}x`);
     } finally {
       for (const id of ids) if (id) await request.delete(`/api/posts/${id}`);
