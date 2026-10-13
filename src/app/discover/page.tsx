@@ -8,10 +8,11 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutlined";
 import TuneIcon from "@mui/icons-material/Tune";
 import CloseIcon from "@mui/icons-material/Close";
-import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
 import { Alert, Badge, Box, Button, Dialog, IconButton, Typography } from "@mui/material";
+import LiveTvOutlinedIcon from "@mui/icons-material/LiveTvOutlined";
 import { ErrorNotice } from "@/components/StatePanels";
+import { ScrollCarousel } from "@/components/ScrollCarousel";
 import { Header } from "@/components/Header";
 import { PageContainer, PageIntro } from "@/components/PageShell";
 import { ELEVATED_BUTTON_SX, ExploreCard, useScheduleText, useTitleLines } from "@/components/ExploreCard";
@@ -19,11 +20,15 @@ import { CardGrid, CardGridSkeleton, EmptyPanel, SectionHeader, SeasonChips } fr
 import { SearchField, SelectField } from "@/components/FilterField";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { DiscoverItem } from "@/lib/discoverItem";
-import { currentSeasonRef, scheduleOf, seasonLabel, seasonSlug, splitSeasonItems } from "@/lib/exploreGroups";
+import { currentSeasonRef, scheduleOf, seasonLabel, seasonSlug } from "@/lib/exploreGroups";
+import { readRecentWorks } from "@/lib/recentWorks";
 import { loginHref } from "@/lib/safeRedirect";
 import { CATALOG_STATUS_LABELS, SEASON_LABELS } from "@/lib/types";
 import { useTimeZone } from "@/lib/useTimeZone";
 import { formatTimeInZone } from "@/lib/timeZone";
+
+/** Mesma largura da coluna da grade (2/3/4 colunas, 24 px de respiro; o carrossel tem 8 px de folga de cada lado), para o cartão ter o mesmo tamanho nos dois lugares. */
+const CAROUSEL_CARD_WIDTH = { xs: "calc((100% + 16px - 24px) / 2)", md: "calc((100% + 16px - 48px) / 3)", lg: "calc((100% + 16px - 72px) / 4)" } as const;
 
 type SortKey = "popular" | "recent" | "title" | "year" | "episodes";
 
@@ -159,13 +164,14 @@ function DiscoverPageContent() {
   const [query, setQuery] = useState(() => searchParams.get("search") ?? "");
   const [searchResults, setSearchResults] = useState<DiscoverItem[]>([]);
   const [searchCached, setSearchCached] = useState(false);
-  const [seasonResults, setSeasonResults] = useState<DiscoverItem[]>([]);
-  const [seasonCached, setSeasonCached] = useState(false);
-  const [sourcesDisabled, setSourcesDisabled] = useState(false);
-  const [seasonError, setSeasonError] = useState<string | null>(null);
+  // Fileiras do Explorar: o que está no ar hoje e as sugestões de "Novas histórias, outros tempos".
+  const [todayItems, setTodayItems] = useState<DiscoverItem[]>([]);
+  const [storyItems, setStoryItems] = useState<DiscoverItem[]>([]);
+  const [personalized, setPersonalized] = useState(false);
+  const [rowsError, setRowsError] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [loadingSeason, setLoadingSeason] = useState(true);
+  const [loadingRows, setLoadingRows] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
 
   const [catalogAll, setCatalogAll] = useState<DiscoverItem[]>([]);
@@ -183,22 +189,23 @@ function DiscoverPageContent() {
   useEffect(() => {
     // A cada nova tentativa volta ao estado "carregando" antes da busca terminar.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoadingSeason(true);
-    setSeasonError(null);
-    fetch("/api/anilist/season")
+    setLoadingRows(true);
+    setRowsError(null);
+    const recent = readRecentWorks().join(",");
+    fetch(`/api/explore?tz=${encodeURIComponent(timeZone)}&recent=${recent}`)
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) {
-          setSeasonError(data.error ?? "Falha ao carregar lançamentos");
+          setRowsError(data.error ?? "Falha ao carregar o Explorar");
           return;
         }
-        setSeasonResults(data.results ?? []);
-        setSeasonCached(Boolean(data.cached));
-        setSourcesDisabled(Boolean(data.disabled));
+        setTodayItems(data.today ?? []);
+        setStoryItems(data.stories ?? []);
+        setPersonalized(Boolean(data.personalized));
       })
-      .catch(() => setSeasonError("Falha ao carregar lançamentos"))
-      .finally(() => setLoadingSeason(false));
-  }, [reloadKey]);
+      .catch(() => setRowsError("Falha ao carregar o Explorar"))
+      .finally(() => setLoadingRows(false));
+  }, [reloadKey, timeZone, user?.id]);
 
   useEffect(() => {
     fetch("/api/catalog")
@@ -326,10 +333,7 @@ function DiscoverPageContent() {
 
   const season = currentSeasonRef();
   const seasonName = seasonLabel(season);
-  const { airing, rest } = useMemo(() => splitSeasonItems(seasonResults), [seasonResults]);
-  const highlights = airing.slice(0, 4);
-  const others = [...airing.slice(4), ...rest].slice(0, 8);
-  const heroArt = highlights[0]?.bannerImage ?? highlights[0]?.coverImage ?? seasonResults.find((i) => i.bannerImage)?.bannerImage ?? null;
+  const heroArt = todayItems.find((i) => i.bannerImage)?.bannerImage ?? storyItems.find((i) => i.bannerImage)?.bannerImage ?? todayItems[0]?.coverImage ?? null;
 
   const todayLabel = (() => {
     const now = new Date();
@@ -419,41 +423,35 @@ function DiscoverPageContent() {
               </Box>
             </Box>
 
-            {(seasonCached || sourcesDisabled) && !loadingSeason && !seasonError && (
-              <Alert severity="info" variant="outlined">
-                {sourcesDisabled
-                  ? "Modo AniDB-only ativo — outras fontes desativadas, mostrando o catálogo salvo localmente."
-                  : "AniList fora do ar — mostrando o catálogo salvo localmente."}
-              </Alert>
-            )}
-
-            {seasonError ? (
-              <ErrorNotice title={seasonError} onRetry={() => setReloadKey((k) => k + 1)}>
-                A API pública da AniList pode estar instável — tente novamente em alguns minutos.
+            {rowsError ? (
+              <ErrorNotice title={rowsError} onRetry={() => setReloadKey((k) => k + 1)}>
+                Não foi possível montar as fileiras agora. Tente novamente em instantes.
               </ErrorNotice>
-            ) : loadingSeason ? (
+            ) : loadingRows ? (
               <CardGridSkeleton />
-            ) : seasonResults.length === 0 ? (
-              <EmptyPanel icon={<EventAvailableIcon />} title="Nenhum lançamento da temporada ainda" action={<Button component={NextLink} href="/calendar" sx={ELEVATED_BUTTON_SX}>Ver o calendário</Button>}>
-                Quando houver lançamentos confirmados para {seasonName}, eles aparecem aqui.
-              </EmptyPanel>
             ) : (
               <>
-                {highlights.length > 0 && (
-                  <Box component="section" sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <SectionHeader title="Em destaque" note={todayLabel} />
-                    <CardGrid label="Em destaque">
-                      {highlights.map((item) => (
-                        <ExploreCard key={item.key} item={item} />
+                <Box component="section" aria-label="Em destaque" data-testid="today-row" sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <SectionHeader title="Em destaque" note={todayLabel} />
+                  {todayItems.length > 0 ? (
+                    <ScrollCarousel label="No ar hoje">
+                      {todayItems.map((item) => (
+                        <Box key={item.key} sx={{ flex: "0 0 auto", width: CAROUSEL_CARD_WIDTH }}>
+                          <ExploreCard item={item} />
+                        </Box>
                       ))}
-                    </CardGrid>
-                  </Box>
-                )}
-                {others.length > 0 && (
-                  <Box component="section" sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <SectionHeader title="Novas histórias, outros tempos" note="Datas a confirmar fora da agenda" chip />
+                    </ScrollCarousel>
+                  ) : (
+                    <EmptyPanel icon={<LiveTvOutlinedIcon />} title="Nada no ar hoje" action={<Button component={NextLink} href="/calendar" sx={ELEVATED_BUTTON_SX}>Ver o calendário</Button>}>
+                      Quando houver episódios hoje, os animes que estão passando aparecem aqui.
+                    </EmptyPanel>
+                  )}
+                </Box>
+                {storyItems.length > 0 && (
+                  <Box component="section" aria-label="Novas histórias, outros tempos" data-testid="stories-row" sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <SectionHeader title="Novas histórias, outros tempos" note={personalized ? "Terminadas, nos seus gêneros" : "Novidades e o que combina com o que você viu"} chip />
                     <CardGrid label="Novas histórias, outros tempos">
-                      {others.map((item) => (
+                      {storyItems.map((item) => (
                         <ExploreCard key={item.key} item={item} />
                       ))}
                     </CardGrid>

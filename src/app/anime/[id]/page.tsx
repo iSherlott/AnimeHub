@@ -5,6 +5,7 @@ import LanguageIcon from "@mui/icons-material/Language";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { Header } from "@/components/Header";
+import { RecentWorkTracker } from "@/components/RecentWorkTracker";
 import { UnfollowButton } from "@/components/UnfollowButton";
 import { PlatformLinksManager } from "@/components/PlatformLinksManager";
 import { EpisodeGrid } from "@/components/EpisodeGrid";
@@ -129,6 +130,7 @@ export default async function AnimeDetailPage({
   return (
     <div className="min-h-screen bg-ink pb-16">
       <Header />
+      <RecentWorkTracker anilistId={anime.anilistId} />
 
       <WorkHero bannerImage={anime.bannerImage} coverImage={anime.coverImage} accentColor={anime.accentColor}>
         <Box sx={{ display: "flex", flex: 1, flexDirection: "column", gap: 3 }}>

@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { ensureProduction, parseStreamingLinks } from "@/lib/production";
 import { loadFranchiseSeasons } from "@/lib/franchiseSeasons";
 import { Header } from "@/components/Header";
+import { RecentWorkTracker } from "@/components/RecentWorkTracker";
 import { AnimeTitle } from "@/components/AnimeTitle";
 import { AppLink } from "@/components/AppLink";
 import { FollowProductionButton } from "@/components/FollowProductionButton";
@@ -63,6 +64,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
   return (
     <div className="min-h-screen bg-ink pb-16">
       <Header />
+      <RecentWorkTracker anilistId={anilistId} />
 
       <WorkHero bannerImage={production.bannerImage} coverImage={production.coverImage}>
         <Box sx={{ display: "flex", flex: 1, minWidth: 0, flexDirection: "column", gap: 3 }}>

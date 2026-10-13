@@ -1,12 +1,11 @@
 "use client";
 
-import { Children, useEffect, useState, type ReactNode } from "react";
+import { Children, type ReactNode } from "react";
 import NextLink from "next/link";
 import { Box, Button, Skeleton, Typography } from "@mui/material";
 import { ELEVATED_BUTTON_SX } from "@/components/ExploreCard";
 import { EmptyState } from "@/components/StatePanels";
 import { recentSeasons, seasonLabel, seasonSlug, type SeasonRef } from "@/lib/exploreGroups";
-import type { AvailableSeason } from "@/lib/availableSeasons";
 
 /** Grade de cartões do Figma: 4 colunas com 24 px de respiro (2 no celular, 3 no tablet). */
 export function CardGrid({ children, label }: { children: ReactNode; label?: string }) {
@@ -84,24 +83,12 @@ export function EmptyPanel({ title, children, action, icon }: { title: string; c
   );
 }
 
-/** Fileira "TEMPORADAS": as quatro mais recentes (a atual primeiro), cada uma leva à página da temporada. */
+/**
+ * Fileira "TEMPORADAS": a atual e as 3 anteriores (sempre 4), da mais nova à mais antiga, só com o nome da estação —
+ * a ordem já diz que a última é do ano passado. Cada uma leva à página da temporada.
+ */
 export function SeasonChips({ exclude }: { exclude?: SeasonRef }) {
-  // Só as temporadas que têm anime na plataforma; enquanto a lista não chega, as 4 mais recentes.
-  const [available, setAvailable] = useState<AvailableSeason[] | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/seasons")
-      .then((res) => (res.ok ? res.json() : { seasons: [] }))
-      .then((data: { seasons?: AvailableSeason[] }) => {
-        if (!cancelled) setAvailable(data.seasons ?? []);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  const pool: SeasonRef[] = available ? available.slice(0, 6) : recentSeasons(new Date(), 4);
-  const seasons = pool.filter((s) => !(exclude && s.season === exclude.season && s.year === exclude.year));
+  const seasons = recentSeasons(new Date(), 4).filter((s) => !(exclude && s.season === exclude.season && s.year === exclude.year));
   return (
     <Box component="nav" aria-label="Temporadas" sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
       {!exclude && (
@@ -111,7 +98,7 @@ export function SeasonChips({ exclude }: { exclude?: SeasonRef }) {
       )}
       {seasons.map((s) => (
         <Button key={seasonSlug(s)} component={NextLink} href={`/temporada/${seasonSlug(s)}`} sx={ELEVATED_BUTTON_SX}>
-          {seasonLabel(s)}
+          {seasonLabel(s).replace(/\d{4}$/, "")}
         </Button>
       ))}
     </Box>

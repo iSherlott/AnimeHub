@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import NextLink from "next/link";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import CheckIcon from "@mui/icons-material/Check";
 import EventBusyIcon from "@mui/icons-material/EventBusy";
 import EventRepeatIcon from "@mui/icons-material/EventRepeat";
 import ScheduleIcon from "@mui/icons-material/Schedule";
-import { Box, Button, Link as MuiLink, Typography } from "@mui/material";
+import StarBorderIcon from "@mui/icons-material/StarBorder";
+import StarIcon from "@mui/icons-material/Star";
+import { Box, IconButton, Link as MuiLink, Typography } from "@mui/material";
 import { CoverImage } from "@/components/CoverImage";
 import type { DiscoverItem } from "@/lib/discoverItem";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
@@ -30,6 +31,10 @@ export const ELEVATED_BUTTON_SX = {
 /** "Sábado · 13:00" / "11 out · Horário não definido" / "Data não definida" — nunca inventa horário. */
 export function useScheduleText(item: DiscoverItem): { text: string; icon: "clock" | "calendar-x" | "calendar-clock" } {
   const timeZone = useTimeZone();
+  // Episódio de hoje: mostra o horário mesmo depois de ele ter ido ao ar ("Hoje · 13:00"), nunca "data não definida".
+  if (item.airingToday && item.nextEpisodeAt) {
+    return { text: `Hoje · ${formatTimeInZone(new Date(item.nextEpisodeAt), timeZone)}`, icon: "clock" };
+  }
   const info = scheduleOf(item);
   if (info.kind === "scheduled") {
     const d = new Date(info.at);
@@ -43,6 +48,22 @@ export function useScheduleText(item: DiscoverItem): { text: string; icon: "cloc
   return info.reason === "postponed"
     ? { text: "Nova data a confirmar", icon: "calendar-clock" }
     : { text: "Data não definida", icon: "calendar-x" };
+}
+
+/** A estrela de acompanhar sobre a capa: círculo escuro com alvo de 44 px. */
+const starSx = {
+  width: 44,
+  height: 44,
+  bgcolor: "rgba(8,8,11,0.72)",
+  color: "text.primary",
+  border: 1,
+  borderColor: "divider",
+  "&:hover": { bgcolor: "rgba(23,24,32,0.95)" },
+} as const;
+
+/** Limita o texto a `lines` linhas (reticências no fim), para os cartões terem sempre a mesma altura. */
+export function clampSx(lines: number) {
+  return { display: "-webkit-box", WebkitLineClamp: lines, WebkitBoxOrient: "vertical", overflow: "hidden" } as const;
 }
 
 const JAPANESE_TEXT = /[\u3040-\u30ff\u3400-\u9fff]/;
@@ -165,17 +186,54 @@ export function ExploreCard({ item }: { item: DiscoverItem }) {
     </Box>
   );
 
+  // O "acompanhar" é a estrela sobre a capa: vazia = acompanhar; cheia = já acompanha (leva ao detalhe pessoal).
+  let star: ReactNode;
+  if (owned) {
+    star = (
+      <IconButton component={NextLink} href={detailHref!} aria-label="Acompanhando" title="Acompanhando" data-testid={`explore-following-${item.key}`} sx={{ ...starSx, color: "primary.main" }}>
+        <StarIcon />
+      </IconButton>
+    );
+  } else if (detailHref && user) {
+    star = (
+      <IconButton onClick={() => void follow()} disabled={following} aria-label="+ Acompanhar" title="Acompanhar" data-testid={`explore-follow-${item.key}`} sx={starSx}>
+        <StarBorderIcon />
+      </IconButton>
+    );
+  } else if (detailHref) {
+    star = (
+      <IconButton component={NextLink} href={loginHref(detailHref)} aria-label="+ Acompanhar" title="Entrar para acompanhar" sx={starSx}>
+        <StarBorderIcon />
+      </IconButton>
+    );
+  } else {
+    star = (
+      <IconButton disabled aria-label="+ Acompanhar" title="Esta obra ainda não tem página pública" sx={starSx}>
+        <StarBorderIcon />
+      </IconButton>
+    );
+  }
+
   return (
     <Box data-testid={`explore-card-${item.key}`} sx={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-      {detailHref ? (
-        <MuiLink component={NextLink} href={detailHref} aria-hidden tabIndex={-1} underline="none" sx={{ display: "block" }}>
-          {cover}
-        </MuiLink>
-      ) : (
-        cover
-      )}
+      <Box sx={{ position: "relative" }}>
+        {detailHref ? (
+          <MuiLink component={NextLink} href={detailHref} aria-hidden tabIndex={-1} underline="none" sx={{ display: "block" }}>
+            {cover}
+          </MuiLink>
+        ) : (
+          cover
+        )}
+        <Box sx={{ position: "absolute", top: 12, right: 12 }}>{star}</Box>
+        {followError && (
+          <Typography role="alert" sx={{ position: "absolute", left: 8, right: 8, bottom: 8, px: 1, py: 0.5, borderRadius: "6px", bgcolor: "rgba(8,8,11,0.88)", fontSize: 12, color: "primary.main" }}>
+            {followError}
+          </Typography>
+        )}
+      </Box>
+      {/* Altura fixa para todos os cartões: título em até 2 linhas, um subtítulo e o horário. */}
       <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-        <Typography lang={primaryLang} sx={{ fontSize: 20, fontWeight: 700, lineHeight: 1.5, overflowWrap: "anywhere" }}>
+        <Typography lang={primaryLang} sx={{ fontSize: 20, fontWeight: 700, lineHeight: 1.5, minHeight: "3em", overflowWrap: "anywhere", ...clampSx(2) }}>
           {detailHref ? (
             <MuiLink component={NextLink} href={detailHref} underline="hover" color="inherit">
               <PrimaryTitle lines={titleLines} />
@@ -184,41 +242,15 @@ export function ExploreCard({ item }: { item: DiscoverItem }) {
             <PrimaryTitle lines={titleLines} />
           )}
         </Typography>
-        {secondary.map((line, i) => (
-          <Typography key={line} lang={lineLang(line)} sx={{ fontSize: i === 0 ? 12 : 13, color: "text.secondary", lineHeight: 1.5 }}>
-            {line}
-          </Typography>
-        ))}
-      </Box>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <ScheduleGlyph sx={{ fontSize: 16 }} />
-        <Typography suppressHydrationWarning sx={{ fontSize: 14 }}>
-          {schedule.text}
+        <Typography lang={secondary[0] ? lineLang(secondary[0]) : undefined} sx={{ fontSize: 12, color: "text.secondary", lineHeight: 1.5, minHeight: "1.5em", ...clampSx(1) }}>
+          {secondary[0] ?? ""}
         </Typography>
       </Box>
-      <Box>
-        {owned ? (
-          <Button component={NextLink} href={detailHref!} startIcon={<CheckIcon />} sx={ELEVATED_BUTTON_SX}>
-            Acompanhando
-          </Button>
-        ) : detailHref && user ? (
-          <Button onClick={() => void follow()} disabled={following} sx={ELEVATED_BUTTON_SX} data-testid={`explore-follow-${item.key}`}>
-            {following ? "Adicionando…" : "+ Acompanhar"}
-          </Button>
-        ) : detailHref ? (
-          <Button component={NextLink} href={loginHref(detailHref)} sx={ELEVATED_BUTTON_SX}>
-            + Acompanhar
-          </Button>
-        ) : (
-          <Button disabled sx={ELEVATED_BUTTON_SX} title="Esta obra ainda não tem página pública">
-            + Acompanhar
-          </Button>
-        )}
-        {followError && (
-          <Typography role="alert" sx={{ fontSize: 12, color: "primary.main", mt: 0.5 }}>
-            {followError}
-          </Typography>
-        )}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, minHeight: 24 }}>
+        <ScheduleGlyph sx={{ fontSize: 16, flexShrink: 0 }} />
+        <Typography suppressHydrationWarning sx={{ fontSize: 14, ...clampSx(1) }}>
+          {schedule.text}
+        </Typography>
       </Box>
     </Box>
   );

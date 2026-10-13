@@ -30,6 +30,8 @@ export type DiscoverItem = {
    * que não tem acesso à sessão de um usuário específico. */
   inMyList: boolean;
   animeId: string | null;
+  /** Só no "Em destaque" do Explorar: o episódio de `nextEpisodeAt` é o de HOJE (mesmo que já tenha ido ao ar). */
+  airingToday?: boolean;
 };
 
 export function discoverItemFromAniList(media: AniListMedia): DiscoverItem {

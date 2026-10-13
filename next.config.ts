@@ -28,6 +28,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Outros computadores da rede local (192.168.1.x) podem abrir o servidor de desenvolvimento pelo IP da máquina; sem isso
+  // o Next bloqueia os recursos internos do modo dev (HMR) para uma origem que não seja localhost.
+  allowedDevOrigins: ["192.168.1.*"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
