@@ -5,10 +5,11 @@ import NextLink from "next/link";
 import { Box, ButtonBase, Typography } from "@mui/material";
 import { CoverImage } from "@/components/CoverImage";
 import { SearchField } from "@/components/FilterField";
-import type { GenreFacet, ProfileAnimeEntry } from "@/lib/profileAnimeList";
+import type { GenreFacet, ProfileAnimeEntry, ProfileAnimeList as ProfileAnimeListData } from "@/lib/profileAnimeList";
+import { CATEGORY_LABELS, STATE_LABELS, WATCH_STATES, type WatchState } from "@/lib/watchCategory";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 
-type Loaded = { total: number; entries: ProfileAnimeEntry[]; genres: GenreFacet[]; isOwn: boolean };
+type Loaded = ProfileAnimeListData & { isOwn: boolean };
 type State = { kind: "loading" } | { kind: "error" } | { kind: "hidden" } | ({ kind: "ok" } & Loaded);
 
 const STATUS_LABELS: Record<string, string> = {
@@ -44,22 +45,52 @@ function Chip({ selected, onClick, children, testId }: { selected: boolean; onCl
   );
 }
 
-function AnimeTile({ entry }: { entry: ProfileAnimeEntry }) {
+const CATEGORY_ORDER = ["watching", "unfinished", "finished", "dropped"] as const;
+
+/** Escolha do andamento na própria lista: "Automático" devolve a decisão à plataforma. */
+function StateSelect({ entry, onChange }: { entry: ProfileAnimeEntry; onChange: (animeId: string, state: WatchState | null) => void }) {
+  if (!entry.animeId) return null;
+  return (
+    <Box
+      component="select"
+      aria-label={`Andamento de ${entry.titleRomaji}`}
+      data-testid={`watch-state-${entry.anilistId}`}
+      value={entry.watchState ?? ""}
+      onChange={(event: React.ChangeEvent<HTMLSelectElement>) => onChange(entry.animeId as string, (event.target.value || null) as WatchState | null)}
+      sx={{ width: "100%", mt: 0.5, px: 0.75, py: 0.5, borderRadius: "6px", border: 1, borderColor: "divider", bgcolor: "#171820", color: "text.primary", fontSize: 12, "&:focus-visible": { outline: "2px solid #ffd400", outlineOffset: 2 } }}
+    >
+      <option value="">Andamento: automático</option>
+      {WATCH_STATES.map((s) => (
+        <option key={s} value={s}>
+          {STATE_LABELS[s]}
+        </option>
+      ))}
+    </Box>
+  );
+}
+
+function AnimeTile({ entry, onChangeState }: { entry: ProfileAnimeEntry; onChangeState: (animeId: string, state: WatchState | null) => void }) {
   const { preference } = useTitlePreference();
   const title = resolveTitleText(preference, entry) || entry.titleRomaji;
   return (
     <Box component="li" sx={{ listStyle: "none", minWidth: 0 }} data-testid={`profile-anime-${entry.anilistId}`}>
-      <Box component={NextLink} href={`/obra/${entry.anilistId}`} sx={{ display: "flex", flexDirection: "column", gap: 1, color: "text.primary", textDecoration: "none", "&:hover .title": { textDecoration: "underline" } }}>
+      <Box component={NextLink} href={`/anime/${entry.anilistId}`} sx={{ display: "flex", flexDirection: "column", gap: 1, color: "text.primary", textDecoration: "none", "&:hover .title": { textDecoration: "underline" } }}>
         <Box sx={{ position: "relative", aspectRatio: "2 / 3", borderRadius: "8px", overflow: "hidden", bgcolor: "#171820" }}>
           {entry.coverImage && <CoverImage src={entry.coverImage} sizes="(max-width: 600px) 40vw, 160px" />}
         </Box>
         <Typography className="title" lang={preference.language === "ja" && entry.titleNative === title ? "ja" : undefined} sx={{ fontSize: 13, fontWeight: 700, lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}>
           {title}
         </Typography>
-        {entry.status && STATUS_LABELS[entry.status] && (
-          <Typography sx={{ fontSize: 11, color: "text.secondary" }}>{STATUS_LABELS[entry.status]}</Typography>
+        {entry.seasonsCount > 1 && (
+          <Typography data-testid={`profile-anime-seasons-${entry.anilistId}`} sx={{ fontSize: 11, color: "text.secondary" }}>
+            {entry.seasonsCount} temporadas
+          </Typography>
         )}
+        <Typography data-testid={`profile-anime-category-${entry.anilistId}`} sx={{ fontSize: 11, color: entry.category === "other" ? "text.secondary" : "primary.light", fontWeight: entry.category === "other" ? 400 : 700 }}>
+          {entry.category !== "other" ? CATEGORY_LABELS[entry.category] : entry.waiting ? "Em espera" : entry.status && STATUS_LABELS[entry.status] ? STATUS_LABELS[entry.status] : "—"}
+        </Typography>
       </Box>
+      <StateSelect entry={entry} onChange={onChangeState} />
     </Box>
   );
 }
@@ -72,6 +103,9 @@ function AnimeTile({ entry }: { entry: ProfileAnimeEntry }) {
 export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isOwnProfile: boolean }) {
   const [query, setQuery] = useState("");
   const [genre, setGenre] = useState("");
+  const [category, setCategory] = useState("");
+  const [reloads, setReloads] = useState(0);
+  const [saveError, setSaveError] = useState(false);
   const [state, setState] = useState<State>({ kind: "loading" });
   // Chips de gênero vêm da lista inteira e não mudam enquanto se filtra.
   const [facets, setFacets] = useState<GenreFacet[]>([]);
@@ -83,6 +117,7 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
         const params = new URLSearchParams();
         if (query.trim()) params.set("q", query.trim());
         if (genre) params.set("genre", genre);
+        if (category) params.set("category", category);
         fetch(`/api/users/${userId}/animes?${params.toString()}`)
           .then(async (res) => {
             if (res.status === 403) return { kind: "hidden" } as State;
@@ -103,7 +138,18 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [userId, query, genre]);
+  }, [userId, query, genre, category, reloads]);
+
+  async function changeState(animeId: string, next: WatchState | null) {
+    setSaveError(false);
+    try {
+      const res = await fetch(`/api/anime/${animeId}/watch-state`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ state: next }) });
+      if (!res.ok) throw new Error("save");
+      setReloads((n) => n + 1);
+    } catch {
+      setSaveError(true);
+    }
+  }
 
   if (state.kind === "hidden") {
     return (
@@ -119,7 +165,7 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
       </Typography>
     );
   }
-  const filtering = Boolean(query.trim() || genre);
+  const filtering = Boolean(query.trim() || genre || category);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }} data-testid="profile-anime-list">
@@ -129,6 +175,21 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
         </Typography>
       ) : (
         <>
+          <Box role="group" aria-label="Andamento" sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+            <Chip selected={category === ""} onClick={() => setCategory("")} testId="category-all">
+              Todos{state.kind === "ok" ? ` · ${state.total}` : ""}
+            </Chip>
+            {CATEGORY_ORDER.map((key) => (
+              <Chip key={key} selected={category === key} onClick={() => setCategory(category === key ? "" : key)} testId={`category-${key}`}>
+                {CATEGORY_LABELS[key]}{state.kind === "ok" ? ` · ${state.categories[key]}` : ""}
+              </Chip>
+            ))}
+          </Box>
+          {saveError && (
+            <Typography role="alert" sx={{ fontSize: 13, color: "primary.main" }}>
+              Não foi possível salvar o andamento. Tente novamente.
+            </Typography>
+          )}
           <SearchField label="Buscar animes" value={query} onChange={setQuery} placeholder="Buscar anime..." />
           {facets.length > 0 && (
             <Box role="group" aria-label="Filtrar por gênero" sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
@@ -148,7 +209,7 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
             </Typography>
           ) : state.entries.length === 0 ? (
             <Typography data-testid="profile-anime-empty" sx={{ color: "text.secondary" }}>
-              Nenhum anime bate com essa busca.
+              Nenhum anime bate com esse filtro.
             </Typography>
           ) : (
             <>
@@ -157,7 +218,7 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
               </Typography>
               <Box component="ul" sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 2, p: 0, m: 0 }}>
                 {state.entries.map((entry) => (
-                  <AnimeTile key={entry.anilistId} entry={entry} />
+                  <AnimeTile key={entry.anilistId} entry={entry} onChangeState={(animeId, next) => void changeState(animeId, next)} />
                 ))}
               </Box>
             </>

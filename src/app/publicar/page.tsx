@@ -63,7 +63,7 @@ export default async function PublishPage({ searchParams }: Props) {
           }
         />
         <AppLink
-          href={initialAnime ? `/obra/${initialAnime.anilistId}#discussoes` : "/"}
+          href={initialAnime ? `/anime/${initialAnime.anilistId}#discussoes` : "/"}
           underline="hover"
           sx={{ fontSize: 14, color: "text.secondary", alignSelf: "flex-start" }}
         >

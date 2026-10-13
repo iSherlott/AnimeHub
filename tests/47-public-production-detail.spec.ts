@@ -128,7 +128,7 @@ test.describe("Detalhe público da obra (/obra/[anilistId])", () => {
       await page.goto(`/obra/${S1}`);
       const cta = page.getByTestId("follow-login-button");
       await expect(cta).toBeVisible();
-      await expect(cta).toHaveAttribute("href", `/login?next=${encodeURIComponent(`/obra/${S1}`)}`);
+      await expect(cta).toHaveAttribute("href", `/login?next=${encodeURIComponent(`/anime/${S1}`)}`);
 
       const anonList = await request.get("/api/anime", { headers: { Cookie: "" } });
       expect([401, 200]).toContain(anonList.status()); // nenhuma linha criada para anônimo
@@ -140,9 +140,10 @@ test.describe("Detalhe público da obra (/obra/[anilistId])", () => {
       await expect(nextEp).toContainText("Episódio 3");
       await expect(nextEp).toContainText("America/Sao_Paulo");
 
-      const related = page.getByTestId("related");
-      // O cartão mostra o título original (padrão Japonês); a obra irmã é achada pelo destino.
-      await expect(related.locator(`a[href="/obra/${S1}"]`).first()).toBeVisible();
+      // A temporada irmã aparece junto, na seção "Temporadas" (a franquia deixou de ser um cartão solto mais abaixo).
+      const seasons = page.getByTestId("franchise-seasons");
+      await expect(seasons.getByTestId(`season-${S1}`)).toBeVisible();
+      await expect(seasons.locator(`a[href="/anime/${S1}"]`)).toHaveCount(1);
     });
 
     test("sem previsão confirmada, diz isso em vez de inventar horário", async ({ page }) => {
@@ -156,10 +157,9 @@ test.describe("Detalhe público da obra (/obra/[anilistId])", () => {
     });
   });
 
-  test("quem já acompanha vê 'Acompanhando' apontando para a própria entrada", async ({ page }) => {
+  test("quem já acompanha é levado direto para a própria entrada", async ({ page }) => {
     await page.goto(`/obra/${OWNED_BY_USER}`);
-    const following = page.getByTestId("following-button");
-    await expect(following).toBeVisible();
-    await expect(following).toHaveAttribute("href", `/anime/${ownedAnimeId}`);
+    await expect(page).toHaveURL(new RegExp(`/anime/${ownedAnimeId}$`));
+    await expect(page.getByTestId("anime-title")).toBeVisible();
   });
 });

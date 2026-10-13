@@ -156,6 +156,7 @@ export function ConfirmDialog({
   confirmLabel,
   busyLabel,
   busy = false,
+  progress,
   error,
   onCancel,
   onConfirm,
@@ -168,6 +169,8 @@ export function ConfirmDialog({
   confirmLabel: string;
   busyLabel: string;
   busy?: boolean;
+  /** Andamento da ação (ex.: barra de progresso da carga); aparece no próprio diálogo enquanto `busy`. */
+  progress?: ReactNode;
   error?: string | null;
   onCancel: () => void;
   onConfirm: () => void;
@@ -207,6 +210,7 @@ export function ConfirmDialog({
             </Typography>
           </Box>
         </Box>
+        {busy && progress}
         {error && (
           <Typography role="alert" sx={{ fontSize: 14, color: "primary.main" }}>
             {error}

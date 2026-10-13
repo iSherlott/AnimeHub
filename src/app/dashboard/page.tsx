@@ -33,6 +33,7 @@ type AlertItem = {
   episode: number;
   airingAt: string;
   previousAiringAt: string | null;
+  kind?: "EPISODE" | "RETURN";
   titleRomaji: string | null;
   titleEnglish: string | null;
   titleNative: string | null;
@@ -195,7 +196,7 @@ export default function DashboardPage() {
                           <ListRow
                             key={item.key}
                             linkWhole
-                            href={item.animeId ? `/anime/${item.animeId}` : `/obra/${item.anilistId}`}
+                            href={item.animeId ? `/anime/${item.animeId}` : `/anime/${item.anilistId}`}
                             time={formatTimeInZone(new Date(item.airingAt), timeZone)}
                             episodeLabel={`Episódio ${pad(item.episode)}`}
                             cover={item.coverImage}
@@ -229,7 +230,7 @@ export default function DashboardPage() {
                 ) : (
                   <Box component="ul" data-testid="later-list" sx={{ display: "flex", flexDirection: "column", gap: 2.5, p: 0, m: 0, listStyle: "none" }}>
                     {view.later.map((item) => (
-                      <LaterItem key={item.key} item={item} now={view.now} href={item.animeId ? `/anime/${item.animeId}` : `/obra/${item.anilistId}`} />
+                      <LaterItem key={item.key} item={item} now={view.now} href={item.animeId ? `/anime/${item.animeId}` : `/anime/${item.anilistId}`} />
                     ))}
                   </Box>
                 )}
@@ -318,9 +319,10 @@ function UpdatesSection({
   titleOf: (a: AlertItem) => string;
   timeZone: string;
 }) {
-  const newEpisode = alerts.find((a) => !a.previousAiringAt);
+  const newEpisode = alerts.find((a) => !a.previousAiringAt && a.kind !== "RETURN");
   const changed = alerts.find((a) => a.previousAiringAt);
-  if (!newEpisode && !changed) return null;
+  const returned = alerts.find((a) => a.kind === "RETURN");
+  if (!newEpisode && !changed && !returned) return null;
   const slot = (iso: string) => `${weekdayName(new Date(iso), timeZone).toLowerCase()}, ${formatTimeInZone(new Date(iso), timeZone)}`;
   const dm = (iso: string) => new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit", month: "2-digit" }).format(new Date(iso));
   return (
@@ -336,6 +338,19 @@ function UpdatesSection({
               </Typography>
               <Typography suppressHydrationWarning sx={{ fontSize: 14, color: "text.secondary" }}>
                 {titleOf(newEpisode)} · {slot(newEpisode.airingAt)}. Abra o detalhe para consultar a previsão.
+              </Typography>
+            </Box>
+          </Box>
+        )}
+        {returned && (
+          <Box data-testid="dashboard-returned" sx={{ display: "flex", gap: 2, p: 2.5, borderRadius: "12px", bgcolor: "background.paper", border: 1, borderColor: "divider" }}>
+            <InfoOutlinedIcon sx={{ fontSize: 20, color: "primary.main", mt: 0.25 }} />
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+              <Typography component="h3" sx={{ fontSize: 16 }}>
+                VOLTOU A SAIR EPISÓDIOS
+              </Typography>
+              <Typography suppressHydrationWarning sx={{ fontSize: 14, color: "text.secondary" }}>
+                {titleOf(returned)} · próximo episódio {slot(returned.airingAt)}. Voltou à sua lista e ao calendário.
               </Typography>
             </Box>
           </Box>

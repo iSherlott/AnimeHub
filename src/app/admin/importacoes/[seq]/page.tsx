@@ -5,8 +5,11 @@ import { Box, Typography } from "@mui/material";
 import { prisma } from "@/lib/prisma";
 import { AdminPageHeader, AdminPanel, AdminTable, SmallChip, StatCard, StatGrid } from "@/components/admin/AdminUi";
 import { ImportResultActions } from "@/components/admin/ImportResultActions";
+import { PendingBulkReview, type PendingRow } from "@/components/admin/PendingBulkReview";
+import { seasonLabel, type SeasonName } from "@/lib/exploreGroups";
 import { Notice } from "@/components/StatePanels";
 import { jobCounts } from "@/lib/adminImport/pipeline";
+import { describeSummary, EMPTY_SUMMARY, type ApplySummary } from "@/lib/adminImport/apply";
 import { fmtFull, requireAdminPage } from "@/lib/adminPage";
 
 export const dynamic = "force-dynamic";
@@ -14,12 +17,21 @@ const PAGE_SIZE = 25;
 
 type ResultRow = { key: string; title: string; native: string | null; source: string; result: string; provenance: string; action: { label: string; href: string | null } };
 
+function parseResult(json: string | null): ApplySummary | null {
+  if (!json) return null;
+  try {
+    return { ...EMPTY_SUMMARY, ...(JSON.parse(json) as Partial<ApplySummary>) };
+  } catch {
+    return null;
+  }
+}
+
 /** Admin → Importações → Resultado (Figma `8:4020`): a PRÉVIA do lote; nada foi salvo antes da confirmação. */
 export default async function ImportResultPage({ params, searchParams }: { params: Promise<{ seq: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { timeZone } = await requireAdminPage();
   const seq = Number((await params).seq);
   if (!Number.isInteger(seq) || seq < 1) notFound();
-  const job = await prisma.adminJob.findUnique({ where: { seq }, select: { seq: true, source: true, season: true, state: true, error: true, createdAt: true, parserVersion: true } });
+  const job = await prisma.adminJob.findUnique({ where: { seq }, select: { seq: true, source: true, season: true, state: true, error: true, createdAt: true, parserVersion: true, resultJson: true } });
   if (!job) notFound();
 
   const page = Math.max(0, Number((await searchParams).page) || 0);
@@ -30,6 +42,20 @@ export default async function ImportResultPage({ params, searchParams }: { param
     prisma.importRecord.findFirst({ where: { jobSeq: seq, state: "PENDING" }, orderBy: { titleRomaji: "asc" }, select: { id: true } }),
     prisma.catalogConflict.findFirst({ where: { jobSeq: seq, status: "PENDING" }, orderBy: { createdAt: "asc" }, select: { id: true } }),
   ]);
+
+  // Revisão em lote: todas as pendências do lote (não só a página aberta), cada uma com o candidato do catálogo.
+  const pendingAll = job.state === "RUNNING" ? await prisma.importRecord.findMany({ where: { jobSeq: seq, state: "PENDING" }, orderBy: { titleRomaji: "asc" }, take: 500 }) : [];
+  const candidateIds = pendingAll.map((r) => r.matchedAnilistId).filter((id): id is number => id !== null);
+  const candidateRows = candidateIds.length
+    ? await prisma.catalogEntry.findMany({ where: { anilistId: { in: candidateIds } }, select: { anilistId: true, titleRomaji: true, season: true, seasonYear: true } })
+    : [];
+  const candidateById = new Map(candidateRows.map((c) => [c.anilistId as number, c]));
+  const bulkRows: PendingRow[] = pendingAll.map((r) => {
+    const c = r.matchedAnilistId !== null ? candidateById.get(r.matchedAnilistId) : undefined;
+    const candidate = r.matchedProductionId ? { title: c?.titleRomaji ?? `Obra #${r.matchedAnilistId}`, detail: [c?.season && c.seasonYear ? seasonLabel({ season: c.season as SeasonName, year: c.seasonYear }) : null, r.matchedAnilistId !== null ? `AniList #${r.matchedAnilistId}` : null].filter(Boolean).join(" · ") } : null;
+    const scorePct = r.score !== null ? Math.round(r.score * 100) : null;
+    return { id: r.id, title: r.titleRomaji, native: r.titleNative, sourceKey: r.sourceKey, scorePct, candidate, suggested: candidate && scorePct !== null && scorePct >= 85 ? "confirm" : "new" };
+  });
 
   const rows: ResultRow[] = [
     ...records.map((r): ResultRow => {
@@ -78,6 +104,7 @@ export default async function ImportResultPage({ params, searchParams }: { param
     </SmallChip>
   );
   const matched = counts.auto + counts.confirmed;
+  const result = parseResult(job.resultJson);
   const firstPendingHref = firstPendingRecord ? `/admin/matching/${firstPendingRecord.id}` : firstPendingConflict ? `/admin/conflitos?id=${firstPendingConflict.id}` : null;
   const lastPage = Math.max(0, Math.ceil(counts.total / PAGE_SIZE) - 1);
 
@@ -112,7 +139,19 @@ export default async function ImportResultPage({ params, searchParams }: { param
       ) : job.state === "CANCELLED" ? (
         <Notice tone="info" title="Importação cancelada.">Nada foi aplicado ao catálogo. O HTML continua disponível para uma nova análise.</Notice>
       ) : done ? (
-        <Notice tone="success" title="Importação concluída.">As decisões e a origem ficam auditáveis em Jobs e Logs.</Notice>
+        <>
+          <Notice tone="success" title="Importação concluída." testId="result-done">
+            {result ? `${describeSummary(result)}. ` : ""}As decisões e a origem ficam auditáveis em Jobs e Logs.
+          </Notice>
+          {result && (result.deferred > 0 || (result.linked === 0 && matched > 0)) && (
+            <Notice tone="warning" title="Parte do lote ficou sem aplicar." testId="result-partial">
+              {result.linked === 0 && matched > 0
+                ? `Nenhuma das ${matched} obras casadas foi ligada à plataforma. `
+                : `${result.deferred} obra(s) casada(s) ainda sem produção. `}
+              Use “Reaplicar vínculos” para completar o lote; nada é duplicado.
+            </Notice>
+          )}
+        </>
       ) : counts.blocking > 0 ? (
         <Notice tone="warning" title={`${counts.blocking} ${counts.blocking === 1 ? "registro precisa" : "registros precisam"} de confirmação`} testId="result-blocked">
           Revise a identidade de produção e o broadcast divergente. O total fecha: {matched} + {counts.created} + {counts.blocking} = {counts.total}. CONFIRMAR IMPORTAÇÃO fica bloqueado enquanto houver pendências.
@@ -122,6 +161,8 @@ export default async function ImportResultPage({ params, searchParams }: { param
           Nenhuma pendência restante. Confirme para criar o job de commit — até lá, nenhum registro foi salvo.
         </Notice>
       )}
+
+      {job.state === "RUNNING" && <PendingBulkReview key={bulkRows.map((r) => r.id).join(",")} seq={seq} rows={bulkRows} />}
 
       {rows.length > 0 && (
         <AdminTable

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Box, Chip, Stack, Typography } from "@mui/material";
 import LanguageIcon from "@mui/icons-material/Language";
@@ -22,21 +23,37 @@ import { ensureProduction, parseStreamingLinks } from "@/lib/production";
 import { platformAnilistIds } from "@/lib/platform";
 import { Row } from "@/components/Row";
 import { RecommendationCard, type RecommendationData } from "@/components/RecommendationCard";
-import { CoverImage, BackdropImage } from "@/components/CoverImage";
 import { ensureEpisodes, type EpisodesResult } from "@/lib/episodes";
 import { ensureTitleFurigana } from "@/lib/ensureFurigana";
 import { callInternalService } from "@/lib/serviceDelegate";
 import type { AniListCharacterEntry, AniListRecommendation } from "@/lib/anilist";
+import { loadFranchiseSeasons } from "@/lib/franchiseSeasons";
+import { FranchiseSeasons } from "@/components/FranchiseSeasons";
+import { WorkHero } from "@/components/WorkHero";
+import { WorkDiscussions, WorkQuizEntry, WorkRelated } from "@/components/WorkSections";
+import { PublicWork } from "@/app/anime/[id]/PublicWork";
+
+/** Um id só de dígitos é o da AniList (obra de quem ainda não a acompanha); o resto é o id da sua própria lista. */
+const ANILIST_ID = /^\d{1,9}$/;
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  if (!ANILIST_ID.test(id)) return { title: "Anime Hub" };
+  const production = await prisma.production.findUnique({ where: { anilistId: Number(id) }, select: { titleRomaji: true } });
+  return { title: production ? `${production.titleRomaji} · Anime Hub` : "Anime Hub" };
+}
 
 export default async function AnimeDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
+  if (ANILIST_ID.test(id) && Number(id) > 0) return <PublicWork anilistId={Number(id)} />;
+
   const user = await getCurrentUser();
   if (!user) notFound();
 
-  const { id } = await params;
   const anime = await prisma.anime.findUnique({
     where: { id },
     include: { platformLinks: true },
@@ -50,15 +67,14 @@ export default async function AnimeDetailPage({
   // o que já está no banco e a atualização termina em segundo plano.
   const refresh = ensureProduction(anime.anilistId).catch(() => null);
   const catalogProduction = await Promise.race([refresh, new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500))]);
-  const catalogStreamingLinks = parseStreamingLinks(
-    (catalogProduction ?? (await prisma.production.findUnique({ where: { anilistId: anime.anilistId }, select: { streamingLinksJson: true } })))?.streamingLinksJson ?? null
-  );
+  const productionRow = catalogProduction ?? (await prisma.production.findUnique({ where: { anilistId: anime.anilistId } }));
+  const catalogStreamingLinks = parseStreamingLinks(productionRow?.streamingLinksJson ?? null);
   const cast: AniListCharacterEntry[] = anime.castJson ? JSON.parse(anime.castJson) : [];
   // Só recomenda o que está na plataforma (trazido pelo admin): o resto não tem página para abrir.
   const platformIds = await platformAnilistIds();
   const rawRecommendations: AniListRecommendation[] = (anime.recommendationsJson ? (JSON.parse(anime.recommendationsJson) as AniListRecommendation[]) : []).filter((r) => platformIds.has(r.anilistId));
 
-  const [seasons, episodesResult, furiganaHtml, ownedRecommendedAnime, scheduleRows, imageRows] = await Promise.all([
+  const [seasons, episodesResult, furiganaHtml, ownedRecommendedAnime, scheduleRows, imageRows, franchiseSeasons] = await Promise.all([
     anime.seriesKey
       ? prisma.anime.findMany({
           where: { seriesKey: anime.seriesKey, userId: user.id },
@@ -87,9 +103,18 @@ export default async function AnimeDetailPage({
     // Data de lançamento (calendário) e imagem de cada episódio: completam o que a Kitsu não traz.
     prisma.airingScheduleEntry.findMany({ where: { anilistId: anime.anilistId }, select: { episode: true, airingAt: true } }),
     prisma.episodeImage.findMany({ where: { anilistId: anime.anilistId }, select: { episode: true, thumbnail: true } }),
+    // Todas as temporadas da obra, juntas (franquia da AniList e, sem ela, o mesmo título com outro número de temporada).
+    loadFranchiseSeasons(anime.anilistId),
   ]);
   const schedule = Object.fromEntries(scheduleRows.map((r) => [r.episode, r.airingAt.toISOString()]));
   const episodeImages = Object.fromEntries(imageRows.map((r) => [r.episode, r.thumbnail]));
+
+  // O andamento de cada temporada da obra na lista de quem olha (para escolher: acompanhando, terminei, dropei…).
+  const mySeasonRows = await prisma.anime.findMany({
+    where: { userId: user.id, anilistId: { in: franchiseSeasons.map((s) => s.anilistId) } },
+    select: { id: true, anilistId: true, watchState: true, waiting: true },
+  });
+  const mySeasons = Object.fromEntries(mySeasonRows.map((a) => [a.anilistId, { animeId: a.id, watchState: a.watchState, waiting: a.waiting }]));
 
   const animeIdByAnilistId = new Map(ownedRecommendedAnime.map((a) => [a.anilistId, a.id]));
   const recommendations: RecommendationData[] = rawRecommendations.map((rec) => {
@@ -97,7 +122,7 @@ export default async function AnimeDetailPage({
     return {
       ...rec,
       isInternal: true, // sempre interno: lista própria ou página pública da obra
-      href: ownAnimeId ? `/anime/${ownAnimeId}` : `/obra/${rec.anilistId}`,
+      href: ownAnimeId ? `/anime/${ownAnimeId}` : `/anime/${rec.anilistId}`,
     };
   });
 
@@ -105,59 +130,7 @@ export default async function AnimeDetailPage({
     <div className="min-h-screen bg-ink pb-16">
       <Header />
 
-      {/* Pôster sobreposto ao banner (não mais empilhado abaixo dele) —
-          mesmo padrão de hero de sites de streaming: a capa "fura" a
-          faixa do banner por baixo, o resto da info fica ao lado dela
-          (desktop) ou abaixo (mobile, onde não cabe lado a lado). */}
-      <Box sx={{ position: "relative", height: { xs: 256, sm: 320 }, width: "100%", overflow: "visible" }}>
-        <Box sx={{ position: "absolute", inset: 0, overflow: "hidden" }}>
-          {anime.bannerImage ? (
-            <BackdropImage src={anime.bannerImage} />
-          ) : (
-            <Box sx={{ height: "100%", width: "100%", bgcolor: "background.paper" }} />
-          )}
-          <Box
-            sx={{
-              position: "absolute",
-              inset: 0,
-              background: anime.accentColor
-                ? `linear-gradient(to top, #0b0b0d, ${anime.accentColor}66, transparent)`
-                : "linear-gradient(to top, #0b0b0d, rgba(11,11,13,0.4), transparent)",
-            }}
-          />
-        </Box>
-
-        <Box
-          sx={{
-            position: "absolute",
-            left: { xs: 24, sm: 40 },
-            bottom: { xs: -56, sm: -80 },
-            zIndex: 1,
-            height: { xs: 224, sm: 288 },
-            width: { xs: 160, sm: 192 },
-            overflow: "hidden",
-            border: 2,
-            borderColor: "divider",
-            bgcolor: "background.paper",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-          }}
-        >
-          {anime.coverImage ? <CoverImage src={anime.coverImage} sizes="192px" /> : null}
-        </Box>
-      </Box>
-
-      <Box
-        sx={{
-          position: "relative",
-          zIndex: 1,
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          gap: 3,
-          px: { xs: 3, sm: 5 },
-          pt: { xs: "72px", sm: 3 },
-          pl: { sm: `${192 + 40 + 24}px` },
-        }}
-      >
+      <WorkHero bannerImage={anime.bannerImage} coverImage={anime.coverImage} accentColor={anime.accentColor}>
         <Box sx={{ display: "flex", flex: 1, flexDirection: "column", gap: 3 }}>
           <Box>
             <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap", alignItems: "center" }}>
@@ -274,6 +247,8 @@ export default async function AnimeDetailPage({
             />
           )}
 
+          <FranchiseSeasons seasons={franchiseSeasons} mine={mySeasons} signedIn />
+
           {(anime.anidbAwards || anime.anidbResources) && (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1, borderLeft: 2, borderColor: "secondary.main", bgcolor: "background.paper", p: 2 }}>
               <Typography variant="overline" sx={{ color: "text.secondary" }}>
@@ -329,8 +304,10 @@ export default async function AnimeDetailPage({
               <WatchLinks links={catalogStreamingLinks} emptyText="Nenhum site de streaming informado pela fonte." />
             </Box>
           </Box>
+
+          <WorkQuizEntry anilistId={anime.anilistId} userId={user.id} />
         </Box>
-      </Box>
+      </WorkHero>
 
       {anime.trailerSite?.toLowerCase() === "youtube" && anime.trailerId && (
         <Box sx={{ mt: 4, px: { xs: 3, sm: 5 } }}>
@@ -388,6 +365,18 @@ export default async function AnimeDetailPage({
           </Typography>
         </Stack>
         <CommentSection animeId={anime.id} accentColor={anime.accentColor} />
+      </Box>
+
+      <Box sx={{ mt: 4, px: { xs: 3, sm: 5 }, display: "flex", flexDirection: "column", gap: 5 }}>
+        <WorkDiscussions
+          anilistId={anime.anilistId}
+          titleNative={anime.titleNative}
+          titleRomaji={anime.titleRomaji}
+          titleEnglish={anime.titleEnglish}
+          seasonNumber={productionRow?.seasonNumber ?? anime.seasonNumber}
+          loggedIn
+        />
+        <WorkRelated anilistId={anime.anilistId} franchiseId={productionRow?.franchiseId ?? null} relationsJson={productionRow?.relationsJson ?? null} seasonIds={franchiseSeasons.map((x) => x.anilistId)} />
       </Box>
 
       {recommendations.length > 0 && (

@@ -1,11 +1,12 @@
 "use client";
 
-import { Children, type ReactNode } from "react";
+import { Children, useEffect, useState, type ReactNode } from "react";
 import NextLink from "next/link";
 import { Box, Button, Skeleton, Typography } from "@mui/material";
 import { ELEVATED_BUTTON_SX } from "@/components/ExploreCard";
 import { EmptyState } from "@/components/StatePanels";
 import { recentSeasons, seasonLabel, seasonSlug, type SeasonRef } from "@/lib/exploreGroups";
+import type { AvailableSeason } from "@/lib/availableSeasons";
 
 /** Grade de cartões do Figma: 4 colunas com 24 px de respiro (2 no celular, 3 no tablet). */
 export function CardGrid({ children, label }: { children: ReactNode; label?: string }) {
@@ -85,8 +86,22 @@ export function EmptyPanel({ title, children, action, icon }: { title: string; c
 
 /** Fileira "TEMPORADAS": as quatro mais recentes (a atual primeiro), cada uma leva à página da temporada. */
 export function SeasonChips({ exclude }: { exclude?: SeasonRef }) {
-  const now = new Date();
-  const seasons = recentSeasons(now, 4).filter((s) => !(exclude && s.season === exclude.season && s.year === exclude.year));
+  // Só as temporadas que têm anime na plataforma; enquanto a lista não chega, as 4 mais recentes.
+  const [available, setAvailable] = useState<AvailableSeason[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/seasons")
+      .then((res) => (res.ok ? res.json() : { seasons: [] }))
+      .then((data: { seasons?: AvailableSeason[] }) => {
+        if (!cancelled) setAvailable(data.seasons ?? []);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const pool: SeasonRef[] = available ? available.slice(0, 6) : recentSeasons(new Date(), 4);
+  const seasons = pool.filter((s) => !(exclude && s.season === exclude.season && s.year === exclude.year));
   return (
     <Box component="nav" aria-label="Temporadas" sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
       {!exclude && (

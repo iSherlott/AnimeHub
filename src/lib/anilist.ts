@@ -120,9 +120,11 @@ export function rateLimitWaitMs(retryAfterHeader: string | null, attempt: number
   return Math.min(suggested, RATE_LIMIT_MAX_WAIT_MS);
 }
 
+/** `fresh`: consulta sem o cache de 1 h do Next (painel do admin precisa do que a AniList tem agora). */
 async function anilistRequest<T>(
   query: string,
-  variables: Record<string, unknown>
+  variables: Record<string, unknown>,
+  { fresh = false }: { fresh?: boolean } = {}
 ): Promise<T> {
   let res: Response;
   for (let attempt = 0; ; attempt += 1) {
@@ -133,7 +135,7 @@ async function anilistRequest<T>(
         Accept: "application/json",
       },
       body: JSON.stringify({ query, variables }),
-      next: { revalidate: 3600 },
+      ...(fresh ? { cache: "no-store" as const } : { next: { revalidate: 3600 } }),
     });
     // 429 é transitório (limite de ~90 req/min da AniList): respeita
     // Retry-After e tenta de novo, em vez de derrubar a fatia/ciclo inteiro.
@@ -194,7 +196,7 @@ const SEASON_MAX_PAGES = 8;
 export async function getSeasonalAnime(
   season: "WINTER" | "SPRING" | "SUMMER" | "FALL",
   seasonYear: number,
-  { includeBlocked = false }: { includeBlocked?: boolean } = {}
+  { includeBlocked = false, fresh = false }: { includeBlocked?: boolean; fresh?: boolean } = {}
 ): Promise<AniListMedia[]> {
   const query = `
     query ($season: MediaSeason, $seasonYear: Int, $page: Int) {
@@ -218,13 +220,39 @@ export async function getSeasonalAnime(
   for (let page = 1; page <= SEASON_MAX_PAGES; page += 1) {
     const data = await anilistRequest<{ Page: { pageInfo?: { hasNextPage?: boolean }; media: AniListMedia[] } }>(
       query,
-      { season, seasonYear, page }
+      { season, seasonYear, page },
+      { fresh }
     );
     all.push(...data.Page.media.map(normalizeMedia));
     if (!data.Page.pageInfo?.hasNextPage) break;
   }
   // `includeBlocked` existe só para a importação reconhecer (e descartar) o que é hentai; nunca vai para o catálogo.
   return includeBlocked ? all : all.filter((m) => !hasBlockedGenre(m.genres));
+}
+
+/**
+ * Dados atuais de várias obras de uma vez (complemento do que a plataforma já tem). Lotes de 50 ids por página;
+ * conteúdo adulto (hentai) fica de fora.
+ */
+export async function getMediaByIds(ids: number[], { fresh = false }: { fresh?: boolean } = {}): Promise<AniListMedia[]> {
+  const unique = Array.from(new Set(ids));
+  if (unique.length === 0) return [];
+  const query = `
+    query ($ids: [Int], $page: Int) {
+      Page(page: $page, perPage: 50) {
+        media(id_in: $ids, type: ANIME) {
+          ${MEDIA_FIELDS}
+        }
+      }
+    }
+  `;
+  const all: AniListMedia[] = [];
+  for (let start = 0; start < unique.length; start += 50) {
+    const batch = unique.slice(start, start + 50);
+    const data = await anilistRequest<{ Page: { media: AniListMedia[] } }>(query, { ids: batch, page: 1 }, { fresh });
+    all.push(...data.Page.media.map(normalizeMedia));
+  }
+  return all.filter((m) => !hasBlockedGenre(m.genres));
 }
 
 export type AniListTrailer = { id: string; site: string } | null;
@@ -508,7 +536,7 @@ export async function getAiringScheduleWindow(
  * Todos os episódios (passados e futuros) das obras informadas — a carga manual de uma temporada anterior,
  * cujos episódios já saíram da janela de ±8 semanas do loader. `truncated` avisa se a paginação bateu no teto.
  */
-export async function getAiringScheduleForMedia(mediaIds: number[]): Promise<{ entries: AniListAiringEntry[]; truncated: boolean }> {
+export async function getAiringScheduleForMedia(mediaIds: number[], { fresh = false }: { fresh?: boolean } = {}): Promise<{ entries: AniListAiringEntry[]; truncated: boolean }> {
   if (mediaIds.length === 0) return { entries: [], truncated: false };
   const query = `
     query ($page: Int, $ids: [Int]) {
@@ -525,7 +553,7 @@ export async function getAiringScheduleForMedia(mediaIds: number[]): Promise<{ e
   let hasNextPage = true;
   const MAX_PAGES = 30;
   while (hasNextPage && page <= MAX_PAGES) {
-    const data = await anilistRequest<{ Page: { pageInfo: { hasNextPage: boolean }; airingSchedules: RawAiringSchedule[] } }>(query, { page, ids: mediaIds });
+    const data = await anilistRequest<{ Page: { pageInfo: { hasNextPage: boolean }; airingSchedules: RawAiringSchedule[] } }>(query, { page, ids: mediaIds }, { fresh });
     for (const raw of data.Page.airingSchedules) {
       const entry = airingEntryFromRaw(raw);
       if (entry) entries.push(entry);

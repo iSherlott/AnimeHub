@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseAnidbDay, parseAnidbGeneral, parseSeasonHtml } from "./parseSeasonHtml";
+import { detectSeason, detectYearFromTitles, fullImageUrl, parseAnidbDay, parseAnidbGeneral, parseAnidbTags, parseSeasonHtml, seasonMismatch, yearMismatch } from "./parseSeasonHtml";
+import { inferStatus } from "./apply";
 
 /** Recorte fiel da listagem de temporada do AniDB (arquivo "autumn 2026"). */
 const ANIDB = `
@@ -56,7 +57,7 @@ describe("parseSeasonHtml · listagem de temporada do AniDB", () => {
       episodes: 1,
       year: 2026,
       description: "Conan & the League visit the Nagano factory.",
-      imageUrl: "https://cdn.anidb.net/images/150/330015.jpg-thumb.jpg",
+      imageUrl: "https://cdn.anidb.net/images/main/330015.jpg", // a miniatura de 150 px vira a imagem inteira
       airsAtHasTime: false,
     });
     expect(records[0].links).toEqual([
@@ -129,5 +130,131 @@ describe("parseAnidbGeneral", () => {
     ["Mystery", null, null],
   ])("%s", (text, format, episodes) => {
     expect(parseAnidbGeneral(text)).toEqual({ format, episodes });
+  });
+});
+
+
+const TAGGED = `
+<div class="g_bubblewrap g_bubble container">
+  <div class="g_odd g_bubble box no1" id="a100">
+    <div class="data">
+      <div class="wrap name"><a class="name-colored" href="/anime/100">Comedia Escolar</a></div>
+      <div class="date">5th July</div><div class="general">TV Series, 12 eps</div>
+      <div class="tags"><span class="g_tag"><a class="tooltip" href="/tag/1"><span class="tagname">comedy</span><span class="wrapper"><span class="g_bubble text">humor</span></span></a></span>, <span class="g_tag"><a href="/tag/2"><span class="tagname">school life</span></a></span>, <span class="g_tag"><a href="/tag/3"><span class="tagname">manga</span></a></span>, <span class="g_tag"><a href="/tag/4"><span class="tagname">romance</span></a></span></div>
+    </div>
+  </div>
+  <div class="g_bubble box no2" id="a200">
+    <div class="data">
+      <div class="wrap name"><a class="name-colored" href="/anime/200">Titulo Explicito</a></div>
+      <div class="date">6th July</div><div class="general">TV Series, 12 eps</div>
+      <div class="tags"><span class="g_tag"><a href="/tag/5"><span class="tagname">nudity</span></a></span>, <span class="g_tag"><a href="/tag/6"><span class="tagname">sex</span></a></span></div>
+    </div>
+  </div>
+  <div class="g_odd g_bubble box no3" id="a300">
+    <div class="data">
+      <div class="wrap name"><a class="name-colored" href="/anime/300">Ecchi Comum</a></div>
+      <div class="date">7th July</div><div class="general">TV Series, 12 eps</div>
+      <div class="tags"><span class="g_tag"><a href="/tag/5"><span class="tagname">nudity</span></a></span></div>
+    </div>
+  </div>
+</div>`;
+
+describe("parseSeasonHtml · tags do AniDB", () => {
+  const SUMMER_2026 = { season: "SUMMER", year: 2026 } as const;
+
+  it("lê as tags, traduz para a taxonomia fechada e ignora o que não é gênero", () => {
+    expect(parseAnidbTags('<span class="tagname">comedy</span><span class="tagname">Daily Life</span>')).toEqual(["comedy", "daily life"]);
+    const [comedy] = parseSeasonHtml(TAGGED, { season: SUMMER_2026 }).records;
+    expect(comedy.genres).toEqual(["Comedy", "Romance"]); // "school life" e "manga" não são gêneros da taxonomia
+    expect(comedy.adult).toBe(false);
+  });
+
+  it("tag de sexo explícito marca o registro como adulto; nudez sozinha não", () => {
+    const [, explicit, ecchi] = parseSeasonHtml(TAGGED, { season: SUMMER_2026 }).records;
+    expect(explicit.adult).toBe(true);
+    expect(ecchi.adult).toBe(false);
+  });
+});
+
+describe("fullImageUrl", () => {
+  it("troca a miniatura de 150 px do AniDB pela imagem inteira e mantém qualquer outra URL", () => {
+    expect(fullImageUrl("https://cdn.anidb.net/images/150/326184.jpg-thumb.jpg")).toBe("https://cdn.anidb.net/images/main/326184.jpg");
+    expect(fullImageUrl("https://cdn.anidb.net/images/main/1.jpg")).toBe("https://cdn.anidb.net/images/main/1.jpg");
+    expect(fullImageUrl("https://s4.anilist.co/x.jpg")).toBe("https://s4.anilist.co/x.jpg");
+  });
+});
+
+describe("inferStatus", () => {
+  const now = new Date("2026-10-12T12:00:00Z");
+  const day = (d: string) => new Date(`${d}T00:00:00Z`);
+  it("o que ainda não estreou (ou não tem data) é NOT_YET_RELEASED", () => {
+    expect(inferStatus({ format: "TV", episodes: 12, airsAt: day("2026-11-01") }, now)).toBe("NOT_YET_RELEASED");
+    expect(inferStatus({ format: "TV", episodes: 12, airsAt: null }, now)).toBe("NOT_YET_RELEASED");
+  });
+  it("filme ou episódio único já exibido está finalizado", () => {
+    expect(inferStatus({ format: "MOVIE", episodes: 1, airsAt: day("2026-09-01") }, now)).toBe("FINISHED");
+    expect(inferStatus({ format: "OVA", episodes: 1, airsAt: day("2026-09-01") }, now)).toBe("FINISHED");
+  });
+  it("série cujas semanas já passaram está finalizada; a que ainda cabe no ar segue em exibição", () => {
+    expect(inferStatus({ format: "TV", episodes: 12, airsAt: day("2026-07-05") }, now)).toBe("FINISHED"); // 12 semanas depois: out/12
+    expect(inferStatus({ format: "TV", episodes: 24, airsAt: day("2026-07-05") }, now)).toBe("RELEASING");
+    expect(inferStatus({ format: "ONA", episodes: null, airsAt: day("2026-07-05") }, now)).toBe("RELEASING");
+  });
+});
+
+function boxesOn(days: string[]): string {
+  return `<div class="g_bubblewrap g_bubble container">${days
+    .map(
+      (day, i) => `<div class="g_bubble box no${i}" id="a${500 + i}"><div class="data"><div class="wrap name"><a class="name-colored" href="/anime/${500 + i}">Obra ${i}</a></div><div class="date">${day}</div><div class="general">TV Series, 12 eps</div></div></div>`
+    )
+    .join("")}</div>`;
+}
+
+describe("temporada indicada pelas datas do HTML", () => {
+  const spring = boxesOn(["2nd March", "13th March", "5th April", "12th April", "3rd May", "20th May", "1st June"]);
+  const autumn = boxesOn(["1st October", "4th October", "10th October", "7th November", "5th December"]);
+
+  it("detecta primavera e outono pelo mês mais comum", () => {
+    expect(detectSeason(spring)).toBe("SPRING");
+    expect(detectSeason(autumn)).toBe("FALL");
+  });
+  it("com poucas datas não arrisca um palpite", () => {
+    expect(detectSeason(boxesOn(["1st April", "2nd April"]))).toBeNull();
+  });
+  it("recusa o rótulo errado: primavera analisada como outono", () => {
+    expect(seasonMismatch(spring, { season: "FALL", year: 2026 })).toBe("SPRING");
+    expect(seasonMismatch(spring, { season: "SPRING", year: 2026 })).toBeNull();
+    expect(seasonMismatch(autumn, { season: "FALL", year: 2026 })).toBeNull();
+  });
+  it("aceita a folga de um mês nas pontas (março na primavera, dezembro no outono)", () => {
+    expect(seasonMismatch(boxesOn(["2nd March", "9th March", "16th March", "5th April", "6th April"]), { season: "SPRING", year: 2026 })).toBeNull();
+  });
+});
+
+function boxesTitled(titles: string[]): string {
+  return `<div class="g_bubblewrap g_bubble container">${titles
+    .map(
+      (title, i) => `<div class="g_bubble box no${i}" id="a${700 + i}"><div class="data"><div class="wrap name"><a class="name-colored" href="/anime/${700 + i}">${title}</a></div><div class="date">${i + 1}th July</div><div class="general">TV Series, 12 eps</div></div></div>`
+    )
+    .join("")}</div>`;
+}
+
+describe("ano indicado pelos títulos do HTML", () => {
+  const y2025 = boxesTitled(["A (2025)", "B (2025)", "C (2025)", "D (2025)", "E (2025)", "F (2025)", "Sem ano"]);
+
+  it("lê o ano que domina nas marcas '(AAAA)' dos títulos", () => {
+    expect(detectYearFromTitles(y2025)).toBe(2025);
+  });
+  it("com poucas marcas ou sem maioria não arrisca", () => {
+    expect(detectYearFromTitles(boxesTitled(["A (2025)", "B (2025)", "C", "D", "E", "F"]))).toBeNull();
+    expect(detectYearFromTitles(boxesTitled(["A (2025)", "B (2025)", "C (2025)", "D (2026)", "E (2026)", "F (2026)"]))).toBeNull();
+  });
+  it("recusa o ano errado: verão de 2025 escolhido como Summer2026", () => {
+    expect(yearMismatch(y2025, { season: "SUMMER", year: 2026 })).toBe(2025);
+    expect(yearMismatch(y2025, { season: "SUMMER", year: 2025 })).toBeNull();
+  });
+  it("o inverno aceita o ano anterior (estreias de dezembro)", () => {
+    expect(yearMismatch(y2025, { season: "WINTER", year: 2026 })).toBeNull();
+    expect(yearMismatch(y2025, { season: "WINTER", year: 2027 })).toBe(2025);
   });
 });

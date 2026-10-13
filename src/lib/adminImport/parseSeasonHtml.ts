@@ -20,11 +20,12 @@
  * nome, data "25th September", tipo "TV Series, 12 eps", sinopse e ícones de
  * streaming). Ela não traz o ano: ele vem da temporada escolhida no lote.
  */
-export const PARSER_VERSION = "2.0.0";
+export const PARSER_VERSION = "2.1.0";
 export const MAX_HTML_BYTES = 1_000_000;
 export const MAX_RECORDS = 500;
 
-import type { SeasonRef } from "@/lib/exploreGroups";
+import type { SeasonName, SeasonRef } from "@/lib/exploreGroups";
+import { normalizeGenres } from "@/lib/genreTaxonomy";
 
 export type ParsedRecord = {
   sourceKey: string;
@@ -41,6 +42,10 @@ export type ParsedRecord = {
   imageUrl: string | null;
   /** Sites de streaming que a fonte indica (só http/https). */
   links: Array<{ site: string; url: string }>;
+  /** Gêneros da fonte (tags do AniDB) já na taxonomia fechada do app. */
+  genres: string[];
+  /** A fonte marca conteúdo adulto explícito (tags do AniDB): fora da plataforma. */
+  adult: boolean;
 };
 
 export type ParseResult = {
@@ -145,6 +150,23 @@ export function parseAnidbGeneral(text: string): { format: string | null; episod
   return { format, episodes: eps ? Number(eps[1]) : null };
 }
 
+/** Tags do AniDB que indicam conteúdo sexual explícito: o registro nunca entra na plataforma. */
+export const ADULT_TAGS: readonly string[] = ["hentai", "sex", "pornography", "erotica"];
+
+/** Nomes das tags de um registro do AniDB (`<span class="tagname">comedy</span>`). */
+export function parseAnidbTags(chunk: string): string[] {
+  return Array.from(chunk.matchAll(/<span class="tagname">([^<]+)<\/span>/gi), (m) => decodeEntities(m[1]).trim().toLowerCase()).filter(Boolean);
+}
+
+/**
+ * A listagem do AniDB traz só a miniatura de 150 px (`/images/150/ID.jpg-thumb.jpg`); a imagem inteira fica em
+ * `/images/main/ID.jpg`. Qualquer outra URL é mantida como veio.
+ */
+export function fullImageUrl(url: string): string {
+  const m = /^(https:\/\/cdn\.anidb\.net)\/images\/\d+\/(.+?)\.jpg-thumb\.jpg$/i.exec(url);
+  return m ? `${m[1]}/images/main/${m[2]}.jpg` : url;
+}
+
 function innerOf(chunk: string, className: string): string | null {
   const m = new RegExp(`<div class="${className}">([\\s\\S]*?)</div>`, "i").exec(chunk);
   return m ? m[1] : null;
@@ -184,7 +206,8 @@ function parseAnidbBoxes(clean: string, season: SeasonRef | null, warnings: stri
     const desc = innerOf(chunk, "desc");
     const description = desc ? stripTags(desc).slice(0, 4000) || null : null;
     const image = /<img\b[^>]*\bsrc="([^"]+)"/i.exec(chunk);
-    const imageUrl = image && /^https:\/\//i.test(decodeEntities(image[1])) ? decodeEntities(image[1]) : null;
+    const imageUrl = image && /^https:\/\//i.test(decodeEntities(image[1])) ? fullImageUrl(decodeEntities(image[1])) : null;
+    const tags = parseAnidbTags(chunk);
 
     const links: Array<{ site: string; url: string }> = [];
     for (const link of chunk.matchAll(/<a\b([^>]*)>/gi)) {
@@ -208,9 +231,77 @@ function parseAnidbBoxes(clean: string, season: SeasonRef | null, warnings: stri
       episodes: general.episodes,
       imageUrl,
       links,
+      genres: normalizeGenres(tags),
+      adult: tags.some((t) => ADULT_TAGS.includes(t)),
     });
   });
   return { records, skipped };
+}
+
+/** Meses (1-12) que cada temporada aceita, com folga de um mês: o AniDB lista estreias de março na primavera, por exemplo. */
+const SEASON_MONTHS: Record<SeasonName, number[]> = { WINTER: [12, 1, 2, 3], SPRING: [3, 4, 5, 6], SUMMER: [6, 7, 8, 9], FALL: [9, 10, 11, 12] };
+const MIN_DATED_FOR_SEASON = 5;
+
+function datedMonths(html: string): number[] {
+  // O ano não importa aqui: só o mês de estreia de cada obra.
+  const parsed = parseSeasonHtml(html, { season: { season: "SUMMER", year: 2000 } });
+  return parsed.records.flatMap((r) => (r.airsAt ? [r.airsAt.getUTCMonth() + 1] : []));
+}
+
+/** A temporada que as datas do HTML indicam (pelo mês mais comum no meio da lista), ou null com poucas datas. */
+export function detectSeason(html: string): SeasonName | null {
+  const months = datedMonths(html).sort((a, b) => a - b);
+  if (months.length < MIN_DATED_FOR_SEASON) return null;
+  const median = months[Math.floor(months.length / 2)];
+  if (median === 12 || median <= 2) return "WINTER";
+  if (median <= 5) return "SPRING";
+  if (median <= 8) return "SUMMER";
+  return "FALL";
+}
+
+/**
+ * O HTML do AniDB não diz a que temporada pertence, então a escolha do formulário pode estar errada (a carga de
+ * primavera entrar como outono). Devolve a temporada indicada pelas datas quando menos da metade delas cabe na escolhida.
+ */
+export function seasonMismatch(html: string, chosen: SeasonRef): SeasonName | null {
+  const months = datedMonths(html);
+  if (months.length < MIN_DATED_FOR_SEASON) return null;
+  const fits = months.filter((m) => SEASON_MONTHS[chosen.season].includes(m)).length;
+  if (fits / months.length >= 0.5) return null;
+  const detected = detectSeason(html);
+  return detected && detected !== chosen.season ? detected : null;
+}
+
+const MIN_YEAR_TAGS = 5;
+
+/**
+ * O AniDB desambigua títulos com o ano de estreia ("Dan Da Dan (2025)"). Numa listagem de temporada esse ano quase
+ * sempre é o da própria temporada — e é a única pista de ANO no HTML (as datas só trazem dia e mês). Devolve o ano que
+ * domina nos títulos, ou null quando há poucas marcas ou nenhum ano passa de 60 % delas.
+ */
+export function detectYearFromTitles(html: string): number | null {
+  const parsed = parseSeasonHtml(html, { season: { season: "SUMMER", year: 2000 } });
+  const counts = new Map<number, number>();
+  for (const record of parsed.records) {
+    const tag = /\((19|20)(\d{2})\)\s*$/.exec(record.titleRomaji);
+    if (tag) counts.set(Number(`${tag[1]}${tag[2]}`), (counts.get(Number(`${tag[1]}${tag[2]}`)) ?? 0) + 1);
+  }
+  const total = Array.from(counts.values()).reduce((a, b) => a + b, 0);
+  if (total < MIN_YEAR_TAGS) return null;
+  const [year, count] = Array.from(counts).sort((a, b) => b[1] - a[1])[0];
+  return count / total >= 0.6 ? year : null;
+}
+
+/**
+ * Detecta o ano errado: a carga de verão de 2025 escolhida como "Summer2026" entraria como 2026 e ligaria as obras às
+ * de 2026. Devolve o ano indicado pelos títulos quando ele não é o da temporada escolhida (o inverno aceita também o
+ * ano anterior: estreias de dezembro).
+ */
+export function yearMismatch(html: string, chosen: SeasonRef): number | null {
+  const detected = detectYearFromTitles(html);
+  if (detected === null) return null;
+  const allowed = chosen.season === "WINTER" ? [chosen.year, chosen.year - 1] : [chosen.year];
+  return allowed.includes(detected) ? null : detected;
 }
 
 export function parseSeasonHtml(html: string, options: { season?: SeasonRef | null } = {}): ParseResult {
@@ -285,6 +376,8 @@ export function parseSeasonHtml(html: string, options: { season?: SeasonRef | nu
       episodes: null,
       imageUrl: null,
       links: [],
+      genres: [],
+      adult: false,
     });
   }
 

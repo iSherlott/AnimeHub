@@ -8,7 +8,9 @@ import { Box, Button, Typography } from "@mui/material";
 import { SelectField } from "@/components/FilterField";
 import { ELEVATED_BUTTON_SX } from "@/components/ExploreCard";
 import { ErrorNotice } from "@/components/StatePanels";
-import { PARSER_VERSION } from "@/lib/adminImport/parseSeasonHtml";
+import { ImportProgress } from "@/components/admin/ImportProgress";
+import { detectSeason, detectYearFromTitles, PARSER_VERSION } from "@/lib/adminImport/parseSeasonHtml";
+import { parseSeasonSlug, SEASON_COPY } from "@/lib/exploreGroups";
 
 /**
  * Formulário "Importar temporada" (Figma `8:3894`): fonte + temporada + HTML
@@ -25,6 +27,21 @@ export function ImportForm({ seasons, initialHtml = "", initialSeason }: { seaso
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [failure, setFailure] = useState<{ error: string; seq?: number } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [startedAt, setStartedAt] = useState(0);
+  const [detected, setDetected] = useState<string | null>(null);
+
+  /** O HTML do AniDB não traz a temporada: pelas datas, escolhe a mais recente que bate (e avisa), para não errar o rótulo. */
+  function changeHtml(next: string) {
+    setHtml(next);
+    const found = next.length > 2000 ? detectSeason(next) : null;
+    const year = next.length > 2000 ? detectYearFromTitles(next) : null;
+    // O ano vem dos títulos ("Nome (2025)"), quando há; senão vale a temporada mais recente com esse nome.
+    const option = found
+      ? (year ? seasons.find((s) => { const ref = parseSeasonSlug(s.toLowerCase()); return ref?.season === found && ref.year === year; }) : undefined) ?? seasons.find((s) => parseSeasonSlug(s.toLowerCase())?.season === found)
+      : undefined;
+    if (option) setSeason(option);
+    setDetected(option && found ? `${SEASON_COPY[found].labelPt} (${option})` : null);
+  }
 
   async function analyze() {
     setFailure(null);
@@ -34,6 +51,7 @@ export function ImportForm({ seasons, initialHtml = "", initialSeason }: { seaso
       return;
     }
     setFieldError(null);
+    setStartedAt(Date.now());
     setBusy(true);
     try {
       const res = await fetch("/api/admin/imports", {
@@ -43,7 +61,7 @@ export function ImportForm({ seasons, initialHtml = "", initialSeason }: { seaso
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        if (data.field === "html" && !data.seq) setFieldError(data.error);
+        if ((data.field === "html" || data.field === "season") && !data.seq) setFieldError(data.error);
         else setFailure({ error: data.error ?? "Falha ao processar importação.", seq: data.seq });
         return;
       }
@@ -71,7 +89,7 @@ export function ImportForm({ seasons, initialHtml = "", initialSeason }: { seaso
           component="textarea"
           id={htmlId}
           value={html}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setHtml(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => changeHtml(e.target.value)}
           placeholder="Cole aqui o HTML completo da listagem de temporada..."
           aria-invalid={fieldError ? true : undefined}
           aria-describedby={fieldError ? `${htmlId}-error` : undefined}
@@ -91,12 +109,19 @@ export function ImportForm({ seasons, initialHtml = "", initialSeason }: { seaso
             "&:focus": { outline: "none", borderColor: "text.secondary" },
           }}
         />
+        {detected && (
+          <Typography data-testid="season-detected" sx={{ fontSize: 13, color: "text.secondary" }}>
+            Temporada detectada pelas datas do HTML: {detected}. Confira antes de analisar.
+          </Typography>
+        )}
         {fieldError && (
           <Typography id={`${htmlId}-error`} role="alert" sx={{ fontSize: 13, color: "primary.main" }}>
             {fieldError}
           </Typography>
         )}
       </Box>
+
+      <ImportProgress running={busy} since={startedAt} fallbackNote="Enviando o HTML e preparando a análise…" />
 
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
         <Button type="submit" variant="contained" loading={busy} startIcon={<DocumentScannerOutlinedIcon />} sx={{ textTransform: "uppercase" }}>
@@ -105,6 +130,7 @@ export function ImportForm({ seasons, initialHtml = "", initialSeason }: { seaso
         <Button
           onClick={() => {
             setHtml("");
+            setDetected(null);
             setFieldError(null);
             setFailure(null);
           }}

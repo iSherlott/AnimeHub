@@ -50,8 +50,10 @@ export class PendingError extends Error {
 /** Adia o episódio: só de obra que a pessoa acompanha. Devolve o episódio em que ela "parou". */
 export async function postpone(userId: string, anilistId: number, episode: number): Promise<number> {
   if (!Number.isInteger(episode) || episode < 1 || episode > 5000) throw new PendingError("BAD_EPISODE", "Episódio inválido.");
-  const following = await prisma.anime.findUnique({ where: { userId_anilistId: { userId, anilistId } }, select: { id: true } });
+  const following = await prisma.anime.findUnique({ where: { userId_anilistId: { userId, anilistId } }, select: { id: true, watchState: true } });
   if (!following) throw new PendingError("NOT_FOLLOWING", "Acompanhe a obra para adiar episódios.");
+  // Adiar um episódio desfaz um "Terminei" marcado antes: a obra voltou a ter algo por ver.
+  if (following.watchState === "FINISHED") await prisma.anime.update({ where: { id: following.id }, data: { watchState: null } });
   const existing = await prisma.pendingEpisode.findUnique({ where: { userId_anilistId: { userId, anilistId } } });
   const fromEpisode = mergeFromEpisode(existing?.fromEpisode ?? null, episode);
   await prisma.pendingEpisode.upsert({ where: { userId_anilistId: { userId, anilistId } }, create: { userId, anilistId, fromEpisode }, update: { fromEpisode } });

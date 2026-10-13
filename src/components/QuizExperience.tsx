@@ -161,7 +161,7 @@ function EquipButton({ titleId }: { titleId: string }) {
  */
 export function QuizExperience({ anilistId, work, state, loggedIn }: { anilistId: number; work: Work; state: QuizState; loggedIn: boolean }) {
   const quiz = state.quiz;
-  const workHref = `/obra/${anilistId}`;
+  const workHref = `/anime/${anilistId}`;
   const completed = state.attempt.status === "COMPLETED";
   const [phase, setPhase] = useState<Phase>(completed ? "result" : "intro");
   const [result, setResult] = useState<Result | null>(

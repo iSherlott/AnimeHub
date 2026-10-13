@@ -58,13 +58,31 @@ test.describe("Epic 27 (lote 4) — Descobrir: grade responsiva pros resultados 
     expect(box3!.y).toBeGreaterThan(box1!.y + 10);
   });
 
-  test("'+ Acompanhar' do cartão leva ao detalhe público, onde o vínculo é confirmado", async ({ page }) => {
+  test("'+ Acompanhar' do cartão adiciona direto e mantém a pessoa na página, para escolher outras obras", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
+    const posted: number[] = [];
+    await page.route("**/api/anime", async (route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      const { anilistId } = route.request().postDataJSON() as { anilistId: number };
+      posted.push(anilistId);
+      await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ anime: { id: `fake-${anilistId}` } }) });
+    });
     await page.goto("/discover");
     await page.getByLabel("Gênero").selectOption(GENRE);
+    const url = page.url();
 
-    const follow = page.getByRole("link", { name: "+ Acompanhar" }).first();
-    await expect(follow).toBeVisible();
-    await expect(follow).toHaveAttribute("href", /^\/obra\/9120\d\d$/);
+    const follow = page.getByRole("button", { name: "+ Acompanhar" });
+    await expect(follow.first()).toBeVisible();
+    await follow.first().click();
+    // Segue em /discover (não abre a descrição) e o cartão vira "Acompanhando".
+    await expect(page.getByRole("link", { name: "Acompanhando" })).toHaveCount(1);
+    expect(page.url()).toBe(url);
+
+    // Dá para acompanhar a próxima sem voltar.
+    await follow.first().click();
+    await expect(page.getByRole("link", { name: "Acompanhando" })).toHaveCount(2);
+    expect(page.url()).toBe(url);
+    expect(posted).toHaveLength(2);
+    expect(new Set(posted).size).toBe(2);
   });
 });

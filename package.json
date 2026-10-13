@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "services": "node scripts/dev-services.mjs",
     "lint": "eslint",
     "test": "playwright test --grep-invert @external",
     "test:external": "playwright test --grep @external",

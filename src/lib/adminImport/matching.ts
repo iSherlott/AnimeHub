@@ -81,8 +81,20 @@ export type ScoreDetail = { title: number; season: number | null; year: number |
 export type ScoredCandidate = { candidate: MatchCandidate; score: number; detail: ScoreDetail };
 
 export function scoreCandidate(input: MatchInput, candidate: MatchCandidate): ScoredCandidate {
-  if (candidate.anidbId !== null && String(candidate.anidbId) === input.sourceKey) {
-    // Vínculo já confirmado antes: a identidade manda.
+  const ref = input.seasonLabel ? parseSeasonSlug(input.seasonLabel) : null;
+  const targetYear = input.year ?? ref?.year ?? null;
+  // Vínculo já confirmado antes: a identidade manda — salvo se a obra é de uma época distante da do lote (um vínculo
+  // gravado por um lote com o ano errado não pode ficar mandando para sempre). Temporadas vizinhas valem: o AniDB
+  // lista séries que seguem de uma temporada para a outra.
+  const SEASONS = ["WINTER", "SPRING", "SUMMER", "FALL"];
+  const eraOf = (season: string | null, year: number) => year * 4 + Math.max(0, SEASONS.indexOf(season ?? ""));
+  const sameEra =
+    targetYear === null || candidate.seasonYear === null
+      ? true
+      : ref && candidate.season
+        ? Math.abs(eraOf(ref.season, ref.year) - eraOf(candidate.season, candidate.seasonYear)) <= 1
+        : Math.abs(targetYear - candidate.seasonYear) <= 1;
+  if (candidate.anidbId !== null && String(candidate.anidbId) === input.sourceKey && sameEra) {
     return { candidate, score: 1, detail: { title: 1, season: null, year: null, image: null } };
   }
   const left = input.titles.map(normalizeTitle).filter(Boolean);
@@ -90,9 +102,7 @@ export function scoreCandidate(input: MatchInput, candidate: MatchCandidate): Sc
   let title = 0;
   for (const l of left) for (const r of right) title = Math.max(title, dice(l, r));
 
-  const ref = input.seasonLabel ? parseSeasonSlug(input.seasonLabel) : null;
   const season = ref && candidate.season ? (ref.season === candidate.season ? 1 : 0) : null;
-  const targetYear = input.year ?? ref?.year ?? null;
   const year =
     targetYear !== null && candidate.seasonYear !== null ? (targetYear === candidate.seasonYear ? 1 : Math.abs(targetYear - candidate.seasonYear) === 1 ? 0.5 : 0) : null;
 

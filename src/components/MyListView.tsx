@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import EventBusyIcon from "@mui/icons-material/EventBusy";
 import EventNoteIcon from "@mui/icons-material/EventNote";
 import EventRepeatIcon from "@mui/icons-material/EventRepeat";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PauseCircleIcon from "@mui/icons-material/PauseCircle";
 import PauseCircleOutlineIcon from "@mui/icons-material/PauseCircleOutlined";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
@@ -79,6 +80,86 @@ function WaitButton({ entry }: { entry: MyListEntry }) {
           {error}
         </Typography>
       )}
+    </Box>
+  );
+}
+
+/**
+ * Obra que já terminou de ser exibida: em vez de "Espera", a pessoa diz em que pé está — "Finalizei" (já vi tudo) ou
+ * "Pendente" (ainda não terminei: fica em espera, fora da agenda e dos alertas). Clicar de novo desfaz.
+ */
+function FinishedChoice({ entry }: { entry: MyListEntry }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const finished = entry.watchState === "FINISHED";
+  const pending = entry.watchState === "UNFINISHED" || entry.waiting;
+
+  async function choose(kind: "FINISHED" | "PENDING") {
+    setBusy(true);
+    setError(null);
+    const on = kind === "FINISHED" ? finished : pending;
+    const body = kind === "FINISHED" ? { state: on ? null : "FINISHED", waiting: false } : { state: on ? null : "UNFINISHED", waiting: !on };
+    try {
+      const res = await fetch(`/api/anime/${entry.id}/watch-state`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Não foi possível salvar. Tente novamente.");
+        return;
+      }
+      router.refresh();
+    } catch {
+      setError("Não foi possível falar com o servidor. Tente novamente.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Box sx={{ display: "inline-flex", flexDirection: "column", gap: 0.5, alignItems: "flex-start" }}>
+      <Box role="group" aria-label="Andamento da obra finalizada" sx={{ display: "inline-flex", gap: 1, flexWrap: "wrap" }}>
+        <Button
+          onClick={() => void choose("FINISHED")}
+          disabled={busy}
+          startIcon={<CheckCircleIcon />}
+          aria-pressed={finished}
+          title="Já vi tudo"
+          data-testid={`finished-done-${entry.anilistId}`}
+          sx={{ ...ELEVATED_BUTTON_SX, ...(finished ? { color: "success.main", border: 1, borderColor: "success.main" } : {}) }}
+        >
+          Finalizei
+        </Button>
+        <Button
+          onClick={() => void choose("PENDING")}
+          disabled={busy}
+          startIcon={pending ? <PauseCircleIcon /> : <PauseCircleOutlineIcon />}
+          aria-pressed={pending}
+          title="Ainda não terminei: fica em espera"
+          data-testid={`finished-pending-${entry.anilistId}`}
+          sx={{ ...ELEVATED_BUTTON_SX, ...(pending ? { color: "warning.main", border: 1, borderColor: "warning.main" } : {}) }}
+        >
+          Pendente
+        </Button>
+      </Box>
+      {error && (
+        <Typography role="alert" sx={{ fontSize: 12, color: "primary.main" }}>
+          {error}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
+/** O controle certo para cada obra: terminada = Finalizei/Pendente; no ar ou por estrear = Espera. Obra com várias temporadas conta como uma só. */
+function EntryAction({ entry }: { entry: MyListEntry }) {
+  return (
+    <Box sx={{ display: "inline-flex", flexDirection: "column", gap: 0.75, alignItems: "flex-start" }}>
+      {entry.seasonsCount > 1 && (
+        <Typography data-testid={`seasons-count-${entry.anilistId}`} sx={{ fontSize: 12, color: "text.secondary" }}>
+          {entry.seasonsCount} temporadas
+        </Typography>
+      )}
+      {entry.status === "FINISHED" ? <FinishedChoice entry={entry} /> : <WaitButton entry={entry} />}
     </Box>
   );
 }
@@ -188,7 +269,7 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
         episodeLabel={`Episódio ${pad(item.episode)}`}
         cover={item.entry.coverImage}
         titles={item.entry}
-        trailing={<WaitButton entry={item.entry} />}
+        trailing={<EntryAction entry={item.entry} />}
       />
     );
   }
@@ -262,7 +343,7 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
                   time={stateText(entry)}
                   cover={entry.coverImage}
                   titles={entry}
-                  trailing={<WaitButton entry={entry} />}
+                  trailing={<EntryAction entry={entry} />}
                 />
               )
             )}
@@ -322,7 +403,7 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
                       )}
                       <Chip icon={<EventNoteIcon />}>Horário não definido</Chip>
                       <Box>
-                        <WaitButton entry={entry} />
+                        <EntryAction entry={entry} />
                       </Box>
                     </Box>
                   ))}
@@ -370,7 +451,7 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
                     <EntryTitle entry={entry} />
                     <Chip icon={<EventBusyIcon />}>{entry.state.kind === "none" ? "Sem lançamentos previstos" : "Data não definida"}</Chip>
                     <Box>
-                      <WaitButton entry={entry} />
+                      <EntryAction entry={entry} />
                     </Box>
                   </Box>
                 ))}
@@ -394,9 +475,9 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
                     sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2.5, borderRadius: "12px", border: 1, borderColor: "divider", minWidth: 0 }}
                   >
                     <EntryTitle entry={entry} />
-                    <Chip icon={<PauseCircleOutlineIcon />}>Em espera</Chip>
+                    <Chip icon={<PauseCircleOutlineIcon />}>{entry.watchState === "DROPPED" ? "Dropado" : "Em espera"}</Chip>
                     <Box>
-                      <WaitButton entry={entry} />
+                      <EntryAction entry={entry} />
                     </Box>
                   </Box>
                 ))}

@@ -28,6 +28,7 @@ const PUBLIC_BY_DESIGN = new Set([
   "hashtags/route.ts", // populares e sugestões (só metadados)
   "hashtags/[key]/route.ts", // página pública da hashtag (só metadados e contagem)
   "uploads/[...path]/route.ts", // serve arquivos já publicados
+  "seasons/route.ts", // temporadas que têm anime (filtro público de temporada)
   "users/[id]/posts/route.ts", // perfil público
   "users/[id]/route.ts",
 ]);

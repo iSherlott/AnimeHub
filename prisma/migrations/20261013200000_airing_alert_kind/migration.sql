@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "AiringAlert" ADD COLUMN     "kind" TEXT NOT NULL DEFAULT 'EPISODE';

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import CompareArrowsOutlinedIcon from "@mui/icons-material/CompareArrowsOutlined";
 import { Box, Button, Typography } from "@mui/material";
 import { ELEVATED_BUTTON_SX } from "@/components/ExploreCard";
+import { ImportProgress } from "@/components/admin/ImportProgress";
 import { ConfirmDialog } from "@/components/StatePanels";
 
 /**
@@ -31,7 +32,30 @@ export function ImportResultActions({
   const [dialog, setDialog] = useState<"commit" | "cancel" | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reapplied, setReapplied] = useState<string | null>(null);
   const open = state === "RUNNING";
+
+  /** Lote concluído: refaz a aplicação ao catálogo (idempotente) e mostra o que mudou. */
+  async function reapply() {
+    setBusy(true);
+    setError(null);
+    setReapplied(null);
+    try {
+      const res = await fetch(`/api/admin/imports/${seq}/reapply`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Não foi possível reaplicar o lote. Tente novamente.");
+        return;
+      }
+      const s = data.summary as Record<string, number>;
+      setReapplied(`${s.linked} casadas na plataforma · ${s.created} novas · ${s.updated} atualizadas · ${s.episodes} episódios no calendário${s.deferred ? ` · ${s.deferred} com produção a criar ao abrir` : ""}.`);
+      router.refresh();
+    } catch {
+      setError("Não foi possível falar com o servidor. Tente novamente.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function run(kind: "commit" | "cancel") {
     setBusy(true);
@@ -53,6 +77,7 @@ export function ImportResultActions({
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <ImportProgress running={busy && dialog === null} seq={seq} fallbackNote="Reaplicando a carga ao catálogo…" />
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
         {open && blocking > 0 && firstPendingHref && (
           <Button component={NextLink} href={firstPendingHref} variant="contained" startIcon={<CompareArrowsOutlinedIcon />}>
@@ -73,6 +98,11 @@ export function ImportResultActions({
             Confirmar importação
           </Button>
         )}
+        {state === "SUCCESS" && (
+          <Button onClick={() => void reapply()} disabled={busy} sx={ELEVATED_BUTTON_SX} data-testid="reapply-import">
+            {busy ? "Reaplicando…" : "Reaplicar vínculos"}
+          </Button>
+        )}
         <Button component={NextLink} href={`/admin/importacoes?from=${seq}`} sx={ELEVATED_BUTTON_SX}>
           Voltar ao HTML
         </Button>
@@ -89,6 +119,16 @@ export function ImportResultActions({
           </Button>
         )}
       </Box>
+      {reapplied && (
+        <Typography role="status" data-testid="reapply-result" sx={{ fontSize: 14 }}>
+          Lote reaplicado: {reapplied}
+        </Typography>
+      )}
+      {state === "SUCCESS" && error && (
+        <Typography role="alert" sx={{ fontSize: 13, color: "primary.main" }}>
+          {error}
+        </Typography>
+      )}
       {open && blocking > 0 && (
         <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
           Ao resolver as {blocking} {blocking === 1 ? "pendência" : "pendências"}, o commit fica disponível. Confirmação explícita é necessária antes de criar o job de commit.
@@ -103,6 +143,7 @@ export function ImportResultActions({
         confirmLabel="Confirmar importação"
         busyLabel="Confirmando…"
         busy={busy}
+        progress={<ImportProgress running={busy && dialog === "commit"} seq={seq} fallbackNote="Aplicando a carga ao catálogo…" />}
         error={error}
         onCancel={() => setDialog(null)}
         onConfirm={() => void run("commit")}

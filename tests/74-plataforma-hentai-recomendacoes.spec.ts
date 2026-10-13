@@ -88,7 +88,7 @@ test.describe.serial("Plataforma: cache fora, hentai fora", () => {
 
     const sourceId = (await prisma.anime.findFirstOrThrow({ where: { userId, anilistId: SOURCE } })).id;
     await page.goto(`/anime/${sourceId}`);
-    await expect(page.locator(`a[href="/obra/${IN}"]`)).toHaveCount(1);
+    await expect(page.locator(`a[href="/anime/${IN}"]`)).toHaveCount(1);
     for (const hidden of [CACHE, ADULT, 999998]) await expect(page.locator(`a[href="/obra/${hidden}"]`)).toHaveCount(0);
   });
 });

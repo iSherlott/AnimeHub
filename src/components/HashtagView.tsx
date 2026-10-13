@@ -115,7 +115,7 @@ export function HashtagView({ hashtagKey, display }: { hashtagKey: string; displ
             {work.format ? ` · ${work.format}` : ""}
             {work.seasonYear ? ` · ${work.seasonYear}` : ""}
           </Typography>
-          <AppLink href={`/obra/${work.anilistId}`} underline="hover" sx={{ fontSize: 14, fontWeight: 700, color: "text.primary" }}>
+          <AppLink href={`/anime/${work.anilistId}`} underline="hover" sx={{ fontSize: 14, fontWeight: 700, color: "text.primary" }}>
             Abrir detalhe do anime ↗
           </AppLink>
           <Typography sx={{ fontSize: 14, color: "text.secondary" }}>

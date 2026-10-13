@@ -30,7 +30,10 @@ export async function PATCH(request: Request, { params }: Params) {
   }
   const waiting: boolean = body.waiting;
 
-  const anime = await prisma.anime.update({ where: { id }, data: { waiting, waitingSince: waiting ? new Date() : null } });
+  const current = await prisma.anime.findUnique({ where: { id }, select: { watchState: true } });
+  // Voltar a acompanhar uma obra dropada desfaz o "dropei" (a agenda e o "dropei" não podem discordar).
+  const clearDropped = !waiting && current?.watchState === "DROPPED";
+  const anime = await prisma.anime.update({ where: { id }, data: { waiting, waitingSince: waiting ? new Date() : null, ...(clearDropped ? { watchState: null } : {}) } });
   // Quem entra em espera não tem mais episódio "adiado" para ver.
   if (waiting) await prisma.pendingEpisode.deleteMany({ where: { userId: user.id, anilistId: existing.anilistId } });
 

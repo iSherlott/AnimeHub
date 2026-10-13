@@ -60,7 +60,7 @@ test.describe("Importação — listagem de temporada do AniDB", () => {
     prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
     await cleanup();
     const { season, seasonYear } = currentSeasonNow();
-    await prisma.catalogEntry.create({ data: { anilistId: CATALOG_ONLY.anilistId, titleRomaji: CATALOG_ONLY.title, season, seasonYear, source: "anilist" } });
+    await prisma.catalogEntry.create({ data: { anilistId: CATALOG_ONLY.anilistId, titleRomaji: CATALOG_ONLY.title, season, seasonYear, source: "anilist", onPlatform: false } });
     const franchise = await prisma.franchise.create({ data: { rootAnilistId: PRODUCED.anilistId, name: PRODUCED.title } });
     await prisma.production.create({ data: { anilistId: PRODUCED.anilistId, franchiseId: franchise.id, titleRomaji: PRODUCED.title, season, seasonYear, format: "TV", streamingLinksJson: "[]", fetchedAt: new Date() } });
   });
@@ -88,7 +88,8 @@ test.describe("Importação — listagem de temporada do AniDB", () => {
     expect(rec.matchedAnilistId).toBe(CATALOG_ONLY.anilistId);
     expect(rec.description).toBe("Sinopse vinda do AniDB & seus amigos.");
     expect(rec.episodes).toBe(12);
-    expect(rec.imageUrl).toBe(`https://cdn.anidb.net/images/150/${CATALOG_ONLY.anidbId}.jpg-thumb.jpg`);
+    // A miniatura de 150 px da listagem vira a imagem inteira.
+    expect(rec.imageUrl).toBe(`https://cdn.anidb.net/images/main/${CATALOG_ONLY.anidbId}.jpg`);
     expect(JSON.parse(rec.linksJson ?? "[]")).toEqual([{ site: "Crunchyroll", url: "https://www.crunchyroll.com/series/R66A/" }]);
     // A data do dia não inventa horário.
     expect(rec.airsAtHasTime).toBe(false);
@@ -103,6 +104,7 @@ test.describe("Importação — listagem de temporada do AniDB", () => {
   test("confirmar aplica vínculo, links do AniDB e a obra nova com sinopse e capa — nada antes", async ({ page }) => {
     expect((await prisma.production.findUniqueOrThrow({ where: { anilistId: PRODUCED.anilistId } })).anidbId).toBeNull();
     expect(await prisma.catalogEntry.count({ where: { anidbId: BRAND_NEW.anidbId } })).toBe(0);
+    expect((await prisma.catalogEntry.findUniqueOrThrow({ where: { anilistId: CATALOG_ONLY.anilistId } })).onPlatform).toBe(false); // só cache até confirmar
 
     await page.goto(`/admin/importacoes/${seq}`);
     await page.getByTestId("confirm-import").click();
@@ -114,9 +116,19 @@ test.describe("Importação — listagem de temporada do AniDB", () => {
     expect(produced.anidbId).toBe(PRODUCED.anidbId);
     expect(JSON.parse(produced.streamingLinksJson ?? "[]")).toEqual([{ site: "Netflix", url: "https://www.netflix.com/title/66" }]);
 
+    // A obra casada (que era só cache da AniList) entra na plataforma e ganha produção — o bug original era ficar de fora.
+    expect((await prisma.catalogEntry.findUniqueOrThrow({ where: { anilistId: CATALOG_ONLY.anilistId } })).onPlatform).toBe(true);
+    const bound = await prisma.production.findUniqueOrThrow({ where: { anilistId: CATALOG_ONLY.anilistId } });
+    expect(bound.anidbId).toBe(CATALOG_ONLY.anidbId);
+    await expect(page.getByTestId("result-done")).toHaveCount(0); // (o resumo está na página do lote, abaixo)
+    await page.goto(`/admin/importacoes/${seq}`);
+    await expect(page.getByTestId("result-done")).toContainText("2 obras casadas na plataforma");
+    await expect(page.getByTestId("result-partial")).toHaveCount(0);
+
     const created = await prisma.catalogEntry.findUniqueOrThrow({ where: { anidbId: BRAND_NEW.anidbId } });
     expect(created).toMatchObject({ titleRomaji: BRAND_NEW.title, description: "Um filme inédito.", episodes: 1, source: "anidb" });
-    expect(created.coverImage).toContain(String(BRAND_NEW.anidbId));
+    expect(created.coverImage).toBe(`https://cdn.anidb.net/images/main/${BRAND_NEW.anidbId}.jpg`);
+    expect(created.status).toBe("NOT_YET_RELEASED"); // estreia em dezembro: ainda não saiu
   });
 
   test("o Catálogo do admin pagina TODAS as obras do catálogo (nenhuma some por limite)", async ({ page }) => {

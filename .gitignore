@@ -55,3 +55,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Dependências dos serviços de fundo (npm run services)
+services/*/node_modules/

@@ -47,6 +47,8 @@ export async function GET() {
       seenAt: alert.seenAt ? alert.seenAt.toISOString() : null,
       // "Data alterada": horário anterior do episódio (null = lançamento normal).
       previousAiringAt: alert.previousAiringAt ? alert.previousAiringAt.toISOString() : null,
+      // "EPISODE" (lançamento / data alterada) | "RETURN" (voltou a sair episódios).
+      kind: alert.kind,
       animeId: anime?.id ?? null,
       titleRomaji: anime?.titleRomaji ?? null,
       titleEnglish: anime?.titleEnglish ?? null,

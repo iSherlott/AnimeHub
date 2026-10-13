@@ -43,7 +43,7 @@ export default async function QuizPage({ params }: Params) {
           title={state.quiz?.titleReward ? `Quiz: ${state.quiz.titleReward}` : "Quiz do anime"}
           subtitle={`${work.titleNative ?? work.titleRomaji} · 10 perguntas · recompensa apenas com 10/10.`}
         />
-        <AppLink href={`/obra/${anilistId}`} underline="hover" sx={{ fontSize: 14, color: "text.secondary", alignSelf: "flex-start" }}>
+        <AppLink href={`/anime/${anilistId}`} underline="hover" sx={{ fontSize: 14, color: "text.secondary", alignSelf: "flex-start" }}>
           ← Voltar ao anime / {work.titleNative ?? work.titleRomaji}
         </AppLink>
         <QuizExperience anilistId={anilistId} work={work} state={state} loggedIn={Boolean(user)} />

@@ -43,14 +43,14 @@ export function RelatedWorkCard({
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-      <MuiLink component={NextLink} href={`/obra/${anilistId}`} aria-hidden tabIndex={-1} underline="none" sx={{ display: "block" }}>
+      <MuiLink component={NextLink} href={`/anime/${anilistId}`} aria-hidden tabIndex={-1} underline="none" sx={{ display: "block" }}>
         <Box sx={{ position: "relative", aspectRatio: "2 / 3", borderRadius: "12px", overflow: "hidden", bgcolor: "#171820" }}>
           {coverImage && <CoverImage src={coverImage} sizes="280px" />}
         </Box>
       </MuiLink>
       <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
         <Typography lang={titleNative ? "ja" : undefined} sx={{ fontSize: 20, fontWeight: 700, lineHeight: 1.5 }}>
-          <MuiLink component={NextLink} href={`/obra/${anilistId}`} underline="hover" color="inherit">
+          <MuiLink component={NextLink} href={`/anime/${anilistId}`} underline="hover" color="inherit">
             {primary}
           </MuiLink>
         </Typography>
@@ -63,7 +63,7 @@ export function RelatedWorkCard({
         </Typography>
       </Box>
       <Box>
-        <Button component={NextLink} href={`/obra/${anilistId}`} sx={{ bgcolor: "#171820", color: "text.primary", border: 1, borderColor: "divider", "&:hover": { bgcolor: "#1d1e28" } }}>
+        <Button component={NextLink} href={`/anime/${anilistId}`} sx={{ bgcolor: "#171820", color: "text.primary", border: 1, borderColor: "divider", "&:hover": { bgcolor: "#1d1e28" } }}>
           + Acompanhar
         </Button>
       </Box>

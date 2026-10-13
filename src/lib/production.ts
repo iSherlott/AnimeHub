@@ -10,6 +10,7 @@ import {
 import { resolveFranchise, type MediaRelations } from "@/lib/franchise";
 import { hasBlockedGenre } from "@/lib/contentPolicy";
 import { isOnPlatform } from "@/lib/platform";
+import { reapplyLinksFor } from "@/lib/workLinks";
 
 /**
  * Produção canônica compartilhada (D-03/D-18) — base do detalhe público.
@@ -100,7 +101,9 @@ async function fromAniList(anilistId: number): Promise<ProductionWithFranchise |
     update: { ...fields, franchiseId: franchise.id, fetchedAt: new Date() },
     include: { franchise: true },
   });
-  return production;
+  // A AniList refez a franquia pelas relações dela: as continuações que o admin ligou à mão voltam a valer.
+  await reapplyLinksFor(anilistId);
+  return (await prisma.production.findUnique({ where: { anilistId }, include: { franchise: true } })) ?? production;
 }
 
 async function fromLocalCache(anilistId: number): Promise<ProductionWithFranchise | null> {

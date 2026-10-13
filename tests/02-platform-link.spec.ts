@@ -72,6 +72,31 @@ test.describe("Criação de link de plataforma (Crunchyroll)", () => {
     ).toBeVisible();
   });
 
+  test("'Irregular' guarda o link de um site não oficial, com rótulo próprio, e persiste", async ({ page }) => {
+    const anime = UTILITY_FIXTURE;
+    const url = "https://exemplo-irregular.test/assistir/123";
+    await page.goto("/minha-lista");
+    await page.getByRole("link", { name: anime.titleRomaji }).first().click();
+
+    const linksSection = page.getByTestId("platform-links");
+    await linksSection.getByTestId("platform-link-add-toggle").click();
+    await linksSection.getByTestId("platform-select").selectOption("Irregular");
+    await expect(linksSection.getByTestId("platform-irregular-hint")).toBeVisible();
+    await linksSection.getByTestId("platform-url-input").fill(url);
+    await linksSection.getByTestId("platform-link-submit").click();
+
+    const anchor = linksSection.getByTestId("platform-link-open-Irregular");
+    await expect(anchor).toHaveText("Assistir (irregular)");
+    await expect(anchor).toHaveAttribute("href", url);
+
+    await page.reload();
+    await expect(page.getByTestId("platform-links").getByTestId("platform-link-open-Irregular")).toHaveAttribute("href", url);
+
+    // Limpa para não interferir nos outros testes.
+    await page.getByTestId("platform-links").getByTestId("platform-link-remove-Irregular").click();
+    await expect(page.getByTestId("platform-links").getByTestId("platform-link-open-Irregular")).toHaveCount(0);
+  });
+
   test("rejeita vincular sem preencher a URL", async ({ page }) => {
     const anime = UTILITY_FIXTURE;
     await page.goto("/minha-lista");

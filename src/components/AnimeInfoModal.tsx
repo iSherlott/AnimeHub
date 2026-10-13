@@ -150,7 +150,7 @@ export function AnimeInfoModal({
 
       {item.anilistId ? (
         <Box sx={{ px: 3, pb: 3 }}>
-          <MuiLink component={NextLink} href={`/obra/${item.anilistId}`} sx={{ fontWeight: 700 }}>
+          <MuiLink component={NextLink} href={`/anime/${item.anilistId}`} sx={{ fontWeight: 700 }}>
             Ver página da obra
           </MuiLink>
         </Box>

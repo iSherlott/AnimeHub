@@ -45,7 +45,7 @@ export default async function PublicationPage({ params }: Params) {
               {production.seasonYear ? ` · ${production.seasonYear}` : ""}
             </Typography>
           )}
-          <AppLink href={`/obra/${visible.anilistId}`} underline="hover" sx={{ fontSize: 14, fontWeight: 700, color: "text.primary" }}>
+          <AppLink href={`/anime/${visible.anilistId}`} underline="hover" sx={{ fontSize: 14, fontWeight: 700, color: "text.primary" }}>
             Abrir detalhe ↗
           </AppLink>
           <Box>

@@ -17,7 +17,7 @@ const STATE_LABEL: Record<string, string> = {
   IGNORED: "Ignorado",
 };
 
-function ScoreBar({ label, value }: { label: string; value: number | null }) {
+function ScoreBar({ label, value, emptyLabel = "n/d" }: { label: string; value: number | null; emptyLabel?: string }) {
   const pct = value === null ? null : Math.round(value * 100);
   return (
     <Box sx={{ display: "grid", gridTemplateColumns: "140px minmax(0, 1fr) 56px", alignItems: "center", gap: 2 }}>
@@ -25,7 +25,7 @@ function ScoreBar({ label, value }: { label: string; value: number | null }) {
       <Box role="img" aria-label={pct === null ? `${label}: sem dado` : `${label}: ${pct}%`} sx={{ height: 8, borderRadius: 4, bgcolor: "#171820", overflow: "hidden" }}>
         <Box sx={{ width: `${pct ?? 0}%`, height: "100%", bgcolor: "text.secondary" }} />
       </Box>
-      <Typography sx={{ fontSize: 16 }}>{pct === null ? "n/d" : `${pct}%`}</Typography>
+      <Typography sx={{ fontSize: pct === null && emptyLabel.length > 3 ? 12 : 16, color: pct === null && emptyLabel.length > 3 ? "text.secondary" : undefined }}>{pct === null ? emptyLabel : `${pct}%`}</Typography>
     </Box>
   );
 }
@@ -113,10 +113,10 @@ export default async function MatchReviewPage({ params }: { params: Promise<{ re
             Score de correspondência · {pct}%
           </Typography>
           <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
-            Score do motor com pesos e normalização; não é média simples dos critérios. Não substitui revisão humana. Critério sem dado não entra no cálculo.
+            Score do motor com pesos e normalização; não é média simples dos critérios. Não substitui revisão humana. Critério sem dado não entra no cálculo: a imagem não pesa nem bloqueia, e a capa vem depois da AniList.
           </Typography>
           <ScoreBar label="Título" value={detail.title} />
-          <ScoreBar label="Imagem" value={detail.image} />
+          <ScoreBar label="Imagem" value={detail.image} emptyLabel="não pesa" />
           <ScoreBar label="Temporada" value={detail.season} />
           <ScoreBar label="Ano" value={detail.year} />
         </Box>

@@ -47,6 +47,11 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "media.kitsu.io",
       },
+      // Capas das obras que só existem no AniDB (importação do HTML da temporada).
+      {
+        protocol: "https",
+        hostname: "cdn.anidb.net",
+      },
       {
         protocol: "https",
         hostname: "media.kitsu.app",

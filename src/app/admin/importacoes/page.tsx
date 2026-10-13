@@ -17,7 +17,7 @@ export default async function AdminImportPage({ searchParams }: { searchParams: 
   const from = Number(sp.from);
   const origin = Number.isInteger(from) && from > 0 ? await prisma.adminJob.findUnique({ where: { seq: from }, select: { html: true, season: true } }) : null;
 
-  const seasons = recentSeasons(new Date(), 6).map(seasonLabel);
+  const seasons = recentSeasons(new Date(), 12).map(seasonLabel);
   const jobs = await prisma.adminJob.findMany({ where: { kind: "IMPORT" }, orderBy: { seq: "desc" }, take: 5 });
   const rows = await Promise.all(jobs.map(async (job) => ({ job, c: await jobCounts(job.seq) })));
 

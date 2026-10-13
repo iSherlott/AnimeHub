@@ -74,3 +74,22 @@ describe("scoreCandidate / classifyMatch", () => {
     expect(result.score).toBe(1);
   });
 });
+
+
+describe("vínculo já confirmado (anidbId) não vale para uma época distante", () => {
+  const linked = (over: Partial<MatchCandidate>) => cand("1", ["Obra Qualquer"], { anidbId: 19777, ...over });
+
+  it("na mesma época (ou temporada vizinha) a identidade manda", () => {
+    expect(scoreCandidate(input(["Titulo diferente"]), linked({ season: "FALL", seasonYear: 2026 })).score).toBe(1);
+    expect(scoreCandidate(input(["Titulo diferente"], { seasonLabel: "Winter2026", year: 2026 }), linked({ season: "FALL", seasonYear: 2025 })).score).toBe(1);
+  });
+
+  it("um vínculo gravado por um lote com o ano errado (verão de 2026 para o HTML de verão de 2025) não manda mais", () => {
+    const wrong = linked({ season: "SUMMER", seasonYear: 2026 });
+    expect(scoreCandidate(input(["Titulo diferente"], { seasonLabel: "Summer2025", year: 2025 }), wrong).score).toBeLessThan(0.92);
+  });
+
+  it("sem época conhecida na obra, a identidade continua valendo", () => {
+    expect(scoreCandidate(input(["Titulo diferente"]), linked({ season: null, seasonYear: null })).score).toBe(1);
+  });
+});

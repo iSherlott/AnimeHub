@@ -228,7 +228,7 @@ test.describe.serial("Notícias = publicações do NewsHub", () => {
     await expect(page.getByText("Alfa second season confirmed")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Obra em contexto" })).toBeVisible();
     await expect(page.getByText(NEWS_A.title).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: /Abrir detalhe do anime/ })).toHaveAttribute("href", `/obra/${NEWS_A.anilistId}`);
+    await expect(page.getByRole("link", { name: /Abrir detalhe do anime/ })).toHaveAttribute("href", `/anime/${NEWS_A.anilistId}`);
   });
 
   test("o perfil NewsHub existe e lista as notícias", async ({ page }) => {

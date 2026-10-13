@@ -117,7 +117,7 @@ export function CalendarEntryCard({
   }
 
   const isInternal = Boolean(item.inMyList && item.animeId);
-  const href = isInternal ? `/anime/${item.animeId}` : `/obra/${item.anilistId}`;
+  const href = isInternal ? `/anime/${item.animeId}` : `/anime/${item.anilistId}`;
   // Anúncio de leitor de tela pra role="status" dispara fora do contexto de
   // onde a pessoa está navegando — sem nomear o anime/episódio, um selo
   // genérico "No ar agora" fica sem sentido quando escutado sozinho.

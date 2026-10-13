@@ -59,7 +59,7 @@ export function CalendarEntryPreview({
   const waiting = Boolean(item.waiting) && !followedId;
   const animeId = (item.inMyList || waiting) && item.animeId ? item.animeId : followedId;
   const isInternal = Boolean(animeId);
-  const detailHref = animeId ? `/anime/${animeId}` : `/obra/${item.anilistId}`;
+  const detailHref = animeId ? `/anime/${animeId}` : `/anime/${item.anilistId}`;
 
   async function follow() {
     setFollowing(true);

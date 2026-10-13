@@ -27,6 +27,8 @@ type AiringAlertItem = {
   seenAt: string | null;
   /** Horário anterior quando a data do episódio mudou ("Data alterada"). */
   previousAiringAt: string | null;
+  /** "EPISODE" (lançamento / data alterada) | "RETURN" (voltou a sair episódios). */
+  kind?: "EPISODE" | "RETURN";
   animeId: string | null;
   titleRomaji: string | null;
   titleEnglish: string | null;
@@ -226,13 +228,14 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
               // Aviso antecipado: o episódio ainda vai ao ar (lembrete de hoje).
               const upcoming = when > new Date();
               const today = new Intl.DateTimeFormat("en-CA", { timeZone }).format(when) === new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date());
+              const returned = alert.kind === "RETURN";
               const changed = Boolean(alert.previousAiringAt);
               const before = alert.previousAiringAt ? new Date(alert.previousAiringAt) : null;
               return (
                 <MenuItem
                   key={alert.id}
                   component={NextLink}
-                  href={`/obra/${alert.anilistId}`}
+                  href={`/anime/${alert.animeId ?? alert.anilistId}`}
                   onClick={() => {
                     handleClose();
                     if (!alert.seenAt) void markSeen(alert.id);
@@ -245,11 +248,23 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
                       Data alterada
                     </Typography>
                   )}
-                  <Typography sx={{ fontSize: 14 }}>
-                    EP{String(alert.episode).padStart(2, "0")}{" "}
-                    {changed ? "· Nova data: " : upcoming ? "vai ao ar · " : "disponível · "}
-                    {upcoming && today && !changed ? `hoje às ${formatTimeInZone(when, timeZone)}` : formatInZone(when, timeZone)}
-                  </Typography>
+                  {returned ? (
+                    <>
+                      <Typography data-testid="returned-alert" sx={{ fontSize: 14, fontWeight: 700, textTransform: "uppercase" }}>
+                        Voltou a sair episódios
+                      </Typography>
+                      <Typography sx={{ fontSize: 14 }}>
+                        {upcoming ? "Próximo episódio · " : "No ar desde · "}
+                        {formatInZone(when, timeZone)}. Está de volta à sua lista e ao calendário.
+                      </Typography>
+                    </>
+                  ) : (
+                    <Typography sx={{ fontSize: 14 }}>
+                      EP{String(alert.episode).padStart(2, "0")}{" "}
+                      {changed ? "· Nova data: " : upcoming ? "vai ao ar · " : "disponível · "}
+                      {upcoming && today && !changed ? `hoje às ${formatTimeInZone(when, timeZone)}` : formatInZone(when, timeZone)}
+                    </Typography>
+                  )}
                   {changed && before && (
                     <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Antes: {formatInZone(before, timeZone)}</Typography>
                   )}

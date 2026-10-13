@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import NextLink from "next/link";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import CheckIcon from "@mui/icons-material/Check";
@@ -9,7 +10,9 @@ import ScheduleIcon from "@mui/icons-material/Schedule";
 import { Box, Button, Link as MuiLink, Typography } from "@mui/material";
 import { CoverImage } from "@/components/CoverImage";
 import type { DiscoverItem } from "@/lib/discoverItem";
+import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { scheduleOf } from "@/lib/exploreGroups";
+import { loginHref } from "@/lib/safeRedirect";
 import { resolveTitleText, useTitlePreference, type TitleSet } from "@/lib/titlePreference";
 import { sanitizeFuriganaHtml } from "@/lib/plainText";
 import { useReading } from "@/lib/useReadings";
@@ -95,16 +98,41 @@ export function PrimaryTitle({ lines }: { lines: Pick<TitleLines, "primary" | "p
 /**
  * "Anime Card / Normal" do Figma (`8:1426`): capa 2:3 com raio 12 e selo de
  * novo episódio (só para quem já acompanha), títulos, horário (ou o estado
- * "Data não definida") e "+ Acompanhar". Acompanhar leva ao detalhe público,
- * onde o vínculo é confirmado — nunca nasce de um clique solto.
+ * "Data não definida") e "+ Acompanhar". Acompanhar adiciona direto à lista e a pessoa segue na mesma página
+ * (para ir escolhendo outras obras); só quem não entrou é levado ao login.
  */
 export function ExploreCard({ item }: { item: DiscoverItem }) {
   const titleLines = useTitleLines(item);
   const { secondary, primaryLang } = titleLines;
   const schedule = useScheduleText(item);
-  const owned = item.inMyList && item.animeId;
+  const user = useCurrentUser();
+  // Acompanhar daqui adiciona direto à lista, sem sair da página.
+  const [followedId, setFollowedId] = useState<string | null>(null);
+  const [following, setFollowing] = useState(false);
+  const [followError, setFollowError] = useState<string | null>(null);
+  const ownedId = item.inMyList && item.animeId ? item.animeId : followedId;
+  const owned = Boolean(ownedId);
   // Quem já acompanha abre o detalhe pessoal; os demais, o detalhe público.
-  const detailHref = owned ? `/anime/${item.animeId}` : item.anilistId !== null ? `/obra/${item.anilistId}` : null;
+  const detailHref = ownedId ? `/anime/${ownedId}` : item.anilistId !== null ? `/anime/${item.anilistId}` : null;
+
+  async function follow() {
+    if (item.anilistId === null) return;
+    setFollowing(true);
+    setFollowError(null);
+    try {
+      const res = await fetch("/api/anime", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ anilistId: item.anilistId }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setFollowError(data.error ?? "Não foi possível acompanhar. Tente novamente.");
+        return;
+      }
+      if (data.anime?.id) setFollowedId(data.anime.id as string);
+    } catch {
+      setFollowError("Não foi possível falar com o servidor. Tente novamente.");
+    } finally {
+      setFollowing(false);
+    }
+  }
   const ScheduleGlyph = schedule.icon === "clock" ? ScheduleIcon : schedule.icon === "calendar-x" ? EventBusyIcon : EventRepeatIcon;
   const info = scheduleOf(item);
   const showNewEpisode = Boolean(item.inMyList && info.kind === "scheduled" && info.episode);
@@ -173,14 +201,23 @@ export function ExploreCard({ item }: { item: DiscoverItem }) {
           <Button component={NextLink} href={detailHref!} startIcon={<CheckIcon />} sx={ELEVATED_BUTTON_SX}>
             Acompanhando
           </Button>
+        ) : detailHref && user ? (
+          <Button onClick={() => void follow()} disabled={following} sx={ELEVATED_BUTTON_SX} data-testid={`explore-follow-${item.key}`}>
+            {following ? "Adicionando…" : "+ Acompanhar"}
+          </Button>
         ) : detailHref ? (
-          <Button component={NextLink} href={detailHref} sx={ELEVATED_BUTTON_SX}>
+          <Button component={NextLink} href={loginHref(detailHref)} sx={ELEVATED_BUTTON_SX}>
             + Acompanhar
           </Button>
         ) : (
           <Button disabled sx={ELEVATED_BUTTON_SX} title="Esta obra ainda não tem página pública">
             + Acompanhar
           </Button>
+        )}
+        {followError && (
+          <Typography role="alert" sx={{ fontSize: 12, color: "primary.main", mt: 0.5 }}>
+            {followError}
+          </Typography>
         )}
       </Box>
     </Box>

@@ -1,10 +1,10 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { parseSeasonSlug, seasonLabel, type SeasonRef } from "@/lib/exploreGroups";
+import { parseSeasonSlug, SEASON_COPY, seasonLabel, type SeasonRef } from "@/lib/exploreGroups";
 import { recordRescheduleAlerts, RESCHEDULE_THRESHOLD_MS } from "@/lib/rescheduleAlerts";
 import { AUTO_THRESHOLD, classifyMatch, rankCandidates, scoreCandidate, type MatchCandidate, type ScoreDetail } from "@/lib/adminImport/matching";
-import { MAX_HTML_BYTES, PARSER_VERSION, parseSeasonHtml } from "@/lib/adminImport/parseSeasonHtml";
-import { ensureProduction, mergeStreamingLinks, parseStreamingLinks } from "@/lib/production";
+import { MAX_HTML_BYTES, PARSER_VERSION, parseSeasonHtml, seasonMismatch, yearMismatch } from "@/lib/adminImport/parseSeasonHtml";
+import { applyRecords, describeSummary, type ApplySummary } from "@/lib/adminImport/apply";
 import { prefetchSeasonCache } from "@/lib/seasonalCatalog";
 import type { JobStage, JobState } from "@/lib/adminImport/jobSteps";
 
@@ -123,6 +123,11 @@ export async function loadCandidate(id: string): Promise<MatchCandidate | null> 
   return production ? toCandidate(production.id, production) : null;
 }
 
+/** Escreve o passo em andamento no job (a tela consulta isto). Nunca derruba o processo por causa de um aviso de progresso. */
+async function setProgress(seq: number, note: string | null, patch: { stage?: string; total?: number; processed?: number } = {}): Promise<void> {
+  await prisma.adminJob.update({ where: { seq }, data: { progressNote: note, ...patch } }).catch(() => undefined);
+}
+
 export type AnalyzeResult =
   | { ok: true; seq: number }
   | { ok: false; error: string; field?: "html" | "season" | "source"; seq?: number };
@@ -139,6 +144,23 @@ export async function analyzeImport(input: { html: string; source: string; seaso
   }
 
   const label = seasonLabel(seasonRef);
+  const detected = seasonMismatch(input.html, seasonRef);
+  if (detected) {
+    const copy = SEASON_COPY[detected];
+    return {
+      ok: false,
+      field: "season",
+      error: `As datas do HTML são de ${copy.labelPt} (${copy.range}), mas a temporada escolhida é ${label}. Escolha a temporada certa e analise de novo; nada foi salvo.`,
+    };
+  }
+  const wrongYear = yearMismatch(input.html, seasonRef);
+  if (wrongYear !== null) {
+    return {
+      ok: false,
+      field: "season",
+      error: `Os títulos do HTML trazem o ano ${wrongYear} (ex.: “Nome (${wrongYear})”), mas a temporada escolhida é ${label}. Escolha ${seasonLabel({ season: seasonRef.season, year: wrongYear })} e analise de novo; nada foi salvo.`,
+    };
+  }
   const job = await prisma.adminJob.create({
     data: {
       kind: "IMPORT",
@@ -155,19 +177,22 @@ export async function analyzeImport(input: { html: string; source: string; seaso
   });
   const ctx = `Job #${job.seq} · ${source} · parser ${PARSER_VERSION}`;
   await logEvent({ jobSeq: job.seq, source, event: "Import started", message: "Importação do HTML iniciada.", context: ctx, actor: input.actor });
+  await setProgress(job.seq, "Lendo o HTML da temporada…");
 
   try {
     const parsed = parseSeasonHtml(input.html, { season: seasonRef });
     if (parsed.records.length === 0) {
       const error = "Nenhum registro encontrado no HTML. Confira se a listagem de temporada foi colada por inteiro.";
-      await prisma.adminJob.update({ where: { seq: job.seq }, data: { state: "FAILED", stage: "PARSE", error, finishedAt: new Date() } });
+      await prisma.adminJob.update({ where: { seq: job.seq }, data: { state: "FAILED", stage: "PARSE", error, progressNote: null, finishedAt: new Date() } });
       await logEvent({ jobSeq: job.seq, source, level: "ERROR", event: "Parse failed", message: error, context: ctx, actor: input.actor });
       return { ok: false, field: "html", error, seq: job.seq };
     }
 
+    await setProgress(job.seq, `${parsed.records.length} obras lidas. Buscando ${label} na AniList para comparar…`, { stage: "NORMALIZE", total: parsed.records.length, processed: 0 });
     const { candidates, blocked: blockedPool } = await loadCandidatePool(seasonRef);
 
     const now = new Date();
+    let compared = 0;
     const recordRows: Prisma.ImportRecordCreateManyInput[] = [];
     const conflictRows: Prisma.CatalogConflictCreateManyInput[] = [];
     let auto = 0;
@@ -176,11 +201,14 @@ export async function analyzeImport(input: { html: string; source: string; seaso
     let adult = 0;
 
     for (const rec of parsed.records) {
+      if (compared % 5 === 0) await setProgress(job.seq, `Comparando com o catálogo: ${compared} de ${parsed.records.length}`, { stage: "MATCHING", processed: compared });
+      compared += 1;
       const titles = [rec.titleRomaji, rec.titleNative, rec.titleEnglish].filter((t): t is string => Boolean(t));
       const matchInput = { sourceKey: rec.sourceKey, titles, seasonLabel: label, year: rec.year };
-      // Conteúdo adulto (hentai) não entra na plataforma: o registro já nasce ignorado, com o motivo.
+      // Conteúdo adulto (hentai) não entra na plataforma: o registro já nasce ignorado, com o motivo — seja porque o
+      // AniDB o marca com tag explícita, seja porque casa com um hentai da AniList.
       const adultMatch = rankCandidates(matchInput, blockedPool, 1)[0];
-      if (adultMatch && adultMatch.score >= AUTO_THRESHOLD) {
+      if (rec.adult || (adultMatch && adultMatch.score >= AUTO_THRESHOLD)) {
         adult += 1;
         recordRows.push({
           jobSeq: job.seq,
@@ -197,9 +225,10 @@ export async function analyzeImport(input: { html: string; source: string; seaso
           episodes: rec.episodes,
           imageUrl: rec.imageUrl,
           linksJson: null,
+          genres: rec.genres.join(",") || null,
           capturedAt: now,
           state: "IGNORED",
-          note: "Conteúdo adulto (hentai): fora da plataforma.",
+          note: "Conteúdo adulto: fora da plataforma.",
         });
         continue;
       }
@@ -224,6 +253,7 @@ export async function analyzeImport(input: { html: string; source: string; seaso
         episodes: rec.episodes,
         imageUrl: rec.imageUrl,
         linksJson: rec.links.length ? JSON.stringify(rec.links) : null,
+        genres: rec.genres.join(",") || null,
         capturedAt: now,
         matchedProductionId: outcome.best?.candidate.id ?? null,
         matchedAnilistId: outcome.best?.candidate.anilistId ?? null,
@@ -269,7 +299,7 @@ export async function analyzeImport(input: { html: string; source: string; seaso
     const blocked = pending + conflictRows.length;
     await prisma.adminJob.update({
       where: { seq: job.seq },
-      data: { total: parsed.records.length, processed: parsed.records.length - pending, stage: blocked > 0 ? "MATCHING" : "COMMIT" },
+      data: { total: parsed.records.length, processed: parsed.records.length - pending, stage: blocked > 0 ? "MATCHING" : "COMMIT", progressNote: null },
     });
     await logEvent({ jobSeq: job.seq, source, event: `${parsed.records.length} parsed`, message: `${parsed.records.length} registros extraídos e normalizados.`, context: `Job #${job.seq} · ${label}`, actor: input.actor });
     await logEvent({ jobSeq: job.seq, source, event: `${auto} matches detected`, message: `${auto} correspondências automáticas detectadas.`, context: `Job #${job.seq} · ${created} novos + ${pending} revisão`, actor: input.actor });
@@ -286,7 +316,7 @@ export async function analyzeImport(input: { html: string; source: string; seaso
   } catch (error) {
     console.error("[admin-import] falhou:", error);
     const message = "Falha ao processar importação. Nenhum registro foi salvo no catálogo.";
-    await prisma.adminJob.update({ where: { seq: job.seq }, data: { state: "FAILED", error: message, finishedAt: new Date() } }).catch(() => undefined);
+    await prisma.adminJob.update({ where: { seq: job.seq }, data: { state: "FAILED", error: message, progressNote: null, finishedAt: new Date() } }).catch(() => undefined);
     await logEvent({ jobSeq: job.seq, source, level: "ERROR", event: "Import failed", message, context: ctx, actor: input.actor });
     return { ok: false, error: message, seq: job.seq };
   }
@@ -391,7 +421,54 @@ export async function resolveRecord(recordId: string, input: RecordAction, actor
   return { ok: true };
 }
 
-export type ConflictResolution = { resolution: "A" } | { resolution: "B"; reason?: string } | { resolution: "MANUAL"; value: Date; reason: string };
+export type BulkDecision = { id: string; action: "confirm" | "new" | "ignore" };
+export type BulkResult = { ok: true; applied: number; skipped: number } | { ok: false; status: number; error: string };
+
+/**
+ * Decide VÁRIOS registros pendentes de uma vez (uma tela só para todos): "confirm" liga ao candidato, "new" cria a obra
+ * nova e "ignore" tira do lote. Só mexe em registros ainda pendentes deste lote; o que não puder ser aplicado (confirmar
+ * sem candidato, registro já decidido) é contado em `skipped` e fica como estava.
+ */
+export async function resolveRecordsBulk(seq: number, decisions: BulkDecision[], actor: AdminActor): Promise<BulkResult> {
+  const job = await prisma.adminJob.findUnique({ where: { seq }, select: { state: true, source: true } });
+  if (!job) return { ok: false, status: 404, error: "Job não encontrado." };
+  if (job.state !== "RUNNING") return { ok: false, status: 409, error: "Esta importação já foi concluída ou cancelada." };
+
+  const wanted = new Map(decisions.map((d) => [d.id, d.action]));
+  const records = await prisma.importRecord.findMany({ where: { jobSeq: seq, id: { in: Array.from(wanted.keys()) }, state: "PENDING" } });
+  const decided = { decidedByName: actor.name, decidedAt: new Date() };
+  const tally = { confirm: 0, new: 0, ignore: 0 };
+  const updates = [];
+  for (const record of records) {
+    const action = wanted.get(record.id);
+    if (action === "confirm" && record.matchedProductionId) {
+      updates.push(prisma.importRecord.update({ where: { id: record.id }, data: { state: "CONFIRMED", ...decided } }));
+      tally.confirm += 1;
+    } else if (action === "new") {
+      updates.push(prisma.importRecord.update({ where: { id: record.id }, data: { state: "NEW", matchedProductionId: null, matchedAnilistId: null, score: null, scoreDetail: null, ...decided } }));
+      tally.new += 1;
+    } else if (action === "ignore") {
+      updates.push(prisma.importRecord.update({ where: { id: record.id }, data: { state: "IGNORED", note: "Excluído na revisão em lote.", ...decided } }));
+      tally.ignore += 1;
+    }
+  }
+  await prisma.$transaction(updates);
+  const applied = tally.confirm + tally.new + tally.ignore;
+  if (applied > 0) {
+    await logEvent({
+      jobSeq: seq,
+      source: job.source,
+      event: "Bulk review",
+      message: `Revisão em lote: ${tally.confirm} ligadas ao candidato, ${tally.new} novas, ${tally.ignore} ignoradas.`,
+      context: `Job #${seq} · decisões auditadas`,
+      actor,
+    });
+  }
+  await refreshProgress(seq);
+  return { ok: true, applied, skipped: decisions.length - applied };
+}
+
+export type ConflictResolution ={ resolution: "A" } | { resolution: "B"; reason?: string } | { resolution: "MANUAL"; value: Date; reason: string };
 
 export async function resolveConflict(conflictId: string, input: ConflictResolution, actor: AdminActor): Promise<ActionResult> {
   const conflict = await prisma.catalogConflict.findUnique({ where: { id: conflictId }, include: { job: { select: { state: true } } } });
@@ -449,7 +526,7 @@ export async function resolveConflict(conflictId: string, input: ConflictResolut
   return { ok: true };
 }
 
-export async function commitImport(seq: number, actor: AdminActor): Promise<ActionResult & { summary?: { linked: number; created: number; alerts: number } }> {
+export async function commitImport(seq: number, actor: AdminActor): Promise<ActionResult & { summary?: ApplySummary }> {
   const job = await prisma.adminJob.findUnique({ where: { seq }, include: { records: true, conflicts: true } });
   if (!job) return { ok: false, status: 404, error: "Job não encontrado." };
   if (job.state !== "RUNNING") return { ok: false, status: 409, error: "Esta importação já foi concluída ou cancelada." };
@@ -459,70 +536,65 @@ export async function commitImport(seq: number, actor: AdminActor): Promise<Acti
   const ctx = `Job #${seq} · ${job.source}`;
   await logEvent({ jobSeq: seq, source: job.source, event: "Commit authorized", message: "Commit autorizado após revisão explícita.", context: ctx, actor });
 
-  const seasonRef: SeasonRef | null = job.season ? parseSeasonSlug(job.season.toLowerCase()) : null;
-  let linked = 0;
-  let created = 0;
-  for (const rec of job.records) {
-    const anidbId = Number(rec.sourceKey);
-    if ((rec.state === "AUTO" || rec.state === "CONFIRMED") && rec.matchedAnilistId !== null) {
-      // Produção existente ou, se a obra só estava no catálogo da temporada, criada agora (só no commit).
-      const production = (await prisma.production.findUnique({ where: { anilistId: rec.matchedAnilistId } })) ?? (await ensureProduction(rec.matchedAnilistId));
-      if (!production) {
-        await logEvent({ jobSeq: seq, source: job.source, level: "WARN", event: "Link skipped", message: `AniList #${rec.matchedAnilistId} não foi encontrada para ${rec.titleRomaji}.`, context: ctx, actor });
-        continue;
-      }
-      // A obra casada passa a fazer parte da plataforma (antes era só cache da AniList).
-      await prisma.catalogEntry.updateMany({ where: { anilistId: rec.matchedAnilistId }, data: { onPlatform: true } });
-      const links = mergeStreamingLinks(parseStreamingLinks(production.streamingLinksJson), parseStreamingLinks(rec.linksJson));
-      try {
-        await prisma.production.update({
-          where: { id: production.id },
-          data: {
-            anidbId,
-            streamingLinksJson: links.length || production.streamingLinksJson !== null ? JSON.stringify(links) : undefined,
-            description: production.description ? undefined : rec.description,
-            episodes: production.episodes ?? rec.episodes ?? undefined,
-          },
-        });
-        linked += 1;
-      } catch {
-        await logEvent({ jobSeq: seq, source: job.source, level: "WARN", event: "Link skipped", message: `AniDB #${anidbId} já está vinculado a outra produção.`, context: ctx, actor });
-      }
-    } else if (rec.state === "NEW") {
-      const existing = await prisma.catalogEntry.findUnique({ where: { anidbId } });
-      if (!existing) {
-        await prisma.catalogEntry.create({
-          data: {
-            anidbId,
-            titleRomaji: rec.titleRomaji,
-            titleNative: rec.titleNative,
-            titleEnglish: rec.titleEnglish,
-            coverImage: rec.imageUrl,
-            description: rec.description,
-            episodes: rec.episodes,
-            season: seasonRef?.season ?? null,
-            seasonYear: rec.year ?? seasonRef?.year ?? null,
-            status: "NOT_YET_RELEASED",
-            startDate: rec.airsAt,
-            source: "anidb",
-          },
-        });
-        created += 1;
-      }
-    }
-  }
+  await setProgress(seq, "Preparando a aplicação…", { stage: "COMMIT", total: job.records.length, processed: 0 });
+  const summary = await applyRecords(
+    job,
+    (message) => logEvent({ jobSeq: seq, source: job.source, level: "WARN", event: "Link skipped", message, context: ctx, actor }),
+    new Date(),
+    (done, total, note) => setProgress(seq, note, { stage: "COMMIT", total, processed: done })
+  );
 
   // "Data alterada" para quem acompanha: só para decisões que mudaram o horário efetivo.
-  let alerts = 0;
   for (const c of job.conflicts) {
     if (c.status === "RESOLVED" && c.resolution !== "A" && c.resolvedValue) {
-      alerts += await recordRescheduleAlerts(c.anilistId, c.episode, c.aValue, c.resolvedValue);
+      summary.alerts += await recordRescheduleAlerts(c.anilistId, c.episode, c.aValue, c.resolvedValue);
     }
   }
 
-  await prisma.adminJob.update({ where: { seq }, data: { state: "SUCCESS", stage: "NOTIFICATION", processed: job.total, finishedAt: new Date(), error: null } });
-  await logEvent({ jobSeq: seq, source: job.source, event: "Import completed", message: `Importação concluída: ${linked} vínculos, ${created} produções novas, ${alerts} alertas preparados.`, context: ctx, actor });
-  return { ok: true, summary: { linked, created, alerts } };
+  await prisma.adminJob.update({ where: { seq }, data: { state: "SUCCESS", stage: "NOTIFICATION", processed: job.total, finishedAt: new Date(), error: null, progressNote: null, resultJson: JSON.stringify(summary) } });
+  await logEvent({ jobSeq: seq, source: job.source, event: "Import completed", message: `Importação concluída: ${describeSummary(summary)} · ${summary.alerts} alertas preparados.`, context: ctx, actor });
+  return { ok: true, summary };
+}
+
+/**
+ * Reaplica um lote JÁ concluído: relê o HTML guardado (imagem inteira, gêneros, conteúdo adulto) e aplica de novo ao
+ * catálogo, sem duplicar nada. Serve para completar um lote que ficou pela metade (ex.: a AniList estava fora) ou para
+ * levar às obras já importadas o que o parser passou a ler.
+ */
+export async function reapplyImport(seq: number, actor: AdminActor): Promise<ActionResult & { summary?: ApplySummary }> {
+  const job = await prisma.adminJob.findUnique({ where: { seq }, include: { records: true } });
+  if (!job) return { ok: false, status: 404, error: "Job não encontrado." };
+  if (job.state !== "SUCCESS") return { ok: false, status: 409, error: "Só um lote concluído pode ser reaplicado." };
+  const ctx = `Job #${seq} · ${job.source}`;
+
+  if (job.html) {
+    const seasonRef = job.season ? parseSeasonSlug(job.season.toLowerCase()) : null;
+    const parsed = parseSeasonHtml(job.html, { season: seasonRef });
+    const bySource = new Map(parsed.records.map((r) => [r.sourceKey, r]));
+    for (const rec of job.records) {
+      const fresh = bySource.get(rec.sourceKey);
+      if (!fresh) continue;
+      const adult = fresh.adult && rec.state !== "IGNORED";
+      await prisma.importRecord.update({
+        where: { id: rec.id },
+        data: {
+          genres: fresh.genres.join(",") || null,
+          imageUrl: fresh.imageUrl ?? rec.imageUrl,
+          ...(adult ? { state: "IGNORED", note: "Conteúdo adulto: fora da plataforma." } : {}),
+        },
+      });
+    }
+  }
+  const fresh = await prisma.adminJob.findUniqueOrThrow({ where: { seq }, include: { records: true } });
+  const summary = await applyRecords(
+    fresh,
+    (message) => logEvent({ jobSeq: seq, source: job.source, level: "WARN", event: "Link skipped", message, context: ctx, actor }),
+    new Date(),
+    (done, total, note) => setProgress(seq, note, { total, processed: done })
+  );
+  await prisma.adminJob.update({ where: { seq }, data: { resultJson: JSON.stringify(summary), progressNote: null, processed: fresh.total } });
+  await logEvent({ jobSeq: seq, source: job.source, event: "Import reapplied", message: `Lote reaplicado: ${describeSummary(summary)}.`, context: ctx, actor });
+  return { ok: true, summary };
 }
 
 export async function cancelImport(seq: number, actor: AdminActor): Promise<ActionResult> {

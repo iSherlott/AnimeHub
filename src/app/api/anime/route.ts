@@ -9,6 +9,7 @@ import { extractAccentColor } from "@/lib/accentColor";
 import { isValidHttpUrl } from "@/lib/url";
 import { BLOCKED_CONTENT_MESSAGE, hasBlockedGenre } from "@/lib/contentPolicy";
 import { isOnPlatform } from "@/lib/platform";
+import { ensureEarlierSeasons } from "@/lib/continuation";
 
 export async function GET() {
   const { user, response } = await requireUser();
@@ -140,6 +141,9 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+
+  // Quem acompanha a temporada N já viu as anteriores: entram na lista como "Terminei" (a lista conta tudo como UM anime).
+  await ensureEarlierSeasons(user.id, media.id).catch((error) => console.error("Falha ao acrescentar as temporadas anteriores:", error));
 
   // Cor de destaque roda em segundo plano — baixar e processar a imagem
   // não deve atrasar a resposta de "adicionar à lista".

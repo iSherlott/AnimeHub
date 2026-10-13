@@ -14,7 +14,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { KNOWN_PLATFORMS } from "@/lib/types";
+import { IRREGULAR_PLATFORM, KNOWN_PLATFORMS, platformWatchLabel } from "@/lib/types";
 
 type Link = { id: string; platform: string; url: string };
 
@@ -104,7 +104,7 @@ export function PlatformLinksManager({
               underline="hover"
               sx={{ fontSize: 13, textTransform: "uppercase", color: "primary.contrastText" }}
             >
-              Assistir na {link.platform}
+              {platformWatchLabel(link.platform)}
             </MuiLink>
             <IconButton
               onClick={() => removeLink(link.id)}
@@ -156,10 +156,15 @@ export function PlatformLinksManager({
           >
             {KNOWN_PLATFORMS.map((p) => (
               <option key={p} value={p}>
-                {p}
+                {p === IRREGULAR_PLATFORM ? "Irregular (sites não oficiais)" : p}
               </option>
             ))}
           </NativeSelect>
+          {platform === IRREGULAR_PLATFORM && (
+            <Typography variant="caption" data-testid="platform-irregular-hint" sx={{ width: "100%", color: "text.secondary" }}>
+              Para sites não oficiais. O link é só seu: guarda de onde você assiste e não é exibido para outras pessoas.
+            </Typography>
+          )}
           <TextField
             value={url}
             onChange={(e) => setUrl(e.target.value)}

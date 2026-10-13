@@ -124,7 +124,7 @@ test.describe("Epic 26 — GET /api/feed/recommendations", () => {
     expect(res.status()).toBe(200);
     const data = await res.json();
     expect(data.animes).toContainEqual(
-      expect.objectContaining({ anilistId: RECOMMENDED_TARGET_ANILIST_ID, isInternal: true, href: `/obra/${RECOMMENDED_TARGET_ANILIST_ID}` })
+      expect.objectContaining({ anilistId: RECOMMENDED_TARGET_ANILIST_ID, isInternal: true, href: `/anime/${RECOMMENDED_TARGET_ANILIST_ID}` })
     );
   });
 });

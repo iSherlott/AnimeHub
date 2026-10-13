@@ -3,6 +3,7 @@ import { prisma } from "../../../src/lib/prisma";
 import { notifyRangeForNow } from "../../../src/lib/airingWindow";
 import { recordIngestionRun } from "../../../src/lib/ingestionRuns";
 import { RESCHEDULE_THRESHOLD_MS } from "../../../src/lib/rescheduleAlerts";
+import { backfillEarlierSeasons, syncContinuations } from "../../../src/lib/continuation";
 
 const PORT = Number(process.env.PORT ?? 4004);
 const TICK_INTERVAL_MS = 2 * 60 * 1000;
@@ -14,6 +15,9 @@ const TICK_INTERVAL_MS = 2 * 60 * 1000;
 // ficaria preso como "já visto" por causa do alerta antigo).
 
 const RETENTION_MS = 7 * 24 * 3600 * 1000;
+// As temporadas anteriores de quem acompanha uma mais nova são completadas de tempos em tempos (não a cada tick).
+const BACKFILL_EVERY_MS = 20 * 60 * 1000;
+let lastBackfillAt = 0;
 
 async function tick(): Promise<void> {
   const startedAt = new Date();
@@ -73,6 +77,16 @@ async function tick(): Promise<void> {
           }
         }
       }
+    }
+
+    // Obra que voltou a sair episódios (mesma entrada ou nova temporada): volta à lista, sai de "Terminei" e avisa.
+    const continuations = await syncContinuations(now);
+    if (Date.now() - lastBackfillAt >= BACKFILL_EVERY_MS) {
+      lastBackfillAt = Date.now();
+      continuations.backfilled += await backfillEarlierSeasons();
+    }
+    if (continuations.returned + continuations.followed + continuations.backfilled > 0) {
+      console.log(`[notifier] continuações: ${continuations.returned} retomadas, ${continuations.followed} acompanhadas, ${continuations.backfilled} temporadas anteriores acrescentadas, ${continuations.alerts} avisos`);
     }
 
     const retentionCutoff = new Date(Date.now() - RETENTION_MS);

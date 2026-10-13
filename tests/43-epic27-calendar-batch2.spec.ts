@@ -121,7 +121,7 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     await expect(page.getByText("Sem sinopse — abra pra ver mais.")).toBeVisible();
     const seeMore = page.getByRole("link", { name: "Ver detalhes" });
     await expect(seeMore).toBeVisible();
-    await expect(seeMore).toHaveAttribute("href", `/obra/${OTHER_ANILIST_ID}`);
+    await expect(seeMore).toHaveAttribute("href", `/anime/${OTHER_ANILIST_ID}`);
     // "+ Acompanhar" adiciona direto à lista (botão), em vez de abrir a página da obra.
     await expect(page.getByRole("button", { name: "+ Acompanhar" })).toBeVisible();
     await expect(page.getByTestId("preview-follow-toggle")).toHaveCount(0);

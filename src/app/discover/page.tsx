@@ -62,8 +62,32 @@ function NextReleasePanel({ item }: { item: DiscoverItem }) {
   const timeZone = useTimeZone();
   const schedule = useScheduleText(item);
   const info = scheduleOf(item);
-  const detailHref = item.anilistId !== null ? `/obra/${item.anilistId}` : null;
-  const owned = item.inMyList && item.animeId;
+  const detailHref = item.anilistId !== null ? `/anime/${item.anilistId}` : null;
+  // "+ Acompanhar" daqui adiciona direto à lista, sem sair da página.
+  const [followedId, setFollowedId] = useState<string | null>(null);
+  const [following, setFollowing] = useState(false);
+  const [followError, setFollowError] = useState<string | null>(null);
+  const ownedId = item.inMyList && item.animeId ? item.animeId : followedId;
+  const owned = Boolean(ownedId);
+
+  async function follow() {
+    if (item.anilistId === null) return;
+    setFollowing(true);
+    setFollowError(null);
+    try {
+      const res = await fetch("/api/anime", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ anilistId: item.anilistId }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setFollowError(data.error ?? "Não foi possível acompanhar. Tente novamente.");
+        return;
+      }
+      if (data.anime?.id) setFollowedId(data.anime.id as string);
+    } catch {
+      setFollowError("Não foi possível falar com o servidor. Tente novamente.");
+    } finally {
+      setFollowing(false);
+    }
+  }
   const when = info.kind === "scheduled" ? new Date(info.at) : null;
   const dayLabel = when
     ? new Intl.DateTimeFormat("pt-BR", { timeZone, day: "numeric", month: "long", year: "numeric" }).format(when)
@@ -88,7 +112,7 @@ function NextReleasePanel({ item }: { item: DiscoverItem }) {
       </Typography>
       <Box>
         {owned ? (
-          <Button component={NextLink} href={`/anime/${item.animeId}`} sx={ELEVATED_BUTTON_SX}>
+          <Button component={NextLink} href={`/anime/${ownedId}`} sx={ELEVATED_BUTTON_SX}>
             Acompanhando
           </Button>
         ) : user === null ? (
@@ -96,10 +120,15 @@ function NextReleasePanel({ item }: { item: DiscoverItem }) {
             Entrar para acompanhar
           </Button>
         ) : detailHref ? (
-          <Button component={NextLink} href={detailHref} variant="contained">
-            + Acompanhar
+          <Button onClick={() => void follow()} disabled={following} variant="contained" data-testid="next-release-follow">
+            {following ? "Adicionando…" : "+ Acompanhar"}
           </Button>
         ) : null}
+        {followError && (
+          <Typography role="alert" sx={{ fontSize: 12, color: "primary.main", mt: 0.5 }}>
+            {followError}
+          </Typography>
+        )}
       </Box>
     </Box>
   );
@@ -229,14 +258,22 @@ function DiscoverPageContent() {
     return Array.from(set);
   }, [catalogAll]);
 
+  // Temporadas que existem no catálogo (nada de opção vazia).
+  const seasonsAvailable = useMemo(() => {
+    const present = new Set<string>();
+    for (const item of catalogAll) if (item.season) present.add(item.season);
+    return ["WINTER", "SPRING", "SUMMER", "FALL"].filter((s) => present.has(s) || s === selectedSeason);
+  }, [catalogAll, selectedSeason]);
+
   const years = useMemo(() => {
-    const set = new Set<number>([currentYear]);
+    const set = new Set<number>(catalogAll.length === 0 ? [currentYear] : []);
+    if (selectedYear) set.add(Number(selectedYear));
     for (const item of catalogAll) {
       const y = yearOf(item);
       if (y) set.add(y);
     }
     return Array.from(set).sort((a, b) => b - a);
-  }, [catalogAll, currentYear]);
+  }, [catalogAll, currentYear, selectedYear]);
 
   const searchActive = query.trim().length >= 2;
   const filtersActive = selectedGenre !== "" || selectedStatus !== "" || selectedSeason !== "" || selectedYear !== "" || availability !== "";
@@ -325,7 +362,7 @@ function DiscoverPageContent() {
             label="Temporada"
             value={selectedSeason}
             onChange={setSelectedSeason}
-            options={[{ value: "", label: "Temporada" }, ...["WINTER", "SPRING", "SUMMER", "FALL"].map((s) => ({ value: s, label: SEASON_LABELS[s] ?? s }))]}
+            options={[{ value: "", label: "Temporada" }, ...seasonsAvailable.map((s) => ({ value: s, label: SEASON_LABELS[s] ?? s }))]}
           />
           <SelectField
             label="Ano"

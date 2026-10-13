@@ -43,7 +43,7 @@ export function FollowProductionButton({
     return (
       <Button
         component={NextLink}
-        href={`/login?next=${encodeURIComponent(`/obra/${anilistId}`)}`}
+        href={`/login?next=${encodeURIComponent(`/anime/${anilistId}`)}`}
         variant="contained"
         startIcon={<AddIcon />}
         data-testid="follow-login-button"

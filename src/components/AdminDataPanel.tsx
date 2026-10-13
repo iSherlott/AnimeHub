@@ -217,7 +217,7 @@ export function AdminDataPanel() {
                 <li key={p.anilistId}>
                   <Typography variant="body2">
                     T{p.seasonNumber} ·{" "}
-                    <MuiLink component={NextLink} href={`/obra/${p.anilistId}`} underline="hover">
+                    <MuiLink component={NextLink} href={`/anime/${p.anilistId}`} underline="hover">
                       {p.titleRomaji}
                     </MuiLink>
                     {p.titleNative ? ` · ${p.titleNative}` : ""} · {p.format ?? "—"} · {p.followers}{" "}

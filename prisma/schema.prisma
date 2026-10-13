@@ -204,6 +204,8 @@ model Anime {
   /// calendário "Minha Lista", dos alertas e de "Para assistir".
   waiting         Boolean   @default(false)
   waitingSince    DateTime?
+  /// Marcação manual do andamento (WATCHING | UNFINISHED | FINISHED). Nula = a plataforma deduz (src/lib/watchCategory.ts).
+  watchState      String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -467,6 +469,9 @@ model CatalogEntry {
   /// devolve só para cache entram com `false` e só viram `true` quando o admin as traz (upload do HTML do AniDB ou
   /// painel de importação da AniList). Padrão `true` para as demais origens (importação revisada).
   onPlatform        Boolean   @default(true)
+  /// Última vez que o painel Admin → AniList conferiu esta obra na AniList ("Complementar"). O que continuou vazio depois
+  /// disso é porque a AniList não tem — deixa de contar como pendência.
+  complementedAt    DateTime?
   fetchedAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -532,6 +537,8 @@ model AiringAlert {
   /// Horário anterior quando a data do episódio MUDOU depois do alerta
   /// ("Data alterada", Figma 13:43025); null = alerta de lançamento normal.
   previousAiringAt DateTime?
+  /// "EPISODE" (lançamento / data alterada) | "RETURN" (a obra, ou uma continuação dela, voltou a sair episódios; `episode` = 0).
+  kind      String    @default("EPISODE")
   createdAt DateTime  @default(now())
 
   @@unique([userId, anilistId, episode])
@@ -775,6 +782,10 @@ model AdminJob {
   htmlBytes     Int?
   /// HTML original, preservado para revisão ou nova tentativa (tratado sempre como texto).
   html          String?
+  /// Resultado do commit (JSON): vínculos, novas, episódios no calendário, pendências de produção. Mostrado no resultado do lote.
+  resultJson    String?
+  /// Passo em andamento, em palavras ("Comparando 40 de 117…"), para a tela mostrar o progresso. Nulo quando nada está rodando.
+  progressNote  String?
   adminId       String?
   adminName     String?
   createdAt     DateTime          @default(now())
@@ -816,6 +827,8 @@ model ImportRecord {
   linksJson           String?
   episodes            Int?
   imageUrl            String?
+  /// Gêneros (taxonomia fechada) lidos das tags do AniDB, separados por vírgula.
+  genres              String?
   decidedByName       String?
   decidedAt           DateTime?
 
@@ -849,6 +862,32 @@ model CatalogConflict {
 
   @@index([status, createdAt])
   @@index([anilistId, episode])
+}
+
+/**
+ * Decisão do admin (Admin → Match name) sobre duas obras cujo nome sugere continuação ("Naruto" → "Naruto Shippuden",
+ * "Naruto" → "Boruto"). `CONFIRMED` junta as duas na mesma franquia (a mais nova vira a temporada seguinte);
+ * `REJECTED` impede que a mesma sugestão volte.
+ */
+model WorkLink {
+  id               String   @id @default(cuid())
+  /// A obra que veio antes.
+  earlierAnilistId Int
+  /// A continuação.
+  laterAnilistId   Int
+  /// CONFIRMED | REJECTED
+  status           String
+  /// SUGGESTED (veio da lista de sugestões) | MANUAL (o admin escolheu as duas obras)
+  origin           String   @default("SUGGESTED")
+  /// JSON com a franquia e os números de temporada de antes da junção — é o que "Desfazer" restaura.
+  undoJson         String?
+  decidedByName    String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([earlierAnilistId, laterAnilistId])
+  @@index([status])
+  @@index([laterAnilistId])
 }
 
 /** Valor manual com prioridade; origem preservada e trilha de auditoria (Figma "Overrides", `8:4471`). */

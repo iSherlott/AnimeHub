@@ -25,7 +25,7 @@ describe("rankRecommendations", () => {
 
   it("usa os dados da obra carregada, aponta para a página interna e diz por quê", () => {
     const [item] = rankRecommendations([followed(1, [], [20], "Meu Anime")], [loaded(20, [])], 10);
-    expect(item).toMatchObject({ anilistId: 20, titleRomaji: "Carregado 20", href: "/obra/20", isInternal: true, becauseTitle: "Meu Anime", sharedGenres: [] });
+    expect(item).toMatchObject({ anilistId: 20, titleRomaji: "Carregado 20", href: "/anime/20", isInternal: true, becauseTitle: "Meu Anime", sharedGenres: [] });
   });
 
   it("deduplica (mantém a 1ª ocorrência) e nunca recomenda o que a pessoa já acompanha", () => {

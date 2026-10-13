@@ -26,7 +26,7 @@ const toItem = (title: LoadedTitle, extra: { becauseTitle: string | null; shared
   titleRomaji: title.titleRomaji,
   titleEnglish: title.titleEnglish,
   coverImage: title.coverImage,
-  href: `/obra/${title.anilistId}`,
+  href: `/anime/${title.anilistId}`,
   isInternal: true,
   ...extra,
 });

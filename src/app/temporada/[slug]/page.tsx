@@ -1,18 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { notFound, useParams } from "next/navigation";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { Box, Button, Menu, MenuItem } from "@mui/material";
+import { notFound, useParams, useRouter } from "next/navigation";
+import { Box, Button } from "@mui/material";
 import { ErrorNotice } from "@/components/StatePanels";
-import NextLink from "next/link";
 import { Header } from "@/components/Header";
 import { PageContainer, PageIntro } from "@/components/PageShell";
-import { ELEVATED_BUTTON_SX, ExploreCard } from "@/components/ExploreCard";
+import { ExploreCard } from "@/components/ExploreCard";
 import { CardGrid, CardGridSkeleton, EmptyPanel, SectionHeader, SeasonChips } from "@/components/ExploreParts";
 import { SelectField } from "@/components/FilterField";
 import type { DiscoverItem } from "@/lib/discoverItem";
-import { parseSeasonSlug, recentSeasons, SEASON_COPY, seasonLabel, seasonSlug, splitSeasonItems, type SeasonRef } from "@/lib/exploreGroups";
+import { parseSeasonSlug, SEASON_COPY, seasonLabel, seasonSlug, splitSeasonItems, type SeasonRef } from "@/lib/exploreGroups";
+import type { AvailableSeason } from "@/lib/availableSeasons";
 import { CATALOG_STATUS_LABELS } from "@/lib/types";
 
 /**
@@ -34,7 +33,9 @@ function SeasonView({ seasonRef: ref }: { seasonRef: SeasonRef }) {
   const [reloadKey, setReloadKey] = useState(0);
   const [genre, setGenre] = useState("");
   const [status, setStatus] = useState("");
-  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+  const router = useRouter();
+  // Temporadas que têm anime na plataforma (o filtro nunca oferece uma temporada vazia).
+  const [available, setAvailable] = useState<AvailableSeason[] | null>(null);
 
   const { season, year } = ref;
   useEffect(() => {
@@ -64,6 +65,30 @@ function SeasonView({ seasonRef: ref }: { seasonRef: SeasonRef }) {
     };
   }, [season, year, reloadKey]);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/seasons")
+      .then((res) => (res.ok ? res.json() : { seasons: [] }))
+      .then((data: { seasons?: AvailableSeason[] }) => {
+        if (!cancelled) setAvailable(data.seasons ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setAvailable([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // A temporada aberta sempre aparece (mesmo sem anime ainda); as demais, só se tiverem.
+  const seasonOptions = useMemo(() => {
+    const list = (available ?? []).map((s) => ({ value: s.slug, label: s.label }));
+    const current = seasonSlug(ref);
+    if (!list.some((o) => o.value === current)) list.push({ value: current, label: seasonLabel(ref) });
+    return list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [available, season, year]);
+
   const genres = useMemo(() => {
     const counts = new Map<string, number>();
     for (const item of items) for (const g of item.genres) counts.set(g, (counts.get(g) ?? 0) + 1);
@@ -89,29 +114,17 @@ function SeasonView({ seasonRef: ref }: { seasonRef: SeasonRef }) {
           kicker={`${copy.kanji} / TEMPORADA`}
           title={label}
           subtitle={`Histórias de ${copy.range}. Escolha o que merece um lugar na sua agenda.`}
-          action={
-            <>
-              <Button
-                onClick={(e) => setMenuAnchor(e.currentTarget)}
-                startIcon={<ExpandMoreIcon />}
-                aria-haspopup="menu"
-                aria-expanded={Boolean(menuAnchor)}
-                sx={ELEVATED_BUTTON_SX}
-              >
-                Todas as temporadas
-              </Button>
-              <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)}>
-                {recentSeasons(new Date(), 8).map((s) => (
-                  <MenuItem key={seasonSlug(s)} component={NextLink} href={`/temporada/${seasonSlug(s)}`} selected={s.season === season && s.year === year} onClick={() => setMenuAnchor(null)}>
-                    {seasonLabel(s)}
-                  </MenuItem>
-                ))}
-              </Menu>
-            </>
-          }
         />
 
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+          <SelectField
+            label="Temporada"
+            value={seasonSlug(ref)}
+            onChange={(slug) => router.push(`/temporada/${slug}`)}
+            width={260}
+            testId="season-filter"
+            options={seasonOptions}
+          />
           <SelectField
             label="Gênero"
             value={genre}

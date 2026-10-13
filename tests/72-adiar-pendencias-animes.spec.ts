@@ -209,7 +209,7 @@ test.describe.serial("Adiar, Para assistir e Animes no perfil", () => {
     // Cada capa leva à página pública da obra.
     await list.getByRole("textbox", { name: "Buscar animes" }).fill("");
     await list.getByTestId("genre-all").click();
-    await expect(list.getByTestId(`profile-anime-${G3}`).getByRole("link")).toHaveAttribute("href", `/obra/${G3}`);
+    await expect(list.getByTestId(`profile-anime-${G3}`).getByRole("link")).toHaveAttribute("href", `/anime/${G3}`);
   });
 
   test("privacidade: ocultar em Configurações esconde a aba de quem visita, mas não de mim", async ({ page, browser, request }) => {

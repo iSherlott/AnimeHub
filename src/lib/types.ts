@@ -28,6 +28,15 @@ export const KNOWN_PLATFORMS = [
   "HIDIVE",
   "Prime Video",
   "Disney+",
+  // Sites não oficiais (que têm anime pirata): a pessoa guarda só para si o link de onde assiste.
+  "Irregular",
 ] as const;
 
 export type KnownPlatform = (typeof KNOWN_PLATFORMS)[number];
+
+/** A plataforma "Irregular" agrupa vários sites; o rótulo dela não leva "na ...". */
+export const IRREGULAR_PLATFORM: KnownPlatform = "Irregular";
+
+export function platformWatchLabel(platform: string): string {
+  return platform === IRREGULAR_PLATFORM ? "Assistir (irregular)" : `Assistir na ${platform}`;
+}

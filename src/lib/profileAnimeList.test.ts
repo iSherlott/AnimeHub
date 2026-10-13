@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterEntries, genreFacets, normalizeSearch, type ProfileAnimeEntry } from "@/lib/profileAnimeList";
+import { categoryCounts, filterEntries, genreFacets, normalizeSearch, type ProfileAnimeEntry } from "@/lib/profileAnimeList";
 
 const entry = (anilistId: number, titleRomaji: string, genres: string[], extra: Partial<ProfileAnimeEntry> = {}): ProfileAnimeEntry => ({
   anilistId,
@@ -10,6 +10,8 @@ const entry = (anilistId: number, titleRomaji: string, genres: string[], extra: 
   coverImage: null,
   genres,
   status: null,
+  category: "other",
+  seasonsCount: 1,
   ...extra,
 });
 
@@ -53,5 +55,22 @@ describe("genreFacets", () => {
       { genre: "Adventure", count: 1 },
       { genre: "Mystery", count: 1 },
     ]);
+  });
+});
+
+describe("categorias do perfil", () => {
+  const withCategory = [
+    entry(1, "A", [], { category: "watching" }),
+    entry(2, "B", [], { category: "finished" }),
+    entry(3, "C", [], { category: "unfinished" }),
+    entry(4, "D", [], { category: "other" }),
+  ];
+  it("filtra por categoria e combina com a busca", () => {
+    expect(filterEntries(withCategory, "", "", "finished").map((e) => e.anilistId)).toEqual([2]);
+    expect(filterEntries(withCategory, "c", "", "unfinished").map((e) => e.anilistId)).toEqual([3]);
+    expect(filterEntries(withCategory, "a", "", "unfinished")).toEqual([]);
+  });
+  it("conta cada categoria; 'other' só aparece em Todos", () => {
+    expect(categoryCounts(withCategory)).toEqual({ watching: 1, unfinished: 1, finished: 1, dropped: 0 });
   });
 });

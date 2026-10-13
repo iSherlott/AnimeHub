@@ -37,7 +37,7 @@ function OffGridTitle({ item }: { item: OffGridItem }) {
   return (
     <MuiLink
       component={NextLink}
-      href={`/obra/${item.anilistId}`}
+      href={`/anime/${item.anilistId}`}
       underline="hover"
       color="inherit"
       lang={item.titleNative && title === item.titleNative ? "ja" : undefined}
