@@ -4,7 +4,8 @@ import { parseSeasonSlug, type SeasonRef } from "@/lib/exploreGroups";
 import { ensureProduction, mergeStreamingLinks, parseStreamingLinks } from "@/lib/production";
 import { defaultImportDeps, loadAiring } from "@/lib/anilistImport";
 import { hasBlockedGenre } from "@/lib/contentPolicy";
-import { syncContinuations } from "@/lib/continuation";
+import { backfillEarlierSeasons, syncContinuations } from "@/lib/continuation";
+import { relinkAnidbOnlyEntries } from "./relink";
 
 /**
  * Aplica ao catálogo o que o lote do AniDB decidiu (commit) — e pode ser REAPLICADO com segurança: tudo aqui é
@@ -28,9 +29,13 @@ export type ApplySummary = {
   /** Registros recusados por conteúdo adulto. */
   adult: number;
   alerts: number;
+  /** Temporadas anteriores acrescentadas, como "terminei", à lista de quem já acompanha uma temporada mais nova. */
+  earlierSeasons: number;
+  /** Obras que só tinham o AniDB (sem página) e passaram a ser a obra da AniList. */
+  relinked: number;
 };
 
-export const EMPTY_SUMMARY: ApplySummary = { linked: 0, created: 0, updated: 0, deferred: 0, episodes: 0, adult: 0, alerts: 0 };
+export const EMPTY_SUMMARY: ApplySummary = { linked: 0, created: 0, updated: 0, deferred: 0, episodes: 0, adult: 0, alerts: 0, earlierSeasons: 0, relinked: 0 };
 
 const WEEK_MS = 7 * 24 * 3600 * 1000;
 
@@ -172,8 +177,19 @@ export async function applyRecords(
       await warn("Os episódios do calendário não puderam ser carregados agora; use Reaplicar vínculos para tentar de novo.");
     }
   }
+  // Obra que só ficou com o AniDB (sem página) mas que o catálogo já conhece — título escrito de outro jeito ou AniList ainda sem
+  // cache quando o lote foi analisado — passa a ser a obra da AniList. Só olha o banco; a busca ao vivo é do painel do admin.
+  try {
+    const relinked = await relinkAnidbOnlyEntries();
+    summary.relinked = relinked.linked.length;
+  } catch (error) {
+    console.error("[admin-import] revincular obras do AniDB falhou:", error);
+  }
   // Continuações e obras que voltaram a sair episódios: voltam à lista/calendário de quem acompanhava a anterior.
   await syncContinuations(now);
+  // Carga de obras ANTIGAS: quem já acompanha uma temporada mais nova (em qualquer situação: terminada, dropada ou no ar)
+  // recebe as anteriores recém-chegadas como "terminei". Não depende de haver episódio por vir, e vale para carga nova também.
+  summary.earlierSeasons = await backfillEarlierSeasons();
   return summary;
 }
 
@@ -184,6 +200,8 @@ export function describeSummary(summary: ApplySummary): string {
     summary.updated > 0 ? `${summary.updated} atualizada(s)` : null,
     `${summary.episodes} ${summary.episodes === 1 ? "episódio" : "episódios"} no calendário`,
     summary.deferred > 0 ? `${summary.deferred} com produção a criar ao abrir` : null,
+    summary.relinked > 0 ? `${summary.relinked} ${summary.relinked === 1 ? "obra só do AniDB ligada à AniList" : "obras só do AniDB ligadas à AniList"}` : null,
+    summary.earlierSeasons > 0 ? `${summary.earlierSeasons} ${summary.earlierSeasons === 1 ? "temporada anterior adicionada" : "temporadas anteriores adicionadas"} a quem acompanha as seguintes` : null,
     summary.adult > 0 ? `${summary.adult} recusada(s) por conteúdo adulto` : null,
   ].filter(Boolean);
   return parts.join(" · ");

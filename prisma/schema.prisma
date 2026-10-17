@@ -265,6 +265,8 @@ model Production {
   officialSite String?
   /// JSON [{site, url}] — sites onde assistir (links STREAMING da AniList). `null` = ainda não consultado; "[]" = consultado, sem links.
   streamingLinksJson String?
+  /// O título (`titleRomaji`) foi fixado (o do AniDB) e a atualização pela AniList não o sobrescreve.
+  titleLocked  Boolean   @default(false)
   /// ID da produção na AniDB, vinculado pela importação revisada (Admin → Matching).
   anidbId      Int?      @unique
   /// JSON [{id, titleRomaji, format, relationType}] — relações da AniList (sequências, spin-offs…).
@@ -469,6 +471,8 @@ model CatalogEntry {
   /// devolve só para cache entram com `false` e só viram `true` quando o admin as traz (upload do HTML do AniDB ou
   /// painel de importação da AniList). Padrão `true` para as demais origens (importação revisada).
   onPlatform        Boolean   @default(true)
+  /// O título (`titleRomaji`) foi fixado (hoje: o do AniDB, ao religar a obra à AniList) e a AniList não o sobrescreve.
+  titleLocked       Boolean   @default(false)
   /// Última vez que o painel Admin → AniList conferiu esta obra na AniList ("Complementar"). O que continuou vazio depois
   /// disso é porque a AniList não tem — deixa de contar como pendência.
   complementedAt    DateTime?
@@ -890,6 +894,26 @@ model WorkLink {
   @@index([laterAnilistId])
 }
 
+/**
+ * Candidata da AniList para uma obra que só existe pelo AniDB (sem página): guardada pelo religamento quando o casamento
+ * não é seguro, para o admin decidir em Admin → Match name. `REJECTED` impede que a mesma sugestão volte.
+ */
+model AnidbCandidate {
+  id             String   @id @default(cuid())
+  anidbId        Int      @unique
+  anilistId      Int
+  candidateTitle String
+  score          Float
+  /// Por que não foi ligada sozinha.
+  reason         String
+  /// PENDING | REJECTED
+  status         String   @default("PENDING")
+  decidedByName  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status])
+}
 /** Valor manual com prioridade; origem preservada e trilha de auditoria (Figma "Overrides", `8:4471`). */
 model CatalogOverride {
   id             String    @id @default(cuid())

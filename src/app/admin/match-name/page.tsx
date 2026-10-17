@@ -1,4 +1,5 @@
 import { AdminPageHeader } from "@/components/admin/AdminUi";
+import { AnidbOnlyPanel } from "@/components/admin/AnidbOnlyPanel";
 import { MatchNamePanel } from "@/components/admin/MatchNamePanel";
 import { requireAdminPage } from "@/lib/adminPage";
 import { loadWorkLinkPanel } from "@/lib/workLinkActions";
@@ -16,6 +17,7 @@ export default async function AdminMatchNamePage() {
     <>
       <AdminPageHeader title="Match name" subtitle="Confirme quais obras são continuação de outra e junte à mão as que o nome não entrega." />
       <MatchNamePanel suggestions={panel.suggestions} confirmed={panel.confirmed} rejected={panel.rejected} />
+      <AnidbOnlyPanel />
     </>
   );
 }

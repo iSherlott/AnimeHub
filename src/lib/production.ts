@@ -23,7 +23,7 @@ export type ProductionWithFranchise = Production & { franchise: Franchise };
 const REFRESH_AFTER_MS = 7 * 24 * 3600 * 1000;
 
 /** `anidbId` fica de fora: é vinculado pela importação revisada e a atualização via AniList não pode apagá-lo. */
-export type ProductionFields = Omit<Production, "id" | "franchiseId" | "anidbId" | "createdAt" | "fetchedAt" | "updatedAt">;
+export type ProductionFields = Omit<Production, "id" | "franchiseId" | "anidbId" | "titleLocked" | "createdAt" | "fetchedAt" | "updatedAt">;
 
 export function productionFieldsFromMedia(
   media: AniListMedia,
@@ -93,7 +93,8 @@ async function fromAniList(anilistId: number): Promise<ProductionWithFranchise |
   );
   const fields = productionFieldsFromMedia(media, cache.get(anilistId) ?? null, resolution.seasonNumber);
   // Sites que vieram de outra fonte (importação do AniDB) sobrevivem à atualização pela AniList.
-  const prior = await prisma.production.findUnique({ where: { anilistId }, select: { streamingLinksJson: true } });
+  const prior = await prisma.production.findUnique({ where: { anilistId }, select: { streamingLinksJson: true, titleLocked: true, titleRomaji: true } });
+  if (prior?.titleLocked) fields.titleRomaji = prior.titleRomaji; // título fixado (o do AniDB): a AniList não troca
   fields.streamingLinksJson = JSON.stringify(mergeStreamingLinks(getStreamingLinks(media), parseStreamingLinks(prior?.streamingLinksJson ?? null)));
   const production = await prisma.production.upsert({
     where: { anilistId },

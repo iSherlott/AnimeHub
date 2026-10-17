@@ -10,7 +10,20 @@ import { ELEVATED_BUTTON_SX } from "@/components/ExploreCard";
 import { ErrorNotice } from "@/components/StatePanels";
 import { ImportProgress } from "@/components/admin/ImportProgress";
 import { detectSeason, detectYearFromTitles, PARSER_VERSION } from "@/lib/adminImport/parseSeasonHtml";
-import { parseSeasonSlug, SEASON_COPY } from "@/lib/exploreGroups";
+import { parseSeasonSlug, SEASON_COPY, seasonLabel, type SeasonName } from "@/lib/exploreGroups";
+
+const SEASON_ORDER: SeasonName[] = ["WINTER", "SPRING", "SUMMER", "FALL"];
+const MIN_YEAR = 1960;
+const MAX_YEAR = 2100;
+
+/** Da mais nova para a mais antiga; rótulo que não se entende vai para o fim. */
+function sortSeasons(labels: string[]): string[] {
+  const rank = (label: string) => {
+    const ref = parseSeasonSlug(label.toLowerCase());
+    return ref ? ref.year * 4 + SEASON_ORDER.indexOf(ref.season) : -1;
+  };
+  return Array.from(new Set(labels)).sort((a, b) => rank(b) - rank(a));
+}
 
 /**
  * Formulário "Importar temporada" (Figma `8:3894`): fonte + temporada + HTML
@@ -22,7 +35,11 @@ export function ImportForm({ seasons, initialHtml = "", initialSeason }: { seaso
   const router = useRouter();
   const htmlId = useId();
   const [source, setSource] = useState("AniDB");
-  const [season, setSeason] = useState(initialSeason && seasons.includes(initialSeason) ? initialSeason : seasons[0]);
+  // A lista de temporadas é dinâmica: as recentes e qualquer outra que o HTML (ou o admin) peça — não precisa existir antes.
+  const [options, setOptions] = useState<string[]>(() => sortSeasons(initialSeason ? [...seasons, initialSeason] : seasons));
+  const [season, setSeason] = useState(initialSeason && parseSeasonSlug(initialSeason.toLowerCase()) ? initialSeason : seasons[0]);
+  const [customSeason, setCustomSeason] = useState<SeasonName>("FALL");
+  const [customYear, setCustomYear] = useState("");
   const [html, setHtml] = useState(initialHtml);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [failure, setFailure] = useState<{ error: string; seq?: number } | null>(null);
@@ -35,12 +52,25 @@ export function ImportForm({ seasons, initialHtml = "", initialSeason }: { seaso
     setHtml(next);
     const found = next.length > 2000 ? detectSeason(next) : null;
     const year = next.length > 2000 ? detectYearFromTitles(next) : null;
-    // O ano vem dos títulos ("Nome (2025)"), quando há; senão vale a temporada mais recente com esse nome.
-    const option = found
-      ? (year ? seasons.find((s) => { const ref = parseSeasonSlug(s.toLowerCase()); return ref?.season === found && ref.year === year; }) : undefined) ?? seasons.find((s) => parseSeasonSlug(s.toLowerCase())?.season === found)
-      : undefined;
-    if (option) setSeason(option);
+    // O ano vem dos títulos ("Nome (2023)"), quando há — e a temporada é criada na lista se ainda não existir; sem ano nos
+    // títulos, vale a temporada mais recente com esse nome.
+    const option = found ? (year ? seasonLabel({ season: found, year }) : options.find((s) => parseSeasonSlug(s.toLowerCase())?.season === found)) : undefined;
+    if (option) {
+      setOptions((prev) => (prev.includes(option) ? prev : sortSeasons([...prev, option])));
+      setSeason(option);
+    }
     setDetected(option && found ? `${SEASON_COPY[found].labelPt} (${option})` : null);
+  }
+
+  /** Temporada à escolha do admin (qualquer ano): entra na lista e já fica selecionada. */
+  const customYearNumber = Number(customYear);
+  const customValid = Number.isInteger(customYearNumber) && customYearNumber >= MIN_YEAR && customYearNumber <= MAX_YEAR;
+  function addCustomSeason() {
+    if (!customValid) return;
+    const label = seasonLabel({ season: customSeason, year: customYearNumber });
+    setOptions((prev) => (prev.includes(label) ? prev : sortSeasons([...prev, label])));
+    setSeason(label);
+    setCustomYear("");
   }
 
   async function analyze() {
@@ -77,8 +107,47 @@ export function ImportForm({ seasons, initialHtml = "", initialSeason }: { seaso
     <Box component="form" onSubmit={(e) => { e.preventDefault(); void analyze(); }} sx={{ display: "flex", flexDirection: "column", gap: 3 }} noValidate>
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
         <SelectField label="Fonte" value={source} onChange={setSource} width={300} options={[{ value: "AniDB", label: "AniDB" }]} />
-        <SelectField label="Temporada" value={season} onChange={setSeason} width={300} options={seasons.map((s) => ({ value: s, label: s }))} />
+        <SelectField label="Temporada" value={season} onChange={setSeason} width={300} options={options.map((s) => ({ value: s, label: s }))} testId="import-season" />
         <SelectField label="Parser" value="auto" onChange={() => undefined} width={300} options={[{ value: "auto", label: `${PARSER_VERSION} · selecionado pela fonte` }]} />
+      </Box>
+
+      <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 2 }} data-testid="custom-season">
+        <SelectField
+          label="Outra temporada"
+          value={customSeason}
+          onChange={(v) => setCustomSeason(v as SeasonName)}
+          width={200}
+          options={SEASON_ORDER.map((s) => ({ value: s, label: SEASON_COPY[s].labelPt }))}
+        />
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1, width: 140 }}>
+          <Typography component="label" htmlFor={`${htmlId}-year`} sx={{ fontSize: 12, fontWeight: 600, color: "text.secondary" }}>
+            Ano
+          </Typography>
+          <Box
+            component="input"
+            id={`${htmlId}-year`}
+            type="number"
+            inputMode="numeric"
+            min={MIN_YEAR}
+            max={MAX_YEAR}
+            value={customYear}
+            placeholder="2023"
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomYear(e.target.value)}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addCustomSeason();
+              }
+            }}
+            sx={{ p: 2, bgcolor: "background.paper", color: "text.primary", border: 1, borderColor: "divider", borderRadius: "10px", fontSize: 14, "&:focus": { outline: "none", borderColor: "text.secondary" } }}
+          />
+        </Box>
+        <Button onClick={addCustomSeason} disabled={!customValid} sx={ELEVATED_BUTTON_SX} data-testid="add-custom-season">
+          Usar esta temporada
+        </Button>
+        <Typography sx={{ fontSize: 13, color: "text.secondary", flex: "1 1 240px" }}>
+          Qualquer ano vale (a lista se completa sozinha ao colar o HTML). Se a temporada não existir na AniList ainda, ela é criada ao analisar.
+        </Typography>
       </Box>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>

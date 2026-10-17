@@ -83,4 +83,39 @@ test.describe("Importação — temporada pelas datas do HTML", () => {
     const seq = Number(page.url().split("/").pop());
     expect((await prisma.adminJob.findUniqueOrThrow({ where: { seq } })).season).toBe("Spring2026");
   });
+
+  test("temporada de outro ano nasce na lista: HTML de outono de 2023 seleciona Autumn2023 e analisa sem erro", async ({ page }) => {
+    const OUTONO = ["3rd October", "12th October", "5th November", "19th November", "2nd December", "10th December", "27th December"];
+    const old = `<div class="g_bubblewrap g_bubble container">${OUTONO.map(
+      (day, i) => `<div class="g_bubble box no${i}" id="a${IDS[i]}"><div class="data"><div class="wrap name"><a class="name-colored" href="/anime/${IDS[i]}">Obra Outono ${i} Round78 (2023)</a></div><div class="date">${day}</div><div class="general">TV Series, 12 eps</div></div></div>`
+    ).join("")}</div><!-- ${"preenchimento ".repeat(80)} -->`;
+    await page.goto("/admin/importacoes");
+    const select = page.getByTestId("import-season");
+    expect(await select.locator("option").allTextContents()).not.toContain("Autumn2023"); // fora das 12 mais recentes
+    await page.getByLabel("HTML da temporada").fill(old);
+    await expect(page.getByTestId("season-detected")).toContainText("Autumn2023");
+    await expect(select).toHaveValue("Autumn2023");
+    expect(await select.locator("option").allTextContents()).toContain("Autumn2023");
+    await page.getByRole("button", { name: "Analisar" }).click();
+    await expect(page).toHaveURL(/\/admin\/importacoes\/\d+$/, { timeout: 30_000 });
+    const seq = Number(page.url().split("/").pop());
+    expect((await prisma.adminJob.findUniqueOrThrow({ where: { seq } })).season).toBe("Autumn2023");
+  });
+
+  test("o admin também escolhe qualquer temporada à mão, e a lista fica da mais nova para a mais antiga", async ({ page }) => {
+    await page.goto("/admin/importacoes");
+    const select = page.getByTestId("import-season");
+    const add = page.getByTestId("add-custom-season");
+    await expect(add).toBeDisabled(); // sem ano
+    await page.getByLabel("Outra temporada").selectOption("SUMMER");
+    await page.getByLabel("Ano", { exact: true }).fill("2019");
+    await add.click();
+    await expect(select).toHaveValue("Summer2019");
+    const labels = await select.locator("option").allTextContents();
+    expect(labels).toContain("Summer2019");
+    expect(labels.indexOf("Summer2019")).toBe(labels.length - 1); // a mais antiga fica por último
+    // Ano fora do intervalo não é aceito.
+    await page.getByLabel("Ano", { exact: true }).fill("1800");
+    await expect(add).toBeDisabled();
+  });
 });

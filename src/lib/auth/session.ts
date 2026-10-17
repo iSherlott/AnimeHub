@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sessionCookieSecure } from "@/lib/auth/cookieSecure";
 import type { User } from "@prisma/client";
 import type { UserPreferences } from "@/lib/userSettings";
 
@@ -49,7 +50,7 @@ export async function createSession(userId: string): Promise<void> {
   store.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: sessionCookieSecure(),
     expires: expiresAt,
     path: "/",
   });

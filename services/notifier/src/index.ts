@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { prisma } from "../../../src/lib/prisma";
-import { notifyRangeForNow } from "../../../src/lib/airingWindow";
+import { isTodaysRelease, notifyRangeForNow } from "../../../src/lib/airingWindow";
+import { resolveTimeZone } from "../../../src/lib/timeZone";
 import { recordIngestionRun } from "../../../src/lib/ingestionRuns";
 import { RESCHEDULE_THRESHOLD_MS } from "../../../src/lib/rescheduleAlerts";
 import { backfillEarlierSeasons, syncContinuations } from "../../../src/lib/continuation";
@@ -43,12 +44,14 @@ async function tick(): Promise<void> {
       const matchingAnime = await prisma.anime.findMany({
         // Escopo: toda obra acompanhada (fora do modo "Espera"), de quem não desligou os avisos de lançamento.
         where: { anilistId: { in: anilistIds }, userId: { not: null }, waiting: false, user: { is: { notifyReleases: true } } },
-        select: { userId: true, anilistId: true },
+        select: { userId: true, anilistId: true, user: { select: { timeZone: true } } },
       });
 
       for (const anime of matchingAnime) {
         const userId = anime.userId as string;
-        const entries = airingNow.filter((e) => e.anilistId === anime.anilistId);
+        // O aviso é do dia de hoje NO FUSO da pessoa: episódio de amanhã não gera alerta (aparecia "um dia antes").
+        const zone = resolveTimeZone(anime.user?.timeZone);
+        const entries = airingNow.filter((e) => e.anilistId === anime.anilistId && isTodaysRelease(e.airingAt, now, zone));
 
         for (const entry of entries) {
           // Um alerta com problema não pode derrubar os demais do tick.

@@ -51,10 +51,15 @@ export async function cacheAniListMedia(
   const BATCH = 10;
   const allowed = list.filter((media) => !hasBlockedGenre(media.genres));
   for (let start = 0; start < allowed.length; start += BATCH) {
+    const batch = allowed.slice(start, start + BATCH);
+    // Título fixado (o do AniDB, ao religar a obra): a AniList atualiza o resto, mas não o nome.
+    const locked = new Set((await prisma.catalogEntry.findMany({ where: { anilistId: { in: batch.map((m) => m.id) }, titleLocked: true }, select: { anilistId: true } })).map((r) => r.anilistId));
     await Promise.all(
-      allowed.slice(start, start + BATCH).map((media, offset) => {
+      batch.map((media, offset) => {
         const data = anilistToCatalogData(media, rankFromOrder ? start + offset + 1 : null);
-        return prisma.catalogEntry.upsert({ where: { anilistId: media.id }, create: { ...data, onPlatform: false }, update: data });
+        const { titleRomaji: _keep, ...withoutTitle } = data;
+        void _keep;
+        return prisma.catalogEntry.upsert({ where: { anilistId: media.id }, create: { ...data, onPlatform: false }, update: locked.has(media.id) ? withoutTitle : data });
       })
     );
   }

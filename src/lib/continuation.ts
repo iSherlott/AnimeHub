@@ -85,7 +85,43 @@ async function loadWork(anilistId: number): Promise<WorkSnapshot | null> {
   };
 }
 
-/** Temporadas ANTERIORES de uma obra: as da mesma franquia e as de mesmo título-base com número menor. */
+/**
+ * Os PREQUEL encadeados de uma obra, pelas relações da AniList guardadas na produção (T3 → T2 → T1). Vale mesmo quando a
+ * produção da temporada anterior ainda não existe (acontece ao carregar obras antigas depois das novas): a relação da
+ * mais nova já diz quem veio antes.
+ */
+/** Os PREQUEL listados nas relações JSON da produção ([{id, relationType}]); JSON ausente ou inválido = nenhum. */
+export function prequelIds(relationsJson: string | null): number[] {
+  if (!relationsJson) return [];
+  try {
+    const parsed = JSON.parse(relationsJson) as Array<{ id?: unknown; relationType?: unknown }>;
+    return Array.isArray(parsed) ? parsed.filter((r) => r?.relationType === "PREQUEL" && Number.isInteger(r.id)).map((r) => r.id as number) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function prequelChain(anilistId: number): Promise<number[]> {
+  const found: number[] = [];
+  const seen = new Set<number>([anilistId]);
+  let frontier = [anilistId];
+  for (let depth = 0; depth < 10 && frontier.length > 0; depth += 1) {
+    const productions = await prisma.production.findMany({ where: { anilistId: { in: frontier } }, select: { relationsJson: true } });
+    const next: number[] = [];
+    for (const p of productions) {
+      for (const id of prequelIds(p.relationsJson)) {
+        if (seen.has(id)) continue;
+        seen.add(id);
+        found.push(id);
+        next.push(id);
+      }
+    }
+    frontier = next;
+  }
+  return found;
+}
+
+/** Temporadas ANTERIORES de uma obra: as da mesma franquia, as encadeadas por PREQUEL e as de mesmo título-base com número menor. */
 export async function earlierSeasonIds(work: Pick<WorkSnapshot, "anilistId" | "titleRomaji" | "seasonNumber" | "franchiseId">): Promise<number[]> {
   const ids = new Set<number>();
   if (work.franchiseId) {
@@ -95,6 +131,7 @@ export async function earlierSeasonIds(work: Pick<WorkSnapshot, "anilistId" | "t
     });
     for (const s of siblings) ids.add(s.anilistId);
   }
+  for (const id of await prequelChain(work.anilistId)) ids.add(id);
   const info = deriveSeriesInfo(work.titleRomaji);
   if (info.seasonNumber > 1) {
     const byTitle = await prisma.anime.findMany({

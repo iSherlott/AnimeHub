@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyMatch, dice, normalizeTitle, rankCandidates, scoreCandidate, type MatchCandidate, type MatchInput } from "./matching";
+import { classifyMatch, dice, looseKey, normalizeTitle, rankCandidates, scoreCandidate, type MatchCandidate, type MatchInput } from "./matching";
 
 const cand = (id: string, titles: string[], over: Partial<MatchCandidate> = {}): MatchCandidate => ({
   id,
@@ -91,5 +91,57 @@ describe("vínculo já confirmado (anidbId) não vale para uma época distante",
 
   it("sem época conhecida na obra, a identidade continua valendo", () => {
     expect(scoreCandidate(input(["Titulo diferente"]), linked({ season: null, seasonYear: null })).score).toBe(1);
+  });
+});
+
+describe("temporadas escritas de jeitos diferentes (AniDB × AniList)", () => {
+  const winter = { season: "WINTER", seasonYear: 2024 } as const;
+  const tsukimichi2 = cand("p139518", ["Tsuki ga Michibiku Isekai Douchuu 2nd Season", "TSUKIMICHI -Moonlit Fantasy- Season 2"], winter);
+  const atWinter = { seasonLabel: "Winter2024", year: 2024 } as const;
+
+  it("'Dai Ni Maku' do AniDB casa sozinho com '2nd Season' da AniList na mesma temporada", () => {
+    const ranked = rankCandidates(input(["Tsuki ga Michibiku Isekai Douchuu Dai Ni Maku"], atWinter), [tsukimichi2]);
+    expect(classifyMatch(ranked).state).toBe("AUTO");
+  });
+
+  it("'Season 2', 'Second Season' e '第二期' também valem como a temporada 2", () => {
+    for (const title of ["Tsuki ga Michibiku Isekai Douchuu Season 2", "Tsuki ga Michibiku Isekai Douchuu Second Season", "Tsuki ga Michibiku Isekai Douchuu 第二期"]) {
+      expect(classifyMatch(rankCandidates(input([title], atWinter), [tsukimichi2])).state).toBe("AUTO");
+    }
+  });
+
+  it("a 1ª temporada nunca casa sozinha com a 2ª (vai para revisão)", () => {
+    const first = cand("p1", ["Tsuki ga Michibiku Isekai Douchuu"], winter);
+    const outcome = classifyMatch(rankCandidates(input(["Tsuki ga Michibiku Isekai Douchuu Dai Ni Maku"], atWinter), [first]));
+    expect(outcome.state).not.toBe("AUTO");
+    const second = classifyMatch(rankCandidates(input(["Tsuki ga Michibiku Isekai Douchuu"], atWinter), [tsukimichi2]));
+    expect(second.state).not.toBe("AUTO");
+  });
+
+  it("com as duas temporadas no catálogo, a 2ª escolhe a 2ª", () => {
+    const first = cand("p1", ["Tsuki ga Michibiku Isekai Douchuu"], { season: "SUMMER", seasonYear: 2021 });
+    const ranked = rankCandidates(input(["Tsuki ga Michibiku Isekai Douchuu Dai Ni Maku"], atWinter), [first, tsukimichi2]);
+    expect(ranked[0].candidate.id).toBe("p139518");
+    expect(classifyMatch(ranked).state).toBe("AUTO");
+  });
+});
+
+describe("romanizações do mesmo título", () => {
+  it("looseKey junta as variações comuns", () => {
+    expect(looseKey("Bishoujo Muzai Pirates")).toBe(looseKey("Bishoujyo Muzai♡Pirates"));
+    expect(looseKey("Ao Ashi")).toBe(looseKey("Aoashi"));
+    expect(looseKey("Oomuro-ke")).toBe(looseKey("Omuro ke"));
+    expect(looseKey("Shudan o Erande")).toBe(looseKey("Shudan wo Erande"));
+    expect(looseKey("Kakkou no Iinazuke")).not.toBe(looseKey("Cuckoo no Iinazuke"));
+  });
+
+  it("título só com a grafia diferente conta como idêntico no score", () => {
+    const c = cand("p167743", ["Bishoujyo Muzai♡Pirates", "Bishoujyo Muzai Pirates"], { season: "SUMMER", seasonYear: 2023 });
+    const [best] = rankCandidates(input(["Bishoujo Muzai Pirates"], { seasonLabel: "Summer2023", year: 2023 }), [c]);
+    expect(best.detail.title).toBeGreaterThanOrEqual(0.97);
+  });
+
+  it("títulos curtos demais não são tratados como iguais só por perderem os espaços", () => {
+    expect(looseKey("A B").length).toBeLessThan(5);
   });
 });

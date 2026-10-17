@@ -22,6 +22,7 @@ import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { DiscoverItem } from "@/lib/discoverItem";
 import { currentSeasonRef, scheduleOf, seasonLabel, seasonSlug } from "@/lib/exploreGroups";
 import { readRecentWorks } from "@/lib/recentWorks";
+import { looseKey } from "@/lib/adminImport/matching";
 import { loginHref } from "@/lib/safeRedirect";
 import { CATALOG_STATUS_LABELS, SEASON_LABELS } from "@/lib/types";
 import { useTimeZone } from "@/lib/useTimeZone";
@@ -298,9 +299,12 @@ function DiscoverPageContent() {
 
   const filteredCatalog = useMemo(() => {
     const needle = query.trim().toLowerCase();
+    // Achar também por outra grafia do mesmo nome ("Bishoujyo" × "Bishoujo", "Ao Ashi" × "Aoashi").
+    const loose = looseKey(query);
     const filtered = catalogAll.filter((item) => {
       if (needle.length >= 2) {
-        const matches = [item.titleRomaji, item.titleEnglish, item.titleNative].filter(Boolean).some((t) => t!.toLowerCase().includes(needle));
+        const titles = [item.titleRomaji, item.titleEnglish, item.titleNative].filter((t): t is string => Boolean(t));
+        const matches = titles.some((t) => t.toLowerCase().includes(needle)) || (loose.length >= 4 && titles.some((t) => looseKey(t).includes(loose)));
         if (!matches) return false;
       }
       return matchesFilters(item);

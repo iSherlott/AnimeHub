@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { CATALOG_CANDIDATE_PREFIX, loadLocalCandidates, toCandidate } from "./candidates";
 import { parseSeasonSlug, SEASON_COPY, seasonLabel, type SeasonRef } from "@/lib/exploreGroups";
 import { recordRescheduleAlerts, RESCHEDULE_THRESHOLD_MS } from "@/lib/rescheduleAlerts";
 import { AUTO_THRESHOLD, classifyMatch, rankCandidates, scoreCandidate, type MatchCandidate, type ScoreDetail } from "@/lib/adminImport/matching";
@@ -14,6 +15,8 @@ import type { JobStage, JobState } from "@/lib/adminImport/jobSteps";
  * só grava a PRÉVIA (job + registros + conflitos); o commit é um passo à parte.
  */
 export type AdminActor = { id: string; name: string };
+
+export { CATALOG_CANDIDATE_PREFIX, loadLocalCandidates };
 
 export const SOURCES = ["AniDB"] as const;
 
@@ -47,28 +50,6 @@ export async function logEvent(entry: LogInput): Promise<void> {
 }
 
 /** Candidatos que ainda não têm página própria (só estão no catálogo da temporada) usam `ce:<anilistId>` no lugar do id de Production. */
-export const CATALOG_CANDIDATE_PREFIX = "ce:";
-
-type CandidateSource = {
-  anilistId: number;
-  titleRomaji: string;
-  titleEnglish: string | null;
-  titleNative: string | null;
-  season: string | null;
-  seasonYear: number | null;
-  anidbId: number | null;
-};
-
-function toCandidate(id: string, p: CandidateSource): MatchCandidate {
-  return {
-    id,
-    anilistId: p.anilistId,
-    titles: [p.titleRomaji, p.titleNative, p.titleEnglish].filter((t): t is string => Boolean(t)),
-    season: p.season,
-    seasonYear: p.seasonYear,
-    anidbId: p.anidbId,
-  };
-}
 
 /**
  * Tudo que uma linha do AniDB pode ser: as produções já abertas E o catálogo da
@@ -94,22 +75,9 @@ export async function loadCandidatePool(season: SeasonRef): Promise<{ candidates
       console.error("[admin-import] não foi possível completar o catálogo da temporada:", error);
     }
   }
-  const [productions, entries] = await Promise.all([
-    prisma.production.findMany({ select: { id: true, anilistId: true, titleRomaji: true, titleEnglish: true, titleNative: true, season: true, seasonYear: true, anidbId: true } }),
-    prisma.catalogEntry.findMany({
-      where: { anilistId: { not: null } },
-      select: { anilistId: true, titleRomaji: true, titleEnglish: true, titleNative: true, season: true, seasonYear: true, anidbId: true },
-    }),
-  ]);
-  const known = new Set(productions.map((p) => p.anilistId));
-  const candidates = [
-    ...productions.map((p) => toCandidate(p.id, p)),
-    ...entries
-      .filter((e): e is typeof e & { anilistId: number } => e.anilistId !== null && !known.has(e.anilistId))
-      .map((e) => toCandidate(`${CATALOG_CANDIDATE_PREFIX}${e.anilistId}`, e)),
-  ];
-  return { candidates, blocked };
+  return { candidates: await loadLocalCandidates(), blocked };
 }
+
 
 /** Candidato por id (Production.id ou `ce:<anilistId>`), já no formato do motor de score. */
 export async function loadCandidate(id: string): Promise<MatchCandidate | null> {

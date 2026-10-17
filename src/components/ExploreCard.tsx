@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import NextLink from "next/link";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import EventBusyIcon from "@mui/icons-material/EventBusy";
 import EventRepeatIcon from "@mui/icons-material/EventRepeat";
 import ScheduleIcon from "@mui/icons-material/Schedule";
@@ -29,7 +30,7 @@ export const ELEVATED_BUTTON_SX = {
 } as const;
 
 /** "Sábado · 13:00" / "11 out · Horário não definido" / "Data não definida" — nunca inventa horário. */
-export function useScheduleText(item: DiscoverItem): { text: string; icon: "clock" | "calendar-x" | "calendar-clock" } {
+export function useScheduleText(item: DiscoverItem): { text: string; icon: "clock" | "calendar-x" | "calendar-clock" | "check" } {
   const timeZone = useTimeZone();
   // Episódio de hoje: mostra o horário mesmo depois de ele ter ido ao ar ("Hoje · 13:00"), nunca "data não definida".
   if (item.airingToday && item.nextEpisodeAt) {
@@ -45,9 +46,14 @@ export function useScheduleText(item: DiscoverItem): { text: string; icon: "cloc
     const label = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", day: "2-digit", month: "short" }).format(d).replace(".", "").replace(" de ", " ");
     return { text: `${label} · Horário não definido`, icon: "calendar-clock" };
   }
-  return info.reason === "postponed"
-    ? { text: "Nova data a confirmar", icon: "calendar-clock" }
-    : { text: "Data não definida", icon: "calendar-x" };
+  if (info.reason === "postponed") return { text: "Nova data a confirmar", icon: "calendar-clock" };
+  // Obra que já acabou não tem "próximo episódio": diz isso (e o ano), em vez de "Data não definida".
+  if (item.status === "FINISHED") {
+    const when = item.endDate ?? item.startDate;
+    const year = when ? new Date(when).getUTCFullYear() : null;
+    return { text: year ? `Finalizado · ${year}` : "Finalizado", icon: "check" };
+  }
+  return { text: "Data não definida", icon: "calendar-x" };
 }
 
 /** A estrela de acompanhar sobre a capa: círculo escuro com alvo de 44 px. */
@@ -154,7 +160,7 @@ export function ExploreCard({ item }: { item: DiscoverItem }) {
       setFollowing(false);
     }
   }
-  const ScheduleGlyph = schedule.icon === "clock" ? ScheduleIcon : schedule.icon === "calendar-x" ? EventBusyIcon : EventRepeatIcon;
+  const ScheduleGlyph = schedule.icon === "clock" ? ScheduleIcon : schedule.icon === "check" ? CheckCircleOutlinedIcon : schedule.icon === "calendar-x" ? EventBusyIcon : EventRepeatIcon;
   const info = scheduleOf(item);
   const showNewEpisode = Boolean(item.inMyList && info.kind === "scheduled" && info.episode);
 

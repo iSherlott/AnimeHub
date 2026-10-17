@@ -1,4 +1,5 @@
 import { parseSeasonSlug } from "@/lib/exploreGroups";
+import { deriveSeriesInfo } from "@/lib/series";
 
 /**
  * Matching entre um registro importado e as produções do catálogo (Figma
@@ -12,6 +13,8 @@ export const REVIEW_THRESHOLD = 0.55;
 export const AMBIGUITY_GAP = 0.04;
 
 const WEIGHTS = { title: 0.7, season: 0.15, year: 0.15 } as const;
+/** Teto da semelhança de título entre números de temporada diferentes. */
+const DIFFERENT_SEASON_CAP = 0.7;
 
 const normalized = new Map<string, string>();
 
@@ -37,6 +40,22 @@ function normalizeTitleUncached(text: string): string {
     .trim()
     .replace(/\s+/g, " ");
 }
+
+/**
+ * Chave "solta" para comparar romanizações do mesmo título: sem espaços e com as variações comuns de Hepburn
+ * juntas ("Bishoujo" × "Bishoujyo", "Ao Ashi" × "Aoashi", "Oomuro" × "Omuro", "wo" × "o"). Duas obras com a mesma chave
+ * solta (e com pelo menos 5 letras) são tratadas como o mesmo título.
+ */
+export function looseKey(text: string): string {
+  return normalizeTitle(text)
+    .replace(/\s+/g, "")
+    .replace(/ou|oo/g, "o")
+    .replace(/uu/g, "u")
+    .replace(/jy/g, "j")
+    .replace(/wo/g, "o");
+}
+
+const LOOSE_MIN_LENGTH = 5;
 
 /** Coeficiente de Dice sobre bigramas (0..1). */
 export function dice(a: string, b: string): number {
@@ -97,10 +116,24 @@ export function scoreCandidate(input: MatchInput, candidate: MatchCandidate): Sc
   if (candidate.anidbId !== null && String(candidate.anidbId) === input.sourceKey && sameEra) {
     return { candidate, score: 1, detail: { title: 1, season: null, year: null, image: null } };
   }
-  const left = input.titles.map(normalizeTitle).filter(Boolean);
-  const right = candidate.titles.map(normalizeTitle).filter(Boolean);
   let title = 0;
-  for (const l of left) for (const r of right) title = Math.max(title, dice(l, r));
+  for (const lRaw of input.titles) {
+    for (const rRaw of candidate.titles) {
+      const l = normalizeTitle(lRaw);
+      const r = normalizeTitle(rRaw);
+      if (!l || !r) continue;
+      let pair = dice(l, r);
+      const loose = looseKey(lRaw);
+      if (loose.length >= LOOSE_MIN_LENGTH && loose === looseKey(rRaw)) pair = Math.max(pair, 0.98);
+      // "Dai Ni Maku", "2nd Season" e "Season 2" são a mesma temporada: compara o nome-base. Temporadas diferentes da mesma
+      // série ("X" × "X 2nd Season") nunca passam de "talvez" — vão para revisão em vez de casar sozinhas.
+      const a = deriveSeriesInfo(lRaw);
+      const b = deriveSeriesInfo(rRaw);
+      if (a.seasonNumber !== b.seasonNumber) pair = Math.min(pair, DIFFERENT_SEASON_CAP);
+      else if (a.seasonNumber > 1) pair = Math.max(pair, dice(normalizeTitle(a.seriesKey), normalizeTitle(b.seriesKey)) * 0.98);
+      title = Math.max(title, pair);
+    }
+  }
 
   const season = ref && candidate.season ? (ref.season === candidate.season ? 1 : 0) : null;
   const year =
