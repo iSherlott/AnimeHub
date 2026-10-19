@@ -34,6 +34,17 @@ describe("cacheAniListMedia", () => {
     expect("onPlatform" in call[0].update).toBe(false);
   });
 
+  it("obra sem temporada na AniList (ONA) não apaga a temporada que já estava guardada", async () => {
+    upsert.mockClear();
+    await cacheAniListMedia([{ ...media(1, ["Comedy"]), season: null, seasonYear: null }, media(2, ["Comedy"])]);
+    const calls = upsert.mock.calls as unknown as Array<[{ where: { anilistId: number }; update: Record<string, unknown> }]>;
+    const sem = calls.find((c) => c[0].where.anilistId === 1)?.[0].update as Record<string, unknown>;
+    const com = calls.find((c) => c[0].where.anilistId === 2)?.[0].update as Record<string, unknown>;
+    expect("season" in sem).toBe(false);
+    expect("seasonYear" in sem).toBe(false);
+    expect(com).toMatchObject({ season: "FALL", seasonYear: 2026 });
+  });
+
   it("nunca guarda conteúdo adulto (hentai)", async () => {
     upsert.mockClear();
     await cacheAniListMedia([media(1, ["Comedy"]), media(2, ["Hentai", "Comedy"]), media(3, ["Romance"])]);

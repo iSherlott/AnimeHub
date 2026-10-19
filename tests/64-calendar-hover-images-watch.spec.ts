@@ -46,8 +46,15 @@ test.describe("Calendário — preview ao passar o mouse", () => {
     await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
 
     const before = await page.evaluate(() => window.scrollY);
-    await page.mouse.wheel(0, 400);
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(before);
+    // Se o item já ficou no fim da página (depende de quantas obras o calendário tem), a roda tem de rolar para cima.
+    const room = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight - window.scrollY);
+    const delta = room > 50 ? 400 : -400;
+    await expect
+      .poll(async () => {
+        await page.mouse.wheel(0, delta);
+        return page.evaluate(() => window.scrollY);
+      })
+      .not.toBe(before);
   });
 
   test("'+ Acompanhar' no preview adiciona direto à lista, sem abrir a página da obra", async ({ page }) => {

@@ -38,7 +38,7 @@ export type RelinkResult = {
   hasMore: boolean;
 };
 
-const FILL_FIELDS = ["format", "coverImage", "bannerImage", "description", "episodes", "genres", "titleNative", "titleEnglish", "status", "startDate", "endDate"] as const;
+const FILL_FIELDS = ["format", "season", "seasonYear", "coverImage", "bannerImage", "description", "episodes", "genres", "titleNative", "titleEnglish", "status", "startDate", "endDate"] as const;
 const SEARCH_GAP_MS = 750; // a AniList aceita ~90 consultas por minuto
 /** Semelhança de título que conta como "o mesmo título" (já sem maiúsculas, acentos e pontuação). */
 const IDENTICAL_TITLE = 0.97;

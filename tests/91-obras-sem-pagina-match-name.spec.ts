@@ -37,7 +37,14 @@ const media = (id: number, romaji: string) => ({
   nextAiringEpisode: null,
   externalLinks: [],
 });
-const WORKS = [media(ANILIST_SUGGESTED, "Hoshijyo Round91 Pirates"), media(ANILIST_FOUND, "Par Encontrado Round91"), media(ANILIST_WRONG, "Obra Errada Round91")];
+const NO_SEASON_ANIDB = 29915; // ONA: a AniList não tem temporada, o AniDB tem
+const ANILIST_NO_SEASON = 991004;
+const WORKS = [
+  media(ANILIST_SUGGESTED, "Hoshijyo Round91 Pirates"),
+  media(ANILIST_FOUND, "Par Encontrado Round91"),
+  media(ANILIST_WRONG, "Obra Errada Round91"),
+  { ...media(ANILIST_NO_SEASON, "Ona Sem Temporada Round91"), format: "ONA", season: null, seasonYear: null, startDate: { year: 2024, month: 4, day: 5 } },
+];
 
 test.describe.serial("Match name — obras sem página", () => {
   test.use({ storageState: adminState });
@@ -158,6 +165,19 @@ test.describe.serial("Match name — obras sem página", () => {
     await expect(panel.getByTestId("anidb-done")).toContainText("tem página");
     expect(await prisma.catalogEntry.findUniqueOrThrow({ where: { anilistId: ANILIST_FOUND } })).toMatchObject({ anidbId: SEARCHED, onPlatform: true });
     expect(await prisma.catalogEntry.count({ where: { anidbId: SEARCHED, anilistId: null } })).toBe(0);
+  });
+
+  test("obra sem temporada na AniList (ONA) fica na temporada do AniDB", async ({ request }) => {
+    await prisma.catalogEntry.create({ data: { source: "anidb", onPlatform: true, anidbId: NO_SEASON_ANIDB, titleRomaji: "Ona Sem Temporada Round91", season: "SPRING", seasonYear: 2024, format: "ONA" } });
+    try {
+      const res = await request.post("/api/admin/anidb-candidates", { data: { anidbId: NO_SEASON_ANIDB, action: "confirm", anilistId: ANILIST_NO_SEASON } });
+      expect(res.status()).toBe(200);
+      expect(await prisma.catalogEntry.findUniqueOrThrow({ where: { anilistId: ANILIST_NO_SEASON } })).toMatchObject({ anidbId: NO_SEASON_ANIDB, season: "SPRING", seasonYear: 2024 });
+      // A própria ligação já refez o cache a partir da AniList (sem temporada): a do AniDB continua.
+    } finally {
+      await prisma.catalogEntry.deleteMany({ where: { OR: [{ anidbId: NO_SEASON_ANIDB }, { anilistId: ANILIST_NO_SEASON }] } });
+      await prisma.production.deleteMany({ where: { anilistId: ANILIST_NO_SEASON } });
+    }
   });
 
   test("a mesma obra da AniList não liga a duas obras do AniDB", async ({ request }) => {

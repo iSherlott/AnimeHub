@@ -20,8 +20,8 @@ function anilistToCatalogData(media: AniListMedia, popularityRank: number | null
     status: media.status,
     // Sem o tipo na resposta, o que já estava guardado continua.
     ...(media.format ? { format: media.format } : {}),
-    season: media.season,
-    seasonYear: media.seasonYear,
+    // ONAs e obras sem temporada na AniList: o que já estava guardado (a temporada do AniDB) continua.
+    ...(media.season && media.seasonYear ? { season: media.season, seasonYear: media.seasonYear } : {}),
     genres: media.genres.join(","),
     averageScore: media.averageScore,
     startDate: startDateISO ? new Date(startDateISO) : null,
