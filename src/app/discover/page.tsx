@@ -24,7 +24,7 @@ import { currentSeasonRef, scheduleOf, seasonLabel, seasonSlug } from "@/lib/exp
 import { readRecentWorks } from "@/lib/recentWorks";
 import { looseKey } from "@/lib/adminImport/matching";
 import { loginHref } from "@/lib/safeRedirect";
-import { CATALOG_STATUS_LABELS, SEASON_LABELS } from "@/lib/types";
+import { CATALOG_STATUS_LABELS, FORMAT_LABELS, SEASON_LABELS } from "@/lib/types";
 import { useTimeZone } from "@/lib/useTimeZone";
 import { formatTimeInZone } from "@/lib/timeZone";
 
@@ -181,6 +181,7 @@ function DiscoverPageContent() {
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedSeason, setSelectedSeason] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
+  const [selectedFormat, setSelectedFormat] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("popular");
   const [availability, setAvailability] = useState<"" | "scheduled" | "unscheduled">("");
   const [moreOpen, setMoreOpen] = useState(false);
@@ -273,6 +274,15 @@ function DiscoverPageContent() {
     return ["WINTER", "SPRING", "SUMMER", "FALL"].filter((s) => present.has(s) || s === selectedSeason);
   }, [catalogAll, selectedSeason]);
 
+  // Tipos que existem no catálogo, na ordem de FORMAT_LABELS (série, filme, OVA…); nada de opção vazia.
+  const formats = useMemo(() => {
+    const present = new Set<string>();
+    for (const item of catalogAll) if (item.format) present.add(item.format);
+    const known = Object.keys(FORMAT_LABELS).filter((f) => present.has(f) || f === selectedFormat);
+    const other = Array.from(present).filter((f) => !(f in FORMAT_LABELS)).sort();
+    return [...known, ...other];
+  }, [catalogAll, selectedFormat]);
+
   const years = useMemo(() => {
     const set = new Set<number>(catalogAll.length === 0 ? [currentYear] : []);
     if (selectedYear) set.add(Number(selectedYear));
@@ -284,7 +294,7 @@ function DiscoverPageContent() {
   }, [catalogAll, currentYear, selectedYear]);
 
   const searchActive = query.trim().length >= 2;
-  const filtersActive = selectedGenre !== "" || selectedStatus !== "" || selectedSeason !== "" || selectedYear !== "" || availability !== "";
+  const filtersActive = selectedGenre !== "" || selectedStatus !== "" || selectedSeason !== "" || selectedYear !== "" || selectedFormat !== "" || availability !== "";
   const moreCount = (selectedStatus ? 1 : 0) + (availability ? 1 : 0) + (sortBy !== "popular" ? 1 : 0);
 
   function matchesFilters(item: DiscoverItem): boolean {
@@ -292,6 +302,7 @@ function DiscoverPageContent() {
     if (selectedStatus && item.status !== selectedStatus) return false;
     if (selectedSeason && item.season !== selectedSeason) return false;
     if (selectedYear && yearOf(item) !== Number(selectedYear)) return false;
+    if (selectedFormat && item.format !== selectedFormat) return false;
     if (availability === "scheduled" && !item.nextEpisodeAt) return false;
     if (availability === "unscheduled" && item.nextEpisodeAt) return false;
     return true;
@@ -311,7 +322,7 @@ function DiscoverPageContent() {
     });
     return sortItems(filtered, sortBy);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalogAll, query, selectedGenre, selectedStatus, selectedSeason, selectedYear, availability, sortBy]);
+  }, [catalogAll, query, selectedGenre, selectedStatus, selectedSeason, selectedYear, selectedFormat, availability, sortBy]);
 
   // A busca ao vivo na AniList só manda `q` pra API — os filtros continuam
   // visíveis acima dela, então aplicamos do mesmo jeito aqui (achado real da
@@ -323,7 +334,7 @@ function DiscoverPageContent() {
     const seen = new Set(live.map((i) => i.key));
     return [...live, ...filteredCatalog.filter((i) => !seen.has(i.key))];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchResults, filteredCatalog, searchActive, selectedGenre, selectedStatus, selectedSeason, selectedYear, availability, sortBy]);
+  }, [searchResults, filteredCatalog, searchActive, selectedGenre, selectedStatus, selectedSeason, selectedYear, selectedFormat, availability, sortBy]);
 
   function clearFilters() {
     setQuery("");
@@ -331,6 +342,7 @@ function DiscoverPageContent() {
     setSelectedStatus("");
     setSelectedSeason("");
     setSelectedYear("");
+    setSelectedFormat("");
     setAvailability("");
     setSortBy("popular");
   }
@@ -378,6 +390,13 @@ function DiscoverPageContent() {
             onChange={setSelectedYear}
             width={136}
             options={[{ value: "", label: "Todos" }, ...years.map((y) => ({ value: String(y), label: String(y) }))]}
+          />
+          <SelectField
+            label="Tipo"
+            value={selectedFormat}
+            onChange={setSelectedFormat}
+            width={180}
+            options={[{ value: "", label: "Todos os tipos" }, ...formats.map((f) => ({ value: f, label: FORMAT_LABELS[f] ?? f }))]}
           />
           <Badge badgeContent={moreCount} color="primary" overlap="rectangular">
             <Button

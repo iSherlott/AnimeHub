@@ -15,6 +15,17 @@ export const CATALOG_STATUS_LABELS: Record<string, string> = {
   CANCELLED: "Cancelado",
 };
 
+/** Tipo da obra (formato AniList) como a pessoa lê. */
+export const FORMAT_LABELS: Record<string, string> = {
+  TV: "Série",
+  TV_SHORT: "Série curta",
+  MOVIE: "Filme",
+  OVA: "OVA",
+  ONA: "ONA (web)",
+  SPECIAL: "Especial",
+  MUSIC: "Música",
+};
+
 export const SEASON_LABELS: Record<string, string> = {
   WINTER: "Inverno",
   SPRING: "Primavera",

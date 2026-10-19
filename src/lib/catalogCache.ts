@@ -18,6 +18,8 @@ function anilistToCatalogData(media: AniListMedia, popularityRank: number | null
     description: media.description,
     episodes: media.episodes,
     status: media.status,
+    // Sem o tipo na resposta, o que já estava guardado continua.
+    ...(media.format ? { format: media.format } : {}),
     season: media.season,
     seasonYear: media.seasonYear,
     genres: media.genres.join(","),

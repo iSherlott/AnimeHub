@@ -29,6 +29,8 @@ export type AniListMedia = {
   description: string | null;
   episodes: number | null;
   status: string | null;
+  /** Tipo: TV, TV_SHORT, MOVIE, OVA, ONA, SPECIAL, MUSIC. */
+  format?: string | null;
   season: string | null;
   seasonYear: number | null;
   genres: string[];
@@ -77,6 +79,7 @@ const MEDIA_FIELDS = `
   description(asHtml: false)
   episodes
   status
+  format
   season
   seasonYear
   genres

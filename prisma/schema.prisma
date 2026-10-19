@@ -444,6 +444,8 @@ model CatalogEntry {
   anidbId           Int?      @unique
   /// ID na MyAnimeList (idMal da AniList) — chave das notícias (Jikan).
   malId             Int?
+  /// Tipo da obra (formato AniList): TV, TV_SHORT, MOVIE, OVA, ONA, SPECIAL, MUSIC. Nulo = ainda não conhecido.
+  format            String?
   titleRomaji       String
   titleEnglish      String?
   titleNative       String?
@@ -481,6 +483,7 @@ model CatalogEntry {
 
   @@index([season, seasonYear])
   @@index([onPlatform])
+  @@index([format])
 }
 
 /**

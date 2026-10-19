@@ -18,6 +18,8 @@ export type DiscoverItem = {
   episodes: number | null;
   genres: string[];
   status: string | null;
+  /** Tipo da obra: TV, TV_SHORT, MOVIE, OVA, ONA, SPECIAL, MUSIC (nulo = ainda não conhecido). */
+  format?: string | null;
   season: string | null;
   startDate: string | null;
   endDate: string | null;
@@ -48,6 +50,7 @@ export function discoverItemFromAniList(media: AniListMedia): DiscoverItem {
     episodes: media.episodes,
     genres: media.genres,
     status: media.status,
+    format: media.format ?? null,
     season: media.season,
     startDate: fuzzyDateToISO(media.startDate),
     endDate: fuzzyDateToISO(media.endDate),
@@ -78,6 +81,7 @@ export function discoverItemFromCatalogEntry(
     episodes: entry.episodes,
     genres: entry.genres ? entry.genres.split(",").filter(Boolean) : [],
     status: entry.status,
+    format: entry.format,
     season: entry.season,
     startDate: entry.startDate ? entry.startDate.toISOString() : null,
     endDate: entry.endDate ? entry.endDate.toISOString() : null,

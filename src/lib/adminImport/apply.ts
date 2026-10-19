@@ -122,6 +122,7 @@ async function applyNew(rec: ImportRecord, job: Job, summary: ApplySummary, now:
     season: season?.season ?? null,
     seasonYear: rec.year ?? season?.year ?? null,
     status: inferStatus(rec, now),
+    format: rec.format,
     startDate: rec.airsAt,
   };
   const existing = await prisma.catalogEntry.findUnique({ where: { anidbId } });
