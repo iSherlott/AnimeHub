@@ -206,6 +206,9 @@ model Anime {
   waitingSince    DateTime?
   /// Marcação manual do andamento (WATCHING | UNFINISHED | FINISHED). Nula = a plataforma deduz (src/lib/watchCategory.ts).
   watchState      String?
+  /// Nota (0-10) que a pessoa deu ao terminar a obra: alimenta a nota do site (`CatalogEntry.siteScore`).
+  userScore       Int?
+  scoredAt        DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -478,12 +481,50 @@ model CatalogEntry {
   /// Última vez que o painel Admin → AniList conferiu esta obra na AniList ("Complementar"). O que continuou vazio depois
   /// disso é porque a AniList não tem — deixa de contar como pendência.
   complementedAt    DateTime?
+  /// Tipo na linha da história (Epic 42): EPISODE (série), OVA, ODA (DVD), MOVIE ou OTHER (música…). Derivado de `format`.
+  kind              String?
+  /// Site oficial da obra (link "Official Site" da AniList).
+  officialSite      String?
+  /// Sinopse em português e em japonês (a original em inglês é `description`); preenchidas pela tradução guardada.
+  descriptionPt     String?
+  descriptionJa     String?
+  /// JSON [{id, titleRomaji, format, relationType}] — relações da AniList (sequência, OVA, filme…): base da linha do tempo.
+  relationsJson     String?
+  /// Nota do site (0-10): começa em 5 e é regulada pelas notas de quem terminou a obra (src/lib/siteScore.ts).
+  siteScore         Float     @default(5)
+  siteScoreVotes    Int       @default(0)
+  /// Quando a curadoria passou por esta obra e com qual versão das regras (reprocessa quando a versão sobe).
+  curatedAt         DateTime?
+  curationVersion   Int       @default(0)
   fetchedAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
   @@index([season, seasonYear])
   @@index([onPlatform])
   @@index([format])
+  @@index([kind])
+}
+
+/**
+ * Pendência da curadoria do catálogo (Epic 42): algo que a curadoria não conseguiu resolver sozinha (título sem inglês,
+ * obra fora da AniList, tipo desconhecido…). É a lista que vira o ADR de pendências (docs/adr). Uma por obra e motivo.
+ */
+model CurationIssue {
+  id        String   @id @default(cuid())
+  entryId   String
+  anilistId Int?
+  anidbId   Int?
+  title     String
+  /// Motivo (ver src/lib/curation/issues.ts).
+  code      String
+  detail    String?
+  /// OPEN | RESOLVED
+  status    String   @default("OPEN")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([entryId, code])
+  @@index([code, status])
 }
 
 /**

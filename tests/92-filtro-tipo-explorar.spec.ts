@@ -28,9 +28,9 @@ test.describe.serial("Explorar — filtro Tipo", () => {
     prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
     await clean();
     const base = { genres: GENRE, source: "anilist", onPlatform: true, season: "WINTER", seasonYear: 2024 } as const;
-    await prisma.catalogEntry.create({ data: { ...base, anilistId: SERIES, titleRomaji: "Serie Round92", format: "TV" } });
-    await prisma.catalogEntry.create({ data: { ...base, anilistId: MOVIE, titleRomaji: "Filme Round92", format: "MOVIE" } });
-    await prisma.catalogEntry.create({ data: { ...base, anilistId: UNKNOWN, titleRomaji: "Sem Tipo Round92", format: null } });
+    await prisma.catalogEntry.create({ data: { ...base, anilistId: SERIES, titleRomaji: "Serie Round92", format: "TV", kind: "EPISODE" } });
+    await prisma.catalogEntry.create({ data: { ...base, anilistId: MOVIE, titleRomaji: "Filme Round92", format: "MOVIE", kind: "MOVIE" } });
+    await prisma.catalogEntry.create({ data: { ...base, anilistId: UNKNOWN, titleRomaji: "Sem Tipo Round92", format: null, kind: null } });
   });
 
   test.afterAll(async () => {
@@ -39,11 +39,15 @@ test.describe.serial("Explorar — filtro Tipo", () => {
   });
 
   test("o catálogo traz o tipo de cada obra", async ({ request }) => {
-    const { results } = (await (await request.get("/api/catalog")).json()) as { results: Array<{ anilistId: number | null; format: string | null }> };
+    const { results } = (await (await request.get("/api/catalog")).json()) as { results: Array<{ anilistId: number | null; format: string | null; kind: string | null }> };
     const formatOf = (id: number) => results.find((r) => r.anilistId === id)?.format;
     expect(formatOf(SERIES)).toBe("TV");
     expect(formatOf(MOVIE)).toBe("MOVIE");
     expect(formatOf(UNKNOWN)).toBeNull();
+    const kindOf = (id: number) => results.find((r) => r.anilistId === id)?.kind;
+    expect(kindOf(SERIES)).toBe("EPISODE");
+    expect(kindOf(MOVIE)).toBe("MOVIE");
+    expect(kindOf(UNKNOWN)).toBeNull();
   });
 
   test("Tipo filtra as obras e só oferece os tipos que existem", async ({ page }) => {
@@ -52,7 +56,7 @@ test.describe.serial("Explorar — filtro Tipo", () => {
     await expect(tipo.locator("option", { hasText: "Filme" })).toHaveCount(1); // o catálogo chega depois da página
     const labels = await tipo.locator("option").allTextContents();
     expect(labels[0]).toBe("Todos os tipos");
-    expect(labels).toContain("Série");
+    expect(labels).toContain("Episódios");
     expect(labels).toContain("Filme");
 
     await page.getByLabel("Gênero").selectOption(GENRE);
@@ -60,7 +64,7 @@ test.describe.serial("Explorar — filtro Tipo", () => {
     await expect(page.getByRole("link", { name: "Filme Round92" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Sem Tipo Round92" }).first()).toBeVisible();
 
-    await tipo.selectOption("MOVIE");
+    await tipo.selectOption("MOVIE"); // valor = tipo na linha da história (kind)
     await expect(page.getByRole("link", { name: "Filme Round92" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Serie Round92" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Sem Tipo Round92" })).toHaveCount(0);
@@ -86,6 +90,7 @@ test.describe.serial("Explorar — filtro Tipo", () => {
     expect(committed.status()).toBe(200);
     const entry = await prisma.catalogEntry.findUniqueOrThrow({ where: { anidbId: ANIDB_NEW } });
     expect(entry.format).toBe("MOVIE");
+    expect(entry.kind).toBe("MOVIE");
     await admin.dispose();
   });
 });

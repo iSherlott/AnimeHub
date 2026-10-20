@@ -4,6 +4,7 @@ import { parseSeasonSlug, type SeasonRef } from "@/lib/exploreGroups";
 import { ensureProduction, mergeStreamingLinks, parseStreamingLinks } from "@/lib/production";
 import { defaultImportDeps, loadAiring } from "@/lib/anilistImport";
 import { hasBlockedGenre } from "@/lib/contentPolicy";
+import { classifyKind } from "@/lib/curation/kind";
 import { backfillEarlierSeasons, syncContinuations } from "@/lib/continuation";
 import { relinkAnidbOnlyEntries } from "./relink";
 
@@ -123,6 +124,7 @@ async function applyNew(rec: ImportRecord, job: Job, summary: ApplySummary, now:
     seasonYear: rec.year ?? season?.year ?? null,
     status: inferStatus(rec, now),
     format: rec.format,
+    kind: classifyKind({ format: rec.format, title: rec.titleRomaji }),
     startDate: rec.airsAt,
   };
   const existing = await prisma.catalogEntry.findUnique({ where: { anidbId } });

@@ -17,8 +17,14 @@ import {
   type SelectChangeEvent,
 } from "@mui/material";
 import type { Episode } from "@prisma/client";
+import { InfiniteFooter } from "@/components/InfiniteFooter";
 import { resolveTitleTextLenient, useTitlePreference } from "@/lib/titlePreference";
+import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
 import { useTimeZone } from "@/lib/useTimeZone";
+import { useWindowedList } from "@/lib/useWindowedList";
+
+/** Quantos episódios aparecem de cada vez na lista (o resto vem ao rolar). */
+const EPISODE_WINDOW = 30;
 
 /** "05 out 2026 · 10:00" (com horário, quando vem do calendário) ou só o dia. */
 function formatRelease(value: Date | string, timeZone: string, withTime: boolean): string {
@@ -182,20 +188,28 @@ export function EpisodeGrid({
   const effectiveSeason = seasonNumbers.length > 1 ? (selectedSeason ?? mostRecentSeason) : null;
   const [query, setQuery] = useState("");
 
-  if (episodes.length === 0) return null;
-
   const needle = query.trim().toLowerCase();
-  const visibleEpisodes = episodes
-    .filter((ep) => effectiveSeason === null || ep.seasonNumber === effectiveSeason)
-    .filter((ep) => {
-      if (!needle) return true;
-      const haystack = [ep.titleRomaji, ep.titleEnglish, ep.titleJapanese, String(ep.number)]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(needle);
-    })
-    .sort((a, b) => a.number - b.number);
+  const matching = useMemo(
+    () =>
+      episodes
+        .filter((ep) => effectiveSeason === null || ep.seasonNumber === effectiveSeason)
+        .filter((ep) => {
+          if (!needle) return true;
+          const haystack = [ep.titleRomaji, ep.titleEnglish, ep.titleJapanese, String(ep.number)]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return haystack.includes(needle);
+        })
+        .sort((a, b) => a.number - b.number),
+    [episodes, effectiveSeason, needle]
+  );
+  // Rolagem infinita: séries longas têm centenas de episódios, que aparecem aos poucos conforme a pessoa desce a lista.
+  const windowed = useWindowedList(matching, `${effectiveSeason}|${needle}`, EPISODE_WINDOW);
+  const { ref: sentinelRef, supported: infiniteSupported } = useInfiniteScroll(windowed.loadMore, windowed.hasMore, windowed.shown);
+  const visibleEpisodes = windowed.visible;
+
+  if (episodes.length === 0) return null;
 
   function handleSeasonChange(e: SelectChangeEvent<number>) {
     setSelectedSeason(Number(e.target.value));
@@ -235,7 +249,7 @@ export function EpisodeGrid({
             />
           </Stack>
 
-          {visibleEpisodes.length === 0 ? (
+          {matching.length === 0 ? (
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
               Nenhum episódio bate com essa busca.
             </Typography>
@@ -244,6 +258,17 @@ export function EpisodeGrid({
               {visibleEpisodes.map((ep) => (
                 <EpisodeRow key={ep.id} ep={ep} fallbackImage={fallbackImage} airingAt={schedule[ep.number]} calendarImage={episodeImages[ep.number]} />
               ))}
+              <InfiniteFooter
+                testId="episodes"
+                sentinelRef={sentinelRef}
+                supported={infiniteSupported}
+                hasMore={windowed.hasMore}
+                loadingMore={false}
+                failed={false}
+                onMore={windowed.loadMore}
+                onRetry={windowed.loadMore}
+                moreLabel="Ver mais episódios"
+              />
             </Box>
           )}
         </Box>

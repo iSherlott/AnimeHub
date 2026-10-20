@@ -126,6 +126,8 @@ test.describe("Obras finalizadas em Minha Lista", () => {
 
   test("Finalizei e Pendente marcam, trocam entre si e desfazem ao clicar de novo", async ({ page }) => {
     await page.goto("/minha-lista");
+    // A lista rola aos poucos (30 por vez): a busca deixa só esta obra na tela.
+    await page.getByLabel("Buscar na minha lista").fill("Obra Terminada Round79");
     const done = page.getByTestId(`finished-done-${FIN}`);
     const pending = page.getByTestId(`finished-pending-${FIN}`);
     await expect(done).toBeVisible();

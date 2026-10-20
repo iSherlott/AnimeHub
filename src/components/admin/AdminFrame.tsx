@@ -11,6 +11,7 @@ import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import FilterListOutlinedIcon from "@mui/icons-material/FilterListOutlined";
+import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import LibraryBooksOutlinedIcon from "@mui/icons-material/LibraryBooksOutlined";
 import LinkOutlinedIcon from "@mui/icons-material/LinkOutlined";
 import QuizOutlinedIcon from "@mui/icons-material/QuizOutlined";
@@ -23,6 +24,7 @@ type NavItem = { href: string; label: string; icon: ReactNode; crumb: string };
 const NAV: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: <DashboardOutlinedIcon />, crumb: "DASHBOARD" },
   { href: "/admin/catalogo", label: "Catálogo", icon: <LibraryBooksOutlinedIcon />, crumb: "CATÁLOGO" },
+  { href: "/admin/curadoria", label: "Curadoria", icon: <FactCheckOutlinedIcon />, crumb: "CURADORIA" },
   { href: "/admin/importacoes", label: "Importações", icon: <FileDownloadOutlinedIcon />, crumb: "IMPORTAÇÕES" },
   { href: "/admin/match-name", label: "Match name", icon: <LinkOutlinedIcon />, crumb: "MATCH NAME" },
   { href: "/admin/quizzes", label: "Quizzes", icon: <QuizOutlinedIcon />, crumb: "QUIZZES" },

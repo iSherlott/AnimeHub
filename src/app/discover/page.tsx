@@ -18,18 +18,23 @@ import { PageContainer, PageIntro } from "@/components/PageShell";
 import { ELEVATED_BUTTON_SX, ExploreCard, useScheduleText, useTitleLines } from "@/components/ExploreCard";
 import { CardGrid, CardGridSkeleton, EmptyPanel, SectionHeader, SeasonChips } from "@/components/ExploreParts";
 import { SearchField, SelectField } from "@/components/FilterField";
+import { InfiniteFooter } from "@/components/InfiniteFooter";
+import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
+import { usePagedList } from "@/lib/usePagedList";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { DiscoverItem } from "@/lib/discoverItem";
 import { currentSeasonRef, scheduleOf, seasonLabel, seasonSlug } from "@/lib/exploreGroups";
 import { readRecentWorks } from "@/lib/recentWorks";
-import { looseKey } from "@/lib/adminImport/matching";
 import { loginHref } from "@/lib/safeRedirect";
-import { CATALOG_STATUS_LABELS, FORMAT_LABELS, SEASON_LABELS } from "@/lib/types";
+import { CATALOG_STATUS_LABELS, SEASON_LABELS } from "@/lib/types";
+import { KINDS, KIND_LABELS, type Kind } from "@/lib/curation/kind";
 import { useTimeZone } from "@/lib/useTimeZone";
 import { formatTimeInZone } from "@/lib/timeZone";
 
 /** Mesma largura da coluna da grade (2/3/4 colunas, 24 px de respiro; o carrossel tem 8 px de folga de cada lado), para o cartão ter o mesmo tamanho nos dois lugares. */
 const CAROUSEL_CARD_WIDTH = { xs: "calc((100% + 16px - 24px) / 2)", md: "calc((100% + 16px - 48px) / 3)", lg: "calc((100% + 16px - 72px) / 4)" } as const;
+
+type Facets = { total: number; genres: Array<{ name: string; count: number }>; statuses: string[]; seasons: string[]; years: number[]; kinds: string[] };
 
 type SortKey = "popular" | "recent" | "title" | "year" | "episodes";
 
@@ -175,8 +180,8 @@ function DiscoverPageContent() {
   const [loadingRows, setLoadingRows] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const [catalogAll, setCatalogAll] = useState<DiscoverItem[]>([]);
-  const [loadingCatalog, setLoadingCatalog] = useState(true);
+  // O que existe no catálogo (gêneros, anos, tipos…) para montar os filtros; as obras vêm página a página, ver `pager`.
+  const [facets, setFacets] = useState<Facets | null>(null);
   const [selectedGenre, setSelectedGenre] = useState<string>(() => searchParams.get("genre") ?? "");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedSeason, setSelectedSeason] = useState("");
@@ -210,11 +215,10 @@ function DiscoverPageContent() {
   }, [reloadKey, timeZone, user?.id]);
 
   useEffect(() => {
-    fetch("/api/catalog")
-      .then((res) => res.json())
-      .then((data) => setCatalogAll(data.results ?? []))
-      .catch(() => setCatalogAll([]))
-      .finally(() => setLoadingCatalog(false));
+    fetch("/api/catalog/facets")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: Facets | null) => setFacets(data))
+      .catch(() => setFacets(null));
   }, []);
 
   useEffect(() => {
@@ -248,93 +252,74 @@ function DiscoverPageContent() {
 
   const currentYear = currentSeasonRef().year;
 
+  // Só mostramos gêneros compartilhados por 2+ animes do catálogo (a API já entrega assim).
   const genres = useMemo(() => {
-    // A Kitsu tem uma taxonomia de categorias bem mais granular que a AniList;
-    // só mostramos gêneros compartilhados por 2+ animes do catálogo.
-    const counts = new Map<string, number>();
-    for (const item of catalogAll) for (const g of item.genres) counts.set(g, (counts.get(g) ?? 0) + 1);
-    const list = Array.from(counts.entries())
-      .filter(([, count]) => count >= 2)
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .map(([genre]) => genre);
+    const list = (facets?.genres ?? []).map((g) => g.name);
     if (selectedGenre && !list.includes(selectedGenre)) list.unshift(selectedGenre);
     return list;
-  }, [catalogAll, selectedGenre]);
+  }, [facets, selectedGenre]);
 
-  const statuses = useMemo(() => {
-    const set = new Set<string>();
-    for (const item of catalogAll) if (item.status) set.add(item.status);
-    return Array.from(set);
-  }, [catalogAll]);
+  const statuses = facets?.statuses ?? [];
 
   // Temporadas que existem no catálogo (nada de opção vazia).
-  const seasonsAvailable = useMemo(() => {
-    const present = new Set<string>();
-    for (const item of catalogAll) if (item.season) present.add(item.season);
-    return ["WINTER", "SPRING", "SUMMER", "FALL"].filter((s) => present.has(s) || s === selectedSeason);
-  }, [catalogAll, selectedSeason]);
+  const seasonsAvailable = useMemo(() => ["WINTER", "SPRING", "SUMMER", "FALL"].filter((s) => (facets?.seasons ?? []).includes(s) || s === selectedSeason), [facets, selectedSeason]);
 
-  // Tipos que existem no catálogo, na ordem de FORMAT_LABELS (série, filme, OVA…); nada de opção vazia.
-  const formats = useMemo(() => {
-    const present = new Set<string>();
-    for (const item of catalogAll) if (item.format) present.add(item.format);
-    const known = Object.keys(FORMAT_LABELS).filter((f) => present.has(f) || f === selectedFormat);
-    const other = Array.from(present).filter((f) => !(f in FORMAT_LABELS)).sort();
-    return [...known, ...other];
-  }, [catalogAll, selectedFormat]);
+  // Tipos que existem no catálogo, na ordem da linha da história (episódios, OVA, ODA, filme, outros); nada de opção vazia.
+  const formats = useMemo(() => KINDS.filter((k) => (facets?.kinds ?? []).includes(k) || k === selectedFormat), [facets, selectedFormat]);
 
   const years = useMemo(() => {
-    const set = new Set<number>(catalogAll.length === 0 ? [currentYear] : []);
+    const set = new Set<number>(!facets || facets.years.length === 0 ? [currentYear] : facets.years);
     if (selectedYear) set.add(Number(selectedYear));
-    for (const item of catalogAll) {
-      const y = yearOf(item);
-      if (y) set.add(y);
-    }
     return Array.from(set).sort((a, b) => b - a);
-  }, [catalogAll, currentYear, selectedYear]);
+  }, [facets, currentYear, selectedYear]);
 
   const searchActive = query.trim().length >= 2;
   const filtersActive = selectedGenre !== "" || selectedStatus !== "" || selectedSeason !== "" || selectedYear !== "" || selectedFormat !== "" || availability !== "";
   const moreCount = (selectedStatus ? 1 : 0) + (availability ? 1 : 0) + (sortBy !== "popular" ? 1 : 0);
+  const mode: "search" | "filter" | "browse" = searchActive ? "search" : filtersActive ? "filter" : "browse";
+
+  // As obras do catálogo chegam do servidor, 48 por vez, conforme a pessoa desce a página (rolagem infinita).
+  const catalogQuery = useMemo(() => {
+    const params = new URLSearchParams();
+    const values: Record<string, string> = { q: searchActive ? query.trim() : "", genre: selectedGenre, status: selectedStatus, season: selectedSeason, year: selectedYear, kind: selectedFormat, availability, sort: sortBy };
+    for (const [key, value] of Object.entries(values)) if (value) params.set(key, value);
+    return params.toString();
+  }, [searchActive, query, selectedGenre, selectedStatus, selectedSeason, selectedYear, selectedFormat, availability, sortBy]);
+  const pager = usePagedList<DiscoverItem>({
+    resetKey: catalogQuery,
+    enabled: mode !== "browse",
+    keyOf: (item) => item.key,
+    fetchPage: async (cursor) => {
+      const res = await fetch(`/api/catalog/page?${catalogQuery}${cursor ? `${catalogQuery ? "&" : ""}cursor=${cursor}` : ""}`);
+      if (!res.ok) throw new Error("falha");
+      const data = (await res.json()) as { items?: DiscoverItem[]; nextCursor?: string | null; total?: number };
+      return { items: data.items ?? [], nextCursor: data.nextCursor ?? null, total: data.total };
+    },
+  });
+  const { ref: sentinelRef, supported: infiniteSupported } = useInfiniteScroll(pager.loadMore, pager.hasMore && !pager.loading && !pager.failed, pager.items.length);
 
   function matchesFilters(item: DiscoverItem): boolean {
     if (selectedGenre && !item.genres.includes(selectedGenre)) return false;
     if (selectedStatus && item.status !== selectedStatus) return false;
     if (selectedSeason && item.season !== selectedSeason) return false;
     if (selectedYear && yearOf(item) !== Number(selectedYear)) return false;
-    if (selectedFormat && item.format !== selectedFormat) return false;
+    if (selectedFormat && item.kind !== selectedFormat) return false;
     if (availability === "scheduled" && !item.nextEpisodeAt) return false;
     if (availability === "unscheduled" && item.nextEpisodeAt) return false;
     return true;
   }
 
-  const filteredCatalog = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    // Achar também por outra grafia do mesmo nome ("Bishoujyo" × "Bishoujo", "Ao Ashi" × "Aoashi").
-    const loose = looseKey(query);
-    const filtered = catalogAll.filter((item) => {
-      if (needle.length >= 2) {
-        const titles = [item.titleRomaji, item.titleEnglish, item.titleNative].filter((t): t is string => Boolean(t));
-        const matches = titles.some((t) => t.toLowerCase().includes(needle)) || (loose.length >= 4 && titles.some((t) => looseKey(t).includes(loose)));
-        if (!matches) return false;
-      }
-      return matchesFilters(item);
-    });
-    return sortItems(filtered, sortBy);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalogAll, query, selectedGenre, selectedStatus, selectedSeason, selectedYear, selectedFormat, availability, sortBy]);
-
-  // A busca ao vivo na AniList só manda `q` pra API — os filtros continuam
-  // visíveis acima dela, então aplicamos do mesmo jeito aqui (achado real da
-  // 21ª rodada de auditoria, Epic 18: com "COMEDY" selecionado a busca ainda
-  // misturava títulos de qualquer gênero).
+  // A busca ao vivo (relevância) vem na frente; o resto do catálogo que casa com a busca chega página a página. Os filtros
+  // valem para as duas (achado real da 21ª rodada de auditoria, Epic 18: com "COMEDY" selecionado a busca misturava gêneros).
   const searchList = useMemo(() => {
     const live = sortItems(searchResults.filter(matchesFilters), sortBy);
     if (!searchActive) return live;
     const seen = new Set(live.map((i) => i.key));
-    return [...live, ...filteredCatalog.filter((i) => !seen.has(i.key))];
+    return [...live, ...pager.items.filter((i) => !seen.has(i.key))];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchResults, filteredCatalog, searchActive, selectedGenre, selectedStatus, selectedSeason, selectedYear, selectedFormat, availability, sortBy]);
+  }, [searchResults, pager.items, searchActive, selectedGenre, selectedStatus, selectedSeason, selectedYear, selectedFormat, availability, sortBy]);
+  // Quantos animes a busca encontrou: o total do catálogo (a busca ao vivo é parte dele), ou a lista inteira se for maior.
+  const searchCount = pager.total !== null ? Math.max(pager.total, searchList.length) : searchList.length;
 
   function clearFilters() {
     setQuery("");
@@ -357,8 +342,6 @@ function DiscoverPageContent() {
     const rest = new Intl.DateTimeFormat("pt-BR", { timeZone, day: "numeric", month: "short", year: "numeric" }).format(now).replace(/\./g, "").replace(/ de /g, " ");
     return `Horários locais · ${weekday} ${rest}`;
   })();
-
-  const mode: "search" | "filter" | "browse" = searchActive ? "search" : filtersActive ? "filter" : "browse";
 
   return (
     <Box sx={{ minHeight: "100%", bgcolor: "background.default" }}>
@@ -396,7 +379,7 @@ function DiscoverPageContent() {
             value={selectedFormat}
             onChange={setSelectedFormat}
             width={180}
-            options={[{ value: "", label: "Todos os tipos" }, ...formats.map((f) => ({ value: f, label: FORMAT_LABELS[f] ?? f }))]}
+            options={[{ value: "", label: "Todos os tipos" }, ...formats.map((k) => ({ value: k, label: KIND_LABELS[k as Kind] }))]}
           />
           <Badge badgeContent={moreCount} color="primary" overlap="rectangular">
             <Button
@@ -489,16 +472,33 @@ function DiscoverPageContent() {
 
         {mode === "filter" && (
           <Box component="section" sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {loadingCatalog ? (
+            {pager.loading ? (
               <CardGridSkeleton />
-            ) : filteredCatalog.length > 0 ? (
+            ) : pager.failed && pager.items.length === 0 ? (
+              <ErrorNotice title="Falha ao carregar o catálogo" onRetry={pager.retry}>
+                Não foi possível carregar os resultados agora. Tente novamente em instantes.
+              </ErrorNotice>
+            ) : pager.items.length > 0 ? (
               <>
-                <SectionHeader title={`${filteredCatalog.length} resultado${filteredCatalog.length === 1 ? "" : "s"}`} note={`Ordenado por ${SORT_LABELS[sortBy].toLowerCase()}`} />
+                <SectionHeader title={`${pager.total ?? pager.items.length} resultado${(pager.total ?? pager.items.length) === 1 ? "" : "s"}`} note={`Ordenado por ${SORT_LABELS[sortBy].toLowerCase()}`} />
                 <CardGrid label="Resultados">
-                  {filteredCatalog.map((item) => (
+                  {pager.items.map((item) => (
                     <ExploreCard key={item.key} item={item} />
                   ))}
                 </CardGrid>
+                <InfiniteFooter
+                  testId="catalog"
+                  sentinelRef={sentinelRef}
+                  supported={infiniteSupported}
+                  hasMore={pager.hasMore}
+                  loadingMore={pager.loadingMore}
+                  failed={pager.failed}
+                  onMore={pager.loadMore}
+                  onRetry={pager.retry}
+                  loadingLabel="Carregando mais animes…"
+                  moreLabel="Ver mais animes"
+                  endLabel="Você viu todos os resultados."
+                />
               </>
             ) : (
               <EmptyPanel icon={<SearchOffIcon />} title="Nenhum anime encontrado" action={<Button onClick={clearFilters} variant="contained" sx={{ textTransform: "uppercase" }}>Limpar filtros</Button>}>
@@ -514,7 +514,7 @@ function DiscoverPageContent() {
               <ErrorNotice title={searchError} onRetry={() => setQuery((q) => `${q} `.trimEnd())}>
                 Sua busca foi mantida. Tente novamente.
               </ErrorNotice>
-            ) : searching && searchList.length === 0 ? (
+            ) : (searching || pager.loading) && searchList.length === 0 ? (
               <CardGridSkeleton count={1} />
             ) : searchList.length === 0 ? (
               <EmptyPanel icon={<SearchOffIcon />} title="Nenhum anime encontrado" action={<Button onClick={clearFilters} variant="contained" sx={{ textTransform: "uppercase" }}>Limpar busca</Button>}>
@@ -528,7 +528,7 @@ function DiscoverPageContent() {
                   </Alert>
                 )}
                 <Typography role="status" sx={{ fontSize: 14, color: "text.secondary" }}>
-                  {searching ? "Buscando..." : `${searchList.length} anime${searchList.length === 1 ? "" : "s"} encontrado${searchList.length === 1 ? "" : "s"}`}
+                  {searching ? "Buscando..." : `${searchCount} anime${searchCount === 1 ? "" : "s"} encontrado${searchCount === 1 ? "" : "s"}`}
                 </Typography>
                 <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(240px, 310px) minmax(0, 1fr)" }, gap: 5, alignItems: "start" }}>
                   <Box sx={{ maxWidth: { xs: 310, md: "none" } }}>
@@ -552,7 +552,7 @@ function DiscoverPageContent() {
                     <TitlesPanel item={searchList[0]} />
                   </Box>
                 </Box>
-                {searchList.length > 1 && (
+                {(searchList.length > 1 || pager.hasMore) && (
                   <Box component="section" sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     <SectionHeader title="Outros resultados" />
                     <CardGrid label="Outros resultados">
@@ -560,6 +560,19 @@ function DiscoverPageContent() {
                         <ExploreCard key={item.key} item={item} />
                       ))}
                     </CardGrid>
+                    <InfiniteFooter
+                      testId="catalog"
+                      sentinelRef={sentinelRef}
+                      supported={infiniteSupported}
+                      hasMore={pager.hasMore}
+                      loadingMore={pager.loadingMore}
+                      failed={pager.failed}
+                      onMore={pager.loadMore}
+                      onRetry={pager.retry}
+                      loadingLabel="Carregando mais animes…"
+                      moreLabel="Ver mais animes"
+                      endLabel="Você viu todos os resultados."
+                    />
                   </Box>
                 )}
               </>

@@ -8,12 +8,13 @@ import {
   Box,
   Button,
   IconButton,
-  Pagination,
   Stack,
   TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
+import { InfiniteFooter } from "@/components/InfiniteFooter";
+import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
 
 type CommentItem = {
   id: string;
@@ -48,8 +49,8 @@ function fmtDate(iso: string): string {
  * Thread de comentários por anime (Epic 15) — não um feed global, ver
  * roadmap. Comentar exige ter esse anime na própria lista, mesma regra de
  * quem pode ver a página de detalhe; a API já garante isso, aqui só
- * consome. Paginada (10 por página, lote 1 do Epic 27) — a rota devolve
- * sempre a página inteira, não acumula em memória no cliente.
+ * consome. A rota devolve 10 por página; a tela as acrescenta ao fim da lista
+ * conforme a pessoa desce (rolagem infinita).
  */
 export function CommentSection({
   animeId,
@@ -60,8 +61,12 @@ export function CommentSection({
   accentColor?: string | null;
 }) {
   const [comments, setComments] = useState<CommentItem[]>([]);
-  const [page, setPage] = useState(1);
+  // Quantas páginas (de 10) já estão na lista e quantas existem; a próxima vem ao chegar perto do fim.
+  const [loadedPages, setLoadedPages] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const loadingMoreRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
@@ -80,26 +85,63 @@ export function CommentSection({
   // (achado real da revisão de código deste lote).
   const requestSeqRef = useRef(0);
 
-  // Não mexe em `loading` — só usada pro carregamento inicial (efeito
-  // abaixo), que já parte de `loading: true`. Chamar setState síncrono no
-  // corpo de um efeito (antes do 1º `await`) dispara o lint
-  // react-hooks/set-state-in-effect; nas trocas de página/pós-postar essa
-  // função é chamada de dentro de handlers de clique, não de um efeito, e
-  // nunca mostrou indicador de carregamento mesmo antes desta rodada.
-  const loadPage = useCallback(
-    async (targetPage: number) => {
-      const seq = ++requestSeqRef.current;
-      const res = await fetch(`/api/anime/${animeId}/comments?page=${targetPage}`);
-      const data = await res.json();
-      if (seq === requestSeqRef.current) {
-        setComments(data.comments ?? []);
-        setTotalPages(data.totalPages ?? 1);
-        setPage(data.page ?? targetPage);
-      }
-      return data;
+  const fetchPage = useCallback(
+    async (target: number) => {
+      const res = await fetch(`/api/anime/${animeId}/comments?page=${target}`);
+      if (!res.ok) throw new Error("falha");
+      return (await res.json()) as { comments?: CommentItem[]; totalPages?: number; page?: number };
     },
     [animeId]
   );
+
+  /**
+   * Refaz, na ordem, as páginas que já estavam na lista (depois de comentar ou apagar): quem comenta vê o comentário novo
+   * no fim, e quem apaga não perde o lugar onde estava. Respostas atrasadas de uma chamada anterior são descartadas.
+   */
+  const reloadLoaded = useCallback(
+    async (upTo: number) => {
+      const seq = ++requestSeqRef.current;
+      let all: CommentItem[] = [];
+      let total = 1;
+      let last = 0;
+      for (let p = 1; p <= Math.max(1, upTo); p += 1) {
+        const data = await fetchPage(p);
+        total = data.totalPages ?? 1;
+        all = [...all, ...(data.comments ?? [])];
+        last = p;
+        if (p >= total) break;
+      }
+      if (seq === requestSeqRef.current) {
+        setComments(all);
+        setTotalPages(total);
+        setLoadedPages(last);
+      }
+    },
+    [fetchPage]
+  );
+
+  const loadMore = useCallback(() => {
+    if (loadingMoreRef.current || loadedPages >= totalPages) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    setLoadFailed(false);
+    const seq = ++requestSeqRef.current;
+    fetchPage(loadedPages + 1)
+      .then((data) => {
+        if (seq !== requestSeqRef.current) return;
+        setComments((prev) => {
+          const seen = new Set(prev.map((c) => c.id));
+          return [...prev, ...(data.comments ?? []).filter((c) => !seen.has(c.id))];
+        });
+        setTotalPages(data.totalPages ?? 1);
+        setLoadedPages(data.page ?? loadedPages + 1);
+      })
+      .catch(() => setLoadFailed(true))
+      .finally(() => {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      });
+  }, [fetchPage, loadedPages, totalPages]);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,7 +151,7 @@ export function CommentSection({
         if (cancelled) return;
         setComments(data.comments ?? []);
         setTotalPages(data.totalPages ?? 1);
-        setPage(data.page ?? 1);
+        setLoadedPages(data.page ?? 1);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -138,11 +180,9 @@ export function CommentSection({
         return;
       }
       setDraft("");
-      // Pula pra última página — senão o comentário recém-postado some pra
-      // quem estava vendo uma página anterior (achado deste lote: sem
-      // isso, "Comentar" parecia não ter feito nada quando não se estava
-      // já na última página).
-      await loadPage(data.totalPages ?? page);
+      // Carrega até a última página — o comentário recém-postado fica no fim da lista; sem isso "Comentar" parecia não
+      // ter feito nada quando as últimas páginas ainda não estavam na tela.
+      await reloadLoaded(data.totalPages ?? loadedPages);
     } finally {
       postingRef.current = false;
       setPosting(false);
@@ -158,12 +198,7 @@ export function CommentSection({
         setError(data?.error ?? "Falha ao apagar comentário");
         return;
       }
-      const data = await loadPage(page);
-      // Página atual ficou vazia (era o único comentário dela) e não é a
-      // 1ª — volta pra anterior em vez de mostrar uma página em branco.
-      if ((data.comments ?? []).length === 0 && page > 1) {
-        await loadPage(page - 1);
-      }
+      await reloadLoaded(loadedPages);
     } catch {
       setError("Falha ao apagar comentário");
     }
@@ -184,6 +219,8 @@ export function CommentSection({
       setError("Falha ao denunciar comentário");
     }
   }
+
+  const { ref: sentinelRef, supported: infiniteSupported } = useInfiniteScroll(loadMore, loadedPages < totalPages && !loading && !loadFailed, comments.length);
 
   function toggleExpanded(id: string) {
     setExpanded((prev) => {
@@ -298,15 +335,18 @@ export function CommentSection({
         </Stack>
       )}
 
-      {totalPages > 1 && (
-        <Pagination
-          page={page}
-          count={totalPages}
-          onChange={(_, value) => loadPage(value)}
-          size="small"
-          sx={{ mt: 2, "& .Mui-selected": accentColor ? { bgcolor: `${accentColor} !important`, color: "#0b0b0d" } : undefined }}
-        />
-      )}
+      <InfiniteFooter
+        testId="comments"
+        sentinelRef={sentinelRef}
+        supported={infiniteSupported}
+        hasMore={loadedPages < totalPages}
+        loadingMore={loadingMore}
+        failed={loadFailed}
+        onMore={loadMore}
+        onRetry={loadMore}
+        loadingLabel="Carregando mais comentários…"
+        moreLabel="Ver mais comentários"
+      />
     </Box>
   );
 }

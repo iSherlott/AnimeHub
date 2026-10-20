@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
+import { recomputeSiteScore } from "@/lib/siteScoreDb";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -47,6 +48,8 @@ export async function DELETE(_request: Request, { params }: Params) {
       prisma.airingAlert.deleteMany({ where: { userId: user.id, anilistId: existing.anilistId } }),
       prisma.anime.delete({ where: { id } }),
     ]);
+    // A nota de quem sai da lista deixa de contar na nota do site.
+    await recomputeSiteScore(existing.anilistId).catch(() => undefined);
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Falha ao remover o anime" }, { status: 500 });

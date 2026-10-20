@@ -20,6 +20,7 @@ const PUBLIC_BY_DESIGN = new Set([
   "auth/me/route.ts",
   "auth/signup/route.ts",
   "calendar/route.ts",
+  "catalog/facets/route.ts", // o que existe no catálogo (gêneros, anos, tipos) para montar os filtros do Explorar
   "catalog/ranking/route.ts",
   "catalog/route.ts",
   "feed/trending-posts/route.ts",

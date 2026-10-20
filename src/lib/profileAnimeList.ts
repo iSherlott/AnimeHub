@@ -36,7 +36,12 @@ export type GenreFacet = { genre: string; count: number };
 export type ProfileAnimeList = {
   /** Total de obras na lista (sem filtro). */
   total: number;
+  /** Quantas obras casam com a busca e os filtros (a lista inteira, não só a página devolvida). */
+  matched: number;
+  /** Uma página das obras que casam (todas, quando a consulta não pede página). */
   entries: ProfileAnimeEntry[];
+  /** Posição da próxima página; null quando acabou. */
+  nextCursor: string | null;
   genres: GenreFacet[];
   /** Quantas obras há em cada categoria (da lista inteira, sem filtro). */
   categories: Record<Exclude<WatchCategory, "other">, number>;
@@ -87,7 +92,7 @@ export function categoryCounts(entries: ProfileAnimeEntry[]): ProfileAnimeList["
   return counts;
 }
 
-export async function loadProfileAnimeList(targetId: string, viewerId: string | null, q = "", genre = "", category = ""): Promise<ProfileAnimeResult> {
+export async function loadProfileAnimeList(targetId: string, viewerId: string | null, q = "", genre = "", category = "", page?: { offset: number; limit: number }): Promise<ProfileAnimeResult> {
   const target = await prisma.user.findUnique({ where: { id: targetId }, select: { animeListPublic: true } });
   if (!target) return { kind: "unavailable" };
   const isOwn = viewerId === targetId;
@@ -125,5 +130,8 @@ export async function loadProfileAnimeList(targetId: string, viewerId: string | 
       ...(isOwn ? { animeId: rep.id, watchState: isWatchState(rep.watchState) ? rep.watchState : null, waiting: rep.waiting } : {}),
     };
   });
-  return { kind: "ok", isOwn, list: { total: all.length, entries: filterEntries(all, q, genre, category), genres: genreFacets(all), categories: categoryCounts(all) } };
+  const matched = filterEntries(all, q, genre, category);
+  const entries = page ? matched.slice(page.offset, page.offset + page.limit) : matched;
+  const next = page ? page.offset + entries.length : matched.length;
+  return { kind: "ok", isOwn, list: { total: all.length, matched: matched.length, entries, nextCursor: next < matched.length ? String(next) : null, genres: genreFacets(all), categories: categoryCounts(all) } };
 }

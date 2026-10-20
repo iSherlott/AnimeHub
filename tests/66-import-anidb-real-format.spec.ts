@@ -131,17 +131,20 @@ test.describe("Importação — listagem de temporada do AniDB", () => {
     expect(created.status).toBe("NOT_YET_RELEASED"); // estreia em dezembro: ainda não saiu
   });
 
-  test("o Catálogo do admin pagina TODAS as obras do catálogo (nenhuma some por limite)", async ({ page }) => {
+  test("o Catálogo do admin rola e mostra TODAS as obras do catálogo (nenhuma some por limite)", async ({ page }) => {
     await prisma.catalogEntry.createMany({
       data: Array.from({ length: 70 }, (_, i) => ({ anilistId: 966000 + i, titleRomaji: `Zz Pagina Round66 ${String(i).padStart(2, "0")}`, season: "FALL", seasonYear: 2026, source: "anilist" })),
     });
     try {
-      const seen = new Set<string>();
-      for (const pageIndex of [0, 1, 2]) {
-        await page.goto(`/admin/catalogo?q=${encodeURIComponent("Zz Pagina Round66")}${pageIndex ? `&page=${pageIndex}` : ""}`);
-        const rows = page.getByTestId("admin-catalog-table").locator("tbody tr");
-        for (const text of await rows.allInnerTexts()) seen.add(text.match(/Zz Pagina Round66 \d\d/)?.[0] ?? text);
-      }
+      await page.goto(`/admin/catalogo?q=${encodeURIComponent("Zz Pagina Round66")}`);
+      const rows = page.getByTestId("admin-catalog-table").locator("tbody tr");
+      await expect(rows).toHaveCount(25); // a primeira leva
+      await expect(page.getByText("Paginação")).toHaveCount(0); // sem botões de página
+      await expect(async () => {
+        await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+        await expect(rows).toHaveCount(70, { timeout: 1000 });
+      }).toPass({ timeout: 15_000 });
+      const seen = new Set((await rows.allInnerTexts()).map((text) => text.match(/Zz Pagina Round66 \d\d/)?.[0] ?? text));
       expect(seen.size).toBe(70);
       await expect(page.getByTestId("admin-catalog-count")).toContainText("70 obras só no catálogo");
     } finally {

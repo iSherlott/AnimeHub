@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { isWatchState } from "@/lib/watchCategory";
 import { syncContinuations } from "@/lib/continuation";
+import { recomputeSiteScore } from "@/lib/siteScoreDb";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -41,6 +42,9 @@ export async function PATCH(request: Request, { params }: Params) {
     where: { id },
     data: { watchState: state, ...(waiting === undefined ? {} : { waiting, waitingSince: waiting ? new Date() : null }) },
   });
+  // A nota do site só conta a de quem terminou: sair de "Terminei" a tira da conta (a nota fica guardada, caso volte).
+  if (existing.watchState === "FINISHED" && state !== "FINISHED") await recomputeSiteScore(existing.anilistId).catch(() => undefined);
+  if (existing.watchState !== "FINISHED" && state === "FINISHED") await recomputeSiteScore(existing.anilistId).catch(() => undefined);
   // Terminada ou em espera, a obra não tem mais episódio "adiado" para ver.
   if (state === "FINISHED" || waiting === true) await prisma.pendingEpisode.deleteMany({ where: { userId: user.id, anilistId: existing.anilistId } });
   // Quem sai de "Dropei" pode ter continuações que ficaram sem chegar: recupera na hora.

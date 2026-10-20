@@ -1,4 +1,4 @@
-import { normalizeGenres } from "@/lib/genreTaxonomy";
+import { genresFromAniList, normalizeGenres, type AniListTag } from "@/lib/genreTaxonomy";
 import { hasBlockedGenre } from "@/lib/contentPolicy";
 import type { MediaRelations } from "@/lib/franchise";
 
@@ -34,6 +34,8 @@ export type AniListMedia = {
   season: string | null;
   seasonYear: number | null;
   genres: string[];
+  /** Etiquetas da AniList (demografia e tema: Shounen, Josei, Isekai, Parody, Boys' Love…); entram nos `genres` normalizados. */
+  tags?: AniListTag[];
   /** Nota média da comunidade AniList, 0-100 (mesma escala que o site deles). */
   averageScore: number | null;
   startDate: AniListFuzzyDate | null;
@@ -83,6 +85,11 @@ const MEDIA_FIELDS = `
   season
   seasonYear
   genres
+  tags {
+    name
+    rank
+    isAdult
+  }
   averageScore
   startDate {
     year
@@ -168,7 +175,7 @@ async function anilistRequest<T>(
  * pra todo consumidor (cache do catálogo, criação de anime, refresh, etc.)
  * já receber a lista fechada, sem precisar normalizar de novo. */
 function normalizeMedia(media: AniListMedia): AniListMedia {
-  return { ...media, genres: normalizeGenres(media.genres) };
+  return { ...media, genres: genresFromAniList(media.genres ?? [], media.tags ?? []) };
 }
 
 export async function searchAnime(search: string): Promise<AniListMedia[]> {
@@ -256,6 +263,50 @@ export async function getMediaByIds(ids: number[], { fresh = false }: { fresh?: 
     all.push(...data.Page.media.map(normalizeMedia));
   }
   return all.filter((m) => !hasBlockedGenre(m.genres));
+}
+
+export type CurationRelation = { id: number; titleRomaji: string; format: string | null; relationType: string };
+export type CurationMedia = AniListMedia & { isAdult: boolean; relations: CurationRelation[] };
+
+/**
+ * Dados completos de várias obras para a curadoria do catálogo (Epic 42): os campos comuns (títulos nos 3 idiomas, sinopse,
+ * gêneros com etiquetas, tipo, links) mais as relações com outras obras (sequência, OVA, filme…). Diferente de
+ * `getMediaByIds`, NÃO descarta o que é adulto: a curadoria precisa reconhecê-lo para tirar da plataforma.
+ */
+export async function getMediaForCuration(ids: number[]): Promise<CurationMedia[]> {
+  const unique = Array.from(new Set(ids));
+  if (unique.length === 0) return [];
+  const query = `
+    query ($ids: [Int], $page: Int) {
+      Page(page: $page, perPage: 50) {
+        media(id_in: $ids, type: ANIME) {
+          ${MEDIA_FIELDS}
+          isAdult
+          relations {
+            edges {
+              relationType(version: 2)
+              node { id type format title { romaji } }
+            }
+          }
+        }
+      }
+    }
+  `;
+  type Raw = Omit<CurationMedia, "relations"> & { relations: { edges: Array<{ relationType: string; node: { id: number; type: string; format: string | null; title: { romaji: string } } }> } };
+  const all: CurationMedia[] = [];
+  for (let start = 0; start < unique.length; start += 50) {
+    const batch = unique.slice(start, start + 50);
+    const data = await anilistRequest<{ Page: { media: Raw[] } }>(query, { ids: batch, page: 1 }, { fresh: true });
+    for (const raw of data.Page.media) {
+      const edges = (raw.relations?.edges ?? []).filter((e) => e.node.type === "ANIME" && RELATED_TYPES.has(e.relationType));
+      all.push({
+        ...normalizeMedia(raw as AniListMedia),
+        isAdult: Boolean(raw.isAdult),
+        relations: edges.map((e) => ({ id: e.node.id, titleRomaji: e.node.title.romaji, format: e.node.format, relationType: e.relationType })),
+      });
+    }
+  }
+  return all;
 }
 
 export type AniListTrailer = { id: string; site: string } | null;

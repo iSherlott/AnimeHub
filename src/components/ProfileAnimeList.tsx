@@ -5,12 +5,16 @@ import NextLink from "next/link";
 import { Box, ButtonBase, Typography } from "@mui/material";
 import { CoverImage } from "@/components/CoverImage";
 import { SearchField } from "@/components/FilterField";
+import { InfiniteFooter } from "@/components/InfiniteFooter";
+import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
+import { usePagedList } from "@/lib/usePagedList";
 import type { GenreFacet, ProfileAnimeEntry, ProfileAnimeList as ProfileAnimeListData } from "@/lib/profileAnimeList";
 import { CATEGORY_LABELS, STATE_LABELS, WATCH_STATES, type WatchState } from "@/lib/watchCategory";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 
 type Loaded = ProfileAnimeListData & { isOwn: boolean };
-type State = { kind: "loading" } | { kind: "error" } | { kind: "hidden" } | ({ kind: "ok" } & Loaded);
+/** O que vem junto da primeira página: totais da lista inteira (para os chips) e se é o próprio perfil. */
+type Meta = { total: number; categories: ProfileAnimeListData["categories"] };
 
 const STATUS_LABELS: Record<string, string> = {
   RELEASING: "Em exibição",
@@ -102,43 +106,48 @@ function AnimeTile({ entry, onChangeState }: { entry: ProfileAnimeEntry; onChang
  */
 export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isOwnProfile: boolean }) {
   const [query, setQuery] = useState("");
+  // A busca só vai ao servidor 250 ms depois da última tecla.
+  const [debounced, setDebounced] = useState("");
   const [genre, setGenre] = useState("");
   const [category, setCategory] = useState("");
   const [reloads, setReloads] = useState(0);
   const [saveError, setSaveError] = useState(false);
-  const [state, setState] = useState<State>({ kind: "loading" });
+  const [meta, setMeta] = useState<Meta | null>(null);
+  const [hidden, setHidden] = useState(false);
   // Chips de gênero vêm da lista inteira e não mudam enquanto se filtra.
   const [facets, setFacets] = useState<GenreFacet[]>([]);
 
   useEffect(() => {
-    let cancelled = false;
-    const timer = setTimeout(
-      () => {
-        const params = new URLSearchParams();
-        if (query.trim()) params.set("q", query.trim());
-        if (genre) params.set("genre", genre);
-        if (category) params.set("category", category);
-        fetch(`/api/users/${userId}/animes?${params.toString()}`)
-          .then(async (res) => {
-            if (res.status === 403) return { kind: "hidden" } as State;
-            if (!res.ok) return { kind: "error" } as State;
-            const data = (await res.json()) as Loaded;
-            return { kind: "ok", ...data } as State;
-          })
-          .catch(() => ({ kind: "error" }) as State)
-          .then((next) => {
-            if (cancelled) return;
-            setState(next);
-            if (next.kind === "ok" && !genre && !query.trim()) setFacets(next.genres);
-          });
-      },
-      query ? 250 : 0
-    );
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [userId, query, genre, category, reloads]);
+    const timer = setTimeout(() => setDebounced(query.trim()), query ? 250 : 0);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  // Rolagem infinita: as obras chegam 48 por vez, conforme a pessoa desce a lista.
+  const pager = usePagedList<ProfileAnimeEntry>({
+    resetKey: `${userId}|${debounced}|${genre}|${category}|${reloads}`,
+    keyOf: (entry) => String(entry.anilistId),
+    fetchPage: async (cursor) => {
+      const params = new URLSearchParams();
+      if (debounced) params.set("q", debounced);
+      if (genre) params.set("genre", genre);
+      if (category) params.set("category", category);
+      if (cursor) params.set("cursor", cursor);
+      const res = await fetch(`/api/users/${userId}/animes?${params.toString()}`);
+      if (res.status === 403) {
+        setHidden(true);
+        return { items: [], nextCursor: null, total: 0 };
+      }
+      if (!res.ok) throw new Error("falha");
+      const data = (await res.json()) as Loaded;
+      if (cursor === null) {
+        setHidden(false);
+        setMeta({ total: data.total, categories: data.categories });
+        if (!genre && !debounced) setFacets(data.genres);
+      }
+      return { items: data.entries, nextCursor: data.nextCursor, total: data.matched };
+    },
+  });
+  const { ref: sentinelRef, supported: infiniteSupported } = useInfiniteScroll(pager.loadMore, pager.hasMore && !pager.loading && !pager.failed, pager.items.length);
 
   async function changeState(animeId: string, next: WatchState | null) {
     setSaveError(false);
@@ -151,25 +160,26 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
     }
   }
 
-  if (state.kind === "hidden") {
+  if (hidden) {
     return (
       <Typography data-testid="profile-anime-hidden" sx={{ color: "text.secondary" }}>
         Esta pessoa mantém a lista de animes privada.
       </Typography>
     );
   }
-  if (state.kind === "error") {
+  if (pager.failed && pager.items.length === 0 && !meta) {
     return (
       <Typography role="alert" sx={{ color: "text.secondary" }}>
         Não foi possível carregar os animes. Tente novamente.
       </Typography>
     );
   }
-  const filtering = Boolean(query.trim() || genre || category);
+  const filtering = Boolean(debounced || genre || category);
+  const matched = pager.total ?? pager.items.length;
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }} data-testid="profile-anime-list">
-      {state.kind === "ok" && state.total === 0 && !filtering ? (
+      {meta && meta.total === 0 && !filtering ? (
         <Typography sx={{ color: "text.secondary" }}>
           {isOwnProfile ? "Você ainda não acompanha nenhum anime. Acompanhe uma obra para ela aparecer aqui." : "Esta pessoa ainda não acompanha nenhum anime."}
         </Typography>
@@ -177,11 +187,11 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
         <>
           <Box role="group" aria-label="Andamento" sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
             <Chip selected={category === ""} onClick={() => setCategory("")} testId="category-all">
-              Todos{state.kind === "ok" ? ` · ${state.total}` : ""}
+              Todos{meta ? ` · ${meta.total}` : ""}
             </Chip>
             {CATEGORY_ORDER.map((key) => (
               <Chip key={key} selected={category === key} onClick={() => setCategory(category === key ? "" : key)} testId={`category-${key}`}>
-                {CATEGORY_LABELS[key]}{state.kind === "ok" ? ` · ${state.categories[key]}` : ""}
+                {CATEGORY_LABELS[key]}{meta ? ` · ${meta.categories[key]}` : ""}
               </Chip>
             ))}
           </Box>
@@ -203,24 +213,36 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
               ))}
             </Box>
           )}
-          {state.kind === "loading" ? (
+          {pager.loading ? (
             <Typography role="status" sx={{ color: "text.secondary" }}>
               Carregando…
             </Typography>
-          ) : state.entries.length === 0 ? (
+          ) : pager.items.length === 0 ? (
             <Typography data-testid="profile-anime-empty" sx={{ color: "text.secondary" }}>
               Nenhum anime bate com esse filtro.
             </Typography>
           ) : (
             <>
               <Typography data-testid="profile-anime-count" sx={{ fontSize: 13, color: "text.secondary" }}>
-                {filtering ? `${state.entries.length} de ${state.total}` : state.total} {state.total === 1 ? "anime" : "animes"}
+                {filtering ? `${matched} de ${meta?.total ?? matched}` : (meta?.total ?? matched)} {(filtering ? matched : (meta?.total ?? matched)) === 1 ? "anime" : "animes"}
               </Typography>
               <Box component="ul" sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 2, p: 0, m: 0 }}>
-                {state.entries.map((entry) => (
+                {pager.items.map((entry) => (
                   <AnimeTile key={entry.anilistId} entry={entry} onChangeState={(animeId, next) => void changeState(animeId, next)} />
                 ))}
               </Box>
+              <InfiniteFooter
+                testId="profile-anime"
+                sentinelRef={sentinelRef}
+                supported={infiniteSupported}
+                hasMore={pager.hasMore}
+                loadingMore={pager.loadingMore}
+                failed={pager.failed}
+                onMore={pager.loadMore}
+                onRetry={pager.retry}
+                loadingLabel="Carregando mais animes…"
+                moreLabel="Ver mais animes"
+              />
             </>
           )}
         </>

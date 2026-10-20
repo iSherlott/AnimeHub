@@ -255,7 +255,7 @@ describe("AniList GraphQL requests", () => {
           Page: {
             media: [
               makeMedia({ id: 1, genres: ["Science Fiction"] }),
-              makeMedia({ id: 2, genres: ["Drama"] }),
+              makeMedia({ id: 2, genres: ["Action"] }),
             ],
           },
         },

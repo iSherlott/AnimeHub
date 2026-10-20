@@ -21,7 +21,7 @@ describe("mergeGenres", () => {
   // antes da taxonomia existir) e (2) sinônimos de fontes diferentes pro
   // mesmo conceito não viram duas entradas.
   it("descarta termos sem mapeamento, inclusive os que já estavam salvos", () => {
-    expect(mergeGenres(["Action", "Isekai"], [["Drama"]])).toEqual(["Isekai"]);
+    expect(mergeGenres(["Action", "Isekai"], [["Fantasy"]])).toEqual(["Isekai"]);
   });
 
   it("não duplica quando duas fontes mandam sinônimos do mesmo gênero", () => {

@@ -10,6 +10,10 @@ import { AnimeTitle } from "@/components/AnimeTitle";
 import { AppLink } from "@/components/AppLink";
 import { FollowProductionButton } from "@/components/FollowProductionButton";
 import { FranchiseSeasons } from "@/components/FranchiseSeasons";
+import { SiteScoreChip } from "@/components/SiteScoreChip";
+import { SpecialsNotice, WorkSpecials } from "@/components/WorkSpecials";
+import { loadTimeline } from "@/lib/curation/timelineLoader";
+import { KIND_LABELS, type Kind } from "@/lib/curation/kind";
 import { NextEpisodeBlock } from "@/components/NextEpisodeBlock";
 import { ScheduleEpisodeList } from "@/components/ScheduleEpisodeList";
 import { SynopsisText } from "@/components/SynopsisText";
@@ -41,19 +45,21 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
     : null;
   if (owned) redirect(`/anime/${owned.id}`);
 
-  const [nextEpisode, catalog, seasons, schedule, images] = await Promise.all([
+  const [nextEpisode, catalog, seasons, schedule, images, timeline] = await Promise.all([
     prisma.airingScheduleEntry.findFirst({ where: { anilistId, airingAt: { gte: new Date() } }, orderBy: { airingAt: "asc" } }),
-    prisma.catalogEntry.findUnique({ where: { anilistId }, select: { averageScore: true } }),
+    prisma.catalogEntry.findUnique({ where: { anilistId }, select: { siteScore: true, siteScoreVotes: true, kind: true, officialSite: true } }),
     loadFranchiseSeasons(anilistId),
     prisma.airingScheduleEntry.findMany({ where: { anilistId }, orderBy: { episode: "asc" }, select: { episode: true, airingAt: true } }),
     prisma.episodeImage.findMany({ where: { anilistId }, select: { episode: true, thumbnail: true } }),
+    loadTimeline(anilistId),
   ]);
+  const officialSite = production.officialSite ?? catalog?.officialSite ?? null;
   const imageByEpisode = new Map(images.map((i) => [i.episode, i.thumbnail]));
   const genres = production.genres ? production.genres.split(",").filter(Boolean) : [];
   const titlePrimary = production.titleNative ?? production.titleRomaji;
 
   const info: Array<[string, string]> = [
-    ["Tipo", production.format ? (FORMAT_LABEL[production.format] ?? production.format) : "—"],
+    ["Tipo", catalog?.kind ? `${KIND_LABELS[catalog.kind as Kind] ?? catalog.kind}${production.format ? ` (${FORMAT_LABEL[production.format] ?? production.format})` : ""}` : production.format ? (FORMAT_LABEL[production.format] ?? production.format) : "—"],
     ["Temporada", production.season && production.seasonYear ? `${SEASON_LABEL[production.season] ?? production.season} ${production.seasonYear}` : production.seasonYear ? String(production.seasonYear) : "—"],
     ["Status", production.status ? (STATUS_LABEL[production.status] ?? production.status) : "—"],
     ["Episódios", production.episodes ? String(production.episodes) : "—"],
@@ -82,7 +88,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
               <Typography component="h1" data-testid="anime-title" variant="h3" className="font-display" sx={{ textTransform: "uppercase", lineHeight: 1 }}>
                 <AnimeTitle titles={{ titleRomaji: production.titleRomaji, titleEnglish: production.titleEnglish, titleNative: production.titleNative }} />
               </Typography>
-              {catalog?.averageScore ? <Chip label={`AniList ${(catalog.averageScore / 10).toFixed(1)}`} title="Nota média da comunidade AniList" size="small" sx={{ bgcolor: "secondary.main", color: "#0b0b0d", fontWeight: 700 }} /> : null}
+              <SiteScoreChip score={catalog?.siteScore ?? 5} votes={catalog?.siteScoreVotes ?? 0} />
             </Stack>
             {production.titleNative && (
               <Typography className="font-jp" variant="h6" sx={{ mt: 0.5, color: "text.secondary" }}>
@@ -120,7 +126,9 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
             </Typography>
             <SynopsisText description={production.description} anilistId={production.anilistId} sx={{ fontSize: 16 }} />
           </Box>
+          <SpecialsNotice timeline={timeline} />
           <FranchiseSeasons seasons={seasons} signedIn={Boolean(user)} />
+          <WorkSpecials timeline={timeline} />
         </Box>
 
         <Box component="section" aria-labelledby="info-heading" sx={{ bgcolor: "background.paper", borderRadius: "16px", p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
@@ -154,10 +162,10 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
             </Typography>
           </Box>
           <WorkQuizEntry anilistId={anilistId} userId={user?.id ?? null} />
-          {production.officialSite && (
+          {officialSite && (
             <Box>
               <AppLink
-                href={production.officialSite}
+                href={officialSite}
                 target="_blank"
                 rel="noopener noreferrer"
                 underline="none"

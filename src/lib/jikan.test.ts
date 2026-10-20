@@ -46,12 +46,11 @@ describe("searchJikanAnime", () => {
 
     const result = await searchJikanAnime("Some Anime");
 
-    // "Drama" não tem mapeamento na taxonomia fechada (Epic 3, confirmado
-    // com o usuário) e é descartado — só Comedy/Isekai sobrevivem.
+    // "Drama" agora é gênero da plataforma (Epic 42): os três sobrevivem, na ordem em que chegaram.
     expect(result).toEqual({
       malId: 12345,
       synopsis: "A great story.",
-      genres: ["Comedy", "Isekai"],
+      genres: ["Comedy", "Drama", "Isekai"],
       score: 8.4,
       episodes: 24,
     });

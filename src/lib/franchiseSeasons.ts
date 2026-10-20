@@ -58,5 +58,9 @@ export async function loadFranchiseSeasons(anilistId: number): Promise<SeasonEnt
   // A própria obra sempre está na lista (mesmo sem produção ou catálogo completo).
   add({ anilistId, seasonNumber: "seasonNumber" in base ? seasonNumberOf(base.seasonNumber, base.titleRomaji) : info.seasonNumber, titleRomaji: base.titleRomaji, titleEnglish: base.titleEnglish, titleNative: base.titleNative, coverImage: base.coverImage, description: base.description, format: "format" in base ? base.format : null, status: base.status, season: base.season, seasonYear: base.seasonYear, episodes: base.episodes });
 
+  // "Temporadas" é a linha principal: OVA, ODA e filmes (já classificados pela curadoria) ficam em "Especiais e filmes".
+  const kinds = await prisma.catalogEntry.findMany({ where: { anilistId: { in: Array.from(entries.keys()) }, kind: { not: null } }, select: { anilistId: true, kind: true } });
+  for (const k of kinds) if (k.kind !== "EPISODE" && k.anilistId !== anilistId) entries.delete(k.anilistId as number);
+
   return Array.from(entries.values()).sort((a, b) => a.seasonNumber - b.seasonNumber || (a.seasonYear ?? 0) - (b.seasonYear ?? 0));
 }

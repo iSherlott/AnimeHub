@@ -1,6 +1,7 @@
 import type { CatalogEntry } from "@prisma/client";
 import { fuzzyDateToISO, type AniListMedia } from "@/lib/anilist";
 import { prisma } from "@/lib/prisma";
+import { classifyKind } from "@/lib/curation/kind";
 
 export type DiscoverItem = {
   key: string;
@@ -20,6 +21,8 @@ export type DiscoverItem = {
   status: string | null;
   /** Tipo da obra: TV, TV_SHORT, MOVIE, OVA, ONA, SPECIAL, MUSIC (nulo = ainda não conhecido). */
   format?: string | null;
+  /** Tipo na linha da história (curadoria): EPISODE, OVA, ODA, MOVIE ou OTHER (nulo = ainda não classificado). */
+  kind?: string | null;
   season: string | null;
   startDate: string | null;
   endDate: string | null;
@@ -51,6 +54,7 @@ export function discoverItemFromAniList(media: AniListMedia): DiscoverItem {
     genres: media.genres,
     status: media.status,
     format: media.format ?? null,
+    kind: classifyKind({ format: media.format, title: media.title.romaji }),
     season: media.season,
     startDate: fuzzyDateToISO(media.startDate),
     endDate: fuzzyDateToISO(media.endDate),
@@ -82,6 +86,7 @@ export function discoverItemFromCatalogEntry(
     genres: entry.genres ? entry.genres.split(",").filter(Boolean) : [],
     status: entry.status,
     format: entry.format,
+    kind: entry.kind,
     season: entry.season,
     startDate: entry.startDate ? entry.startDate.toISOString() : null,
     endDate: entry.endDate ? entry.endDate.toISOString() : null,

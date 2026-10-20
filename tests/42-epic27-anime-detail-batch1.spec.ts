@@ -162,22 +162,31 @@ test.describe("Epic 27 (lote 1) — comentários paginados, 'ver mais' e ícone 
     await prisma.$disconnect();
   });
 
-  test("página 1 mostra 10 comentários com paginação, página 2 mostra os 5 restantes", async ({ page }) => {
+  /** Rola até o fim da página até o comentário aparecer (a próxima leva chega quando o fim da lista se aproxima). */
+  async function scrollUntilVisible(page: import("@playwright/test").Page, text: string) {
+    await expect(async () => {
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await expect(page.getByText(text, { exact: true })).toBeVisible({ timeout: 1000 });
+    }).toPass({ timeout: 15_000 });
+  }
+
+  test("a primeira leva traz 10 comentários e os 4 restantes chegam ao descer (rolagem infinita)", async ({ page }) => {
     await page.goto(`/anime/${animeId}`);
     // exact:true em todo lugar — "número 1" é substring de "número 10"..14,
-    // sem isso o teste "passaria" mesmo se a paginação nunca cortasse nada.
+    // sem isso o teste "passaria" mesmo se a lista nunca cortasse nada.
     await expect(page.getByText("Comentário paginado número 1", { exact: true })).toBeVisible();
     await expect(page.getByText("Comentário paginado número 10", { exact: true })).toBeVisible();
     await expect(page.getByText("Comentário paginado número 11", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Go to page 2" })).toHaveCount(0); // sem paginação numerada
 
-    await page.getByRole("button", { name: "Go to page 2" }).click();
-    await expect(page.getByText("Comentário paginado número 11", { exact: true })).toBeVisible();
-    await expect(page.getByText("Comentário paginado número 1", { exact: true })).toHaveCount(0);
+    await scrollUntilVisible(page, "Comentário paginado número 11");
+    await expect(page.getByText("Comentário paginado número 1", { exact: true })).toHaveCount(1); // os anteriores continuam na lista
+    await expect(page.getByTestId("comments-sentinel")).toHaveCount(0); // acabou
   });
 
   test("comentário longo trunca com 'ver mais' e expande ao clicar", async ({ page }) => {
     await page.goto(`/anime/${animeId}`);
-    await page.getByRole("button", { name: "Go to page 2" }).click();
+    await scrollUntilVisible(page, "Comentário paginado número 11");
 
     const longBody = "L".repeat(320);
     await expect(page.getByText(longBody)).toHaveCount(0);

@@ -13,7 +13,10 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { Box, Button, Link as MuiLink, Typography } from "@mui/material";
 import { ELEVATED_BUTTON_SX, lineLang, PrimaryTitle, useTitleLines } from "@/components/ExploreCard";
 import { SearchField, SelectField } from "@/components/FilterField";
+import { InfiniteFooter } from "@/components/InfiniteFooter";
 import { ListRow } from "@/components/ListRow";
+import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
+import { useWindowedList } from "@/lib/useWindowedList";
 import type { MyListEntry } from "@/lib/myList";
 import { rowTimeLabel, sectionsByRelease } from "@/lib/myListGroups";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
@@ -21,6 +24,9 @@ import { formatTimeInZone, weekdayName } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
 
 export type { MyListEntry } from "@/lib/myList";
+
+/** Quantos animes aparecem de cada vez em Minha Lista (o resto vem ao rolar). */
+const LIST_WINDOW = 30;
 
 type SortMode = "next" | "recent" | "title";
 
@@ -298,6 +304,28 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
     );
   }, [visible, sort, preference]);
 
+  // Rolagem infinita: a lista pode ter centenas de obras, então os cartões aparecem aos poucos, na ordem em que estão na tela
+  // (agenda por data, sem horário, atrasados, sem data e, por último, em espera). Cada grupo mostra a parte que couber.
+  const rowOrder = useMemo(
+    () => (flat ? flat : [...sections.flatMap((s) => s.items.map((i) => i.entry)), ...noTime, ...delayed, ...unknown, ...waitingEntries]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [flat, sections, active, visible]
+  );
+  const windowed = useWindowedList(rowOrder, `${query}|${sort}|${status}`, LIST_WINDOW);
+  const { ref: sentinelRef, supported: infiniteSupported } = useInfiniteScroll(windowed.loadMore, windowed.hasMore, windowed.shown);
+  let budget = windowed.shown;
+  const take = <T,>(list: T[]): T[] => {
+    const part = list.slice(0, budget);
+    budget -= part.length;
+    return part;
+  };
+  const flatShown = flat ? take(flat) : [];
+  const shownSections = flat ? [] : sections.map((section) => ({ ...section, items: take(section.items) })).filter((section) => section.items.length > 0);
+  const noTimeShown = flat ? [] : take(noTime);
+  const delayedShown = flat ? [] : take(delayed);
+  const unknownShown = flat ? [] : take(unknown);
+  const waitingShown = flat ? [] : take(waitingEntries);
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "flex-end" }}>
@@ -331,7 +359,7 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
             {sort === "recent" ? "Adicionados recentemente" : "Em ordem alfabética"}
           </Typography>
           <Box component="ul" sx={{ display: "flex", flexDirection: "column", gap: 2, p: 0, m: 0 }}>
-            {flat.map((entry) =>
+            {flatShown.map((entry) =>
               entry.state.kind === "scheduled" ? (
                 renderRow({ at: entry.state.at, entry, episode: entry.state.episode })
               ) : (
@@ -351,8 +379,8 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
         </Box>
       ) : (
         <>
-          {sections.map((section, index) => {
-            const firstNested = section.nested && !sections.slice(0, index).some((s) => s.nested);
+          {shownSections.map((section, index) => {
+            const firstNested = section.nested && !shownSections.slice(0, index).some((s) => s.nested);
             return (
               <Box key={section.key} data-testid={`group-${section.key}`} sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
                 {firstNested && (
@@ -385,14 +413,14 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
             );
           })}
 
-          {(noTime.length > 0 || delayed.length > 0) && (
+          {(noTimeShown.length > 0 || delayedShown.length > 0) && (
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" }, gap: 3, alignItems: "start" }}>
-              {noTime.length > 0 && (
+              {noTimeShown.length > 0 && (
                 <Box component="section" aria-labelledby="my-no-time" data-testid="group-no-time" sx={panelSx}>
                   <Typography id="my-no-time" component="h2" sx={{ fontSize: 18, textTransform: "uppercase" }}>
                     Sem horário definido
                   </Typography>
-                  {noTime.map((entry) => (
+                  {noTimeShown.map((entry) => (
                     <Box key={entry.id} data-testid={`anime-card-${entry.id}`} sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
                       <EntryTitle entry={entry} />
                       {entry.state.kind === "dated" && (
@@ -409,12 +437,12 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
                   ))}
                 </Box>
               )}
-              {delayed.length > 0 && (
+              {delayedShown.length > 0 && (
                 <Box component="section" aria-labelledby="my-delayed" data-testid="group-delayed" sx={panelSx}>
                   <Typography id="my-delayed" component="h2" sx={{ fontSize: 18, textTransform: "uppercase" }}>
                     Adiado / Atrasado
                   </Typography>
-                  {delayed.map((entry) => (
+                  {delayedShown.map((entry) => (
                     <Box key={entry.id} data-testid={`anime-card-${entry.id}`} sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
                       <EntryTitle entry={entry} />
                       {entry.state.kind === "delayed" ? (
@@ -436,13 +464,13 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
             </Box>
           )}
 
-          {unknown.length > 0 && (
+          {unknownShown.length > 0 && (
             <Box component="section" aria-labelledby="my-unknown" data-testid="group-unknown" sx={panelSx}>
               <Typography id="my-unknown" component="h2" sx={{ fontSize: 18, textTransform: "uppercase" }}>
                 Data não definida
               </Typography>
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(3, minmax(0, 1fr))" }, gap: 3 }}>
-                {unknown.map((entry) => (
+                {unknownShown.map((entry) => (
                   <Box
                     key={entry.id}
                     data-testid={`anime-card-${entry.id}`}
@@ -459,7 +487,7 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
             </Box>
           )}
 
-          {waitingEntries.length > 0 && (
+          {waitingShown.length > 0 && (
             <Box component="section" aria-labelledby="my-waiting" data-testid="group-waiting" sx={panelSx}>
               <Typography id="my-waiting" component="h2" sx={{ fontSize: 18, textTransform: "uppercase" }}>
                 Em espera
@@ -468,7 +496,7 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
                 Não acompanho no lançamento. Continuam na lista e no perfil; fora do calendário e dos alertas.
               </Typography>
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(3, minmax(0, 1fr))" }, gap: 3 }}>
-                {waitingEntries.map((entry) => (
+                {waitingShown.map((entry) => (
                   <Box
                     key={entry.id}
                     data-testid={`anime-card-${entry.id}`}
@@ -486,6 +514,17 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
           )}
         </>
       )}
+      <InfiniteFooter
+        testId="mylist"
+        sentinelRef={sentinelRef}
+        supported={infiniteSupported}
+        hasMore={windowed.hasMore}
+        loadingMore={false}
+        failed={false}
+        onMore={windowed.loadMore}
+        onRetry={windowed.loadMore}
+        moreLabel="Ver mais da minha lista"
+      />
     </Box>
   );
 }

@@ -9,6 +9,9 @@ import { PageContainer, PageIntro } from "@/components/PageShell";
 import { ExploreCard } from "@/components/ExploreCard";
 import { CardGrid, CardGridSkeleton, EmptyPanel, SectionHeader, SeasonChips } from "@/components/ExploreParts";
 import { SelectField } from "@/components/FilterField";
+import { InfiniteFooter } from "@/components/InfiniteFooter";
+import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
+import { useWindowedList } from "@/lib/useWindowedList";
 import type { DiscoverItem } from "@/lib/discoverItem";
 import { parseSeasonSlug, SEASON_COPY, seasonLabel, seasonSlug, splitSeasonItems, type SeasonRef } from "@/lib/exploreGroups";
 import type { AvailableSeason } from "@/lib/availableSeasons";
@@ -103,6 +106,11 @@ function SeasonView({ seasonRef: ref }: { seasonRef: SeasonRef }) {
     [items, genre, status]
   );
   const { airing, rest } = useMemo(() => splitSeasonItems(filtered), [filtered]);
+  // Rolagem infinita: a temporada chega inteira, mas os cartões aparecem aos poucos (primeiro os que estão no ar).
+  const windowed = useWindowedList(useMemo(() => [...airing, ...rest], [airing, rest]), `${season}:${year}:${genre}:${status}`);
+  const { ref: sentinelRef, supported: infiniteSupported } = useInfiniteScroll(windowed.loadMore, windowed.hasMore, windowed.shown);
+  const airingShown = windowed.visible.slice(0, airing.length);
+  const restShown = windowed.visible.slice(airing.length);
   const copy = SEASON_COPY[season];
   const label = seasonLabel(ref);
 
@@ -168,26 +176,38 @@ function SeasonView({ seasonRef: ref }: { seasonRef: SeasonRef }) {
           </EmptyPanel>
         ) : (
           <>
-            {airing.length > 0 && (
+            {airingShown.length > 0 && (
               <Box component="section" sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <SectionHeader title="Em exibição" note={`${airing.length} com horário confirmado`} chip />
                 <CardGrid label="Em exibição">
-                  {airing.map((item) => (
+                  {airingShown.map((item) => (
                     <ExploreCard key={item.key} item={item} />
                   ))}
                 </CardGrid>
               </Box>
             )}
-            {rest.length > 0 && (
+            {restShown.length > 0 && (
               <Box component="section" sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <SectionHeader title="Estreias e datas a confirmar" note="Sem previsão inventada" />
                 <CardGrid label="Estreias e datas a confirmar">
-                  {rest.map((item) => (
+                  {restShown.map((item) => (
                     <ExploreCard key={item.key} item={item} />
                   ))}
                 </CardGrid>
               </Box>
             )}
+            <InfiniteFooter
+              testId="season"
+              sentinelRef={sentinelRef}
+              supported={infiniteSupported}
+              hasMore={windowed.hasMore}
+              loadingMore={false}
+              failed={false}
+              onMore={windowed.loadMore}
+              onRetry={windowed.loadMore}
+              moreLabel="Ver mais animes"
+              endLabel={windowed.total > 48 ? "Você viu a temporada inteira." : undefined}
+            />
           </>
         )}
 

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { loginHref } from "@/lib/safeRedirect";
 import NextLink from "next/link";
@@ -16,12 +16,15 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { InfiniteFooter } from "@/components/InfiniteFooter";
 import { UserAvatar } from "@/components/UserAvatar";
 import { AchievementTitleBadge } from "@/components/AchievementTitleBadge";
 import { SpoilerGate } from "@/components/SpoilerGate";
 import { ReportDialog } from "@/components/ReportDialog";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { formatRelativeTime } from "@/lib/relativeTime";
+import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
+import { useWindowedList } from "@/lib/useWindowedList";
 
 type CommentItem = {
   id: string;
@@ -37,6 +40,8 @@ type CommentItem = {
 // Mesmo limite do backend (src/app/api/posts/[postId]/comments/route.ts) —
 // mesmo padrão de eco no cliente já usado em CommentSection.tsx.
 const MAX_BODY_LENGTH = 2000;
+// Respostas que aparecem de cada vez (o resto vem ao rolar a conversa).
+const COMMENT_WINDOW = 20;
 
 /** Respostas de topo em ordem cronológica, cada uma seguida das suas filhas (um nível). */
 function threadOrder(comments: CommentItem[]): CommentItem[] {
@@ -97,14 +102,30 @@ export function PostComments({
   // próximo render.
   const postingRef = useRef(false);
 
-  // Destino de notificação com âncora (#comentario-<id>): depois que a
-  // lista carrega, leva a resposta exata para a tela.
+  // Rolagem infinita: conversas longas aparecem aos poucos, na ordem da conversa.
+  const ordered = useMemo(() => threadOrder(comments), [comments]);
+  const windowed = useWindowedList(ordered, postId, COMMENT_WINDOW);
+  const { ref: sentinelRef, supported: infiniteSupported } = useInfiniteScroll(windowed.loadMore, windowed.hasMore, windowed.shown);
+
+  // Destino de notificação com âncora (#comentario-<id>): depois que a lista carrega, leva a resposta exata para a tela
+  // (abrindo antes a parte da conversa em que ela está, se ainda não estiver à mostra).
+  const anchoredRef = useRef(false);
   useEffect(() => {
-    if (loading) return;
+    if (loading || anchoredRef.current) return;
     const hash = window.location.hash;
-    if (!hash.startsWith("#comentario-")) return;
+    if (!hash.startsWith("#comentario-")) {
+      anchoredRef.current = true;
+      return;
+    }
+    const index = ordered.findIndex((c) => `comentario-${c.id}` === hash.slice(1));
+    if (index >= windowed.shown) {
+      windowed.expandTo(index + 1); // o efeito roda de novo com a resposta já na tela
+      return;
+    }
+    anchoredRef.current = true;
     document.getElementById(hash.slice(1))?.scrollIntoView({ block: "center" });
-  }, [loading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, ordered, windowed.shown]);
 
   useEffect(() => {
     let cancelled = false;
@@ -254,7 +275,7 @@ export function PostComments({
         <Typography sx={{ color: "text.secondary", fontSize: 14 }}>Nenhum comentário ainda. Seja o primeiro.</Typography>
       ) : (
         <Stack spacing={3}>
-          {threadOrder(comments).map((c) => {
+          {windowed.visible.map((c) => {
             const nested = Boolean(c.parentId && comments.some((p) => p.id === c.parentId));
             return (
               <Box
@@ -329,6 +350,17 @@ export function PostComments({
               </Box>
             );
           })}
+          <InfiniteFooter
+            testId="post-comments"
+            sentinelRef={sentinelRef}
+            supported={infiniteSupported}
+            hasMore={windowed.hasMore}
+            loadingMore={false}
+            failed={false}
+            onMore={windowed.loadMore}
+            onRetry={windowed.loadMore}
+            moreLabel="Ver mais respostas"
+          />
         </Stack>
       )}
 

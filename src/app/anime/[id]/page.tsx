@@ -30,6 +30,9 @@ import { callInternalService } from "@/lib/serviceDelegate";
 import type { AniListCharacterEntry, AniListRecommendation } from "@/lib/anilist";
 import { loadFranchiseSeasons } from "@/lib/franchiseSeasons";
 import { FranchiseSeasons } from "@/components/FranchiseSeasons";
+import { SiteScoreChip } from "@/components/SiteScoreChip";
+import { SpecialsNotice, WorkSpecials } from "@/components/WorkSpecials";
+import { loadTimeline } from "@/lib/curation/timelineLoader";
 import { WorkHero } from "@/components/WorkHero";
 import { WorkDiscussions, WorkQuizEntry, WorkRelated } from "@/components/WorkSections";
 import { PublicWork } from "@/app/anime/[id]/PublicWork";
@@ -113,9 +116,16 @@ export default async function AnimeDetailPage({
   // O andamento de cada temporada da obra na lista de quem olha (para escolher: acompanhando, terminei, dropei…).
   const mySeasonRows = await prisma.anime.findMany({
     where: { userId: user.id, anilistId: { in: franchiseSeasons.map((s) => s.anilistId) } },
-    select: { id: true, anilistId: true, watchState: true, waiting: true },
+    select: { id: true, anilistId: true, watchState: true, waiting: true, userScore: true },
   });
-  const mySeasons = Object.fromEntries(mySeasonRows.map((a) => [a.anilistId, { animeId: a.id, watchState: a.watchState, waiting: a.waiting }]));
+  const mySeasons = Object.fromEntries(mySeasonRows.map((a) => [a.anilistId, { animeId: a.id, watchState: a.watchState, waiting: a.waiting, userScore: a.userScore }]));
+
+  // Nota do site e linha do tempo (especiais) da obra; o site oficial do catálogo cobre quem ainda não o tem na lista.
+  const [catalogMeta, timeline] = await Promise.all([
+    prisma.catalogEntry.findUnique({ where: { anilistId: anime.anilistId }, select: { siteScore: true, siteScoreVotes: true, officialSite: true } }),
+    loadTimeline(anime.anilistId),
+  ]);
+  const officialSite = anime.officialSite ?? catalogMeta?.officialSite ?? null;
 
   const animeIdByAnilistId = new Map(ownedRecommendedAnime.map((a) => [a.anilistId, a.id]));
   const recommendations: RecommendationData[] = rawRecommendations.map((rec) => {
@@ -153,21 +163,7 @@ export default async function AnimeDetailPage({
                   furiganaHtml={furiganaHtml}
                 />
               </Typography>
-              {anime.anidbRating ? (
-                <Chip
-                  label={`AniDB ${anime.anidbRating.toFixed(1)}`}
-                  title={`Nota da AniDB${anime.anidbVotes ? ` — ${anime.anidbVotes} votos` : ""}`}
-                  size="small"
-                  sx={{ bgcolor: "secondary.main", color: "#0b0b0d", fontWeight: 700 }}
-                />
-              ) : anime.averageScore ? (
-                <Chip
-                  label={`AniList ${(anime.averageScore / 10).toFixed(1)}`}
-                  title="Nota média da comunidade AniList"
-                  size="small"
-                  sx={{ bgcolor: "secondary.main", color: "#0b0b0d", fontWeight: 700 }}
-                />
-              ) : null}
+              <SiteScoreChip score={catalogMeta?.siteScore ?? 5} votes={catalogMeta?.siteScoreVotes ?? 0} />
               <FavoriteToggle animeId={anime.id} initialFavorite={anime.isFavorite} />
             </Stack>
             {anime.titleNative && (
@@ -203,7 +199,7 @@ export default async function AnimeDetailPage({
             )}
           </Stack>
 
-          {(genres.length > 0 || anime.officialSite) && (
+          {(genres.length > 0 || officialSite) && (
             <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", alignItems: "center" }}>
               {genres.map((g) => (
                 <Chip
@@ -216,10 +212,10 @@ export default async function AnimeDetailPage({
                   sx={{ fontWeight: 700, textTransform: "uppercase" }}
                 />
               ))}
-              {anime.officialSite && (
+              {officialSite && (
                 <Chip
                   component="a"
-                  href={anime.officialSite}
+                  href={officialSite}
                   target="_blank"
                   rel="noopener noreferrer"
                   clickable
@@ -249,7 +245,9 @@ export default async function AnimeDetailPage({
             />
           )}
 
+          <SpecialsNotice timeline={timeline} />
           <FranchiseSeasons seasons={franchiseSeasons} mine={mySeasons} signedIn />
+          <WorkSpecials timeline={timeline} />
 
           {(anime.anidbAwards || anime.anidbResources) && (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1, borderLeft: 2, borderColor: "secondary.main", bgcolor: "background.paper", p: 2 }}>

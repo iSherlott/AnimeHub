@@ -9,6 +9,8 @@ import { clientIp, rateLimitedResponse } from "@/lib/rateLimit";
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
 const MIN_QUERY = 2;
+/** Quantas hashtags casadas entram na classificação (a tela as mostra em páginas). */
+const MAX_HASHTAGS = 500;
 const MAX_QUERY = 80;
 
 /**
@@ -56,30 +58,36 @@ export async function GET(request: Request) {
     });
   }
 
+  // Perfis e hashtags paginam por posição (`cursor` = quantos já foram): a tela rola e pede a página seguinte.
+  const offset = Math.max(0, Number(cursor) || 0);
+
   if (scope === "profiles") {
     const blocked = [...(await blockedUserIdSet(viewerId))];
-    const users = await prisma.user.findMany({
+    const found = await prisma.user.findMany({
       where: {
         OR: [{ displayName: { contains: q, mode: "insensitive" } }, { handle: { contains: q.toLowerCase() } }],
         ...(blocked.length ? { id: { notIn: blocked } } : {}),
       },
       select: { id: true, displayName: true, handle: true, avatarUrl: true, bio: true },
       orderBy: [{ displayName: "asc" }, { id: "asc" }],
-      take: limit,
+      skip: offset,
+      take: limit + 1,
     });
-    return NextResponse.json({ scope, profiles: users, nextCursor: null });
+    const hasMoreProfiles = found.length > limit;
+    const users = hasMoreProfiles ? found.slice(0, limit) : found;
+    return NextResponse.json({ scope, profiles: users, nextCursor: hasMoreProfiles ? String(offset + limit) : null });
   }
 
   const key = canonicalHashtagKey(q);
   const tags = await prisma.hashtag.findMany({
     where: { OR: [{ key: { contains: key } }, { display: { contains: q, mode: "insensitive" } }] },
     select: { key: true, display: true, kind: true, _count: { select: { posts: { where: { post: { deletedAt: null } } } } } },
-    take: 100,
+    take: MAX_HASHTAGS,
   });
-  const hashtags = tags
+  const ranked = tags
     .map((t) => ({ key: t.key, display: t.display, kind: t.kind, postCount: t._count.posts }))
     .filter((t) => t.postCount > 0)
-    .sort((a, b) => b.postCount - a.postCount || a.key.localeCompare(b.key))
-    .slice(0, limit);
-  return NextResponse.json({ scope, hashtags, nextCursor: null });
+    .sort((a, b) => b.postCount - a.postCount || a.key.localeCompare(b.key));
+  const hashtags = ranked.slice(offset, offset + limit);
+  return NextResponse.json({ scope, hashtags, nextCursor: offset + limit < ranked.length ? String(offset + limit) : null });
 }

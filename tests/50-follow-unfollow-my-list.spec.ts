@@ -93,16 +93,21 @@ test.describe("Minha Lista (Figma 8:2608) e deixar de acompanhar", () => {
 
   test("ordenar por título troca o agrupamento por uma lista única em ordem alfabética", async ({ page }) => {
     await page.goto("/minha-lista");
-    await page.getByTestId("sort-select").selectOption("title");
-    await expect(page.getByTestId("group-all")).toContainText("Em ordem alfabética");
+    // Repete a escolha até a lista trocar: numa lista grande a hidratação pode terminar depois do primeiro clique.
+    await expect(async () => {
+      await page.getByTestId("sort-select").selectOption("title");
+      await expect(page.getByTestId("group-all")).toContainText("Em ordem alfabética", { timeout: 1500 });
+    }).toPass({ timeout: 15_000 });
   });
 
-  test("detalhe do anime não tem editor de progresso, status nem nota", async ({ page }) => {
+  test("detalhe do anime não tem editor de progresso, status nem nota da pessoa (só a nota do site)", async ({ page }) => {
     await page.goto(`/anime/${unfollowAnimeId}`);
     await expect(page.getByTestId("unfollow-button")).toBeVisible();
-    for (const forbidden of ["Quero assistir", "Assistindo", "Marcar como finalizado", "Nota"]) {
+    for (const forbidden of ["Quero assistir", "Assistindo", "Marcar como finalizado", "Sua nota"]) {
       await expect(page.locator("main, body").first()).not.toContainText(forbidden);
     }
+    // A nota que aparece é a do site (Epic 42), não um campo para a pessoa editar aqui.
+    await expect(page.getByTestId("site-score")).toContainText("Nota do site");
   });
 
   test("a API de progresso foi removida", async ({ request }) => {

@@ -120,6 +120,8 @@ test.describe.serial("Adiar, Para assistir e Animes no perfil", () => {
 
   test("Minha Lista: o botão Espera tira a obra da agenda sem sair da lista, e retoma", async ({ page, request }) => {
     await page.goto("/minha-lista");
+    // A lista rola aos poucos (30 por vez): a busca deixa só esta obra, e o painel "Em espera" (que fica no fim) aparece junto.
+    await page.getByLabel("Buscar na minha lista").fill("Pendente Round72");
     const card = page.getByTestId(`anime-card-${animeId}`);
     const toggle = card.getByTestId("wait-toggle");
     await expect(toggle).toHaveText("Espera");

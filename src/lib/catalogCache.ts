@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { fuzzyDateToISO, type AniListMedia } from "@/lib/anilist";
 import type { CatalogEntry } from "@prisma/client";
 import { hasBlockedGenre, NOT_BLOCKED_GENRE } from "@/lib/contentPolicy";
+import { classifyKind } from "@/lib/curation/kind";
+import { rankTitleMatches } from "@/lib/searchRank";
 
 function anilistToCatalogData(media: AniListMedia, popularityRank: number | null) {
   const startDateISO = fuzzyDateToISO(media.startDate);
@@ -19,7 +21,7 @@ function anilistToCatalogData(media: AniListMedia, popularityRank: number | null
     episodes: media.episodes,
     status: media.status,
     // Sem o tipo na resposta, o que já estava guardado continua.
-    ...(media.format ? { format: media.format } : {}),
+    ...(media.format ? { format: media.format, kind: classifyKind({ format: media.format, title: media.title.romaji }) } : {}),
     // ONAs e obras sem temporada na AniList: o que já estava guardado (a temporada do AniDB) continua.
     ...(media.season && media.seasonYear ? { season: media.season, seasonYear: media.seasonYear } : {}),
     genres: media.genres.join(","),
@@ -74,8 +76,8 @@ export async function cacheAniListMedia(
  * por título normalizado, priorizando a que já tem `anilistId` (fonte mais
  * completa).
  */
-function dedupeByTitle(entries: CatalogEntry[]): CatalogEntry[] {
-  const byTitle = new Map<string, CatalogEntry>();
+function dedupeByTitle<T extends { titleRomaji: string; anilistId: number | null }>(entries: T[]): T[] {
+  const byTitle = new Map<string, T>();
   for (const entry of entries) {
     const key = entry.titleRomaji.trim().toLowerCase();
     const existing = byTitle.get(key);
@@ -102,19 +104,30 @@ export async function getCachedSeason(
   );
 }
 
+/** Quantas obras a busca ao vivo devolve (as mais relevantes); o resto da lista chega pela página do catálogo (rolagem infinita). */
+export const SEARCH_LIMIT = 15;
+
+/**
+ * Busca por título nas obras da plataforma, da mais para a menos relevante (título igual, depois começa com, depois palavra
+ * que começa com, depois contém) e só as `limit` primeiras. Só os títulos são lidos do banco para achar e ordenar; as obras
+ * completas são buscadas só para as escolhidas.
+ */
 export async function searchCachedCatalog(
-  search: string
+  search: string,
+  limit: number = SEARCH_LIMIT
 ): Promise<CatalogEntry[]> {
   const needle = search.trim().toLowerCase();
   if (!needle) return [];
 
-  const all = await prisma.catalogEntry.findMany({ where: { onPlatform: true, ...NOT_BLOCKED_GENRE } });
-  const matches = all.filter((entry) =>
-    [entry.titleRomaji, entry.titleEnglish, entry.titleNative]
-      .filter(Boolean)
-      .some((t) => t!.toLowerCase().includes(needle))
-  );
-  return dedupeByTitle(matches);
+  const titles = await prisma.catalogEntry.findMany({
+    where: { onPlatform: true, ...NOT_BLOCKED_GENRE },
+    select: { id: true, anilistId: true, titleRomaji: true, titleEnglish: true, titleNative: true, popularityRank: true },
+  });
+  const top = dedupeByTitle(rankTitleMatches(titles, needle)).slice(0, limit);
+  if (top.length === 0) return [];
+  const rows = await prisma.catalogEntry.findMany({ where: { id: { in: top.map((t) => t.id) } } });
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  return top.map((t) => byId.get(t.id)).filter((r): r is CatalogEntry => Boolean(r));
 }
 
 /** Top do ranking de popularidade (fileira "🔥 Em alta" do Descobrir). */
