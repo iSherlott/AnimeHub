@@ -38,7 +38,7 @@ export type RelinkResult = {
   hasMore: boolean;
 };
 
-const FILL_FIELDS = ["format", "season", "seasonYear", "coverImage", "bannerImage", "description", "episodes", "genres", "titleNative", "titleEnglish", "status", "startDate", "endDate"] as const;
+const FILL_FIELDS = ["format", "kind", "season", "seasonYear", "coverImage", "bannerImage", "description", "episodes", "genres", "titleNative", "titleEnglish", "status", "startDate", "endDate"] as const;
 const SEARCH_GAP_MS = 750; // a AniList aceita ~90 consultas por minuto
 /** Semelhança de título que conta como "o mesmo título" (já sem maiúsculas, acentos e pontuação). */
 const IDENTICAL_TITLE = 0.97;
@@ -78,11 +78,16 @@ export function pickSure(entry: SureInput, ranked: ScoredCandidate[], { live = f
   return { best, reason: null };
 }
 
-/** Quantas temporadas separam as duas obras; null quando uma delas não tem temporada conhecida. */
+/**
+ * Quantas temporadas separam as duas obras; null quando uma delas não tem nem o ano. Se só o ano é conhecido (a AniList guarda
+ * "2007-01-01" quando só sabe o ano), vale a melhor hipótese: mesmo ano = 0 e cada ano a mais conta 4 temporadas, menos as 3
+ * em que a estreia ainda poderia ter cabido (dezembro × janeiro = 1).
+ */
 export function eraGap(a: { season: string | null; seasonYear: number | null }, b: { season: string | null; seasonYear: number | null }): number | null {
   if (a.seasonYear === null || b.seasonYear === null) return null;
-  const era = (x: { season: string | null; seasonYear: number | null }) => (x.seasonYear as number) * 4 + Math.max(0, SEASON_SLOT.indexOf(x.season ?? ""));
-  return Math.abs(era(a) - era(b));
+  const slot = (x: { season: string | null }) => SEASON_SLOT.indexOf(x.season ?? "");
+  if (slot(a) < 0 || slot(b) < 0) return Math.max(0, Math.abs(a.seasonYear - b.seasonYear) * 4 - 3);
+  return Math.abs(a.seasonYear * 4 + slot(a) - (b.seasonYear * 4 + slot(b)));
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -146,6 +151,8 @@ function candidateFromMedia(media: AniListMedia): MatchCandidate {
     const derived = animeSeasonOf(new Date(Date.UTC(start.year, start.month - 1, start.day ?? 15)));
     season = derived.season;
     seasonYear = derived.year;
+  } else if (!seasonYear && start?.year) {
+    seasonYear = start.year; // só o ano é conhecido: ainda serve para barrar uma obra de outra época
   }
   return { id: `ce:${media.id}`, anilistId: media.id, titles: [media.title.romaji, media.title.native, media.title.english].filter((t): t is string => Boolean(t)), season, seasonYear, anidbId: null };
 }

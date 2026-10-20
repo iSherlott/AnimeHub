@@ -25,6 +25,13 @@ describe("eraGap", () => {
   it("sem ano conhecido não há distância", () => {
     expect(eraGap({ season: "WINTER", seasonYear: 2024 }, { season: null, seasonYear: null })).toBeNull();
   });
+
+  it("só com o ano (a AniList guarda 2007-01-01 quando só sabe o ano) vale a melhor hipótese", () => {
+    expect(eraGap({ season: "SUMMER", seasonYear: 2007 }, { season: null, seasonYear: 2007 })).toBe(0);
+    expect(eraGap({ season: "WINTER", seasonYear: 2007 }, { season: null, seasonYear: 2006 })).toBe(1); // dezembro × janeiro
+    expect(eraGap({ season: "SPRING", seasonYear: 2008 }, { season: null, seasonYear: 1986 })).toBe(85); // Hulu Xiongdi (2008) × 1986
+    expect(eraGap({ season: "SPRING", seasonYear: 2013 }, { season: null, seasonYear: 2003 })).toBe(37);
+  });
 });
 
 const scored = (title: number, score: number, season: string | null, seasonYear: number | null): ScoredCandidate => ({
@@ -57,6 +64,13 @@ describe("pickSure", () => {
     const tagged = { titleRomaji: "High Card (2024)", season: "WINTER", seasonYear: 2024 };
     expect(pickSure(tagged, [scored(1, 0.93, "SPRING", 2023)]).reason).toMatch(/pede 2024/);
     expect(pickSure(tagged, [scored(1, 0.99, "WINTER", 2024)]).reason).toBeNull();
+  });
+
+  it("candidato sem temporada, só com o ano de estreia, de outra época não liga", () => {
+    const old = { titleRomaji: "Trip Trek", season: "SPRING", seasonYear: 2013 };
+    expect(pickSure(old, [scored(1, 0.85, null, 2003)]).reason).toMatch(/época distante/);
+    expect(pickSure(old, [scored(1, 0.85, null, 2013)]).reason).toBeNull();
+    expect(pickSure(old, [scored(1, 0.85, null, 2012)]).reason).toBeNull();
   });
 
   it("sem candidato, não há o que ligar", () => {

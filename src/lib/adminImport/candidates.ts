@@ -30,7 +30,7 @@ export async function loadLocalCandidates(): Promise<MatchCandidate[]> {
     prisma.production.findMany({ select: { id: true, anilistId: true, titleRomaji: true, titleEnglish: true, titleNative: true, season: true, seasonYear: true, anidbId: true } }),
     prisma.catalogEntry.findMany({
       where: { anilistId: { not: null } },
-      select: { anilistId: true, titleRomaji: true, titleEnglish: true, titleNative: true, season: true, seasonYear: true, anidbId: true },
+      select: { anilistId: true, titleRomaji: true, titleEnglish: true, titleNative: true, season: true, seasonYear: true, startDate: true, anidbId: true },
     }),
   ]);
   const known = new Set(productions.map((p) => p.anilistId));
@@ -38,6 +38,7 @@ export async function loadLocalCandidates(): Promise<MatchCandidate[]> {
     ...productions.map((p) => toCandidate(p.id, p)),
     ...entries
       .filter((e): e is typeof e & { anilistId: number } => e.anilistId !== null && !known.has(e.anilistId))
-      .map((e) => toCandidate(`${CATALOG_CANDIDATE_PREFIX}${e.anilistId}`, e)),
+      // Sem temporada na AniList (ONAs, filmes…), o ano da estreia ainda diferencia obras de épocas distantes.
+      .map((e) => toCandidate(`${CATALOG_CANDIDATE_PREFIX}${e.anilistId}`, { ...e, seasonYear: e.seasonYear ?? e.startDate?.getUTCFullYear() ?? null })),
   ];
 }
