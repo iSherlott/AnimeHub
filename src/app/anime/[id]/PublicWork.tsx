@@ -13,6 +13,8 @@ import { FranchiseSeasons } from "@/components/FranchiseSeasons";
 import { SiteScoreChip } from "@/components/SiteScoreChip";
 import { SpecialsNotice, WorkSpecials } from "@/components/WorkSpecials";
 import { loadTimeline } from "@/lib/curation/timelineLoader";
+import { loadFranchiseSteps } from "@/lib/curation/franchiseTimelineLoader";
+import { FranchiseTimeline } from "@/components/FranchiseTimeline";
 import { KIND_LABELS, type Kind } from "@/lib/curation/kind";
 import { NextEpisodeBlock } from "@/components/NextEpisodeBlock";
 import { ScheduleEpisodeList } from "@/components/ScheduleEpisodeList";
@@ -45,13 +47,14 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
     : null;
   if (owned) redirect(`/anime/${owned.id}`);
 
-  const [nextEpisode, catalog, seasons, schedule, images, timeline] = await Promise.all([
+  const [nextEpisode, catalog, seasons, schedule, images, timeline, franchiseSteps] = await Promise.all([
     prisma.airingScheduleEntry.findFirst({ where: { anilistId, airingAt: { gte: new Date() } }, orderBy: { airingAt: "asc" } }),
     prisma.catalogEntry.findUnique({ where: { anilistId }, select: { siteScore: true, siteScoreVotes: true, kind: true, officialSite: true, descriptionPt: true, descriptionJa: true } }),
     loadFranchiseSeasons(anilistId),
     prisma.airingScheduleEntry.findMany({ where: { anilistId }, orderBy: { episode: "asc" }, select: { episode: true, airingAt: true } }),
     prisma.episodeImage.findMany({ where: { anilistId }, select: { episode: true, thumbnail: true } }),
     loadTimeline(anilistId),
+    loadFranchiseSteps(anilistId),
   ]);
   const officialSite = production.officialSite ?? catalog?.officialSite ?? null;
   const imageByEpisode = new Map(images.map((i) => [i.episode, i.thumbnail]));
@@ -129,6 +132,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
           <SpecialsNotice timeline={timeline} />
           <FranchiseSeasons seasons={seasons} signedIn={Boolean(user)} />
           <WorkSpecials timeline={timeline} />
+          <FranchiseTimeline steps={franchiseSteps} />
         </Box>
 
         <Box component="section" aria-labelledby="info-heading" sx={{ bgcolor: "background.paper", borderRadius: "16px", p: 3, display: "flex", flexDirection: "column", gap: 2 }}>

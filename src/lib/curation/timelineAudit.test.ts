@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { checkTitles, cleanTitle } from "./titleCheck";
 import { placeFranchises, type OrderNode } from "./franchiseOrder";
+import { parsePartners } from "./duplicateReview";
 import { countDuplicateGroups, findDuplicates, normalizeTitle, type DuplicateInput } from "./duplicates";
 
 describe("cleanTitle / checkTitles", () => {
@@ -114,5 +115,16 @@ describe("findDuplicates", () => {
 
   it("ano desconhecido em uma das obras também é apontado", () => {
     expect(findDuplicates([dup("a", "Akira", { anilistId: 1 }), dup("b", "Akira", { anilistId: 2, year: null })]).get("a")?.[0].reason).toMatch(/ano desconhecido/);
+  });
+});
+
+describe("parsePartners", () => {
+  it("lê quem a pendência cita, com o motivo", () => {
+    const detail = "mesmo título e ano, vindas de fontes diferentes — «ID: INDEED» (AniList 131923); mesmo título e ano — «Outra «obra»» (AniDB 15978); e mais 2";
+    expect(parsePartners(detail)).toEqual([
+      { reason: "mesmo título e ano, vindas de fontes diferentes", title: "ID: INDEED", source: "AniList", id: 131923 },
+      { reason: "mesmo título e ano", title: "Outra «obra»", source: "AniDB", id: 15978 },
+    ]);
+    expect(parsePartners(null)).toEqual([]);
   });
 });

@@ -50,6 +50,9 @@ antes do prequel). Estas pendências pertencem à auditoria: a curadoria do cat�
 
 ## Pendências para decidir
 
-- Juntar as 12 obras repetidas (AniDB + AniList): hoje só estão listadas.
+- Revisar as 12 obras repetidas em Admin → Curadoria → **Obras repetidas para revisar**: cada par aparece lado a lado. "É a mesma
+  obra — juntar" só existe quando uma das duas é a cópia do AniDB sem página (ela passa a ser a obra da AniList, pelo mesmo caminho
+  do Match name); "Não é a mesma obra" tira o par da lista (pendência `DISMISSED`, que a auditoria não reabre). Pares da mesma fonte
+  só podem ser descartados.
 - Decidir se a página da obra deve oferecer a ordem da história além da ordem de estreia.
 - Ligar as obras só do AniDB à AniList (depende do cliente válido do AniDB, ver ADR 0003).

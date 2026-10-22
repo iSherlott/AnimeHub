@@ -173,6 +173,35 @@ test.describe.serial("Nota do site, tipos e especiais", () => {
     await expect(page.getByTestId("work-specials").locator("li")).toHaveCount(3);
   });
 
+  test("a linha do tempo da franquia só aparece depois da auditoria e mostra tudo em ordem de estreia (Epic 45)", async ({ page }) => {
+    await page.goto(`/anime/${ROOT}`);
+    await expect(page.getByTestId("work-specials")).toBeVisible();
+    await expect(page.getByTestId("franchise-timeline")).toHaveCount(0); // a auditoria ainda não passou por aqui
+
+    const stored: Array<[number, number, string, number | null]> = [[ROOT, 1, "MAIN", 1], [OVA, 2, "SPECIAL", null], [ODA, 3, "SPECIAL", null], [MOVIE, 4, "SPECIAL", null]];
+    for (const [anilistId, timelineOrder, timelineRole, timelineSeason] of stored) {
+      await prisma.catalogEntry.update({ where: { anilistId }, data: { franchiseKey: ROOT, timelineOrder, timelineRole, timelineSeason } });
+    }
+    await page.goto(`/anime/${ROOT}`);
+    const timeline = page.getByTestId("franchise-timeline");
+    await expect(timeline.getByTestId("franchise-timeline-summary")).toHaveText("4 obras em ordem de estreia: 1 temporada da linha principal e 3 especiais opcionais (OVA, ODA, filmes).");
+    const steps = timeline.locator("li");
+    await expect(steps).toHaveCount(4);
+    await expect(steps.nth(0)).toContainText("Temporada 1");
+    await expect(steps.nth(0)).toContainText("você está aqui");
+    await expect(steps.nth(1)).toContainText("OVA");
+    await expect(steps.nth(2)).toContainText("ODA");
+    await expect(steps.nth(3)).toContainText("Filme");
+    await expect(timeline.getByText("Opcional")).toHaveCount(3);
+    await expect(timeline.getByTestId(`timeline-step-${ODA}`)).toHaveAttribute("data-role", "SPECIAL");
+    await expect(timeline.getByRole("link", { name: "Serie Round94 Movie" })).toHaveAttribute("href", `/anime/${MOVIE}`);
+
+    // Na página de um especial, é ele que aparece como atual.
+    await page.goto(`/anime/${OVA}`);
+    await expect(page.getByTestId(`timeline-step-${OVA}`)).toContainText("você está aqui");
+    await expect(page.getByTestId(`timeline-step-${ROOT}`)).not.toContainText("você está aqui");
+  });
+
   test("obra sem especiais não mostra aviso nem seção", async ({ page }) => {
     await prisma.production.create({ data: { anilistId: SCORED, franchiseId: (await prisma.franchise.findUniqueOrThrow({ where: { rootAnilistId: FR1 } })).id, titleRomaji: "Nota Round94", seasonNumber: 3, format: "TV", description: "x", genres: "Drama", streamingLinksJson: "[]", fetchedAt: new Date() } });
     await page.goto(`/anime/${SCORED}`);

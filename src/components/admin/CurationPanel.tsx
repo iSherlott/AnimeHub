@@ -7,6 +7,7 @@ import { ISSUE_CODES, ISSUE_LABELS, type IssueCode } from "@/lib/curation/issues
 import type { CurationStatus } from "@/lib/curation/engine";
 import { adminPanelSx } from "./AdminUi";
 import { CurationEntries } from "./CurationEntries";
+import { DuplicatesPanel } from "./DuplicatesPanel";
 import { TimelinePanel } from "./TimelinePanel";
 import { TranslationPanel } from "./TranslationPanel";
 
@@ -196,6 +197,8 @@ export function CurationPanel() {
       <TranslationPanel />
 
       <TimelinePanel />
+
+      <DuplicatesPanel />
 
       <CurationEntries running={Boolean(running)} />
 

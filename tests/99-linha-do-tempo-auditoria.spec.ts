@@ -137,4 +137,31 @@ test.describe.serial("Auditoria das linhas do tempo", () => {
     await card.getByRole("button", { name: "Ver" }).click();
     await expect(page.getByTestId("curation-issue-list-DUPLICATE_SUSPECT")).toContainText("Gemea Unica Round99");
   });
+
+  test("a revisão mostra o par lado a lado, só oferece juntar a cópia do AniDB e valida o pedido", async ({ request }) => {
+    const { pairs } = (await (await request.get("/api/admin/duplicates")).json()) as { pairs: Array<{ left: { anilistId: number | null; anidbId: number | null }; right: { anilistId: number | null; anidbId: number | null }; merge: { anidbId: number; anilistId: number } | null }> };
+    const pair = pairs.find((p) => [p.left, p.right].some((s) => s.anidbId === ANIDB_TWIN));
+    expect(pair?.merge).toEqual({ anidbId: ANIDB_TWIN, anilistId: TWIN });
+    expect((await request.post("/api/admin/duplicates", { data: { action: "merge", anidbId: "x", anilistId: TWIN } })).status()).toBe(400);
+    expect((await request.post("/api/admin/duplicates", { data: { action: "dismiss", entryIds: [] } })).status()).toBe(400);
+    expect((await request.post("/api/admin/duplicates", { data: { action: "outra" } })).status()).toBe(400);
+    // A AniList não responde neste teste: o pedido falha sem juntar nada e o par continua para revisar.
+    expect((await request.post("/api/admin/duplicates", { data: { action: "merge", anidbId: ANIDB_TWIN, anilistId: TWIN } })).status()).toBe(502);
+    expect(await prisma.catalogEntry.count({ where: { anidbId: ANIDB_TWIN, anilistId: null } })).toBe(1);
+  });
+
+  test('"não é a mesma obra" tira o par da lista e a auditoria não o reabre', async ({ page, request }) => {
+    await page.goto("/admin/curadoria");
+    const pair = page.getByTestId("duplicates-pair").filter({ hasText: "Gemea Unica Round99" });
+    await expect(pair).toHaveCount(1);
+    await expect(pair.getByTestId("duplicates-merge")).toBeVisible();
+    await pair.getByTestId("duplicates-dismiss").click();
+    await expect(page.getByTestId("duplicates-message")).toContainText("obras diferentes");
+    await expect(page.getByTestId("duplicates-pair").filter({ hasText: "Gemea Unica Round99" })).toHaveCount(0);
+
+    await runAndWait(request);
+    const open = await prisma.curationIssue.count({ where: { code: "DUPLICATE_SUSPECT", status: "OPEN", OR: [{ anilistId: TWIN }, { anidbId: ANIDB_TWIN }] } });
+    expect(open).toBe(0);
+    expect(await prisma.curationIssue.count({ where: { code: "DUPLICATE_SUSPECT", status: "DISMISSED", OR: [{ anilistId: TWIN }, { anidbId: ANIDB_TWIN }] } })).toBe(2);
+  });
 });

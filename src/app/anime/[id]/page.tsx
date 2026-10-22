@@ -33,6 +33,8 @@ import { FranchiseSeasons } from "@/components/FranchiseSeasons";
 import { SiteScoreChip } from "@/components/SiteScoreChip";
 import { SpecialsNotice, WorkSpecials } from "@/components/WorkSpecials";
 import { loadTimeline } from "@/lib/curation/timelineLoader";
+import { loadFranchiseSteps } from "@/lib/curation/franchiseTimelineLoader";
+import { FranchiseTimeline } from "@/components/FranchiseTimeline";
 import { WorkHero } from "@/components/WorkHero";
 import { WorkDiscussions, WorkQuizEntry, WorkRelated } from "@/components/WorkSections";
 import { PublicWork } from "@/app/anime/[id]/PublicWork";
@@ -121,9 +123,10 @@ export default async function AnimeDetailPage({
   const mySeasons = Object.fromEntries(mySeasonRows.map((a) => [a.anilistId, { animeId: a.id, watchState: a.watchState, waiting: a.waiting, userScore: a.userScore }]));
 
   // Nota do site e linha do tempo (especiais) da obra; o site oficial do catálogo cobre quem ainda não o tem na lista.
-  const [catalogMeta, timeline] = await Promise.all([
+  const [catalogMeta, timeline, franchiseSteps] = await Promise.all([
     prisma.catalogEntry.findUnique({ where: { anilistId: anime.anilistId }, select: { siteScore: true, siteScoreVotes: true, officialSite: true, descriptionPt: true, descriptionJa: true } }),
     loadTimeline(anime.anilistId),
+    loadFranchiseSteps(anime.anilistId),
   ]);
   const officialSite = anime.officialSite ?? catalogMeta?.officialSite ?? null;
 
@@ -249,6 +252,7 @@ export default async function AnimeDetailPage({
           <SpecialsNotice timeline={timeline} />
           <FranchiseSeasons seasons={franchiseSeasons} mine={mySeasons} signedIn />
           <WorkSpecials timeline={timeline} />
+          <FranchiseTimeline steps={franchiseSteps} />
 
           {(anime.anidbAwards || anime.anidbResources) && (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1, borderLeft: 2, borderColor: "secondary.main", bgcolor: "background.paper", p: 2 }}>

@@ -61,6 +61,9 @@ async function inChunks<T>(items: T[], run: (chunk: T[]) => Promise<unknown>): P
 
 /** Grava as pendências de um motivo: fecha as que não valem mais e abre/atualiza as atuais. */
 async function syncAuditIssues(code: IssueCode, desired: Map<string, IssueDraft>): Promise<void> {
+  // O que o admin já decidiu ("não é a mesma obra") não volta a ser apontado.
+  const dismissed = await prisma.curationIssue.findMany({ where: { code, status: "DISMISSED" }, select: { entryId: true } });
+  for (const { entryId } of dismissed) desired.delete(entryId);
   const open = await prisma.curationIssue.findMany({ where: { code, status: "OPEN" }, select: { entryId: true } });
   const stale = open.map((o) => o.entryId).filter((id) => !desired.has(id));
   await inChunks(stale, (chunk) => prisma.curationIssue.updateMany({ where: { code, status: "OPEN", entryId: { in: chunk } }, data: { status: "RESOLVED" } }));
