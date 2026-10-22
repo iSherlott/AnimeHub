@@ -1,0 +1,307 @@
+{
+ "loot": "arcos-001",
+ "arcs": [
+  {
+   "anilistId": 20,
+   "source": "https://en.wikipedia.org/wiki/List_of_Naruto_episodes",
+   "list": [
+    {
+     "nameEn": "Prologue",
+     "start": 1,
+     "end": 5
+    },
+    {
+     "nameEn": "Land of Waves Escort",
+     "start": 6,
+     "end": 19
+    },
+    {
+     "nameEn": "Chunin Exams",
+     "start": 20,
+     "end": 67
+    },
+    {
+     "nameEn": "Destruction of Leaf",
+     "start": 68,
+     "end": 80
+    },
+    {
+     "nameEn": "Search for Tsunade",
+     "start": 81,
+     "end": 100
+    },
+    {
+     "nameEn": "Land of Tea Escort",
+     "start": 102,
+     "end": 106
+    },
+    {
+     "nameEn": "Sasuke Retrieval",
+     "start": 107,
+     "end": 135
+    },
+    {
+     "nameEn": "Land of Rice Fields Investigation",
+     "start": 136,
+     "end": 141
+    },
+    {
+     "nameEn": "Mizuki Tracking",
+     "start": 142,
+     "end": 147
+    },
+    {
+     "nameEn": "Bikochu Search",
+     "start": 148,
+     "end": 151
+    },
+    {
+     "nameEn": "Kurosuki Family Removal",
+     "start": 152,
+     "end": 157
+    },
+    {
+     "nameEn": "Gosunkugi Capture",
+     "start": 159,
+     "end": 160
+    },
+    {
+     "nameEn": "Cursed Warrior Extermination",
+     "start": 162,
+     "end": 167
+    },
+    {
+     "nameEn": "Kaima Capture",
+     "start": 169,
+     "end": 173
+    },
+    {
+     "nameEn": "Buried Gold Excavation",
+     "start": 175,
+     "end": 176
+    },
+    {
+     "nameEn": "Star Guard",
+     "start": 178,
+     "end": 183
+    },
+    {
+     "nameEn": "Peddlers Escort",
+     "start": 187,
+     "end": 191
+    },
+    {
+     "nameEn": "Third Super-Beast",
+     "start": 195,
+     "end": 196
+    },
+    {
+     "nameEn": "Recapture Plans of Leaf",
+     "start": 197,
+     "end": 201
+    },
+    {
+     "nameEn": "Yakumo Rescue",
+     "start": 203,
+     "end": 207
+    },
+    {
+     "nameEn": "Gantetsu Escort",
+     "start": 209,
+     "end": 212
+    },
+    {
+     "nameEn": "Menma Memory Search",
+     "start": 213,
+     "end": 215
+    },
+    {
+     "nameEn": "Support of Sand",
+     "start": 216,
+     "end": 220
+    }
+   ]
+  },
+  {
+   "anilistId": 1735,
+   "source": "https://en.wikipedia.org/wiki/List_of_Naruto:_Shippuden_episodes",
+   "list": [
+    {
+     "nameEn": "Kazekage Rescue",
+     "start": 1,
+     "end": 32
+    },
+    {
+     "nameEn": "Long-Awaited Reunion",
+     "start": 33,
+     "end": 53
+    },
+    {
+     "nameEn": "Twelve Guardian Ninja",
+     "start": 54,
+     "end": 71
+    },
+    {
+     "nameEn": "Immortal Devastators: Hidan and Kakuzu",
+     "start": 72,
+     "end": 88
+    },
+    {
+     "nameEn": "The Three-Tailed Demon Turtle",
+     "start": 89,
+     "end": 112
+    },
+    {
+     "nameEn": "Master's Prophecy and Vengeance",
+     "start": 113,
+     "end": 118
+    },
+    {
+     "nameEn": "Kakashi Chronicles: Boys' Life on the Battlefield",
+     "start": 119,
+     "end": 120
+    },
+    {
+     "nameEn": "Master's Prophecy and Vengeance",
+     "start": 121,
+     "end": 126
+    },
+    {
+     "nameEn": "Tales of a Gutsy Ninja: Jiraiya Ninja Scroll",
+     "start": 127,
+     "end": 128
+    },
+    {
+     "nameEn": "Master's Prophecy and Vengeance",
+     "start": 129,
+     "end": 143
+    },
+    {
+     "nameEn": "The Six-Tailed Demon Slug",
+     "start": 144,
+     "end": 151
+    },
+    {
+     "nameEn": "Two Saviors",
+     "start": 152,
+     "end": 169
+    },
+    {
+     "nameEn": "Big Adventure! The Quest for the Fourth Hokage's Legacy",
+     "start": 170,
+     "end": 171
+    },
+    {
+     "nameEn": "Two Saviors",
+     "start": 172,
+     "end": 175
+    },
+    {
+     "nameEn": "Past Arc: The Locus of Konoha",
+     "start": 176,
+     "end": 196
+    },
+    {
+     "nameEn": "The Gathering of the Five Kage",
+     "start": 197,
+     "end": 221
+    },
+    {
+     "nameEn": "Paradise Life on a Boat",
+     "start": 222,
+     "end": 242
+    },
+    {
+     "nameEn": "Nine-Tails Taming and Karmic Encounters",
+     "start": 243,
+     "end": 275
+    },
+    {
+     "nameEn": "The Seven Shinobi Swordsmen",
+     "start": 276,
+     "end": 289
+    },
+    {
+     "nameEn": "Power",
+     "start": 290,
+     "end": 295
+    },
+    {
+     "nameEn": "The Fourth Great Ninja War: Assailants From Afar",
+     "start": 296,
+     "end": 320
+    },
+    {
+     "nameEn": "The Fourth Great Ninja War: Sasuke and Itachi",
+     "start": 321,
+     "end": 348
+    },
+    {
+     "nameEn": "Kakashi: Shadow of the ANBU Black Ops",
+     "start": 349,
+     "end": 361
+    },
+    {
+     "nameEn": "The Fourth Great Ninja War: The Return of Team 7",
+     "start": 362,
+     "end": 372
+    },
+    {
+     "nameEn": "The Fourth Great Ninja War: Obito Uchiha",
+     "start": 373,
+     "end": 393
+    },
+    {
+     "nameEn": "In Naruto's Footsteps: Friends' Paths",
+     "start": 394,
+     "end": 413
+    },
+    {
+     "nameEn": "Infinite Tsukuyomi: The Invocation",
+     "start": 414,
+     "end": 431
+    },
+    {
+     "nameEn": "Jiraiya Shinobi Handbook: The Tale of Naruto the Hero",
+     "start": 432,
+     "end": 450
+    },
+    {
+     "nameEn": "Itachi Shinden: Book of Light and Darkness",
+     "start": 451,
+     "end": 458
+    },
+    {
+     "nameEn": "The Origins of Ninshu: The Two Souls, Indra and Ashura",
+     "start": 459,
+     "end": 468
+    },
+    {
+     "nameEn": "The Chapter of Naruto and Sasuke",
+     "start": 470,
+     "end": 479
+    },
+    {
+     "nameEn": "Nostalgic Days",
+     "start": 480,
+     "end": 483
+    },
+    {
+     "nameEn": "Sasuke Shinden: Book of Sunrise",
+     "start": 484,
+     "end": 488
+    },
+    {
+     "nameEn": "Shikamaru Hiden: A Cloud Drifting in Silent Darkness",
+     "start": 489,
+     "end": 493
+    },
+    {
+     "nameEn": "Konoha Hiden: The Perfect Day for a Wedding",
+     "start": 494,
+     "end": 500
+    }
+   ]
+  }
+ ]
+}

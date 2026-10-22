@@ -1183,3 +1183,65 @@ model PendingEpisode {
   @@unique([userId, anilistId])
   @@index([userId])
 }
+
+/**
+ * Reboot (Epic 48): `newAnilistId` refaz do zero a história de `oldAnilistId`. As duas versões ficam juntas na descrição de cada
+ * uma (uma aponta a outra), mas cada linha do tempo mostra só o conteúdo da própria versão. Com `coverage` PARTIAL o reboot vai
+ * além do que a versão antiga contou: a partir de `beyondFromEpisode` (do reboot) é história que a antiga nunca teve.
+ */
+model StoryLink {
+  id                String   @id @default(cuid())
+  oldAnilistId      Int
+  newAnilistId      Int
+  /// REBOOT (por ora o único tipo).
+  kind              String   @default("REBOOT")
+  /// FULL: o reboot conta a mesma história; PARTIAL: segue além do que a versão antiga cobriu.
+  coverage          String   @default("FULL")
+  /// Episódio do reboot a partir do qual a história passa do que a versão antiga cobriu (só PARTIAL).
+  beyondFromEpisode Int?
+  note              String?
+  /// De onde veio a informação (endereço da lista de episódios, artigo…).
+  source            String?
+  /// Lote de pesquisa em que entrou.
+  loot              String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([oldAnilistId, newAnilistId])
+  @@index([newAnilistId])
+}
+
+/** Arco de uma obra (Epic 48): faixa de episódios com nome, para a linha do tempo dos episódios sair separada por arcos. */
+model StoryArc {
+  id           String  @id @default(cuid())
+  anilistId    Int
+  /// Ordem do arco na obra (1, 2, 3…).
+  position     Int
+  nameEn       String
+  namePt       String?
+  nameJa       String?
+  startEpisode Int
+  endEpisode   Int
+  source       String?
+  loot         String?
+
+  @@unique([anilistId, position])
+  @@index([anilistId])
+}
+
+/** Par de obras que a pesquisa já conferiu (Epic 48): é o que tira o par da fila de candidatos a reboot. */
+model StoryReview {
+  id         String   @id @default(cuid())
+  /// Sempre o menor id da AniList do par em `anilistIdA`.
+  anilistIdA Int
+  anilistIdB Int
+  /// REBOOT ou NOT_REBOOT.
+  verdict    String
+  note       String?
+  source     String?
+  loot       String?
+  reviewedAt DateTime @default(now())
+
+  @@unique([anilistIdA, anilistIdB])
+  @@index([verdict])
+}

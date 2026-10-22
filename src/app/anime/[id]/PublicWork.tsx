@@ -10,13 +10,18 @@ import { AnimeTitle } from "@/components/AnimeTitle";
 import { AppLink } from "@/components/AppLink";
 import { FollowProductionButton } from "@/components/FollowProductionButton";
 import { WorkSeasons } from "@/components/WorkSeasons";
+import { WorkSectionNav } from "@/components/WorkSectionNav";
+import { WorkBadgeRow, WorkCard, WorkInfoList } from "@/components/WorkInfoCard";
+import { episodesLabel, seasonLabel, statusLabel, typeLabel, workBadges } from "@/lib/workLabels";
+import { BranchOnlyTimeline } from "@/components/BranchOnlyTimeline";
 import { assignBranches, branchesOf } from "@/lib/workJourney";
+import { loadStoryContext } from "@/lib/story/context";
+import { storyMarkersOf } from "@/lib/story/markers";
 import { SiteScoreChip } from "@/components/SiteScoreChip";
 import { SpecialsNotice } from "@/components/WorkSpecials";
 import { loadTimeline } from "@/lib/curation/timelineLoader";
-import { loadFranchiseSteps } from "@/lib/curation/franchiseTimelineLoader";
-import { FranchiseTimeline } from "@/components/FranchiseTimeline";
-import { KIND_LABELS, type Kind } from "@/lib/curation/kind";
+import { loadFranchiseSteps, stepsFromTimeline } from "@/lib/curation/franchiseTimelineLoader";
+import { FranchiseNav } from "@/components/FranchiseNav";
 import { NextEpisodeBlock } from "@/components/NextEpisodeBlock";
 import { ScheduleEpisodeList } from "@/components/ScheduleEpisodeList";
 import { SynopsisText } from "@/components/SynopsisText";
@@ -28,12 +33,7 @@ import { WorkDiscussions, WorkQuizEntry, WorkRelated } from "@/components/WorkSe
  * Detalhe de uma obra para quem ainda não a acompanha (e para visitantes): o MESMO desenho da página pessoal
  * (`/anime/<id>`), alimentado pela produção canônica. Quem já acompanha a obra é levado para a página dela.
  */
-const FORMAT_LABEL: Record<string, string> = { TV: "TV", TV_SHORT: "TV curta", MOVIE: "Filme", OVA: "OVA", ONA: "ONA", SPECIAL: "Especial", MUSIC: "Música" };
-const STATUS_LABEL: Record<string, string> = { RELEASING: "Em exibição", FINISHED: "Finalizado", NOT_YET_RELEASED: "Ainda não lançado", CANCELLED: "Cancelado", HIATUS: "Em hiato" };
-const SEASON_LABEL: Record<string, string> = { WINTER: "Inverno", SPRING: "Primavera", SUMMER: "Verão", FALL: "Outono" };
-
 const headingSx = { fontSize: 26, lineHeight: 1.5 } as const;
-const smallHeadingSx = { fontSize: 12, fontWeight: 700, color: "text.secondary", textTransform: "uppercase" } as const;
 
 export async function PublicWork({ anilistId }: { anilistId: number }) {
   const production = await ensureProduction(anilistId);
@@ -48,7 +48,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
     : null;
   if (owned) redirect(`/anime/${owned.id}`);
 
-  const [nextEpisode, catalog, seasons, schedule, images, timeline, franchiseSteps] = await Promise.all([
+  const [nextEpisode, catalog, allSeasons, schedule, images, timeline, franchiseSteps, story] = await Promise.all([
     prisma.airingScheduleEntry.findFirst({ where: { anilistId, airingAt: { gte: new Date() } }, orderBy: { airingAt: "asc" } }),
     prisma.catalogEntry.findUnique({ where: { anilistId }, select: { siteScore: true, siteScoreVotes: true, kind: true, officialSite: true, descriptionPt: true, descriptionJa: true } }),
     loadFranchiseSeasons(anilistId),
@@ -56,22 +56,24 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
     prisma.episodeImage.findMany({ where: { anilistId }, select: { episode: true, thumbnail: true } }),
     loadTimeline(anilistId),
     loadFranchiseSteps(anilistId),
+    // Reboot e arcos (Epic 48): a outra versão da história e os arcos dos episódios.
+    loadStoryContext(anilistId),
   ]);
+  // As temporadas da outra versão da história (reboot) não entram nas desta.
+  const otherVersion = new Set(story.otherVersionIds);
+  const seasons = allSeasons.filter((s) => !otherVersion.has(s.anilistId));
   const officialSite = production.officialSite ?? catalog?.officialSite ?? null;
   // OVA, ODA e filmes se ramificam da temporada em que foram ao ar.
   const branches = assignBranches(seasons, branchesOf(timeline?.specials ?? []));
+  // A franquia em ordem: a gravada pela auditoria ou, enquanto ela não passou, a das relações da AniList.
+  const navStepsAll = (franchiseSteps ?? stepsFromTimeline(timeline))?.filter((s) => !otherVersion.has(s.anilistId)) ?? null;
+  const navSteps = navStepsAll && navStepsAll.length >= 2 ? navStepsAll : null;
+  const markers = storyMarkersOf(story.relations);
   const imageByEpisode = new Map(images.map((i) => [i.episode, i.thumbnail]));
   const genres = production.genres ? production.genres.split(",").filter(Boolean) : [];
   const titlePrimary = production.titleNative ?? production.titleRomaji;
 
-  const info: Array<[string, string]> = [
-    ["Tipo", catalog?.kind ? `${KIND_LABELS[catalog.kind as Kind] ?? catalog.kind}${production.format ? ` (${FORMAT_LABEL[production.format] ?? production.format})` : ""}` : production.format ? (FORMAT_LABEL[production.format] ?? production.format) : "—"],
-    ["Temporada", production.season && production.seasonYear ? `${SEASON_LABEL[production.season] ?? production.season} ${production.seasonYear}` : production.seasonYear ? String(production.seasonYear) : "—"],
-    ["Status", production.status ? (STATUS_LABEL[production.status] ?? production.status) : "—"],
-    ["Episódios", production.episodes ? String(production.episodes) : "—"],
-    ["Produção", `Temporada ${production.seasonNumber}`],
-    ["Franquia", production.franchise.name],
-  ];
+  const badges = workBadges({ kind: catalog?.kind, format: production.format, status: production.status, season: production.season, seasonYear: production.seasonYear, episodes: production.episodes });
 
   return (
     <div className="min-h-screen bg-ink pb-16">
@@ -79,17 +81,14 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
       <RecentWorkTracker anilistId={anilistId} />
 
       <WorkHero bannerImage={production.bannerImage} coverImage={production.coverImage}>
-        <Box sx={{ display: "flex", flex: 1, minWidth: 0, flexDirection: "column", gap: 3 }}>
-          <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+        <Box sx={{ display: "flex", flex: 1, minWidth: 0, flexDirection: "column", gap: 2 }}>
+          <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
             <AppLink href="/discover" underline="hover" color="inherit">
               EXPLORAR
             </AppLink>{" "}
             / <span lang={production.titleNative ? "ja" : undefined}>{titlePrimary}</span>
           </Typography>
           <Box>
-            <Typography sx={{ fontSize: 14, color: "text.secondary", mb: 0.5 }}>
-              {[production.status ? (STATUS_LABEL[production.status] ?? production.status) : null, production.format ? (FORMAT_LABEL[production.format] ?? production.format) : null].filter(Boolean).join(" · ")}
-            </Typography>
             <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap", alignItems: "center" }}>
               <Typography component="h1" data-testid="anime-title" variant="h3" className="font-display" sx={{ textTransform: "uppercase", lineHeight: 1 }}>
                 <AnimeTitle titles={{ titleRomaji: production.titleRomaji, titleEnglish: production.titleEnglish, titleNative: production.titleNative }} />
@@ -107,13 +106,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
               </Typography>
             )}
           </Box>
-
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
-            <FollowProductionButton anilistId={anilistId} initialAnimeId={null} loggedIn={Boolean(user)} />
-            {!user && <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Entre para criar sua agenda pessoal.</Typography>}
-          </Box>
-          <NextEpisodeBlock iso={nextEpisode ? nextEpisode.airingAt.toISOString() : null} episode={nextEpisode ? nextEpisode.episode : null} />
-
+          <WorkBadgeRow badges={badges} />
           {genres.length > 0 && (
             <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", alignItems: "center", rowGap: 1 }}>
               {genres.map((g) => (
@@ -121,90 +114,98 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
               ))}
             </Stack>
           )}
+
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+            <FollowProductionButton anilistId={anilistId} initialAnimeId={null} loggedIn={Boolean(user)} />
+            {!user && <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Entre para criar sua agenda pessoal.</Typography>}
+          </Box>
+          <NextEpisodeBlock iso={nextEpisode ? nextEpisode.airingAt.toISOString() : null} episode={nextEpisode ? nextEpisode.episode : null} />
         </Box>
       </WorkHero>
 
-      <Box id="visao-geral" sx={{ mt: 4, px: { xs: 3, sm: 5 }, display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", lg: "minmax(0,1fr) minmax(0,360px)" }, columnGap: 5, rowGap: 4, alignItems: "start" }}>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
-          <Box component="section" aria-labelledby="sinopse-heading" sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <WorkSectionNav
+        sections={[
+          { id: "visao-geral", label: "Visão geral" },
+          { id: "franquia", label: "Franquia" },
+          { id: "episodios", label: "Episódios" },
+          { id: "comunidade", label: "Comunidade" },
+          { id: "relacionadas", label: "Relacionadas" },
+        ]}
+      />
+
+      <Box sx={{ mt: 4, px: { xs: 3, sm: 5 }, display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", lg: "minmax(0,1fr) minmax(0,360px)" }, columnGap: 5, rowGap: 4, alignItems: "start" }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 5, minWidth: 0 }}>
+          <Box component="section" id="visao-geral" aria-labelledby="sinopse-heading" sx={{ display: "flex", flexDirection: "column", gap: 2, scrollMarginTop: 150 }}>
             <Typography id="sinopse-heading" component="h2" sx={headingSx}>
               Sinopse
             </Typography>
             <SynopsisText description={production.description} anilistId={production.anilistId} stored={{ pt: catalog?.descriptionPt, ja: catalog?.descriptionJa }} sx={{ fontSize: 16 }} />
+            <SpecialsNotice timeline={timeline} />
           </Box>
-          <SpecialsNotice timeline={timeline} />
+
+          {navSteps && (
+            <Box id="franquia" sx={{ scrollMarginTop: 150 }}>
+              <FranchiseNav steps={navSteps} />
+            </Box>
+          )}
+
+          <Box id="episodios" sx={{ display: "flex", flexDirection: "column", gap: 2, scrollMarginTop: 150 }}>
+            {(schedule.length > 0 || seasons.length > 1 || (branches[anilistId]?.length ?? 0) > 0 || story.arcs.length > 0) && (
+              <>
+                {seasons.length < 2 && (
+                  <Typography component="h2" sx={headingSx}>
+                    Episódios
+                  </Typography>
+                )}
+                <WorkSeasons seasons={seasons} signedIn={Boolean(user)} branches={branches}>
+                  {schedule.length > 0 ? (
+                    <ScheduleEpisodeList episodes={schedule.map((s) => ({ episode: s.episode, airingAt: s.airingAt.toISOString(), image: imageByEpisode.get(s.episode) ?? null }))} branches={branches[anilistId] ?? []} arcs={story.arcs} markers={markers} />
+                  ) : (
+                    <BranchOnlyTimeline message="Os episódios desta temporada ainda não têm data no calendário." branches={branches[anilistId] ?? []} arcs={story.arcs} markers={markers} />
+                  )}
+                </WorkSeasons>
+              </>
+            )}
+          </Box>
         </Box>
 
-        <Box component="section" aria-labelledby="info-heading" sx={{ bgcolor: "background.paper", borderRadius: "16px", p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
-          <Typography id="info-heading" component="h2" sx={headingSx}>
-            Informações
-          </Typography>
-          <Box component="dl" sx={{ display: "grid", gridTemplateColumns: "max-content 1fr", columnGap: 2, rowGap: 0.5, m: 0, fontSize: 14 }}>
-            {info.map(([label, value]) => (
-              <Box key={label} sx={{ display: "contents" }}>
-                <Typography component="dt" sx={{ fontSize: 14, color: "text.secondary" }}>
-                  {label}
-                </Typography>
-                <Typography component="dd" sx={{ fontSize: 14, m: 0 }}>
-                  {value}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-          <Box component="section" aria-labelledby="watch-heading" sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-            <Typography id="watch-heading" component="h3" sx={smallHeadingSx}>
-              Onde assistir
-            </Typography>
+        <Box component="aside" aria-label="Informações da obra" sx={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+          <WorkCard title="Ficha" testId="work-card-info">
+            <WorkInfoList
+              rows={[
+                ["Tipo", typeLabel({ kind: catalog?.kind, format: production.format })],
+                ["Situação", statusLabel(production.status)],
+                ["Época", seasonLabel({ season: production.season, seasonYear: production.seasonYear })],
+                ["Episódios", episodesLabel(production.episodes)],
+                ["Temporada", `Temporada ${production.seasonNumber}`],
+                ["Franquia", production.franchise.name],
+                [
+                  "Site oficial",
+                  officialSite ? (
+                    <AppLink key="site" href={officialSite} target="_blank" rel="noopener noreferrer" underline="hover" data-testid="official-site">
+                      Abrir ↗
+                    </AppLink>
+                  ) : null,
+                ],
+              ]}
+            />
+          </WorkCard>
+
+          <WorkCard title="Onde assistir" testId="work-card-watch">
             <WatchLinks links={parseStreamingLinks(production.streamingLinksJson)} />
-          </Box>
-          <Box component="section" aria-labelledby="my-source-heading" data-testid="my-watch-source" sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-            <Typography id="my-source-heading" component="h3" sx={smallHeadingSx}>
-              Onde eu assisto
-            </Typography>
+          </WorkCard>
+
+          <WorkCard title="Onde eu assisto" testId="my-watch-source">
             <Typography data-testid="my-watch-source-hint" sx={{ fontSize: 14, color: "text.secondary" }}>
               {user ? "Acompanhe esta obra para guardar o link do site onde você assiste." : "Entre e acompanhe esta obra para guardar o link do site onde você assiste."}
             </Typography>
-          </Box>
+          </WorkCard>
+
           <WorkQuizEntry anilistId={anilistId} userId={user?.id ?? null} />
-          {officialSite && (
-            <Box>
-              <AppLink
-                href={officialSite}
-                target="_blank"
-                rel="noopener noreferrer"
-                underline="none"
-                data-testid="official-site"
-                sx={{ display: "inline-flex", alignItems: "center", minHeight: 44, px: 2, py: 1.5, borderRadius: "10px", bgcolor: "#171820", color: "text.primary", fontSize: 14, fontWeight: 700 }}
-              >
-                ↗ Site oficial
-              </AppLink>
-              <Typography sx={{ fontSize: 14, color: "text.secondary", mt: 1 }}>Links externos abrem em outra aba.</Typography>
-            </Box>
-          )}
         </Box>
       </Box>
 
-      <Box id="episodios" sx={{ mt: 4, px: { xs: 3, sm: 5 }, display: "flex", flexDirection: "column", gap: 5, scrollMarginTop: 80 }}>
-        {(schedule.length > 0 || seasons.length > 1) && (
-          <Box component="section" aria-labelledby={seasons.length > 1 ? undefined : "episodios-heading"} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {seasons.length < 2 && (
-              <Typography id="episodios-heading" component="h2" sx={headingSx}>
-                Episódios
-              </Typography>
-            )}
-            <WorkSeasons seasons={seasons} signedIn={Boolean(user)} branches={branches}>
-              {schedule.length > 0 ? (
-                <ScheduleEpisodeList episodes={schedule.map((s) => ({ episode: s.episode, airingAt: s.airingAt.toISOString(), image: imageByEpisode.get(s.episode) ?? null }))} branches={branches[anilistId] ?? []} />
-              ) : (
-                <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Os episódios desta temporada ainda não têm data no calendário.</Typography>
-              )}
-            </WorkSeasons>
-          </Box>
-        )}
-        <FranchiseTimeline steps={franchiseSteps} />
-      </Box>
-
-      <Box sx={{ mt: 4, px: { xs: 3, sm: 5 }, display: "flex", flexDirection: "column", gap: 5 }}>
+      <Box id="comunidade" sx={{ mt: 6, px: { xs: 3, sm: 5 }, display: "flex", flexDirection: "column", gap: 5, scrollMarginTop: 150 }}>
         <WorkDiscussions
           anilistId={anilistId}
           titleNative={production.titleNative}
@@ -213,7 +214,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
           seasonNumber={production.seasonNumber}
           loggedIn={Boolean(user)}
         />
-        <WorkRelated anilistId={anilistId} franchiseId={production.franchiseId} relationsJson={production.relationsJson} seasonIds={seasons.map((s) => s.anilistId)} />
+        <WorkRelated anilistId={anilistId} franchiseId={production.franchiseId} relationsJson={production.relationsJson} seasonIds={seasons.map((s) => s.anilistId)} story={story.relations} />
       </Box>
     </div>
   );

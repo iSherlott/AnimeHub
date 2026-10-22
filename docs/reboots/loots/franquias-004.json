@@ -1,0 +1,257 @@
+{
+ "loot": "franquias-004",
+ "items": [
+  {
+   "a": 17249,
+   "b": 20742,
+   "verdict": "NOT_REBOOT",
+   "note": "Pretty Rhythm / PriPara: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 17249,
+   "b": 101097,
+   "verdict": "NOT_REBOOT",
+   "note": "Pretty Rhythm / PriPara: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 17249,
+   "b": 136119,
+   "verdict": "NOT_REBOOT",
+   "note": "Pretty Rhythm / PriPara: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 17249,
+   "b": 171080,
+   "verdict": "NOT_REBOOT",
+   "note": "Pretty Rhythm / PriPara: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 20742,
+   "b": 101097,
+   "verdict": "NOT_REBOOT",
+   "note": "Pretty Rhythm / PriPara: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 20742,
+   "b": 136119,
+   "verdict": "NOT_REBOOT",
+   "note": "Pretty Rhythm / PriPara: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 20742,
+   "b": 171080,
+   "verdict": "NOT_REBOOT",
+   "note": "Pretty Rhythm / PriPara: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 101097,
+   "b": 136119,
+   "verdict": "NOT_REBOOT",
+   "note": "Pretty Rhythm / PriPara: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 101097,
+   "b": 171080,
+   "verdict": "NOT_REBOOT",
+   "note": "Pretty Rhythm / PriPara: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 136119,
+   "b": 171080,
+   "verdict": "NOT_REBOOT",
+   "note": "Pretty Rhythm / PriPara: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21648,
+   "b": 101043,
+   "verdict": "NOT_REBOOT",
+   "note": "Aikatsu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21648,
+   "b": 111082,
+   "verdict": "NOT_REBOOT",
+   "note": "Aikatsu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21648,
+   "b": 128872,
+   "verdict": "NOT_REBOOT",
+   "note": "Aikatsu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 101043,
+   "b": 111082,
+   "verdict": "NOT_REBOOT",
+   "note": "Aikatsu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 101043,
+   "b": 128872,
+   "verdict": "NOT_REBOOT",
+   "note": "Aikatsu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 111082,
+   "b": 128872,
+   "verdict": "NOT_REBOOT",
+   "note": "Aikatsu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 102558,
+   "b": 102559,
+   "verdict": "NOT_REBOOT",
+   "note": "Hua Jianghu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 102558,
+   "b": 102560,
+   "verdict": "NOT_REBOOT",
+   "note": "Hua Jianghu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 102558,
+   "b": 102561,
+   "verdict": "NOT_REBOOT",
+   "note": "Hua Jianghu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 102558,
+   "b": 120268,
+   "verdict": "NOT_REBOOT",
+   "note": "Hua Jianghu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 102558,
+   "b": 129223,
+   "verdict": "NOT_REBOOT",
+   "note": "Hua Jianghu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 102559,
+   "b": 102560,
+   "verdict": "NOT_REBOOT",
+   "note": "Hua Jianghu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 102559,
+   "b": 102561,
+   "verdict": "NOT_REBOOT",
+   "note": "Hua Jianghu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 102559,
+   "b": 129223,
+   "verdict": "NOT_REBOOT",
+   "note": "Hua Jianghu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 102560,
+   "b": 102561,
+   "verdict": "NOT_REBOOT",
+   "note": "Hua Jianghu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 102560,
+   "b": 120268,
+   "verdict": "NOT_REBOOT",
+   "note": "Hua Jianghu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 102560,
+   "b": 129223,
+   "verdict": "NOT_REBOOT",
+   "note": "Hua Jianghu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 102561,
+   "b": 120268,
+   "verdict": "NOT_REBOOT",
+   "note": "Hua Jianghu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 102561,
+   "b": 129223,
+   "verdict": "NOT_REBOOT",
+   "note": "Hua Jianghu: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 15051,
+   "b": 113970,
+   "verdict": "NOT_REBOOT",
+   "note": "Love Live!: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 15051,
+   "b": 114979,
+   "verdict": "NOT_REBOOT",
+   "note": "Love Live!: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21584,
+   "b": 113970,
+   "verdict": "NOT_REBOOT",
+   "note": "Love Live!: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21584,
+   "b": 114979,
+   "verdict": "NOT_REBOOT",
+   "note": "Love Live!: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 113970,
+   "b": 114979,
+   "verdict": "NOT_REBOOT",
+   "note": "Love Live!: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 99712,
+   "b": 108814,
+   "verdict": "NOT_REBOOT",
+   "note": "Balala Xiaomoxian: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 99712,
+   "b": 151780,
+   "verdict": "NOT_REBOOT",
+   "note": "Balala Xiaomoxian: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 108814,
+   "b": 151780,
+   "verdict": "NOT_REBOOT",
+   "note": "Balala Xiaomoxian: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 10278,
+   "b": 1694,
+   "verdict": "NOT_REBOOT",
+   "note": "THE IDOLM@STER: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 10278,
+   "b": 20498,
+   "verdict": "NOT_REBOOT",
+   "note": "THE IDOLM@STER: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 10278,
+   "b": 98310,
+   "verdict": "NOT_REBOOT",
+   "note": "THE IDOLM@STER: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 10278,
+   "b": 20693,
+   "verdict": "NOT_REBOOT",
+   "note": "THE IDOLM@STER: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 10278,
+   "b": 162889,
+   "verdict": "NOT_REBOOT",
+   "note": "THE IDOLM@STER: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  }
+ ]
+}

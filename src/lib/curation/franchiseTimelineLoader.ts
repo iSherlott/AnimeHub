@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { sortKey } from "./franchiseOrder";
+import type { FranchiseTimeline, TimelineEntry } from "./timeline";
 
 /** Um passo da linha do tempo da franquia, na ordem gravada pela auditoria (Epic 45). */
 export type FranchiseStep = {
@@ -45,4 +47,34 @@ export async function loadFranchiseSteps(anilistId: number): Promise<FranchiseSt
     coverImage: r.coverImage,
     current: r.anilistId === anilistId,
   }));
+}
+
+/**
+ * A mesma lista a partir das relações da AniList (a linha do tempo da obra), para a franquia que a auditoria ainda não
+ * passou: séries da linha principal, séries relacionadas e especiais em ordem de estreia. `null` com uma obra só.
+ */
+export function stepsFromTimeline(timeline: FranchiseTimeline | null): FranchiseStep[] | null {
+  if (!timeline) return null;
+  const entries: Array<{ entry: TimelineEntry; role: FranchiseStep["role"] }> = [
+    ...timeline.main.map((entry) => ({ entry, role: "MAIN" as const })),
+    ...timeline.related.map((entry) => ({ entry, role: "RELATED" as const })),
+    ...timeline.specials.map((entry) => ({ entry, role: "SPECIAL" as const })),
+  ];
+  if (entries.length < 2) return null;
+  const when = (e: TimelineEntry) => sortKey({ startDate: e.startDate ? Date.parse(e.startDate) || null : null, season: e.season, seasonYear: e.seasonYear }) ?? Number.POSITIVE_INFINITY;
+  return entries
+    .sort((a, b) => when(a.entry) - when(b.entry) || a.entry.anilistId - b.entry.anilistId)
+    .map(({ entry, role }) => ({
+      anilistId: entry.anilistId,
+      titleRomaji: entry.titleRomaji,
+      titleNative: entry.titleNative,
+      kind: entry.kind,
+      role,
+      season: role === "MAIN" ? (entry.seasonNumber ?? null) : null,
+      seasonName: entry.season,
+      seasonYear: entry.seasonYear,
+      episodes: entry.episodes,
+      coverImage: entry.coverImage,
+      current: entry.current,
+    }));
 }

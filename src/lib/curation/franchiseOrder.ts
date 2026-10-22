@@ -1,3 +1,4 @@
+import { linkKey } from "@/lib/story/versions";
 import { isMainLine } from "./kind";
 
 /**
@@ -79,8 +80,11 @@ const byDate = (keys: ReadonlyMap<number, number | null>) => (a: number, b: numb
   return a - b;
 };
 
-/** Todas as franquias do catálogo, maiores primeiro (a ordem em que o painel as percorre). Relações para obras fora do catálogo são ignoradas. */
-export function placeFranchises(nodes: ReadonlyArray<OrderNode>): Franchise[] {
+/**
+ * Todas as franquias do catálogo, maiores primeiro (a ordem em que o painel as percorre). Relações para obras fora do catálogo são
+ * ignoradas, e as entre versões de uma mesma história (`excluded`, ver story/versions) não juntam as franquias.
+ */
+export function placeFranchises(nodes: ReadonlyArray<OrderNode>, excluded: ReadonlySet<string> = new Set()): Franchise[] {
   const byId = new Map(nodes.map((n) => [n.anilistId, n]));
   const keys = new Map(nodes.map((n) => [n.anilistId, sortKey(n)]));
   const groups = new Groups();
@@ -93,6 +97,8 @@ export function placeFranchises(nodes: ReadonlyArray<OrderNode>): Franchise[] {
     chain.add(node.anilistId);
     for (const rel of node.relations) {
       if (!byId.has(rel.id) || rel.id === node.anilistId || !STORY.has(rel.relationType)) continue;
+      // Versões de uma mesma história (reboot): cada uma tem a própria franquia.
+      if (excluded.has(linkKey(node.anilistId, rel.id))) continue;
       groups.union(node.anilistId, rel.id);
       if (rel.relationType === "SEQUEL") sequels.add(`${node.anilistId}>${rel.id}`);
       else if (rel.relationType === "PREQUEL") sequels.add(`${rel.id}>${node.anilistId}`);

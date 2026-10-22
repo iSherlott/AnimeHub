@@ -1,0 +1,467 @@
+{
+ "loot": "series-005",
+ "items": [
+  {
+   "a": 76,
+   "b": 185875,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: continuação/novo projeto da mesma franquia; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 10177,
+   "b": 17705,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: séries paródia, cada uma com a sua; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 967,
+   "b": 10177,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: DD Hokuto no Ken é uma paródia, não uma refeita; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 20849,
+   "b": 110344,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: spin-off em formato curto; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 20548,
+   "b": 98872,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: séries independentes; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 101632,
+   "b": 187166,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: spin-offs curtos; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 174439,
+   "b": 186151,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: especial e série da mesma franquia; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 12321,
+   "b": 125447,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: continuação (Novae); não é a mesma história refeita do zero."
+  },
+  {
+   "a": 11103,
+   "b": 14237,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: spin-off e série da mesma franquia; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 146348,
+   "b": 129244,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: partes sequenciais da mesma série; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 102786,
+   "b": 102787,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: histórias diferentes; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 21726,
+   "b": 101571,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: temporadas da mesma série; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 205873,
+   "b": 184761,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: séries diferentes; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 4044,
+   "b": 99856,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: Oretacha Youkai Ningen é um spin-off cômico; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 99856,
+   "b": 107876,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: obras diferentes; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 169685,
+   "b": 168992,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: filme curto e série da mesma obra; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 19291,
+   "b": 97635,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: Pokémon Generations conta eventos de outras gerações, não refaz a série; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 527,
+   "b": 97635,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: Pokémon Generations é uma série à parte; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 527,
+   "b": 138699,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: Pokémon Evolutions é uma série à parte; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 1564,
+   "b": 97635,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: série à parte; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 1565,
+   "b": 97635,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: série à parte; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 9107,
+   "b": 97635,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: série à parte; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 112153,
+   "b": 113932,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: especial da mesma série; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 87435,
+   "b": 113051,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: projetos diferentes da franquia; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 112,
+   "b": 964,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: obras diferentes; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 112,
+   "b": 275,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: obras diferentes; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 275,
+   "b": 964,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: obras diferentes; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 102464,
+   "b": 137730,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: série principal e spin-off; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 21175,
+   "b": 102352,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: séries diferentes (Super e Heroes); não é a mesma história refeita do zero."
+  },
+  {
+   "a": 356,
+   "b": 21717,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: obras diferentes; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 19603,
+   "b": 21717,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: obras diferentes; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 19603,
+   "b": 98035,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: obras diferentes; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 356,
+   "b": 98035,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: obras diferentes; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 836,
+   "b": 835,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: RePure é a continuação; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 6956,
+   "b": 21764,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: continuação; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 5355,
+   "b": 101470,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: spin-off escolar; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 18205,
+   "b": 98552,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: versões da mesma série curta (extra); não é a mesma história refeita do zero."
+  },
+  {
+   "a": 21226,
+   "b": 21228,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: especial e série da mesma obra; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 10588,
+   "b": 20713,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: Golden é a continuação/reedição estendida da mesma história, não um recomeço; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 172896,
+   "b": 196229,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: temporadas da mesma série; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 3579,
+   "b": 5292,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: Getter Robo Go é outra série; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 4486,
+   "b": 5292,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: Getter Robo Go é outra série; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 110219,
+   "b": 120755,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: vídeo promocional e série; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 9598,
+   "b": 11785,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: spin-off; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 8630,
+   "b": 20991,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: continuação; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 99940,
+   "b": 150653,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: antologias diferentes; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 102801,
+   "b": 101359,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: séries diferentes; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 1371,
+   "b": 106571,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: arcos diferentes; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 763,
+   "b": 764,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: série seguinte; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 2609,
+   "b": 510,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: história seguinte; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 21237,
+   "b": 102604,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: séries diferentes; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 1000,
+   "b": 2203,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: história seguinte; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 1000,
+   "b": 1706,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: obra diferente; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 1502,
+   "b": 1881,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: spin-off; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 518,
+   "b": 5953,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: continuação; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 288,
+   "b": 136668,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: gerações diferentes de Beyblade; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 5962,
+   "b": 136668,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: gerações diferentes de Beyblade; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 136668,
+   "b": 21236,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: gerações diferentes de Beyblade; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 370,
+   "b": 693,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: obras diferentes; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 98077,
+   "b": 114717,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: séries diferentes; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 403,
+   "b": 649,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: continuação; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 311,
+   "b": 8542,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: continuação; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 3008,
+   "b": 187215,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: spin-off; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 2253,
+   "b": 18365,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: Mazinger ZIP! é um spin-off infantil; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 2252,
+   "b": 1629,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: Devilman Lady é outra história; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 80,
+   "b": 114841,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: G40 é um curta comemorativo; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 1674,
+   "b": 1614,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: continuação; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 2116,
+   "b": 1674,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: Captain Tsubasa J conta uma parte posterior da história; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 1674,
+   "b": 100745,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: Captain Tsubasa J conta uma parte posterior da história; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 6707,
+   "b": 20606,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: Book of Circus é a continuação; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 3915,
+   "b": 21755,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: séries diferentes; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 3009,
+   "b": 21682,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: Tiger Mask W é uma nova história no mesmo universo; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 2823,
+   "b": 2824,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: continuações da mesma obra; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 19959,
+   "b": 2824,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: continuações da mesma obra; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 8829,
+   "b": 21601,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: continuação; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 293,
+   "b": 1683,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: continuação; não é a mesma história refeita do zero."
+  },
+  {
+   "a": 98,
+   "b": 99,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre a franquia: histórias diferentes; não é a mesma história refeita do zero."
+  }
+ ]
+}

@@ -1,0 +1,605 @@
+{
+ "loot": "franquias-003",
+ "items": [
+  {
+   "a": 126905,
+   "b": 185073,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 126905,
+   "b": 202957,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 142080,
+   "b": 157883,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 142080,
+   "b": 171030,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 142080,
+   "b": 185073,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 142080,
+   "b": 202957,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 157883,
+   "b": 171030,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 157883,
+   "b": 185073,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 157883,
+   "b": 202957,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 171030,
+   "b": 185073,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 171030,
+   "b": 202957,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 185073,
+   "b": 202957,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 5082,
+   "b": 6901,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 5082,
+   "b": 11017,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 5082,
+   "b": 14913,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 5082,
+   "b": 19825,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 5082,
+   "b": 21020,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 5082,
+   "b": 21635,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 5082,
+   "b": 187990,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 6901,
+   "b": 11017,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 6901,
+   "b": 14913,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 6901,
+   "b": 19825,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 6901,
+   "b": 21020,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 6901,
+   "b": 21635,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 6901,
+   "b": 187990,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 11017,
+   "b": 14913,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 11017,
+   "b": 19825,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 11017,
+   "b": 21020,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 11017,
+   "b": 21635,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 11017,
+   "b": 187990,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 14913,
+   "b": 19825,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 14913,
+   "b": 21020,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 14913,
+   "b": 187990,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 19825,
+   "b": 21020,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 19825,
+   "b": 21635,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 19825,
+   "b": 187990,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21020,
+   "b": 21635,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21020,
+   "b": 187990,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21635,
+   "b": 187990,
+   "verdict": "NOT_REBOOT",
+   "note": "Battle Spirits: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 6008,
+   "b": 8217,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 6008,
+   "b": 10359,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 6008,
+   "b": 12963,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 6008,
+   "b": 17497,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 6008,
+   "b": 20784,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 6008,
+   "b": 21134,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 6008,
+   "b": 113689,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 8217,
+   "b": 10359,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 8217,
+   "b": 12963,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 8217,
+   "b": 17497,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 8217,
+   "b": 20784,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 8217,
+   "b": 21134,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 8217,
+   "b": 113689,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 10359,
+   "b": 12963,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 10359,
+   "b": 17497,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 10359,
+   "b": 20784,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 10359,
+   "b": 21134,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 10359,
+   "b": 113689,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 12963,
+   "b": 17497,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 12963,
+   "b": 20784,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 12963,
+   "b": 21134,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 12963,
+   "b": 113689,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 17497,
+   "b": 20784,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 17497,
+   "b": 21134,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 17497,
+   "b": 113689,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 20784,
+   "b": 21134,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 20784,
+   "b": 113689,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21134,
+   "b": 113689,
+   "verdict": "NOT_REBOOT",
+   "note": "Jewelpet: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 3325,
+   "b": 4532,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 3325,
+   "b": 2803,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 3325,
+   "b": 3486,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 3325,
+   "b": 5075,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 3325,
+   "b": 5440,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 3325,
+   "b": 3505,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 3325,
+   "b": 890,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 4532,
+   "b": 2803,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 4532,
+   "b": 3486,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 4532,
+   "b": 5075,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 4532,
+   "b": 5440,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 4532,
+   "b": 3505,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 4532,
+   "b": 890,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 2803,
+   "b": 3486,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 2803,
+   "b": 5075,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 2803,
+   "b": 5440,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 2803,
+   "b": 3505,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 2803,
+   "b": 890,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 3486,
+   "b": 5075,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 3486,
+   "b": 5440,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 3486,
+   "b": 3505,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 3486,
+   "b": 890,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 5075,
+   "b": 5440,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 5075,
+   "b": 3505,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 5075,
+   "b": 890,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 5440,
+   "b": 3505,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 5440,
+   "b": 890,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 3505,
+   "b": 890,
+   "verdict": "NOT_REBOOT",
+   "note": "Yuusha (série Brave): séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 10257,
+   "b": 17249,
+   "verdict": "NOT_REBOOT",
+   "note": "Pretty Rhythm / PriPara: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 10257,
+   "b": 20742,
+   "verdict": "NOT_REBOOT",
+   "note": "Pretty Rhythm / PriPara: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 10257,
+   "b": 101097,
+   "verdict": "NOT_REBOOT",
+   "note": "Pretty Rhythm / PriPara: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 10257,
+   "b": 136119,
+   "verdict": "NOT_REBOOT",
+   "note": "Pretty Rhythm / PriPara: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 10257,
+   "b": 171080,
+   "verdict": "NOT_REBOOT",
+   "note": "Pretty Rhythm / PriPara: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  }
+ ]
+}

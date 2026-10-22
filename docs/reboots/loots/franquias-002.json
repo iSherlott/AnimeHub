@@ -1,0 +1,605 @@
+{
+ "loot": "franquias-002",
+ "items": [
+  {
+   "a": 9893,
+   "b": 112748,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 9893,
+   "b": 126905,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 9893,
+   "b": 142080,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 9893,
+   "b": 157883,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 9893,
+   "b": 171030,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 9893,
+   "b": 185073,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 9893,
+   "b": 202957,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 12191,
+   "b": 16419,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 12191,
+   "b": 20577,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 12191,
+   "b": 21001,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 12191,
+   "b": 21506,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 12191,
+   "b": 98059,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 12191,
+   "b": 100661,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 12191,
+   "b": 105857,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 12191,
+   "b": 112748,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 12191,
+   "b": 126905,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 12191,
+   "b": 142080,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 12191,
+   "b": 157883,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 12191,
+   "b": 171030,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 12191,
+   "b": 185073,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 12191,
+   "b": 202957,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 16419,
+   "b": 20577,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 16419,
+   "b": 21001,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 16419,
+   "b": 21506,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 16419,
+   "b": 98059,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 16419,
+   "b": 100661,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 16419,
+   "b": 105857,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 16419,
+   "b": 112748,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 16419,
+   "b": 126905,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 16419,
+   "b": 142080,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 16419,
+   "b": 157883,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 16419,
+   "b": 171030,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 16419,
+   "b": 185073,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 16419,
+   "b": 202957,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 20577,
+   "b": 21001,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 20577,
+   "b": 21506,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 20577,
+   "b": 98059,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 20577,
+   "b": 100661,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 20577,
+   "b": 105857,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 20577,
+   "b": 112748,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 20577,
+   "b": 126905,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 20577,
+   "b": 142080,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 20577,
+   "b": 157883,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 20577,
+   "b": 171030,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 20577,
+   "b": 185073,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 20577,
+   "b": 202957,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21001,
+   "b": 21506,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21001,
+   "b": 98059,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21001,
+   "b": 100661,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21001,
+   "b": 105857,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21001,
+   "b": 112748,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21001,
+   "b": 126905,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21001,
+   "b": 142080,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21001,
+   "b": 157883,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21001,
+   "b": 171030,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21001,
+   "b": 185073,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21001,
+   "b": 202957,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21506,
+   "b": 98059,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21506,
+   "b": 100661,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21506,
+   "b": 105857,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21506,
+   "b": 112748,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21506,
+   "b": 126905,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21506,
+   "b": 142080,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21506,
+   "b": 157883,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21506,
+   "b": 171030,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21506,
+   "b": 185073,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 21506,
+   "b": 202957,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 98059,
+   "b": 100661,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 98059,
+   "b": 105857,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 98059,
+   "b": 112748,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 98059,
+   "b": 126905,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 98059,
+   "b": 142080,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 98059,
+   "b": 157883,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 98059,
+   "b": 171030,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 98059,
+   "b": 185073,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 98059,
+   "b": 202957,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 100661,
+   "b": 105857,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 100661,
+   "b": 112748,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 100661,
+   "b": 126905,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 100661,
+   "b": 142080,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 100661,
+   "b": 157883,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 100661,
+   "b": 171030,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 100661,
+   "b": 185073,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 100661,
+   "b": 202957,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 105857,
+   "b": 112748,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 105857,
+   "b": 126905,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 105857,
+   "b": 142080,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 105857,
+   "b": 157883,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 105857,
+   "b": 171030,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 105857,
+   "b": 185073,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 105857,
+   "b": 202957,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 112748,
+   "b": 126905,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 112748,
+   "b": 142080,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 112748,
+   "b": 157883,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 112748,
+   "b": 171030,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 112748,
+   "b": 185073,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 112748,
+   "b": 202957,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 126905,
+   "b": 142080,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 126905,
+   "b": 157883,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  },
+  {
+   "a": 126905,
+   "b": 171030,
+   "verdict": "NOT_REBOOT",
+   "note": "Precure: séries independentes da mesma franquia (cada uma com história própria); classificado em bloco, não é reboot."
+  }
+ ]
+}

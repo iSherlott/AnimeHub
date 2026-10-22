@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { AUDIT_CODES, type IssueCode } from "./issues";
 import { classifyKind } from "./kind";
 import { checkTitles } from "./titleCheck";
+import { excludedEdges } from "@/lib/story/versions";
 import { placeFranchises, type OrderNode } from "./franchiseOrder";
 import { findDuplicates, countDuplicateGroups, type DuplicateInput } from "./duplicates";
 
@@ -134,7 +135,8 @@ export async function runTimelineAudit(seq: number, { onBatch }: { onBatch?: (p:
       seasonYear: e.seasonYear,
       relations: parseRelations(e.relationsJson),
     }));
-  const franchises = placeFranchises(nodes);
+  // Cada versão de uma história refeita (reboot) tem a própria franquia e a própria linha do tempo.
+  const franchises = placeFranchises(nodes, excludedEdges(await prisma.storyLink.findMany({ select: { oldAnilistId: true, newAnilistId: true } })));
   progress.phase = "timeline";
   progress.franchises = franchises.length;
   const undatedIssues = new Map<string, IssueDraft>();

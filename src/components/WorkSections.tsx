@@ -7,6 +7,9 @@ import { AppLink } from "@/components/AppLink";
 import { HashtagRow } from "@/components/HashtagRow";
 import { PublishAboutButton } from "@/components/PublishAboutButton";
 import { RelatedWorkCard } from "@/components/RelatedWorkCard";
+import { VersionsCallout } from "@/components/StoryMarkers";
+import { WorkCard } from "@/components/WorkInfoCard";
+import type { StoryRelation } from "@/lib/story/context";
 import { UserPostList } from "@/components/UserPostList";
 
 /** Seções que toda obra tem, esteja ou não na lista de quem olha: quiz, discussões e histórias relacionadas. */
@@ -22,16 +25,11 @@ const RELATION_LABEL: Record<string, string> = {
   SUMMARY: "Resumo",
 };
 
-const sectionTitleSx = { fontSize: 12, fontWeight: 700, color: "text.secondary", textTransform: "uppercase" } as const;
-
 export async function WorkQuizEntry({ anilistId, userId }: { anilistId: number; userId: string | null }) {
   const quizState = await getQuizState(anilistId, userId);
   if (!quizState.quiz) return null;
   return (
-    <Box component="section" aria-labelledby="quiz-heading" data-testid="quiz-entry" sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-      <Typography id="quiz-heading" component="h3" sx={sectionTitleSx}>
-        Quiz do anime
-      </Typography>
+    <WorkCard title="Quiz do anime" testId="quiz-entry">
       <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
         {quizState.quiz.available
           ? `10 perguntas · ${quizState.quiz.scope}. Acerte todas para desbloquear o título "${quizState.quiz.titleReward}".`
@@ -47,7 +45,7 @@ export async function WorkQuizEntry({ anilistId, userId }: { anilistId: number; 
           {quizState.attempt.status === "COMPLETED" ? "Ver resultado do quiz" : "Ver o quiz"}
         </AppLink>
       </Box>
-    </Box>
+    </WorkCard>
   );
 }
 
@@ -105,7 +103,7 @@ export async function WorkDiscussions({
 }
 
 /** Histórias ligadas à obra que NÃO são outra temporada dela (derivados, filmes, versões alternativas…), só as que estão na plataforma. */
-export async function WorkRelated({ anilistId, franchiseId, relationsJson, seasonIds }: { anilistId: number; franchiseId: string | null; relationsJson: string | null; seasonIds: number[] }) {
+export async function WorkRelated({ anilistId, franchiseId, relationsJson, seasonIds, story = [] }: { anilistId: number; franchiseId: string | null; relationsJson: string | null; seasonIds: number[]; story?: StoryRelation[] }) {
   const platformIds = await platformAnilistIds();
   const known = new Set<number>([anilistId, ...seasonIds]);
   const siblings = franchiseId
@@ -116,7 +114,8 @@ export async function WorkRelated({ anilistId, franchiseId, relationsJson, seaso
     : [];
   for (const s of siblings) known.add(s.anilistId);
   const related = parseRelations(relationsJson).filter((r) => !known.has(r.id) && platformIds.has(r.id));
-  if (siblings.length === 0 && related.length === 0) return null;
+  if (siblings.length === 0 && related.length === 0 && story.length === 0) return null;
+  const versionNote = new Map(story.map((s) => [s.other.anilistId, s.role === "REBOOT" ? "Versão antiga (refeita nesta)" : "Reboot (refaz esta história)"]));
 
   const ids = siblings.map((s) => s.anilistId);
   const airings = ids.length
@@ -126,11 +125,12 @@ export async function WorkRelated({ anilistId, franchiseId, relationsJson, seaso
   for (const a of airings) if (!nextBy.has(a.anilistId)) nextBy.set(a.anilistId, a.airingAt);
 
   return (
-    <Box component="section" aria-labelledby="relacionadas-heading" data-testid="related" sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+    <Box component="section" id="relacionadas" aria-labelledby="relacionadas-heading" data-testid="related" sx={{ display: "flex", flexDirection: "column", gap: 3, scrollMarginTop: 150 }}>
       <Typography id="relacionadas-heading" component="h2" sx={{ fontSize: 26, lineHeight: 1.5 }}>
         Histórias relacionadas
       </Typography>
       <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Derivados, filmes e outras versões ligadas a esta obra.</Typography>
+      <VersionsCallout relations={story} />
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(4, minmax(0, 1fr))" }, gap: 3 }}>
         {siblings.map((s) => (
           <RelatedWorkCard
@@ -153,7 +153,7 @@ export async function WorkRelated({ anilistId, franchiseId, relationsJson, seaso
             titleRomaji={r.titleRomaji}
             titleEnglish={null}
             nextAiringAt={null}
-            note={`${RELATION_LABEL[r.relationType] ?? r.relationType}${r.format ? ` · ${FORMAT_LABEL[r.format] ?? r.format}` : ""}`}
+            note={`${versionNote.get(r.id) ?? RELATION_LABEL[r.relationType] ?? r.relationType}${r.format ? ` · ${FORMAT_LABEL[r.format] ?? r.format}` : ""}`}
           />
         ))}
       </Box>

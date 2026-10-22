@@ -150,6 +150,16 @@ test.describe.serial("Nota do site, tipos e especiais", () => {
     }
   });
 
+  test("sem episódios com data, a obra ainda mostra os especiais ramificados da linha do tempo", async ({ page }) => {
+    await page.goto(`/anime/${ROOT}`);
+    const only = page.getByTestId("branch-only-timeline");
+    await expect(only).toContainText("ainda não têm data no calendário");
+    await expect(only.locator("li")).toHaveCount(3);
+    await expect(only.getByTestId(`branch-kind-${OVA}`)).toHaveText("OVA");
+    await expect(only.getByTestId(`branch-kind-${ODA}`)).toHaveText("ODA");
+    await expect(only.getByTestId(`branch-kind-${MOVIE}`)).toHaveText("Filme");
+  });
+
   test("os especiais se ramificam da linha dos episódios, no ponto em que foram ao ar; 'Temporadas' fica só com episódios", async ({ page }) => {
     // Episódios espalhados no tempo: o OVA (abr/2021) cai entre o 1 e o 2; a ODA (jun/2021) e o filme (mar/2022), entre o 2 e o 3.
     for (const [episode, airingAt] of [[1, "2020-10-01T12:00:00Z"], [2, "2021-05-01T12:00:00Z"], [3, "2022-06-01T12:00:00Z"]] as const) {
@@ -160,6 +170,9 @@ test.describe.serial("Nota do site, tipos e especiais", () => {
     await expect(page.getByTestId("specials-notice")).toContainText("1 OVA, 1 ODA, 1 filme");
     await expect(page.getByTestId("specials-notice")).toContainText("fora da linha principal");
 
+    await expect(page.getByTestId("episode-count")).toHaveText("3 episódios · 3 especiais ramificados");
+    await expect(page.getByTestId("schedule-episodes")).not.toBeVisible(); // minimizada por padrão
+    await page.getByTestId("episode-toggle").click();
     const line = page.getByTestId("schedule-episodes");
     const nodes = line.locator("li");
     await expect(nodes).toHaveCount(6);
@@ -187,33 +200,37 @@ test.describe.serial("Nota do site, tipos e especiais", () => {
     await expect(page.getByTestId("specials-notice")).not.toContainText("OVA,");
   });
 
-  test("a linha do tempo da franquia só aparece depois da auditoria e mostra tudo em ordem de estreia (Epic 45)", async ({ page }) => {
+  test("a navegação da franquia vem das relações e, depois da auditoria, da ordem gravada: a mesma linha do tempo, uma só", async ({ page }) => {
+    // Antes da auditoria, a franquia sai das relações da AniList, em ordem de estreia.
+    const checkNav = async () => {
+      const nav = page.getByTestId("franchise-nav");
+      await expect(nav.getByTestId("franchise-nav-summary")).toHaveText("1 temporada e 3 especiais (OVA, ODA e filmes), em ordem de estreia.");
+      const items = nav.locator("li");
+      await expect(items).toHaveCount(4);
+      await expect(items.nth(0)).toContainText("Temporada 1");
+      await expect(items.nth(0)).toContainText("você está aqui");
+      await expect(items.nth(1)).toHaveAttribute("data-branch", "true");
+      await expect(items.nth(1)).toContainText("OVA · opcional");
+      await expect(items.nth(2)).toContainText("ODA · opcional");
+      await expect(items.nth(3)).toContainText("Filme · opcional");
+      await expect(nav.getByRole("link", { name: /Serie Round94 Movie/ })).toHaveAttribute("href", `/anime/${MOVIE}`);
+    };
     await page.goto(`/anime/${ROOT}`);
-    await expect(page.getByTestId("specials-notice")).toBeVisible();
-    await expect(page.getByTestId("franchise-timeline")).toHaveCount(0); // a auditoria ainda não passou por aqui
+    await checkNav();
+    await expect(page.getByTestId("franchise-nav")).toHaveCount(1); // uma só linha do tempo da franquia na página
+    await expect(page.getByTestId("franchise-timeline")).toHaveCount(0);
 
     const stored: Array<[number, number, string, number | null]> = [[ROOT, 1, "MAIN", 1], [OVA, 2, "SPECIAL", null], [ODA, 3, "SPECIAL", null], [MOVIE, 4, "SPECIAL", null]];
     for (const [anilistId, timelineOrder, timelineRole, timelineSeason] of stored) {
       await prisma.catalogEntry.update({ where: { anilistId }, data: { franchiseKey: ROOT, timelineOrder, timelineRole, timelineSeason } });
     }
     await page.goto(`/anime/${ROOT}`);
-    const timeline = page.getByTestId("franchise-timeline");
-    await expect(timeline.getByTestId("franchise-timeline-summary")).toHaveText("4 obras em ordem de estreia: 1 temporada da linha principal e 3 especiais opcionais (OVA, ODA, filmes).");
-    const steps = timeline.locator("li");
-    await expect(steps).toHaveCount(4);
-    await expect(steps.nth(0)).toContainText("Temporada 1");
-    await expect(steps.nth(0)).toContainText("você está aqui");
-    await expect(steps.nth(1)).toContainText("OVA");
-    await expect(steps.nth(2)).toContainText("ODA");
-    await expect(steps.nth(3)).toContainText("Filme");
-    await expect(timeline.getByText("Opcional")).toHaveCount(3);
-    await expect(timeline.getByTestId(`timeline-step-${ODA}`)).toHaveAttribute("data-role", "SPECIAL");
-    await expect(timeline.getByRole("link", { name: "Serie Round94 Movie" })).toHaveAttribute("href", `/anime/${MOVIE}`);
+    await checkNav();
 
     // Na página de um especial, é ele que aparece como atual.
     await page.goto(`/anime/${OVA}`);
-    await expect(page.getByTestId(`timeline-step-${OVA}`)).toContainText("você está aqui");
-    await expect(page.getByTestId(`timeline-step-${ROOT}`)).not.toContainText("você está aqui");
+    await expect(page.getByTestId(`franchise-nav-item-${OVA}`)).toContainText("você está aqui");
+    await expect(page.getByTestId(`franchise-nav-item-${ROOT}`)).not.toContainText("você está aqui");
   });
 
   test("obra sem especiais não mostra aviso nem seção", async ({ page }) => {
@@ -221,6 +238,6 @@ test.describe.serial("Nota do site, tipos e especiais", () => {
     await page.goto(`/anime/${SCORED}`);
     await expect(page.getByTestId("anime-title")).toBeVisible();
     await expect(page.getByTestId("specials-notice")).toHaveCount(0);
-    await expect(page.getByTestId("franchise-timeline")).toHaveCount(0);
+    await expect(page.getByTestId("franchise-nav")).toHaveCount(0);
   });
 });

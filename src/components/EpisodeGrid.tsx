@@ -2,11 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
   Box,
   Button,
   MenuItem,
@@ -18,12 +14,15 @@ import {
 } from "@mui/material";
 import type { Episode } from "@prisma/client";
 import { BranchCard } from "@/components/BranchCard";
+import { CollapsibleEpisodes } from "@/components/CollapsibleEpisodes";
 import { InfiniteFooter } from "@/components/InfiniteFooter";
+import { ArcHeader, BeyondNotice, ContinuesNotice, NO_MARKERS, type StoryMarkers } from "@/components/StoryMarkers";
 import { VerticalTimeline, type TimelineNode } from "@/components/VerticalTimeline";
 import { resolveTitleTextLenient, useTitlePreference } from "@/lib/titlePreference";
 import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
 import { useTimeZone } from "@/lib/useTimeZone";
 import { useWindowedList } from "@/lib/useWindowedList";
+import { groupByArcs, type ArcInfo } from "@/lib/story/versions";
 import { interleave, type Branch } from "@/lib/workJourney";
 
 /** Quantos episódios aparecem de cada vez na lista (o resto vem ao rolar). */
@@ -153,6 +152,8 @@ export function EpisodeGrid({
   accentColor,
   branches = [],
   nowMs,
+  arcs = [],
+  markers = NO_MARKERS,
 }: {
   episodes: Episode[];
   /** Número do episódio → horário de exibição (calendário). */
@@ -168,8 +169,13 @@ export function EpisodeGrid({
   branches?: Branch[];
   /** "Agora" no servidor, para o ponto de cada episódio (já exibido, próximo, a vir) bater na hidratação. */
   nowMs?: number;
+  /** Arcos da obra (pesquisa de reboot e arcos, Epic 48): cada um vira um cabeçalho na linha do tempo. */
+  arcs?: ArcInfo[];
+  /** Pontos de virada entre a versão antiga e o reboot desta história. */
+  markers?: StoryMarkers;
 }) {
   const [now] = useState(() => nowMs ?? Date.now());
+  const language = useTitlePreference().preference.language;
   // Episódios agendados que a Kitsu ainda não lista entram na lista (só com número, data e imagem).
   const episodes = useMemo(() => {
     const seasons = Array.from(new Set(kitsuEpisodes.map((e) => e.seasonNumber)));
@@ -226,18 +232,29 @@ export function EpisodeGrid({
   );
   const items = useMemo(() => interleave(dated, needle ? [] : branches), [dated, branches, needle]);
   const nextId = dated.find((d) => d.dateMs !== null && d.dateMs > now)?.ep.id;
+  // Os arcos viram cabeçalhos na linha (e o ponto em que o reboot passa da versão antiga); na busca, a lista sai sem eles.
+  const grouped = useMemo(
+    () => groupByArcs(items, (item) => (item.type === "episode" ? { number: item.episode.ep.number } : null), needle ? [] : arcs, needle ? null : (markers.beyondFrom?.episode ?? null)),
+    [items, arcs, markers.beyondFrom, needle]
+  );
   // Rolagem infinita: séries longas têm centenas de episódios, que aparecem aos poucos conforme a pessoa desce a lista.
-  const windowed = useWindowedList(items, `${effectiveSeason}|${needle}`, EPISODE_WINDOW);
+  const windowed = useWindowedList(grouped, `${effectiveSeason}|${needle}`, EPISODE_WINDOW);
   const { ref: sentinelRef, supported: infiniteSupported } = useInfiniteScroll(windowed.loadMore, windowed.hasMore, windowed.shown);
-  const nodes: TimelineNode[] = windowed.visible.map((item) =>
-    item.type === "branch"
+  const nodes: TimelineNode[] = windowed.visible.map((entry): TimelineNode => {
+    if (entry.kind === "arc") return { key: `arc-${entry.arc.position}`, tone: "arc", children: <ArcHeader arc={entry.arc} language={language} /> };
+    if (entry.kind === "beyond" && markers.beyondFrom) return { key: "beyond", tone: "notice", children: <BeyondNotice marker={markers.beyondFrom} arc={entry.arc} language={language} /> };
+    if (entry.kind === "beyond") return { key: "beyond", tone: "notice", children: null };
+    const item = entry.item;
+    return item.type === "branch"
       ? { key: `branch-${item.branch.anilistId}`, branch: true, children: <BranchCard branch={item.branch} /> }
       : {
           key: item.episode.ep.id,
           tone: item.episode.ep.id === nextId ? "next" : item.episode.dateMs !== null && item.episode.dateMs > now ? "upcoming" : "done",
           children: <EpisodeRow ep={item.episode.ep} fallbackImage={fallbackImage} airingAt={schedule[item.episode.ep.number]} calendarImage={episodeImages[item.episode.ep.number]} />,
-        }
-  );
+        };
+  });
+  // Versão antiga de uma história refeita: no fim da lista, o aviso de que ela continua no reboot.
+  if (!windowed.hasMore && !needle && markers.continuesIn) nodes.push({ key: "continues", tone: "notice", children: <ContinuesNotice marker={markers.continuesIn} /> });
 
   if (episodes.length === 0) return null;
 
@@ -246,19 +263,7 @@ export function EpisodeGrid({
   }
 
   return (
-    <Accordion
-      disableGutters
-      sx={{ bgcolor: "background.paper", "&:before": { display: "none" } }}
-    >
-      <AccordionSummary
-        expandIcon={<ExpandMoreIcon sx={{ color: accentColor ?? undefined }} />}
-        aria-label={`Ver episódios (${episodes.length})`}
-      >
-        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-          Ver episódios ({episodes.length})
-        </Typography>
-      </AccordionSummary>
-      <AccordionDetails>
+    <CollapsibleEpisodes summary={`${episodes.length} ${episodes.length === 1 ? "episódio" : "episódios"}${branches.length > 0 ? ` · ${branches.length} ${branches.length === 1 ? "especial ramificado" : "especiais ramificados"}` : ""}`} accentColor={accentColor}>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap", alignItems: "center" }}>
             {seasonNumbers.length > 1 && (
@@ -300,7 +305,6 @@ export function EpisodeGrid({
             </Box>
           )}
         </Box>
-      </AccordionDetails>
-    </Accordion>
+    </CollapsibleEpisodes>
   );
 }

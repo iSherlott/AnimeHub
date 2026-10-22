@@ -55,7 +55,7 @@ test.describe("Episódios: data, sinopse e imagem", () => {
     await page.route(/s4\.anilist\.co/, (route) => route.fulfill({ status: 200, contentType: "image/png", body: PNG }));
     await page.goto(`/anime/${animeId}`);
     await waitEpisodesStreamed(page); // a lista chega em streaming: espera o esqueleto sumir e a troca terminar
-    await page.getByRole("button", { name: /Ver episódios/ }).click();
+    await page.getByTestId("episode-toggle").click(); // a lista de episódios vem minimizada
 
     // EP1: data da Kitsu (dia) + horário do calendário; sinopse atrás do aviso de spoiler.
     const ep1 = page.getByTestId("episode-tile-1-1");

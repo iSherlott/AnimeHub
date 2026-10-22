@@ -1,0 +1,505 @@
+{
+ "loot": "reboots-001",
+ "items": [
+  {
+   "a": 136,
+   "b": 11061,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/List_of_Hunter_%C3%97_Hunter_(2011_TV_series)_episodes",
+   "note": "A série de 2011 refaz a história desde o início (Exame Hunter). Os arcos Hunter Exam, Heavens Arena e Phantom Troupe repetem o que o anime de 1999 contou (e os OVAs de 2002-2004 cobriram Greed Island); a partir do episódio 76, o arco das Formigas-Quimera, é história que a versão de 1999 nunca adaptou.",
+   "reboot": {
+    "old": 136,
+    "new": 11061,
+    "coverage": "PARTIAL",
+    "beyondFromEpisode": 76
+   },
+   "arcs": [
+    {
+     "anilistId": 11061,
+     "source": "https://en.wikipedia.org/wiki/List_of_Hunter_%C3%97_Hunter_(2011_TV_series)_episodes",
+     "list": [
+      {
+       "nameEn": "Hunter Exam",
+       "start": 1,
+       "end": 26
+      },
+      {
+       "nameEn": "Heavens Arena",
+       "start": 27,
+       "end": 38
+      },
+      {
+       "nameEn": "Phantom Troupe",
+       "start": 39,
+       "end": 58
+      },
+      {
+       "nameEn": "Greed Island",
+       "start": 59,
+       "end": 75
+      },
+      {
+       "nameEn": "Chimera Ant",
+       "start": 76,
+       "end": 136
+      },
+      {
+       "nameEn": "Election",
+       "start": 137,
+       "end": 148
+      }
+     ]
+    },
+    {
+     "anilistId": 136,
+     "source": "https://en.wikipedia.org/wiki/List_of_Hunter_%C3%97_Hunter_(1999_TV_series)_episodes",
+     "list": [
+      {
+       "nameEn": "Hunter Exam",
+       "start": 1,
+       "end": 36
+      },
+      {
+       "nameEn": "Heavens Arena",
+       "start": 37,
+       "end": 44
+      },
+      {
+       "nameEn": "Phantom Troupe",
+       "start": 45,
+       "end": 62
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "a": 120,
+   "b": 105334,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/Fruits_Basket_(2019_TV_series)",
+   "note": "O anime de 2019 é chamado de reboot na Wikipédia e adapta os 23 volumes do mangá em 3 temporadas (63 episódios): a 1ª refaz o começo (volumes 1 a 5 e parte do 6 e 7); as temporadas 2 e final seguem além do que o anime de 2001 chegou a adaptar.",
+   "reboot": {
+    "old": 120,
+    "new": 105334,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 5760,
+   "b": 101347,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/Dororo_(2019_TV_series)",
+   "note": "Segunda adaptação animada do mangá de Tezuka: conta a história de novo, do zero, com mudanças em relação ao mangá e ao anime de 1969 (Hyakkimaru mais jovem e ingênuo).",
+   "reboot": {
+    "old": 5760,
+    "new": 101347,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 6,
+   "b": 151040,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/Trigun_Stampede",
+   "note": "Reimaginação: a Wikipédia a descreve como a segunda adaptação, \"um novo Trigun\" feito para quem não conhece o anime de 1998; recomeça pela queda da frota colonial e pelo passado de Vash.",
+   "reboot": {
+    "old": 6,
+    "new": 151040,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 45,
+   "b": 142877,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/Rurouni_Kenshin_(2023_TV_series)",
+   "note": "Segunda adaptação animada do mangá (a Wikipédia a chama de re-adaptação do mangá original); recomeça do início, depois do anime de 1996-1998.",
+   "reboot": {
+    "old": 45,
+    "new": 142877,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 210,
+   "b": 178533,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/Ranma_%C2%BD_(2024_TV_series)",
+   "note": "Remake do mangá original (segunda adaptação em anime), com a 1ª temporada de 2024 refazendo o começo da história do anime de 1989.",
+   "reboot": {
+    "old": 210,
+    "new": 178533,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 149939,
+   "b": 178533,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/Ranma_%C2%BD_(2024_TV_series)",
+   "note": "Ranma ½: Nettou-hen é a segunda parte do anime de 1989; o remake de 2024 refaz a mesma história do mangá desde o início.",
+   "reboot": {
+    "old": 149939,
+    "new": 178533,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 149939,
+   "b": 185731,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/Ranma_%C2%BD_(2024_TV_series)",
+   "note": "2ª temporada do remake de 2024 (outra parte do mesmo reboot).",
+   "reboot": {
+    "old": 149939,
+    "new": 185731,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 149939,
+   "b": 209872,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/Ranma_%C2%BD_(2024_TV_series)",
+   "note": "3ª temporada do remake de 2024 (outra parte do mesmo reboot).",
+   "reboot": {
+    "old": 149939,
+    "new": 209872,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 1293,
+   "b": 143277,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/Urusei_Yatsura_(2022_TV_series)",
+   "note": "Segunda adaptação em anime do mangá, classificada pela Wikipédia como reboot de anime; refaz a história depois do anime de 1981-1986.",
+   "reboot": {
+    "old": 1293,
+    "new": 143277,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 154,
+   "b": 119675,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/Shaman_King_(2021_TV_series)",
+   "note": "A Wikipédia chama a série de 2021 de reboot: adapta os 35 volumes da edição completa do mangá, do começo. Ainda não foi mapeado em que ponto passa do que o anime de 2001 contou.",
+   "reboot": {
+    "old": 154,
+    "new": 119675,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 687,
+   "b": 117196,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/Tokyo_Mew_Mew_New",
+   "note": "A Wikipédia descreve Tokyo Mew Mew New como reboot/remake: nova adaptação do mangá, anunciada para os 20 anos da obra (2 temporadas, 24 episódios).",
+   "reboot": {
+    "old": 687,
+    "new": 117196,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 530,
+   "b": 14751,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/Sailor_Moon_Crystal",
+   "note": "Reboot que, segundo a produção, adapta o mangá \"do zero\" (não é um remake do anime de 1992); Dark Kingdom e Black Moon formam os 26 episódios.",
+   "reboot": {
+    "old": 530,
+    "new": 14751,
+    "coverage": "FULL"
+   },
+   "arcs": [
+    {
+     "anilistId": 14751,
+     "source": "https://en.wikipedia.org/wiki/Sailor_Moon_Crystal",
+     "list": [
+      {
+       "nameEn": "Dark Kingdom",
+       "start": 1,
+       "end": 14
+      },
+      {
+       "nameEn": "Black Moon",
+       "start": 15,
+       "end": 26
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "a": 740,
+   "b": 14751,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/Sailor_Moon_Crystal",
+   "note": "Sailor Moon R (anime de 1993) cobre o arco Black Moon, que Crystal refaz em sua 2ª temporada (a série de 2014 é um reboot do mangá).",
+   "reboot": {
+    "old": 740,
+    "new": 14751,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 144,
+   "b": 1530,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/Kanon_(visual_novel)",
+   "note": "A versão de 2006 (Kyoto Animation) é uma nova adaptação do jogo, a segunda em anime, depois da série de 2002 (Toei).",
+   "reboot": {
+    "old": 144,
+    "new": 1530,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 552,
+   "b": 114811,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/Digimon_Adventure:",
+   "note": "A Wikipédia chama a série de 2020 de reboot da de 1999: recomeça a história \"do começo mais uma vez\", para uma nova geração (67 episódios).",
+   "reboot": {
+    "old": 552,
+    "new": 114811,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 2966,
+   "b": 145728,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/Spice_and_Wolf",
+   "note": "Remake confirmado: a nova adaptação dos 15 anos da obra (25 episódios, 2024) refaz o anime de 2008.",
+   "reboot": {
+    "old": 2966,
+    "new": 145728,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 5688,
+   "b": 6971,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/GeGeGe_no_Kitar%C5%8D",
+   "note": "Cada era da TV japonesa refez o mangá de Gegege no Kitarou do zero: a Wikipédia conta sete adaptações do mangá e trata as seis séries (1968, 1971, 1985, 1996, 2007 e 2018) como o conjunto de remakes.",
+   "reboot": {
+    "old": 5688,
+    "new": 6971,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 5688,
+   "b": 7307,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/GeGeGe_no_Kitar%C5%8D",
+   "note": "Cada era da TV japonesa refez o mangá de Gegege no Kitarou do zero: a Wikipédia conta sete adaptações do mangá e trata as seis séries (1968, 1971, 1985, 1996, 2007 e 2018) como o conjunto de remakes.",
+   "reboot": {
+    "old": 5688,
+    "new": 7307,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 5688,
+   "b": 7619,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/GeGeGe_no_Kitar%C5%8D",
+   "note": "Cada era da TV japonesa refez o mangá de Gegege no Kitarou do zero: a Wikipédia conta sete adaptações do mangá e trata as seis séries (1968, 1971, 1985, 1996, 2007 e 2018) como o conjunto de remakes.",
+   "reboot": {
+    "old": 5688,
+    "new": 7619,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 5688,
+   "b": 2165,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/GeGeGe_no_Kitar%C5%8D",
+   "note": "Cada era da TV japonesa refez o mangá de Gegege no Kitarou do zero: a Wikipédia conta sete adaptações do mangá e trata as seis séries (1968, 1971, 1985, 1996, 2007 e 2018) como o conjunto de remakes.",
+   "reboot": {
+    "old": 5688,
+    "new": 2165,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 5688,
+   "b": 100978,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/GeGeGe_no_Kitar%C5%8D",
+   "note": "Cada era da TV japonesa refez o mangá de Gegege no Kitarou do zero: a Wikipédia conta sete adaptações do mangá e trata as seis séries (1968, 1971, 1985, 1996, 2007 e 2018) como o conjunto de remakes.",
+   "reboot": {
+    "old": 5688,
+    "new": 100978,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 6971,
+   "b": 7307,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/GeGeGe_no_Kitar%C5%8D",
+   "note": "Cada era da TV japonesa refez o mangá de Gegege no Kitarou do zero: a Wikipédia conta sete adaptações do mangá e trata as seis séries (1968, 1971, 1985, 1996, 2007 e 2018) como o conjunto de remakes.",
+   "reboot": {
+    "old": 6971,
+    "new": 7307,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 6971,
+   "b": 7619,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/GeGeGe_no_Kitar%C5%8D",
+   "note": "Cada era da TV japonesa refez o mangá de Gegege no Kitarou do zero: a Wikipédia conta sete adaptações do mangá e trata as seis séries (1968, 1971, 1985, 1996, 2007 e 2018) como o conjunto de remakes.",
+   "reboot": {
+    "old": 6971,
+    "new": 7619,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 6971,
+   "b": 2165,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/GeGeGe_no_Kitar%C5%8D",
+   "note": "Cada era da TV japonesa refez o mangá de Gegege no Kitarou do zero: a Wikipédia conta sete adaptações do mangá e trata as seis séries (1968, 1971, 1985, 1996, 2007 e 2018) como o conjunto de remakes.",
+   "reboot": {
+    "old": 6971,
+    "new": 2165,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 6971,
+   "b": 100978,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/GeGeGe_no_Kitar%C5%8D",
+   "note": "Cada era da TV japonesa refez o mangá de Gegege no Kitarou do zero: a Wikipédia conta sete adaptações do mangá e trata as seis séries (1968, 1971, 1985, 1996, 2007 e 2018) como o conjunto de remakes.",
+   "reboot": {
+    "old": 6971,
+    "new": 100978,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 7307,
+   "b": 7619,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/GeGeGe_no_Kitar%C5%8D",
+   "note": "Cada era da TV japonesa refez o mangá de Gegege no Kitarou do zero: a Wikipédia conta sete adaptações do mangá e trata as seis séries (1968, 1971, 1985, 1996, 2007 e 2018) como o conjunto de remakes.",
+   "reboot": {
+    "old": 7307,
+    "new": 7619,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 7307,
+   "b": 2165,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/GeGeGe_no_Kitar%C5%8D",
+   "note": "Cada era da TV japonesa refez o mangá de Gegege no Kitarou do zero: a Wikipédia conta sete adaptações do mangá e trata as seis séries (1968, 1971, 1985, 1996, 2007 e 2018) como o conjunto de remakes.",
+   "reboot": {
+    "old": 7307,
+    "new": 2165,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 7307,
+   "b": 100978,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/GeGeGe_no_Kitar%C5%8D",
+   "note": "Cada era da TV japonesa refez o mangá de Gegege no Kitarou do zero: a Wikipédia conta sete adaptações do mangá e trata as seis séries (1968, 1971, 1985, 1996, 2007 e 2018) como o conjunto de remakes.",
+   "reboot": {
+    "old": 7307,
+    "new": 100978,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 7619,
+   "b": 2165,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/GeGeGe_no_Kitar%C5%8D",
+   "note": "Cada era da TV japonesa refez o mangá de Gegege no Kitarou do zero: a Wikipédia conta sete adaptações do mangá e trata as seis séries (1968, 1971, 1985, 1996, 2007 e 2018) como o conjunto de remakes.",
+   "reboot": {
+    "old": 7619,
+    "new": 2165,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 7619,
+   "b": 100978,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/GeGeGe_no_Kitar%C5%8D",
+   "note": "Cada era da TV japonesa refez o mangá de Gegege no Kitarou do zero: a Wikipédia conta sete adaptações do mangá e trata as seis séries (1968, 1971, 1985, 1996, 2007 e 2018) como o conjunto de remakes.",
+   "reboot": {
+    "old": 7619,
+    "new": 100978,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 2165,
+   "b": 100978,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/GeGeGe_no_Kitar%C5%8D",
+   "note": "Cada era da TV japonesa refez o mangá de Gegege no Kitarou do zero: a Wikipédia conta sete adaptações do mangá e trata as seis séries (1968, 1971, 1985, 1996, 2007 e 2018) como o conjunto de remakes.",
+   "reboot": {
+    "old": 2165,
+    "new": 100978,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 64,
+   "b": 18041,
+   "verdict": "NOT_REBOOT",
+   "note": "Rozen Maiden (2013) adapta o segundo mangá, que continua a história depois da primeira série: continuação, não reboot.",
+   "source": "https://en.wikipedia.org/wiki/Rozen_Maiden"
+  },
+  {
+   "a": 65,
+   "b": 18041,
+   "verdict": "NOT_REBOOT",
+   "note": "Rozen Maiden (2013) adapta o segundo mangá, que continua a história depois de Träumend: continuação, não reboot.",
+   "source": "https://en.wikipedia.org/wiki/Rozen_Maiden"
+  },
+  {
+   "a": 813,
+   "b": 6033,
+   "verdict": "NOT_REBOOT",
+   "note": "Dragon Ball Kai é a reedição (remasterizada, com cortes) de Dragon Ball Z: mesmo material, não uma história refeita do zero."
+  },
+  {
+   "a": 813,
+   "b": 20635,
+   "verdict": "NOT_REBOOT",
+   "note": "Dragon Ball Kai (2014) é a reedição de Dragon Ball Z: mesmo material, não uma história refeita do zero."
+  },
+  {
+   "a": 849,
+   "b": 4382,
+   "verdict": "NOT_REBOOT",
+   "note": "A versão de 2009 reexibe a série de 2006 em ordem cronológica, com episódios novos: o mesmo enredo, não um reboot."
+  },
+  {
+   "a": 356,
+   "b": 19603,
+   "verdict": "NOT_REBOOT",
+   "note": "Unlimited Blade Works adapta outra rota do jogo (não conta de novo a mesma rota da série de 2006): classificado como não reboot."
+  }
+ ]
+}

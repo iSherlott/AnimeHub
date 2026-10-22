@@ -105,18 +105,23 @@ test.describe("Epic 27 (lote 1) — lista de episódios em accordion fechado por
     await prisma.$disconnect();
   });
 
-  test("episódios vêm escondidos até clicar em 'Ver episódios'", async ({ page }) => {
+  test("os episódios vêm minimizados: só a contagem aparece, e o botão abre e fecha a linha do tempo", async ({ page }) => {
     await page.goto(`/anime/${animeId}`);
-    // O MUI Accordion mantém o conteúdo montado no DOM mesmo fechado (só
-    // colapsa a altura) — toHaveCount(0) sempre passaria mesmo se o
-    // accordion nunca tivesse fechado nada; not.toBeVisible() é o que
-    // realmente confere o estado fechado.
     await waitEpisodesStreamed(page); // a lista chega em streaming: espera o esqueleto sumir e a troca terminar
+    await expect(page.getByTestId("episode-count")).toHaveText("1 episódio");
+    const toggle = page.getByTestId("episode-toggle");
+    await expect(toggle).toHaveText("Mostrar episódios");
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
     await expect(page.getByPlaceholder("Buscar episódio...")).not.toBeVisible();
-    await expect(page.getByText("Ver episódios (1)")).toBeVisible();
+    await expect(page.getByTestId("episode-timeline")).not.toBeVisible();
 
-    await page.getByText("Ver episódios (1)").click();
+    await toggle.click();
+    await expect(toggle).toHaveText("Minimizar episódios");
     await expect(page.getByPlaceholder("Buscar episódio...")).toBeVisible();
+    await expect(page.getByTestId("episode-timeline")).toBeVisible();
+
+    await toggle.click();
+    await expect(page.getByTestId("episode-timeline")).not.toBeVisible();
   });
 });
 

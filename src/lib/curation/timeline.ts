@@ -1,3 +1,4 @@
+import { linkKey } from "@/lib/story/versions";
 import { isMainLine } from "./kind";
 
 /**
@@ -62,14 +63,14 @@ const toEntry = (node: TimelineNode, rootId: number, extra: Partial<TimelineEntr
  * `nodes`: as obras do catálogo que se ligam à raiz (qualquer obra fora do catálogo é ignorada). Devolve null se a raiz
  * não está nele.
  */
-export function buildTimeline(rootId: number, nodes: ReadonlyMap<number, TimelineNode>): FranchiseTimeline | null {
+export function buildTimeline(rootId: number, nodes: ReadonlyMap<number, TimelineNode>, excluded: ReadonlySet<string> = new Set()): FranchiseTimeline | null {
   const root = nodes.get(rootId);
   if (!root) return null;
 
   // Arestas nos dois sentidos, só entre obras do catálogo.
   const edges = new Map<number, Array<{ to: number; type: string }>>();
   const add = (from: number, to: number, type: string) => {
-    if (!nodes.has(to) || from === to) return;
+    if (!nodes.has(to) || from === to || excluded.has(linkKey(from, to))) return;
     const list = edges.get(from) ?? [];
     if (!list.some((e) => e.to === to && e.type === type)) list.push({ to, type });
     edges.set(from, list);

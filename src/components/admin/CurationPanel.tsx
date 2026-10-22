@@ -8,6 +8,7 @@ import type { CurationStatus } from "@/lib/curation/engine";
 import { adminPanelSx } from "./AdminUi";
 import { CurationEntries } from "./CurationEntries";
 import { DuplicatesPanel } from "./DuplicatesPanel";
+import { StoryPanel } from "./StoryPanel";
 import { TimelinePanel } from "./TimelinePanel";
 import { TranslationPanel } from "./TranslationPanel";
 
@@ -199,6 +200,8 @@ export function CurationPanel() {
       <TimelinePanel />
 
       <DuplicatesPanel />
+
+      <StoryPanel />
 
       <CurationEntries running={Boolean(running)} />
 

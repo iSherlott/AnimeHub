@@ -6,7 +6,7 @@ import { Box } from "@mui/material";
  * uma `branch` é uma ramificação: sai da linha por um traço e fica recuada (os OVA, ODA e filmes que não fazem parte da
  * história principal). `tone` pinta o ponto: done (já foi ao ar), next (o próximo), upcoming (ainda vai) e branch.
  */
-export type TimelineTone = "done" | "next" | "upcoming" | "branch";
+export type TimelineTone = "done" | "next" | "upcoming" | "branch" | "arc" | "notice";
 
 export type TimelineNode = {
   key: string;
@@ -26,11 +26,13 @@ const dotSx = (tone: TimelineTone) => ({
   top: 14,
   width: DOT,
   height: DOT,
-  borderRadius: "50%",
+  // O arco é um losango (marca uma seção da linha); o aviso é um ponto cheio da cor secundária.
+  borderRadius: tone === "arc" ? "3px" : "50%",
+  transform: tone === "arc" ? "rotate(45deg) scale(0.85)" : "none",
   boxSizing: "border-box" as const,
   border: 2,
-  borderColor: tone === "branch" ? "secondary.main" : tone === "upcoming" ? "text.secondary" : "primary.main",
-  bgcolor: tone === "done" ? "primary.main" : tone === "next" ? "background.paper" : "background.default",
+  borderColor: tone === "branch" || tone === "notice" ? "secondary.main" : tone === "upcoming" ? "text.secondary" : "primary.main",
+  bgcolor: tone === "done" || tone === "arc" ? "primary.main" : tone === "notice" ? "secondary.main" : tone === "next" ? "background.paper" : "background.default",
   boxShadow: tone === "next" ? "0 0 0 4px rgba(228, 0, 43, 0.28)" : "none",
 });
 

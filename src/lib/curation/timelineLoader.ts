@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { excludedEdges, linkKey } from "@/lib/story/versions";
 import { buildTimeline, type FranchiseTimeline, type TimelineNode, type TimelineRelation } from "./timeline";
 
 const MAX_ROUNDS = 6;
@@ -20,12 +21,17 @@ function parseRelations(json: string | null): TimelineRelation[] {
  */
 export async function loadTimeline(anilistId: number): Promise<FranchiseTimeline | null> {
   const nodes = new Map<number, TimelineNode>();
+  const links: Array<{ oldAnilistId: number; newAnilistId: number }> = [];
+  let excluded = new Set<string>();
   let frontier = [anilistId];
   for (let round = 0; round < MAX_ROUNDS && frontier.length; round += 1) {
     const rows = await prisma.catalogEntry.findMany({
       where: { anilistId: { in: frontier }, onPlatform: true },
       select: { anilistId: true, titleRomaji: true, titleEnglish: true, titleNative: true, kind: true, format: true, season: true, seasonYear: true, startDate: true, episodes: true, coverImage: true, relationsJson: true },
     });
+    // Versões de uma mesma história (reboot): não se segue a relação entre elas.
+    links.push(...(await prisma.storyLink.findMany({ where: { OR: [{ oldAnilistId: { in: frontier } }, { newAnilistId: { in: frontier } }] }, select: { oldAnilistId: true, newAnilistId: true } })));
+    excluded = excludedEdges(links);
     const next = new Set<number>();
     for (const row of rows) {
       if (row.anilistId === null || nodes.has(row.anilistId)) continue;
@@ -44,9 +50,9 @@ export async function loadTimeline(anilistId: number): Promise<FranchiseTimeline
         coverImage: row.coverImage,
         relations,
       });
-      for (const rel of relations) if (!nodes.has(rel.id)) next.add(rel.id);
+      for (const rel of relations) if (!nodes.has(rel.id) && !excluded.has(linkKey(row.anilistId, rel.id))) next.add(rel.id);
     }
     frontier = [...next];
   }
-  return buildTimeline(anilistId, nodes);
+  return buildTimeline(anilistId, nodes, excluded);
 }

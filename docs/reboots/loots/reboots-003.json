@@ -1,0 +1,64 @@
+{
+ "loot": "reboots-003",
+ "items": [
+  {
+   "a": 1661,
+   "b": 1853,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/Cutie_Honey_Universe",
+   "note": "Cutey Honey F (1997) é um dos projetos de reboot/remake da franquia, que a Wikipédia conta como cinco (1973, 1997, 2004, 2007 e 2018).",
+   "reboot": {
+    "old": 1661,
+    "new": 1853,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 6472,
+   "b": 9345,
+   "verdict": "REBOOT",
+   "note": "Conhecimento geral sobre a obra (sem página consultada): é uma nova adaptação/remake da mesma história; confirme se for importante.",
+   "reboot": {
+    "old": 6472,
+    "new": 9345,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 2128,
+   "b": 2127,
+   "verdict": "NOT_REBOOT",
+   "note": "Chouja Raideen (1996) é outra série, com história própria."
+  },
+  {
+   "a": 550,
+   "b": 481,
+   "verdict": "NOT_REBOOT",
+   "note": "A série de 1998 adapta o começo do mangá e Duel Monsters (2000) outra parte: partes diferentes da obra, não um recomeço."
+  },
+  {
+   "a": 1704,
+   "b": 1599,
+   "verdict": "NOT_REBOOT",
+   "note": "EAT-MAN'98 é outra série (continuação em novo formato) e não refaz o anime de 1997."
+  },
+  {
+   "a": 467,
+   "b": 177699,
+   "verdict": "NOT_REBOOT",
+   "note": "A série de 2026 adapta o mangá de novo, mas não refaz Stand Alone Complex (que tem história própria)."
+  },
+  {
+   "a": 20486,
+   "b": 100246,
+   "verdict": "NOT_REBOOT",
+   "note": "Z/X: Code reunion é outra série da franquia."
+  },
+  {
+   "a": 21264,
+   "b": 108358,
+   "verdict": "NOT_REBOOT",
+   "note": "EPISODE ORACLE é outra história da franquia Phantasy Star Online 2."
+  }
+ ]
+}

@@ -1,0 +1,760 @@
+{
+ "loot": "reboots-002",
+ "items": [
+  {
+   "a": 1254,
+   "b": 102427,
+   "verdict": "REBOOT",
+   "note": "Nova adaptação (livre, em CG) do mangá e do clássico, feita com a Netflix; refaz o começo da história.",
+   "reboot": {
+    "old": 1254,
+    "new": 102427,
+    "coverage": "FULL"
+   },
+   "source": "https://en.wikipedia.org/wiki/Knights_of_the_Zodiac:_Saint_Seiya"
+  },
+  {
+   "a": 1254,
+   "b": 114448,
+   "verdict": "REBOOT",
+   "note": "2ª parte da nova adaptação (livre, em CG) do mangá.",
+   "reboot": {
+    "old": 1254,
+    "new": 114448,
+    "coverage": "FULL"
+   },
+   "source": "https://en.wikipedia.org/wiki/Knights_of_the_Zodiac:_Saint_Seiya"
+  },
+  {
+   "a": 1254,
+   "b": 151659,
+   "verdict": "REBOOT",
+   "note": "Temporada 2 (\"Battle Sanctuary\") da nova adaptação em CG.",
+   "reboot": {
+    "old": 1254,
+    "new": 151659,
+    "coverage": "FULL"
+   },
+   "source": "https://en.wikipedia.org/wiki/Knights_of_the_Zodiac:_Saint_Seiya"
+  },
+  {
+   "a": 1254,
+   "b": 158988,
+   "verdict": "REBOOT",
+   "note": "Temporada 2, parte 2, da nova adaptação em CG.",
+   "reboot": {
+    "old": 1254,
+    "new": 158988,
+    "coverage": "FULL"
+   },
+   "source": "https://en.wikipedia.org/wiki/Knights_of_the_Zodiac:_Saint_Seiya"
+  },
+  {
+   "a": 1661,
+   "b": 100814,
+   "verdict": "REBOOT",
+   "note": "A Wikipédia o chama de quinto projeto de reboot/remake da franquia Cutey Honey.",
+   "reboot": {
+    "old": 1661,
+    "new": 100814,
+    "coverage": "FULL"
+   },
+   "source": "https://en.wikipedia.org/wiki/Cutie_Honey_Universe"
+  },
+  {
+   "a": 1108,
+   "b": 99727,
+   "verdict": "REBOOT",
+   "note": "Segunda adaptação em anime do mangá (23 episódios, elenco novo), depois da série de 1999.",
+   "reboot": {
+    "old": 1108,
+    "new": 99727,
+    "coverage": "FULL"
+   },
+   "source": "https://en.wikipedia.org/wiki/Houshin_Engi"
+  },
+  {
+   "a": 33,
+   "b": 155011,
+   "verdict": "REBOOT",
+   "note": "Refaz o arco Era Dourada: a Memorial Edition (2022) é a reedição em TV dos filmes de 2012-2013, que contam o arco de novo depois da série de 1997.",
+   "reboot": {
+    "old": 33,
+    "new": 155011,
+    "coverage": "FULL"
+   },
+   "source": "https://en.wikipedia.org/wiki/Berserk_(manga)"
+  },
+  {
+   "a": 3858,
+   "b": 8140,
+   "verdict": "REBOOT",
+   "note": "Remake de 1989 do anime de 1970.",
+   "reboot": {
+    "old": 3858,
+    "new": 8140,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 9539,
+   "b": 101594,
+   "verdict": "REBOOT",
+   "note": "Cardfight!! Vanguard (2018) recomeça a série.",
+   "reboot": {
+    "old": 9539,
+    "new": 101594,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 8194,
+   "b": 130706,
+   "verdict": "REBOOT",
+   "note": "Nova adaptação em anime (2023) do mangá de Akuma-kun.",
+   "reboot": {
+    "old": 8194,
+    "new": 130706,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 4044,
+   "b": 107876,
+   "verdict": "REBOOT",
+   "note": "BEM (2019) é um reboot de Youkai Ningen Bem (1968).",
+   "reboot": {
+    "old": 4044,
+    "new": 107876,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 2222,
+   "b": 3312,
+   "verdict": "REBOOT",
+   "note": "O anime de 1997 refaz Dr. Slump.",
+   "reboot": {
+    "old": 2222,
+    "new": 3312,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 3129,
+   "b": 3130,
+   "verdict": "REBOOT",
+   "note": "O anime de 1980 refaz Kaibutsu-kun.",
+   "reboot": {
+    "old": 3129,
+    "new": 3130,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 2128,
+   "b": 1693,
+   "verdict": "REBOOT",
+   "note": "REIDEEN (2007) reimagina Yuusha Raideen.",
+   "reboot": {
+    "old": 2128,
+    "new": 1693,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 4151,
+   "b": 109616,
+   "verdict": "REBOOT",
+   "note": "Nova adaptação (2019) do mangá Mugen no Juunin.",
+   "reboot": {
+    "old": 4151,
+    "new": 109616,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 2892,
+   "b": 114402,
+   "verdict": "REBOOT",
+   "note": "Hakushon Daimaou 2020 refaz o anime de 1969.",
+   "reboot": {
+    "old": 2892,
+    "new": 114402,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 293,
+   "b": 135515,
+   "verdict": "REBOOT",
+   "note": "Reiwa no Di Gi Charat (2022) recomeça a série.",
+   "reboot": {
+    "old": 293,
+    "new": 135515,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 1337,
+   "b": 9493,
+   "verdict": "REBOOT",
+   "note": "Dororon Enma-kun Meeramera (2011) refaz o anime de 1973.",
+   "reboot": {
+    "old": 1337,
+    "new": 9493,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 1985,
+   "b": 154195,
+   "verdict": "REBOOT",
+   "note": "Grendizer U (2024) reconta UFO Robo Grendizer.",
+   "reboot": {
+    "old": 1985,
+    "new": 154195,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 1445,
+   "b": 3571,
+   "verdict": "REBOOT",
+   "note": "Mach GoGoGo (1997) refaz o anime de 1967.",
+   "reboot": {
+    "old": 1445,
+    "new": 3571,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 2553,
+   "b": 2624,
+   "verdict": "REBOOT",
+   "note": "Duas adaptações do mesmo romance (O Cão de Flandres), a de 1992 refaz a de 1975.",
+   "reboot": {
+    "old": 2553,
+    "new": 2624,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 2043,
+   "b": 184718,
+   "verdict": "REBOOT",
+   "note": "Cat's Eye (2025) é uma nova adaptação do mangá.",
+   "reboot": {
+    "old": 2043,
+    "new": 184718,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 2686,
+   "b": 2337,
+   "verdict": "REBOOT",
+   "note": "Tetsujin 28-gou (2004) refaz o anime de 1963.",
+   "reboot": {
+    "old": 2686,
+    "new": 2337,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 2747,
+   "b": 3044,
+   "verdict": "REBOOT",
+   "note": "O anime de 1980 refaz Tetsuwan Atom.",
+   "reboot": {
+    "old": 2747,
+    "new": 3044,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 2252,
+   "b": 98460,
+   "verdict": "REBOOT",
+   "note": "DEVILMAN crybaby (2018) reimagina o anime de 1972 (mesma obra de Go Nagai).",
+   "reboot": {
+    "old": 2252,
+    "new": 98460,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 8394,
+   "b": 4690,
+   "verdict": "REBOOT",
+   "note": "O anime de 1979 refaz Cyborg 009.",
+   "reboot": {
+    "old": 8394,
+    "new": 4690,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 4690,
+   "b": 1678,
+   "verdict": "REBOOT",
+   "note": "Cyborg 009: THE CYBORG SOLDIER (2001) refaz a obra.",
+   "reboot": {
+    "old": 4690,
+    "new": 1678,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 8394,
+   "b": 1678,
+   "verdict": "REBOOT",
+   "note": "Cyborg 009: THE CYBORG SOLDIER (2001) refaz a obra.",
+   "reboot": {
+    "old": 8394,
+    "new": 1678,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 1458,
+   "b": 1459,
+   "verdict": "REBOOT",
+   "note": "Tekkaman Blade (1992) reimagina a história de Tekkaman.",
+   "reboot": {
+    "old": 1458,
+    "new": 1459,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 1572,
+   "b": 2556,
+   "verdict": "REBOOT",
+   "note": "Jungle Taitei (1989) refaz o anime de 1965.",
+   "reboot": {
+    "old": 1572,
+    "new": 2556,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 486,
+   "b": 98448,
+   "verdict": "REBOOT",
+   "note": "Kino no Tabi (2017) é uma nova adaptação da mesma obra.",
+   "reboot": {
+    "old": 486,
+    "new": 98448,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 283,
+   "b": 184639,
+   "verdict": "REBOOT",
+   "note": "Anne Shirley (2025) é uma nova adaptação do mesmo romance (Anne de Green Gables).",
+   "reboot": {
+    "old": 283,
+    "new": 184639,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 2012,
+   "b": 179678,
+   "verdict": "REBOOT",
+   "note": "Jigoku Sensei Nube (2025) refaz o anime de 1996.",
+   "reboot": {
+    "old": 2012,
+    "new": 179678,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 110,
+   "b": 107666,
+   "verdict": "REBOOT",
+   "note": "Shin Chuuka Ichiban! (2019) é uma nova adaptação.",
+   "reboot": {
+    "old": 110,
+    "new": 107666,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 331,
+   "b": 98144,
+   "verdict": "REBOOT",
+   "note": "Mahoujin Guru Guru (2017) é uma nova adaptação do mangá.",
+   "reboot": {
+    "old": 331,
+    "new": 98144,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 2229,
+   "b": 114099,
+   "verdict": "REBOOT",
+   "note": "Dragon Quest: Dai no Daibouken (2020) é uma nova adaptação do mangá.",
+   "reboot": {
+    "old": 2229,
+    "new": 114099,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 2116,
+   "b": 100745,
+   "verdict": "REBOOT",
+   "note": "Captain Tsubasa (2018) refaz a história desde o início.",
+   "reboot": {
+    "old": 2116,
+    "new": 100745,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 435,
+   "b": 178868,
+   "verdict": "REBOOT",
+   "note": "Nova adaptação (2026) de Magic Knight Rayearth.",
+   "reboot": {
+    "old": 435,
+    "new": 178868,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 3285,
+   "b": 3838,
+   "verdict": "REBOOT",
+   "note": "Himitsu no Akko-chan 2 (1988) refaz o anime de 1969.",
+   "reboot": {
+    "old": 3285,
+    "new": 3838,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 3285,
+   "b": 3839,
+   "verdict": "REBOOT",
+   "note": "Himitsu no Akko-chan 3 (1998) refaz o anime de 1969.",
+   "reboot": {
+    "old": 3285,
+    "new": 3839,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 3838,
+   "b": 3839,
+   "verdict": "REBOOT",
+   "note": "Himitsu no Akko-chan 3 (1998) refaz o anime de 1988.",
+   "reboot": {
+    "old": 3838,
+    "new": 3839,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 3008,
+   "b": 3295,
+   "verdict": "REBOOT",
+   "note": "Yatterman (2008) refaz o anime de 1977.",
+   "reboot": {
+    "old": 3008,
+    "new": 3295,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 9884,
+   "b": 9883,
+   "verdict": "REBOOT",
+   "note": "Osomatsu-kun (1988) refaz o anime de 1966.",
+   "reboot": {
+    "old": 9884,
+    "new": 9883,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 956,
+   "b": 1845,
+   "verdict": "REBOOT",
+   "note": "Gaiking: Legend of Daiku-Maryu (2005) reimagina Daikuu Maryuu Gaiking.",
+   "reboot": {
+    "old": 956,
+    "new": 1845,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 2335,
+   "b": 177476,
+   "verdict": "REBOOT",
+   "note": "Shin Samurai-den YAIBA (2025) é uma nova adaptação.",
+   "reboot": {
+    "old": 2335,
+    "new": 177476,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 157,
+   "b": 1546,
+   "verdict": "REBOOT",
+   "note": "Negima!? (2006) reconta a história de Negima com uma versão alternativa.",
+   "reboot": {
+    "old": 157,
+    "new": 1546,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 4810,
+   "b": 4981,
+   "verdict": "REBOOT",
+   "note": "Casshern Sins (2008) é uma releitura de Shinzou Ningen Casshern.",
+   "reboot": {
+    "old": 4810,
+    "new": 4981,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 1017,
+   "b": 101367,
+   "verdict": "REBOOT",
+   "note": "Majutsushi Orphen Hagure Tabi (2020) é uma nova adaptação dos romances.",
+   "reboot": {
+    "old": 1017,
+    "new": 101367,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 8763,
+   "b": 8764,
+   "verdict": "REBOOT",
+   "note": "Hajime Ningen Gon (1996) refaz Hajime Ningen Gyatoruz.",
+   "reboot": {
+    "old": 8763,
+    "new": 8764,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 8501,
+   "b": 2806,
+   "verdict": "REBOOT",
+   "note": "Yadamon (1992) refaz Chibikko Kaijuu Yadamon.",
+   "reboot": {
+    "old": 8501,
+    "new": 2806,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 19875,
+   "b": 5223,
+   "verdict": "REBOOT",
+   "note": "Robotan (1986) refaz o anime de 1966.",
+   "reboot": {
+    "old": 19875,
+    "new": 5223,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 20001,
+   "b": 12391,
+   "verdict": "REBOOT",
+   "note": "Mooretsu Atarou (1990) refaz o anime de 1969.",
+   "reboot": {
+    "old": 20001,
+    "new": 12391,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 119765,
+   "b": 16393,
+   "verdict": "REBOOT",
+   "note": "Norakuro-kun (1987) refaz o anime de 1970.",
+   "reboot": {
+    "old": 119765,
+    "new": 16393,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 181870,
+   "b": 11873,
+   "verdict": "REBOOT",
+   "note": "Oraa Guzura Dado (1987) refaz o anime de 1967.",
+   "reboot": {
+    "old": 181870,
+    "new": 11873,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 1666,
+   "b": 1664,
+   "verdict": "REBOOT",
+   "note": "Babel Nisei (2001) refaz o anime de 1973.",
+   "reboot": {
+    "old": 1666,
+    "new": 1664,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 5833,
+   "b": 109745,
+   "verdict": "REBOOT",
+   "note": "MUTEKING THE Dancing HERO (2021) recomeça a série.",
+   "reboot": {
+    "old": 5833,
+    "new": 109745,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 714,
+   "b": 200556,
+   "verdict": "REBOOT",
+   "note": "High School! Kimengumi (2026) recomeça a série.",
+   "reboot": {
+    "old": 714,
+    "new": 200556,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 967,
+   "b": 169228,
+   "verdict": "REBOOT",
+   "note": "Hokuto no Ken: FIST OF THE NORTH STAR (2026) é uma nova adaptação.",
+   "reboot": {
+    "old": 967,
+    "new": 169228,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 1541,
+   "b": 100408,
+   "verdict": "REBOOT",
+   "note": "Souten no Ken: REGENESIS (2018) é uma nova adaptação.",
+   "reboot": {
+    "old": 1541,
+    "new": 100408,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 2253,
+   "b": 5485,
+   "verdict": "REBOOT",
+   "note": "Shin Mazinger Shougeki! Z-hen (2009) reimagina Mazinger Z.",
+   "reboot": {
+    "old": 2253,
+    "new": 5485,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 1264,
+   "b": 194318,
+   "verdict": "REBOOT",
+   "note": "Yoroi Shinden Samurai Troopers (2026) é uma nova adaptação.",
+   "reboot": {
+    "old": 1264,
+    "new": 194318,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 4132,
+   "b": 2548,
+   "verdict": "REBOOT",
+   "note": "Duas adaptações do mesmo romance (Mulherzinhas), a de 1987 refaz a de 1981.",
+   "reboot": {
+    "old": 4132,
+    "new": 2548,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 2545,
+   "b": 4800,
+   "verdict": "REBOOT",
+   "note": "Duas adaptações do mesmo romance (Huckleberry Finn), a de 1994 refaz a de 1976.",
+   "reboot": {
+    "old": 2545,
+    "new": 4800,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 8234,
+   "b": 8235,
+   "verdict": "REBOOT",
+   "note": "A versão de 1972 refaz a de 1969 (os Moomins).",
+   "reboot": {
+    "old": 8234,
+    "new": 8235,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 8234,
+   "b": 2150,
+   "verdict": "REBOOT",
+   "note": "Tanoshii Moomin Ikka (1990) refaz a série de 1969.",
+   "reboot": {
+    "old": 8234,
+    "new": 2150,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 8235,
+   "b": 2150,
+   "verdict": "REBOOT",
+   "note": "Tanoshii Moomin Ikka (1990) refaz a série de 1972.",
+   "reboot": {
+    "old": 8235,
+    "new": 2150,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 2828,
+   "b": 2829,
+   "verdict": "REBOOT",
+   "note": "Ie Naki Ko Remi (1996) é outra adaptação do mesmo romance (Sem Família), depois da de 1977.",
+   "reboot": {
+    "old": 2828,
+    "new": 2829,
+    "coverage": "FULL"
+   }
+  },
+  {
+   "a": 11897,
+   "b": 120904,
+   "verdict": "REBOOT",
+   "note": "Battle of Clay 2019 refaz o curta de 2004.",
+   "reboot": {
+    "old": 11897,
+    "new": 120904,
+    "coverage": "FULL"
+   }
+  }
+ ]
+}
