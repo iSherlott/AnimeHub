@@ -1,0 +1,486 @@
+{
+ "loot": "arcos-002",
+ "arcs": [
+  {
+   "anilistId": 21,
+   "source": "https://en.wikipedia.org/wiki/List_of_One_Piece_story_arcs",
+   "list": [
+    {
+     "nameEn": "Romance Dawn",
+     "start": 1,
+     "end": 4
+    },
+    {
+     "nameEn": "Orange Town",
+     "start": 5,
+     "end": 8
+    },
+    {
+     "nameEn": "Syrup Village",
+     "start": 9,
+     "end": 18
+    },
+    {
+     "nameEn": "Baratie",
+     "start": 19,
+     "end": 30
+    },
+    {
+     "nameEn": "Arlong Park",
+     "start": 31,
+     "end": 44
+    },
+    {
+     "nameEn": "Loguetown",
+     "start": 45,
+     "end": 53
+    },
+    {
+     "nameEn": "Warship Island",
+     "start": 54,
+     "end": 61
+    },
+    {
+     "nameEn": "Reverse Mountain",
+     "start": 62,
+     "end": 63
+    },
+    {
+     "nameEn": "Whiskey Peak",
+     "start": 64,
+     "end": 69
+    },
+    {
+     "nameEn": "Little Garden",
+     "start": 70,
+     "end": 77
+    },
+    {
+     "nameEn": "Drum Island",
+     "start": 78,
+     "end": 91
+    },
+    {
+     "nameEn": "Alabasta",
+     "start": 92,
+     "end": 130
+    },
+    {
+     "nameEn": "Dreams! / Goat Island / Ruluka Island",
+     "start": 131,
+     "end": 143
+    },
+    {
+     "nameEn": "Jaya",
+     "start": 144,
+     "end": 152
+    },
+    {
+     "nameEn": "Skypiea",
+     "start": 153,
+     "end": 195
+    },
+    {
+     "nameEn": "G-8",
+     "start": 196,
+     "end": 206
+    },
+    {
+     "nameEn": "Water 7",
+     "start": 207,
+     "end": 263
+    },
+    {
+     "nameEn": "Enies Lobby",
+     "start": 264,
+     "end": 325
+    },
+    {
+     "nameEn": "Thriller Bark",
+     "start": 326,
+     "end": 381
+    },
+    {
+     "nameEn": "Spa Island",
+     "start": 382,
+     "end": 384
+    },
+    {
+     "nameEn": "Sabaody Archipelago",
+     "start": 385,
+     "end": 405
+    },
+    {
+     "nameEn": "Amazon Lily",
+     "start": 408,
+     "end": 421
+    },
+    {
+     "nameEn": "Impel Down",
+     "start": 422,
+     "end": 458
+    },
+    {
+     "nameEn": "Marineford",
+     "start": 459,
+     "end": 516
+    },
+    {
+     "nameEn": "Fish-Man Island",
+     "start": 517,
+     "end": 574
+    },
+    {
+     "nameEn": "Punk Hazard",
+     "start": 579,
+     "end": 625
+    },
+    {
+     "nameEn": "Caesar Retrieval",
+     "start": 626,
+     "end": 628
+    },
+    {
+     "nameEn": "Dressrosa",
+     "start": 629,
+     "end": 750
+    },
+    {
+     "nameEn": "Zou",
+     "start": 751,
+     "end": 779
+    },
+    {
+     "nameEn": "Marine Rookie",
+     "start": 780,
+     "end": 782
+    },
+    {
+     "nameEn": "Whole Cake Island",
+     "start": 783,
+     "end": 891
+    },
+    {
+     "nameEn": "Land of Wano, Act One",
+     "start": 892,
+     "end": 916
+    },
+    {
+     "nameEn": "Land of Wano, Act Two",
+     "start": 917,
+     "end": 956
+    },
+    {
+     "nameEn": "Land of Wano, Act Three",
+     "start": 957,
+     "end": 1088
+    },
+    {
+     "nameEn": "Egghead",
+     "start": 1089,
+     "end": 1155
+    }
+   ]
+  },
+  {
+   "anilistId": 269,
+   "source": "https://en.wikipedia.org/wiki/List_of_Bleach_episodes",
+   "list": [
+    {
+     "nameEn": "The Substitute Soul Reaper",
+     "start": 1,
+     "end": 20
+    },
+    {
+     "nameEn": "The Entry",
+     "start": 21,
+     "end": 41
+    },
+    {
+     "nameEn": "The Rescue",
+     "start": 42,
+     "end": 63
+    },
+    {
+     "nameEn": "The Bount",
+     "start": 64,
+     "end": 91
+    },
+    {
+     "nameEn": "The Assault",
+     "start": 92,
+     "end": 109
+    },
+    {
+     "nameEn": "Arrancar: The Appearance",
+     "start": 110,
+     "end": 131
+    },
+    {
+     "nameEn": "The Hueco Mundo Sneak Entry",
+     "start": 132,
+     "end": 151
+    },
+    {
+     "nameEn": "The Fierce Fight",
+     "start": 152,
+     "end": 167
+    },
+    {
+     "nameEn": "The New Captain Shusuke Amagai",
+     "start": 168,
+     "end": 189
+    },
+    {
+     "nameEn": "Arrancar vs. Soul Reaper",
+     "start": 190,
+     "end": 205
+    },
+    {
+     "nameEn": "Turn Back the Pendulum",
+     "start": 206,
+     "end": 212
+    },
+    {
+     "nameEn": "Battle in Karakura",
+     "start": 213,
+     "end": 229
+    },
+    {
+     "nameEn": "Zanpakuto: The Alternate Tale",
+     "start": 230,
+     "end": 265
+    },
+    {
+     "nameEn": "Fall of the Espada",
+     "start": 266,
+     "end": 316
+    },
+    {
+     "nameEn": "Gotei 13 Invading Army",
+     "start": 317,
+     "end": 342
+    },
+    {
+     "nameEn": "The Lost Agent",
+     "start": 343,
+     "end": 366
+    }
+   ]
+  },
+  {
+   "anilistId": 223,
+   "source": "https://en.wikipedia.org/wiki/List_of_Dragon_Ball_episodes",
+   "list": [
+    {
+     "nameEn": "Emperor Pilaf",
+     "start": 1,
+     "end": 13
+    },
+    {
+     "nameEn": "Tournament",
+     "start": 14,
+     "end": 28
+    },
+    {
+     "nameEn": "Red Ribbon Army",
+     "start": 29,
+     "end": 45
+    },
+    {
+     "nameEn": "General Blue",
+     "start": 46,
+     "end": 57
+    },
+    {
+     "nameEn": "Commander Red",
+     "start": 58,
+     "end": 68
+    },
+    {
+     "nameEn": "Fortuneteller Baba",
+     "start": 69,
+     "end": 83
+    },
+    {
+     "nameEn": "Tien Shinhan",
+     "start": 84,
+     "end": 101
+    },
+    {
+     "nameEn": "King Piccolo",
+     "start": 102,
+     "end": 122
+    },
+    {
+     "nameEn": "Piccolo Jr.",
+     "start": 123,
+     "end": 153
+    }
+   ]
+  },
+  {
+   "anilistId": 392,
+   "source": "https://en.wikipedia.org/wiki/List_of_Yu_Yu_Hakusho_episodes",
+   "list": [
+    {
+     "nameEn": "Spirit Detective",
+     "start": 1,
+     "end": 25
+    },
+    {
+     "nameEn": "Dark Tournament",
+     "start": 26,
+     "end": 66
+    },
+    {
+     "nameEn": "Chapter Black",
+     "start": 67,
+     "end": 94
+    },
+    {
+     "nameEn": "Three Kings",
+     "start": 95,
+     "end": 112
+    }
+   ]
+  },
+  {
+   "anilistId": 97940,
+   "source": "https://en.wikipedia.org/wiki/List_of_Black_Clover_episodes",
+   "list": [
+    {
+     "nameEn": "Magic Knights Entrance",
+     "start": 1,
+     "end": 10
+    },
+    {
+     "nameEn": "Dungeon Exploration",
+     "start": 11,
+     "end": 19
+    },
+    {
+     "nameEn": "Eye of the Midnight Sun: Royal Capital Invasion",
+     "start": 20,
+     "end": 27
+    },
+    {
+     "nameEn": "Eye of the Midnight Sun: Encounter",
+     "start": 28,
+     "end": 37
+    },
+    {
+     "nameEn": "Seabed Temple",
+     "start": 38,
+     "end": 50
+    },
+    {
+     "nameEn": "Witches' Forest",
+     "start": 51,
+     "end": 65
+    },
+    {
+     "nameEn": "Royal Knights",
+     "start": 66,
+     "end": 84
+    },
+    {
+     "nameEn": "Eye of the Midnight Sun: Subjugation",
+     "start": 85,
+     "end": 94
+    },
+    {
+     "nameEn": "Elf Reincarnation",
+     "start": 95,
+     "end": 112
+    },
+    {
+     "nameEn": "Shadow Palace",
+     "start": 113,
+     "end": 127
+    },
+    {
+     "nameEn": "Heart Kingdom Training",
+     "start": 128,
+     "end": 157
+    },
+    {
+     "nameEn": "Heart Kingdom Joint Struggle",
+     "start": 158,
+     "end": 170
+    }
+   ]
+  },
+  {
+   "anilistId": 6702,
+   "source": "https://en.wikipedia.org/wiki/List_of_Fairy_Tail_episodes",
+   "list": [
+    {
+     "nameEn": "Prologue",
+     "start": 1,
+     "end": 4
+    },
+    {
+     "nameEn": "Eisenwald",
+     "start": 5,
+     "end": 10
+    },
+    {
+     "nameEn": "Galuna Island",
+     "start": 11,
+     "end": 18
+    },
+    {
+     "nameEn": "Phantom Lord",
+     "start": 21,
+     "end": 29
+    },
+    {
+     "nameEn": "Loke",
+     "start": 30,
+     "end": 32
+    },
+    {
+     "nameEn": "Tower of Heaven",
+     "start": 33,
+     "end": 40
+    },
+    {
+     "nameEn": "The Battle of Fairy Tail",
+     "start": 41,
+     "end": 51
+    },
+    {
+     "nameEn": "Nirvana",
+     "start": 52,
+     "end": 68
+    },
+    {
+     "nameEn": "Daphne",
+     "start": 69,
+     "end": 72
+    },
+    {
+     "nameEn": "Edolas",
+     "start": 76,
+     "end": 95
+    },
+    {
+     "nameEn": "Tenrou Island",
+     "start": 96,
+     "end": 122
+    },
+    {
+     "nameEn": "Key of the Starry Heavens",
+     "start": 123,
+     "end": 150
+    },
+    {
+     "nameEn": "Grand Magic Games",
+     "start": 151,
+     "end": 175
+    }
+   ]
+  }
+ ]
+}

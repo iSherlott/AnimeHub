@@ -1,0 +1,251 @@
+{
+ "loot": "reboots-004",
+ "items": [
+  {
+   "a": 2156,
+   "b": 108852,
+   "verdict": "REBOOT",
+   "note": "Bakugan: Battle Planet (2018) é o reboot de Bakugan Battle Brawlers; os Bakugan passam a ser uma raça guerreira.",
+   "reboot": {
+    "old": 2156,
+    "new": 108852,
+    "coverage": "FULL"
+   },
+   "source": "https://en.wikipedia.org/wiki/Bakugan:_Battle_Planet"
+  },
+  {
+   "a": 108852,
+   "b": 177166,
+   "verdict": "REBOOT",
+   "note": "Bakugan (2023) é um segundo reboot da franquia, que substitui o de Battle Planet.",
+   "reboot": {
+    "old": 108852,
+    "new": 177166,
+    "coverage": "FULL"
+   },
+   "source": "https://en.wikipedia.org/wiki/Bakugan:_Battle_Planet"
+  },
+  {
+   "a": 2156,
+   "b": 177166,
+   "verdict": "NOT_REBOOT",
+   "note": "O reboot de 2023 vem depois do de Battle Planet; a ligação com Battle Brawlers passa por ele (2156 → 108852 → 177166)."
+  },
+  {
+   "a": 516,
+   "b": 20543,
+   "verdict": "NOT_REBOOT",
+   "note": "Keroro (2014) é uma série em formato curto da mesma época; não refaz a história de Keroro Gunsou.",
+   "source": "https://en.wikipedia.org/wiki/Sgt._Frog"
+  },
+  {
+   "a": 516,
+   "b": 216557,
+   "verdict": "REBOOT",
+   "note": "Keroro Gunsou☆ (2026) é descrita como o reboot do anime original, com elenco todo trocado e produção da BN Pictures.",
+   "reboot": {
+    "old": 516,
+    "new": 216557,
+    "coverage": "FULL"
+   },
+   "source": "https://en.wikipedia.org/wiki/Sgt._Frog_(2026_TV_series)"
+  },
+  {
+   "a": 20543,
+   "b": 216557,
+   "verdict": "NOT_REBOOT",
+   "note": "Keroro (2014) é uma série curta; o reboot de 2026 refaz o anime principal (516), não a versão curta."
+  },
+  {
+   "a": 17601,
+   "b": 181824,
+   "verdict": "NOT_REBOOT",
+   "note": "Genki Genki Nontan (2002) é uma série CGI musical da mesma franquia, com outra produção; nenhuma fonte a chama de remake de Nontan to Issho.",
+   "source": "https://www.animenewsnetwork.com/encyclopedia/anime.php?id=23269"
+  },
+  {
+   "a": 9806,
+   "b": 145829,
+   "verdict": "REBOOT",
+   "note": "Xin Qin Shi Mingyue (2021) refaz a história de Qin's Moon em novo visual, em comemoração aos 15 anos da série; a primeira parte (14 episódios) refaz a primeira temporada.",
+   "reboot": {
+    "old": 9806,
+    "new": 145829,
+    "coverage": "FULL"
+   },
+   "source": "https://baike.baidu.com/en/item/New%20Qin's%20Moon/941951"
+  },
+  {
+   "a": 11841,
+   "b": 145829,
+   "verdict": "REBOOT",
+   "note": "A segunda parte de Xin Qin Shi Mingyue (25 episódios) refaz a segunda temporada e os primeiros cinco episódios da terceira, ou seja, vai um pouco além de Ye Jin Tianming.",
+   "reboot": {
+    "old": 11841,
+    "new": 145829,
+    "coverage": "FULL"
+   },
+   "source": "https://baike.baidu.com/en/item/New%20Qin's%20Moon/941951"
+  },
+  {
+   "a": 87478,
+   "b": 109964,
+   "verdict": "NOT_REBOOT",
+   "note": "Uchitama?! (2020) é um derivado que reimagina os personagens como crianças; não refaz Tama & Friends.",
+   "source": "https://animanga.fandom.com/wiki/Tama_and_Friends"
+  },
+  {
+   "a": 151765,
+   "b": 109964,
+   "verdict": "NOT_REBOOT",
+   "note": "Uchitama?! (2020) é um derivado que reimagina os personagens como crianças; não refaz a série de 1988/1993.",
+   "source": "https://animanga.fandom.com/wiki/Tama_and_Friends"
+  },
+  {
+   "a": 3909,
+   "b": 163364,
+   "verdict": "NOT_REBOOT",
+   "note": "Bikkurimen (2023) conta uma história totalmente nova, com Yamato e Phoenix reencarnados na era moderna.",
+   "source": "https://en.wikipedia.org/wiki/Bikkuriman"
+  },
+  {
+   "a": 6468,
+   "b": 101580,
+   "verdict": "NOT_REBOOT",
+   "note": "Shinya! Tensai Bakabon (2018) é a volta da franquia, com o cenário atualizado para 2018, mais perto de uma continuação do que de um recomeço.",
+   "source": "https://fujio-akatsuka.fandom.com/wiki/Late_Night!_Genius_Bakabon"
+  },
+  {
+   "a": 10540,
+   "b": 104009,
+   "verdict": "REBOOT",
+   "note": "As duas séries adaptam o mesmo mangá (Rinshi!! Ekoda-chan): o AniDB trata a de 2019 como remake da de 2011; outras fontes a veem como adaptação separada.",
+   "reboot": {
+    "old": 10540,
+    "new": 104009,
+    "coverage": "FULL"
+   },
+   "source": "https://www.anime-planet.com/anime/genki-ekoda-chan"
+  },
+  {
+   "a": 3704,
+   "b": 145000,
+   "verdict": "REBOOT",
+   "note": "Zenryoku Usagi (2023) é uma nova adaptação do mesmo mangá, em formato curto (5 minutos), da série de 2008.",
+   "reboot": {
+    "old": 3704,
+    "new": 145000,
+    "coverage": "FULL"
+   },
+   "source": "https://www.nautiljon.com/animes/zenryoku+usagi+(2023).html"
+  },
+  {
+   "a": 98472,
+   "b": 110867,
+   "verdict": "REBOOT",
+   "note": "A série de TV de 2019 refaz o ONA de 2017 (10 episódios de 3 minutos); o Anime-Planet a lista como remake.",
+   "reboot": {
+    "old": 98472,
+    "new": 110867,
+    "coverage": "FULL"
+   },
+   "source": "https://www.anime-planet.com/anime/africa-salaryman-2019"
+  },
+  {
+   "a": 121802,
+   "b": 218011,
+   "verdict": "REBOOT",
+   "note": "O anime de TV de 2026 adapta de novo o mangá, dez anos depois do ONA de 2018 (outra produção).",
+   "reboot": {
+    "old": 121802,
+    "new": 218011,
+    "coverage": "FULL"
+   },
+   "source": "https://en.wikipedia.org/wiki/Tanuki_to_Kitsune"
+  },
+  {
+   "a": 6012,
+   "b": 3110,
+   "verdict": "REBOOT",
+   "note": "A série de 1992 é descrita como remake da de 1979 (Jeanie with the Light Brown Hair), mais completa, com 52 episódios.",
+   "reboot": {
+    "old": 6012,
+    "new": 3110,
+    "coverage": "FULL"
+   },
+   "source": "https://www.livechart.me/anime/7626"
+  },
+  {
+   "a": 1243,
+   "b": 125868,
+   "verdict": "REBOOT",
+   "note": "Night Head 2041 é tratado como reboot/remake de Night Head Genesis (mesmo roteirista, outra produção); há quem o veja como universo alternativo.",
+   "reboot": {
+    "old": 1243,
+    "new": 125868,
+    "coverage": "FULL"
+   },
+   "source": "https://tvtropes.org/pmwiki/pmwiki.php/Anime/NightHead2041"
+  },
+  {
+   "a": 4548,
+   "b": 18497,
+   "verdict": "REBOOT",
+   "note": "Hana no Uta (2013) refaz o anime de 2008 corrigindo as mudanças que ele fez no mangá, e vai até o arco Hana no Uta.",
+   "reboot": {
+    "old": 4548,
+    "new": 18497,
+    "coverage": "FULL"
+   },
+   "source": "https://yozakuraquartet.fandom.com/wiki/Yozakura_Quartet:_Hana_no_Uta"
+  },
+  {
+   "a": 4657,
+   "b": 99884,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre as obras (sem página consultada): Arad Senki e Arad: Suming Zhi Men são adaptações diferentes do jogo Dungeon & Fighter, com histórias próprias."
+  },
+  {
+   "a": 121181,
+   "b": 121182,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre as obras (sem página consultada): as duas séries do Gato Preto Detetive são produções diferentes; a de 1992 conta novos casos."
+  },
+  {
+   "a": 1589,
+   "b": 155890,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre as obras (sem página consultada): Kami no Glass adapta outra série de mangá (Bartender: Kami no Glass), com história própria."
+  },
+  {
+   "a": 18155,
+   "b": 16906,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre as obras (sem página consultada): Line Town e LINE OFFLINE: Salaryman são séries diferentes da marca LINE."
+  },
+  {
+   "a": 185122,
+   "b": 109639,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre as obras (sem página consultada): a série de 2019 é a continuação da de 2017 (mais episódios), não um recomeço."
+  },
+  {
+   "a": 121042,
+   "b": 20009,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre as obras (sem página consultada): Goman-hiki e Doubutsu Mura Monogatari são obras diferentes."
+  },
+  {
+   "a": 17667,
+   "b": 17669,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre as obras (sem página consultada): Harris no Kaze e Kunimatsu-sama no Otoridai são obras diferentes."
+  },
+  {
+   "a": 17092,
+   "b": 17893,
+   "verdict": "NOT_REBOOT",
+   "note": "Conhecimento geral sobre as obras (sem página consultada): Cheonbangjichuk Hani (1989) é a continuação de Dallyeola Hani (1988), não um recomeço."
+  }
+ ]
+}

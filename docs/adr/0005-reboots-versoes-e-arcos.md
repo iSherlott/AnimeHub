@@ -35,13 +35,14 @@ mostrar isso e separar os episódios por arcos.
 
 ## Primeira rodada (banco de desenvolvimento, 2026-10-22)
 
-A fila tinha **562 pares** de séries ligados como versão alternativa; **533 foram conferidos** (29 seguem na fila).
+A fila tinha **562 pares** de séries ligados como versão alternativa; **561 foram conferidos** (1 segue na fila).
 
 | Lote | Pares | Resultado |
 |---|---:|---|
 | `reboots-001` | 38 | 32 reboots (Hunter x Hunter, Fruits Basket, Dororo, Trigun, Rurouni Kenshin, Ranma ½, Urusei Yatsura, Shaman King, Tokyo Mew Mew, Sailor Moon, Kanon, Digimon Adventure, Spice and Wolf, 15 pares de Gegege no Kitarou) e 6 que não são (Dragon Ball Z × Kai, Haruhi, Fate/stay night, Rozen Maiden 2013 é continuação) |
 | `reboots-002` | 68 | reboots/novas adaptações (Saint Seiya × Knights of the Zodiac, Cutey Honey, Houshin Engi, Berserk, Dr. Slump, Tetsuwan Atom, Cyborg 009, Devilman crybaby, Grendizer U, Captain Tsubasa…) |
 | `reboots-003` | 8 | 2 reboots (Cutey Honey F, Gakkou no Kowai Uwasa Shin) e 6 que não são (Chouja Raideen, Yu-Gi-Oh!, EAT-MAN'98, Ghost in the Shell 2026…) |
+| `reboots-004` | 28 | 12 reboots (Bakugan Battle Planet e Bakugan 2023, Keroro Gunsou☆ 2026, Xin Qin Shi Mingyue ×2, Africa no Salaryman, Zenryoku Usagi, Tanuki to Kitsune, Kinpatsu no Jeanie, Night Head 2041, Yozakura Quartet: Hana no Uta, Ekoda-chan) pesquisados em Wikipédia, AniDB/Anime-Planet e outras páginas, e 16 que não são (Keroro 2014, Uchitama?!, Bikkurimen, Shinya! Tensai Bakabon, Arad, Bartender…) |
 | `series-005` | 77 | continuações, spin-offs e obras diferentes (Pokémon Generations, Fate/Apocrypha, Persona 4 Golden, Barbapapa…) |
 | `franquias-001` a `004` | 342 | séries independentes da mesma franquia (Precure, Battle Spirits, Jewelpet, Brave, Pretty Rhythm/PriPara, Aikatsu, Hua Jianghu, Love Live!, Balala, THE IDOLM@STER), classificadas em bloco |
 
@@ -55,8 +56,8 @@ antiga (ex.: as temporadas 2 e final de Fruits Basket; Shaman King 2021).
 
 ## Pendências
 
-- **29 pares** ainda na fila (obras obscuras ou casos em que não deu para afirmar sem pesquisar).
-- **Arcos**: 5 obras têm arcos (Hunter x Hunter ×2, Sailor Moon Crystal, Naruto com 23 e Naruto Shippuden com 35 — lote `arcos-001`, da lista de episódios da Wikipédia, com os episódios avulsos fora dos arcos e as partes de um mesmo arco unidas). 2.392 séries com 26 episódios ou mais ainda não têm; o painel lista as próximas (as mais
+- **1 par** ainda na fila: Shabake (2020 × 2025); não achei nada sobre a versão de 2020.
+- **Arcos**: 11 obras têm arcos (Hunter x Hunter ×2, Sailor Moon Crystal, Naruto e Naruto Shippuden no lote `arcos-001`; One Piece, Bleach, Dragon Ball, Yu Yu Hakusho, Black Clover e Fairy Tail no `arcos-002`), tirados das listas de episódios da Wikipédia, com os episódios avulsos fora dos arcos e as partes de um mesmo arco unidas. One Piece fica sem o arco atual (Elbaph) porque a série segue no ar e o arco ainda não tem fim. Dragon Ball Z ficou de fora: a Wikipédia só dá as temporadas, não as sagas. Cerca de 2.386 séries com 26 episódios ou mais ainda não têm; o painel lista as próximas (as mais
   longas primeiro). A fonte usada é a lista de episódios da Wikipédia, que nem sempre traz arcos (Bleach e Dragon Ball Z listam
   temporadas, não sagas) e que a ferramenta de leitura devolve truncada nas séries muito longas: essas pedem leitura em partes.
 - **Onde cada reboot "vai além"** (PARTIAL e `beyondFromEpisode`) nos reboots já vinculados.
