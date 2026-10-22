@@ -1,0 +1,113 @@
+{
+ "loot": "arcos-003",
+ "arcs": [
+  {
+   "anilistId": 21175,
+   "source": "https://dragonball.fandom.com/wiki/Dragon_Ball_Super_(anime)",
+   "list": [
+    {
+     "nameEn": "God of Destruction Beerus",
+     "start": 1,
+     "end": 15
+    },
+    {
+     "nameEn": "Golden Frieza",
+     "start": 16,
+     "end": 27
+    },
+    {
+     "nameEn": "Universe 6",
+     "start": 28,
+     "end": 41
+    },
+    {
+     "nameEn": "Copy-Vegeta",
+     "start": 42,
+     "end": 46
+    },
+    {
+     "nameEn": "Future Trunks",
+     "start": 47,
+     "end": 76
+    },
+    {
+     "nameEn": "Universe Survival (Tournament of Power)",
+     "start": 77,
+     "end": 131
+    }
+   ]
+  },
+  {
+   "anilistId": 45,
+   "source": "https://en.wikipedia.org/wiki/Rurouni_Kenshin_(1996_TV_series)",
+   "list": [
+    {
+     "nameEn": "Tokyo",
+     "start": 1,
+     "end": 27
+    },
+    {
+     "nameEn": "Kyoto (Shishio)",
+     "start": 28,
+     "end": 62
+    },
+    {
+     "nameEn": "Anime-original episodes",
+     "start": 63,
+     "end": 94
+    }
+   ]
+  },
+  {
+   "anilistId": 481,
+   "source": "https://en.wikipedia.org/wiki/List_of_Yu-Gi-Oh!_Duel_Monsters_episodes",
+   "list": [
+    {
+     "nameEn": "Duelist Kingdom",
+     "start": 1,
+     "end": 42
+    },
+    {
+     "nameEn": "Legendary Heroes",
+     "start": 43,
+     "end": 45
+    },
+    {
+     "nameEn": "Dungeon Dice Monsters",
+     "start": 46,
+     "end": 49
+    },
+    {
+     "nameEn": "Battle City",
+     "start": 50,
+     "end": 97
+    },
+    {
+     "nameEn": "Noah's Saga",
+     "start": 98,
+     "end": 121
+    },
+    {
+     "nameEn": "Enter the Shadow Realm",
+     "start": 122,
+     "end": 144
+    },
+    {
+     "nameEn": "Waking the Dragons",
+     "start": 145,
+     "end": 184
+    },
+    {
+     "nameEn": "KC Grand Championship",
+     "start": 185,
+     "end": 198
+    },
+    {
+     "nameEn": "Dawn of the Duel",
+     "start": 199,
+     "end": 224
+    }
+   ]
+  }
+ ]
+}

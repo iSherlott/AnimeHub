@@ -49,7 +49,7 @@ A fila tinha **562 pares** de séries ligados como versão alternativa; **561 fo
 **Grau de pesquisa.** Os reboots de `reboots-001` e os de `reboots-002` com link citam a página da Wikipédia consultada
 (a obra é descrita como reboot, remake ou segunda adaptação). Os demais de `reboots-002` e todos os de `series-005` e
 `franquias-*` foram classificados pelo conhecimento sobre a obra, e a nota de cada vínculo diz isso: são os primeiros a rever.
-Só **Hunter x Hunter** tem `PARTIAL` com ponto exato (episódio 76) e arcos das duas versões (listas de episódios da Wikipédia:
+Só **Hunter x Hunter** (episódio 76) e **Dragon Quest: Dai no Daibouken** (episódio 33 do reboot, aproximado: a Wikipédia diz que o anime de 1991 cobre os 10 primeiros volumes, mas não mapeia episódio a capítulo; lote `reboots-005`) têm `PARTIAL` com ponto e arcos das duas versões (listas de episódios da Wikipédia:
 1999 = 3 arcos em 62 episódios; 2011 = 6 arcos em 148); Sailor Moon Crystal tem os dois arcos (Dark Kingdom 1–14, Black Moon
 15–26). Para os demais reboots o vínculo é "mesma história refeita" (FULL): ainda não foi mapeado se e onde vão além da versão
 antiga (ex.: as temporadas 2 e final de Fruits Basket; Shaman King 2021).
@@ -57,9 +57,9 @@ antiga (ex.: as temporadas 2 e final de Fruits Basket; Shaman King 2021).
 ## Pendências
 
 - **1 par** ainda na fila: Shabake (2020 × 2025); não achei nada sobre a versão de 2020.
-- **Arcos**: 11 obras têm arcos (Hunter x Hunter ×2, Sailor Moon Crystal, Naruto e Naruto Shippuden no lote `arcos-001`; One Piece, Bleach, Dragon Ball, Yu Yu Hakusho, Black Clover e Fairy Tail no `arcos-002`), tirados das listas de episódios da Wikipédia, com os episódios avulsos fora dos arcos e as partes de um mesmo arco unidas. One Piece fica sem o arco atual (Elbaph) porque a série segue no ar e o arco ainda não tem fim. Dragon Ball Z ficou de fora: a Wikipédia só dá as temporadas, não as sagas. Cerca de 2.386 séries com 26 episódios ou mais ainda não têm; o painel lista as próximas (as mais
+- **Arcos**: 14 obras têm arcos (Hunter x Hunter ×2, Sailor Moon Crystal, Naruto e Naruto Shippuden no lote `arcos-001`; One Piece, Bleach, Dragon Ball, Yu Yu Hakusho, Black Clover e Fairy Tail no `arcos-002`; Dragon Ball Super, Rurouni Kenshin e Yu-Gi-Oh! Duel Monsters no `arcos-003`), tirados das listas de episódios da Wikipédia, com os episódios avulsos fora dos arcos e as partes de um mesmo arco unidas. One Piece fica sem o arco atual (Elbaph) porque a série segue no ar e o arco ainda não tem fim. Dragon Ball Z, Dragon Ball Z Kai, Gintama, D.Gray-man, Boruto, Reborn! e Hokuto no Ken ficaram de fora: as páginas só dão temporadas (ou os limites vinham deduzidos), não arcos com episódios. Cerca de 2.383 séries com 26 episódios ou mais ainda não têm; o painel lista as próximas (as mais
   longas primeiro). A fonte usada é a lista de episódios da Wikipédia, que nem sempre traz arcos (Bleach e Dragon Ball Z listam
   temporadas, não sagas) e que a ferramenta de leitura devolve truncada nas séries muito longas: essas pedem leitura em partes.
-- **Onde cada reboot "vai além"** (PARTIAL e `beyondFromEpisode`) nos reboots já vinculados.
+- **Onde cada reboot "vai além"** (PARTIAL e `beyondFromEpisode`) nos demais reboots já vinculados. Pesquisei Shaman King 2021, Spice and Wolf 2024 e Fullmetal Alchemist: as fontes não dão o episódio (e Fullmetal Alchemist: Brotherhood não está na plataforma, então o par nem entra na fila).
 - Nomes de arcos em português e japonês (hoje só em inglês).
 - Reboots cuja versão antiga não está na plataforma não aparecem apontados (só existe o que está no catálogo).

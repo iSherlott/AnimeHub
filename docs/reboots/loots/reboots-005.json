@@ -1,0 +1,18 @@
+{
+ "loot": "reboots-005",
+ "items": [
+  {
+   "a": 2229,
+   "b": 114099,
+   "verdict": "REBOOT",
+   "source": "https://en.wikipedia.org/wiki/Dragon_Quest:_The_Adventure_of_Dai_(1991_TV_series)",
+   "note": "O anime de 1991 adapta só os 10 primeiros volumes do mangá (os 87 primeiros capítulos, até o arco de Baran, e termina de forma abrupta); o de 2020 refaz isso e segue até o fim do mangá, em 100 episódios. O episódio em que passa do que o de 1991 contou é aproximado: o 32 (\"Farewell to the Father\") fecha o arco de Baran e o 33 já abre a história seguinte; a Wikipédia não mapeia episódio a capítulo.",
+   "reboot": {
+    "old": 2229,
+    "new": 114099,
+    "coverage": "PARTIAL",
+    "beyondFromEpisode": 33
+   }
+  }
+ ]
+}
