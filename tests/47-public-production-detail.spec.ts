@@ -140,8 +140,10 @@ test.describe("Detalhe público da obra (/obra/[anilistId])", () => {
       await expect(nextEp).toContainText("Episódio 3");
       await expect(nextEp).toContainText("America/Sao_Paulo");
 
-      // A temporada irmã aparece junto, na seção "Temporadas" (a franquia deixou de ser um cartão solto mais abaixo).
+      // A temporada irmã aparece junto, numa aba de "Temporadas e episódios"; ao abri-la, o caminho para a página dela.
       const seasons = page.getByTestId("franchise-seasons");
+      await expect(seasons.getByTestId(`season-tab-${S1}`)).toBeVisible();
+      await seasons.getByTestId(`season-tab-${S1}`).click();
       await expect(seasons.getByTestId(`season-${S1}`)).toBeVisible();
       await expect(seasons.locator(`a[href="/anime/${S1}"]`)).toHaveCount(1);
     });

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Box, Button, Typography } from "@mui/material";
 import { ELEVATED_BUTTON_SX } from "@/components/ExploreCard";
+import { SeasonRating } from "@/components/SeasonRating";
 import { STATE_LABELS, WATCH_STATES } from "@/lib/watchCategory";
 
 export type MySeason = { animeId: string; watchState: string | null; waiting: boolean; userScore?: number | null };
@@ -41,8 +42,6 @@ export function SeasonControls({ anilistId, seasonNumber, mine }: { anilistId: n
   }
 
   const setState = (animeId: string, state: string | null) => run(async () => (await request(`/api/anime/${animeId}/watch-state`, { method: "PATCH", body: JSON.stringify({ state }) })) !== null);
-
-  const setScore = (animeId: string, score: number | null) => run(async () => (await request(`/api/anime/${animeId}/score`, { method: "PATCH", body: JSON.stringify({ score }) })) !== null);
 
   const follow = (state: string | null) =>
     run(async () => {
@@ -82,24 +81,7 @@ export function SeasonControls({ anilistId, seasonNumber, mine }: { anilistId: n
           </Button>
         </Box>
       )}
-      {mine?.watchState === "FINISHED" && (
-        <Box
-          component="select"
-          aria-label={`Sua nota para a Temporada ${seasonNumber}`}
-          data-testid={`season-score-${anilistId}`}
-          value={mine.userScore ?? ""}
-          disabled={busy}
-          onChange={(event: React.ChangeEvent<HTMLSelectElement>) => void setScore(mine.animeId, event.target.value === "" ? null : Number(event.target.value))}
-          sx={{ px: 1, py: 0.6, borderRadius: "6px", border: 1, borderColor: "divider", bgcolor: "#171820", color: "text.primary", fontSize: 13, "&:focus-visible": { outline: "2px solid #ffd400", outlineOffset: 2 } }}
-        >
-          <option value="">Sua nota: sem nota</option>
-          {Array.from({ length: 11 }, (_, n) => (
-            <option key={n} value={n}>
-              Sua nota: {n}
-            </option>
-          ))}
-        </Box>
-      )}
+      {mine && <SeasonRating animeId={mine.animeId} anilistId={anilistId} seasonNumber={seasonNumber} score={mine.userScore ?? null} finished={mine.watchState === "FINISHED"} />}
       {mine?.watchState === "DROPPED" && (
         <Typography data-testid={`season-dropped-note-${anilistId}`} sx={{ fontSize: 12, color: "text.secondary" }}>
           Fora do calendário e sem avisos. As próximas temporadas não entram na sua lista sozinhas.

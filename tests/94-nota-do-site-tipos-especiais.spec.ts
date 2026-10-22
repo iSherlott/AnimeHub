@@ -28,6 +28,7 @@ test.describe.serial("Nota do site, tipos e especiais", () => {
     await prisma.anime.deleteMany({ where: { anilistId: { in: ALL } } });
     await prisma.production.deleteMany({ where: { anilistId: { in: ALL } } });
     await prisma.franchise.deleteMany({ where: { rootAnilistId: { in: [FR1, ROOT] } } });
+    await prisma.airingScheduleEntry.deleteMany({ where: { anilistId: { in: ALL } } });
     await prisma.catalogEntry.deleteMany({ where: { anilistId: { in: ALL } } });
   }
 
@@ -92,10 +93,12 @@ test.describe.serial("Nota do site, tipos e especiais", () => {
       }
     });
 
-    test("só quem terminou pode avaliar", async ({ request }) => {
+    test("dá para avaliar enquanto acompanha, mas só a nota de quem terminou conta no site", async ({ request }) => {
       const res = await request.patch(`/api/anime/${mine}/score`, { data: { score: 9 } });
-      expect(res.status()).toBe(409);
+      expect(res.status()).toBe(200);
+      expect(await res.json()).toEqual({ userScore: 9, siteScore: 5, siteScoreVotes: 0 });
       expect(await siteScore()).toMatchObject({ siteScore: 5, siteScoreVotes: 0 });
+      expect((await request.patch(`/api/anime/${mine}/score`, { data: { score: null } })).status()).toBe(200);
     });
 
     test("a nota de quem terminou regula a nota do site (média com peso inicial)", async ({ request, playwright, baseURL }) => {
@@ -134,48 +137,59 @@ test.describe.serial("Nota do site, tipos e especiais", () => {
       const score = page.getByTestId(`season-score-${FR1}`);
       await expect(score).toBeVisible();
       await expect(page.getByTestId(`season-score-${FR2}`)).toHaveCount(0); // a outra temporada não está na lista
-      await score.selectOption("8");
+      await expect(page.getByTestId(`season-score-value-${FR1}`)).toHaveText("Sem nota");
+      await score.locator("label", { hasText: "4 estrelas (nota 8)" }).click(); // 4 estrelas = nota 8
       await expect(page.getByTestId("site-score")).toHaveText("Nota do site 5.8"); // (3 × 5 + 8) ÷ 4
+      await expect(page.getByTestId(`season-score-value-${FR1}`)).toHaveText("Sua nota: 8/10");
       expect((await prisma.anime.findUniqueOrThrow({ where: { id: own.id } })).userScore).toBe(8);
-      await score.selectOption("");
+      await score.locator("label", { hasText: "4 estrelas (nota 8)" }).click(); // de novo na mesma nota: tira a avaliação
       await expect(page.getByTestId("site-score")).toHaveText("Nota do site 5.0");
+      await expect(page.getByTestId(`season-score-value-${FR1}`)).toHaveText("Sem nota");
     } finally {
       await prisma.anime.delete({ where: { id: own.id } });
     }
   });
 
-  test("a obra mostra o aviso e a seção dos especiais; 'Temporadas' fica só com episódios", async ({ page }) => {
+  test("os especiais se ramificam da linha dos episódios, no ponto em que foram ao ar; 'Temporadas' fica só com episódios", async ({ page }) => {
+    // Episódios espalhados no tempo: o OVA (abr/2021) cai entre o 1 e o 2; a ODA (jun/2021) e o filme (mar/2022), entre o 2 e o 3.
+    for (const [episode, airingAt] of [[1, "2020-10-01T12:00:00Z"], [2, "2021-05-01T12:00:00Z"], [3, "2022-06-01T12:00:00Z"]] as const) {
+      await prisma.airingScheduleEntry.create({ data: { anilistId: ROOT, episode, airingAt: new Date(airingAt), titleRomaji: "Serie Round94" } });
+    }
     await page.goto(`/anime/${ROOT}`);
     await expect(page.getByTestId("site-score")).toHaveText("Nota do site 5.0");
     await expect(page.getByTestId("specials-notice")).toContainText("1 OVA, 1 ODA, 1 filme");
     await expect(page.getByTestId("specials-notice")).toContainText("fora da linha principal");
 
-    const specials = page.getByTestId("work-specials");
-    await expect(specials.locator("li")).toHaveCount(3);
-    await expect(specials.getByTestId(`special-kind-${OVA}`)).toHaveText("OVA");
-    await expect(specials.getByTestId(`special-kind-${ODA}`)).toHaveText("ODA");
-    await expect(specials.getByTestId(`special-kind-${MOVIE}`)).toHaveText("Filme");
-    await expect(specials.getByText("Opcional")).toHaveCount(3);
-    await expect(specials.getByRole("link", { name: "Serie Round94 OVA" })).toHaveAttribute("href", `/anime/${OVA}`);
-    // Ordem de estreia: OVA, depois ODA, depois filme.
-    await expect(specials.locator("li").nth(0)).toContainText("Serie Round94 OVA");
-    await expect(specials.locator("li").nth(2)).toContainText("Serie Round94 Movie");
+    const line = page.getByTestId("schedule-episodes");
+    const nodes = line.locator("li");
+    await expect(nodes).toHaveCount(6);
+    await expect(nodes.nth(0)).toContainText("EP01");
+    await expect(nodes.nth(1)).toContainText("Serie Round94 OVA");
+    await expect(nodes.nth(1)).toHaveAttribute("data-branch", "true");
+    await expect(nodes.nth(2)).toContainText("EP02");
+    await expect(nodes.nth(3)).toContainText("Serie Round94 DVD");
+    await expect(nodes.nth(4)).toContainText("Serie Round94 Movie");
+    await expect(nodes.nth(5)).toContainText("EP03");
+    await expect(nodes.nth(0)).not.toHaveAttribute("data-branch", "true");
+    await expect(line.getByTestId(`branch-kind-${OVA}`)).toHaveText("OVA");
+    await expect(line.getByTestId(`branch-kind-${ODA}`)).toHaveText("ODA");
+    await expect(line.getByTestId(`branch-kind-${MOVIE}`)).toHaveText("Filme");
+    await expect(line.getByText("Opcional")).toHaveCount(3);
+    await expect(line.getByRole("link", { name: "Serie Round94 OVA" })).toHaveAttribute("href", `/anime/${OVA}`);
 
-    // O OVA é uma produção da mesma franquia, mas não conta como temporada.
+    // O OVA é uma produção da mesma franquia, mas não conta como temporada: sem abas.
     await expect(page.getByTestId("franchise-seasons")).toHaveCount(0);
   });
 
-  test("a página de um especial se marca como atual e não conta a si mesma no aviso", async ({ page }) => {
+  test("a página de um especial não conta a si mesma no aviso", async ({ page }) => {
     await page.goto(`/anime/${OVA}`);
     await expect(page.getByTestId("specials-notice")).toContainText("1 ODA, 1 filme");
     await expect(page.getByTestId("specials-notice")).not.toContainText("OVA,");
-    await expect(page.getByTestId(`special-${OVA}`)).toContainText("você está aqui");
-    await expect(page.getByTestId("work-specials").locator("li")).toHaveCount(3);
   });
 
   test("a linha do tempo da franquia só aparece depois da auditoria e mostra tudo em ordem de estreia (Epic 45)", async ({ page }) => {
     await page.goto(`/anime/${ROOT}`);
-    await expect(page.getByTestId("work-specials")).toBeVisible();
+    await expect(page.getByTestId("specials-notice")).toBeVisible();
     await expect(page.getByTestId("franchise-timeline")).toHaveCount(0); // a auditoria ainda não passou por aqui
 
     const stored: Array<[number, number, string, number | null]> = [[ROOT, 1, "MAIN", 1], [OVA, 2, "SPECIAL", null], [ODA, 3, "SPECIAL", null], [MOVIE, 4, "SPECIAL", null]];
@@ -207,6 +221,6 @@ test.describe.serial("Nota do site, tipos e especiais", () => {
     await page.goto(`/anime/${SCORED}`);
     await expect(page.getByTestId("anime-title")).toBeVisible();
     await expect(page.getByTestId("specials-notice")).toHaveCount(0);
-    await expect(page.getByTestId("work-specials")).toHaveCount(0);
+    await expect(page.getByTestId("franchise-timeline")).toHaveCount(0);
   });
 });

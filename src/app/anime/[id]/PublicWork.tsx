@@ -9,9 +9,10 @@ import { RecentWorkTracker } from "@/components/RecentWorkTracker";
 import { AnimeTitle } from "@/components/AnimeTitle";
 import { AppLink } from "@/components/AppLink";
 import { FollowProductionButton } from "@/components/FollowProductionButton";
-import { FranchiseSeasons } from "@/components/FranchiseSeasons";
+import { WorkSeasons } from "@/components/WorkSeasons";
+import { assignBranches, branchesOf } from "@/lib/workJourney";
 import { SiteScoreChip } from "@/components/SiteScoreChip";
-import { SpecialsNotice, WorkSpecials } from "@/components/WorkSpecials";
+import { SpecialsNotice } from "@/components/WorkSpecials";
 import { loadTimeline } from "@/lib/curation/timelineLoader";
 import { loadFranchiseSteps } from "@/lib/curation/franchiseTimelineLoader";
 import { FranchiseTimeline } from "@/components/FranchiseTimeline";
@@ -57,6 +58,8 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
     loadFranchiseSteps(anilistId),
   ]);
   const officialSite = production.officialSite ?? catalog?.officialSite ?? null;
+  // OVA, ODA e filmes se ramificam da temporada em que foram ao ar.
+  const branches = assignBranches(seasons, branchesOf(timeline?.specials ?? []));
   const imageByEpisode = new Map(images.map((i) => [i.episode, i.thumbnail]));
   const genres = production.genres ? production.genres.split(",").filter(Boolean) : [];
   const titlePrimary = production.titleNative ?? production.titleRomaji;
@@ -130,9 +133,6 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
             <SynopsisText description={production.description} anilistId={production.anilistId} stored={{ pt: catalog?.descriptionPt, ja: catalog?.descriptionJa }} sx={{ fontSize: 16 }} />
           </Box>
           <SpecialsNotice timeline={timeline} />
-          <FranchiseSeasons seasons={seasons} signedIn={Boolean(user)} />
-          <WorkSpecials timeline={timeline} />
-          <FranchiseTimeline steps={franchiseSteps} />
         </Box>
 
         <Box component="section" aria-labelledby="info-heading" sx={{ bgcolor: "background.paper", borderRadius: "16px", p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
@@ -184,14 +184,25 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
         </Box>
       </Box>
 
-      {schedule.length > 0 && (
-        <Box component="section" aria-labelledby="episodios-heading" sx={{ mt: 4, px: { xs: 3, sm: 5 }, display: "flex", flexDirection: "column", gap: 2 }}>
-          <Typography id="episodios-heading" component="h2" sx={headingSx}>
-            Episódios
-          </Typography>
-          <ScheduleEpisodeList episodes={schedule.map((s) => ({ episode: s.episode, airingAt: s.airingAt.toISOString(), image: imageByEpisode.get(s.episode) ?? null }))} />
-        </Box>
-      )}
+      <Box id="episodios" sx={{ mt: 4, px: { xs: 3, sm: 5 }, display: "flex", flexDirection: "column", gap: 5, scrollMarginTop: 80 }}>
+        {(schedule.length > 0 || seasons.length > 1) && (
+          <Box component="section" aria-labelledby={seasons.length > 1 ? undefined : "episodios-heading"} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {seasons.length < 2 && (
+              <Typography id="episodios-heading" component="h2" sx={headingSx}>
+                Episódios
+              </Typography>
+            )}
+            <WorkSeasons seasons={seasons} signedIn={Boolean(user)} branches={branches}>
+              {schedule.length > 0 ? (
+                <ScheduleEpisodeList episodes={schedule.map((s) => ({ episode: s.episode, airingAt: s.airingAt.toISOString(), image: imageByEpisode.get(s.episode) ?? null }))} branches={branches[anilistId] ?? []} />
+              ) : (
+                <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Os episódios desta temporada ainda não têm data no calendário.</Typography>
+              )}
+            </WorkSeasons>
+          </Box>
+        )}
+        <FranchiseTimeline steps={franchiseSteps} />
+      </Box>
 
       <Box sx={{ mt: 4, px: { xs: 3, sm: 5 }, display: "flex", flexDirection: "column", gap: 5 }}>
         <WorkDiscussions

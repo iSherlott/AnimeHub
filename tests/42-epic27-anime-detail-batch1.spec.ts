@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { waitEpisodesStreamed } from "./streaming";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
@@ -110,6 +111,7 @@ test.describe("Epic 27 (lote 1) — lista de episódios em accordion fechado por
     // colapsa a altura) — toHaveCount(0) sempre passaria mesmo se o
     // accordion nunca tivesse fechado nada; not.toBeVisible() é o que
     // realmente confere o estado fechado.
+    await waitEpisodesStreamed(page); // a lista chega em streaming: espera o esqueleto sumir e a troca terminar
     await expect(page.getByPlaceholder("Buscar episódio...")).not.toBeVisible();
     await expect(page.getByText("Ver episódios (1)")).toBeVisible();
 

@@ -66,16 +66,20 @@ test.describe.serial("Obra unificada em /anime e temporadas juntas", () => {
     await expect(page.getByTestId("franchise-seasons")).toBeVisible();
   });
 
-  test("as temporadas aparecem juntas, em ordem, cada uma com a sinopse (a atual já aberta)", async ({ page }) => {
+  test("as temporadas aparecem juntas, em abas e em ordem (a atual já aberta); cada aba traz a sinopse dela", async ({ page }) => {
     await page.goto(`/anime/${S2}`);
     const seasons = page.getByTestId("franchise-seasons");
-    await expect(seasons.locator("li")).toHaveCount(2);
-    await expect(seasons.locator("li").nth(0)).toContainText("Temporada 1");
-    await expect(seasons.locator("li").nth(1)).toContainText("Temporada 2 · você está aqui");
+    const tabs = seasons.getByRole("tab");
+    await expect(tabs).toHaveCount(2);
+    await expect(tabs.nth(0)).toHaveText("Temporada 1");
+    await expect(tabs.nth(1)).toHaveText("Temporada 2 · atual");
+    await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true");
+    await expect(seasons.getByTestId(`season-${S2}`)).toContainText("você está aqui");
     await expect(page.getByTestId("synopsis").first()).toContainText("segunda temporada Round81"); // a da atual já está em "Sinopse"
     await expect(page.getByTestId(`season-synopsis-${S2}`)).toHaveCount(0); // sem repetir a sinopse da atual
-    await expect(page.getByTestId(`season-synopsis-${S1}`)).toBeHidden(); // fechada
-    await seasons.getByTestId(`season-${S1}`).locator("summary").click();
+    await expect(page.getByTestId(`season-synopsis-${S1}`)).toHaveCount(0); // a outra aba ainda não foi aberta
+    await tabs.nth(0).click();
+    await expect(tabs.nth(0)).toHaveAttribute("aria-selected", "true");
     await expect(page.getByTestId(`season-synopsis-${S1}`)).toContainText("primeira temporada Round81");
     await expect(seasons.getByRole("link", { name: "Abrir a Temporada 1" })).toHaveAttribute("href", `/anime/${S1}`);
   });
@@ -83,9 +87,9 @@ test.describe.serial("Obra unificada em /anime e temporadas juntas", () => {
   test("sem franquia da AniList, o mesmo título com outro número de temporada também se junta", async ({ page }) => {
     await page.goto(`/anime/${T2}`);
     const seasons = page.getByTestId("franchise-seasons");
-    await expect(seasons.locator("li")).toHaveCount(2);
-    await expect(seasons.locator("li").nth(0)).toContainText("Temporada 1");
-    await expect(seasons.locator("li").nth(1)).toContainText("Temporada 2");
+    await expect(seasons.getByRole("tab")).toHaveCount(2);
+    await expect(seasons.getByRole("tab").nth(0)).toHaveText("Temporada 1");
+    await expect(seasons.getByRole("tab").nth(1)).toHaveText("Temporada 2 · atual");
   });
 
   test("quem já acompanha é levado da URL numérica para a própria página, com as temporadas também", async ({ page }) => {
@@ -94,7 +98,7 @@ test.describe.serial("Obra unificada em /anime e temporadas juntas", () => {
       await page.goto(`/anime/${S2}`);
       await expect(page).toHaveURL(new RegExp(`/anime/${mine.id}$`));
       await expect(page.getByTestId("anime-title")).toBeVisible();
-      await expect(page.getByTestId("franchise-seasons").locator("li")).toHaveCount(2);
+      await expect(page.getByTestId("franchise-seasons").getByRole("tab")).toHaveCount(2);
       await expect(page.getByTestId("discussions")).toBeVisible();
     } finally {
       await prisma.anime.delete({ where: { id: mine.id } });
@@ -103,7 +107,7 @@ test.describe.serial("Obra unificada em /anime e temporadas juntas", () => {
 
   test("a primeira temporada também mostra as seguintes, e uma obra de temporada única não mostra a seção", async ({ page }) => {
     await page.goto(`/anime/${T1}`);
-    await expect(page.getByTestId("franchise-seasons").locator("li")).toHaveCount(2);
+    await expect(page.getByTestId("franchise-seasons").getByRole("tab")).toHaveCount(2);
     await page.goto(`/anime/${ONLY}`);
     await expect(page.getByTestId("anime-title")).toBeVisible();
     await expect(page.getByTestId("franchise-seasons")).toHaveCount(0);

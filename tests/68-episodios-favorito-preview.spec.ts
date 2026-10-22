@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { waitEpisodesStreamed } from "./streaming";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { TEST_USER_EMAIL } from "./test-auth";
@@ -53,6 +54,7 @@ test.describe("Episódios: data, sinopse e imagem", () => {
   test("cada episódio mostra o lançamento, a sinopse (ou a falta dela) e a imagem; episódios só do calendário também entram", async ({ page }) => {
     await page.route(/s4\.anilist\.co/, (route) => route.fulfill({ status: 200, contentType: "image/png", body: PNG }));
     await page.goto(`/anime/${animeId}`);
+    await waitEpisodesStreamed(page); // a lista chega em streaming: espera o esqueleto sumir e a troca terminar
     await page.getByRole("button", { name: /Ver episódios/ }).click();
 
     // EP1: data da Kitsu (dia) + horário do calendário; sinopse atrás do aviso de spoiler.

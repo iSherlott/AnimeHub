@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Box, Chip, Stack, Typography } from "@mui/material";
@@ -29,9 +30,11 @@ import { ensureTitleFurigana } from "@/lib/ensureFurigana";
 import { callInternalService } from "@/lib/serviceDelegate";
 import type { AniListCharacterEntry, AniListRecommendation } from "@/lib/anilist";
 import { loadFranchiseSeasons } from "@/lib/franchiseSeasons";
-import { FranchiseSeasons } from "@/components/FranchiseSeasons";
+import { WorkSeasons } from "@/components/WorkSeasons";
+import { EpisodesSkeleton } from "@/components/WorkSkeletons";
+import { assignBranches, branchesOf, type Branch } from "@/lib/workJourney";
 import { SiteScoreChip } from "@/components/SiteScoreChip";
-import { SpecialsNotice, WorkSpecials } from "@/components/WorkSpecials";
+import { SpecialsNotice } from "@/components/WorkSpecials";
 import { loadTimeline } from "@/lib/curation/timelineLoader";
 import { loadFranchiseSteps } from "@/lib/curation/franchiseTimelineLoader";
 import { FranchiseTimeline } from "@/components/FranchiseTimeline";
@@ -80,7 +83,14 @@ export default async function AnimeDetailPage({
   const platformIds = await platformAnilistIds();
   const rawRecommendations: AniListRecommendation[] = (anime.recommendationsJson ? (JSON.parse(anime.recommendationsJson) as AniListRecommendation[]) : []).filter((r) => platformIds.has(r.anilistId));
 
-  const [seasons, episodesResult, furiganaHtml, ownedRecommendedAnime, scheduleRows, imageRows, franchiseSeasons] = await Promise.all([
+  // Os episódios vêm da fonte e podem demorar: começam a carregar já, e a página mostra um esqueleto até chegarem.
+  // Nota: quando delegado, episodesResult.episodes[].airDate volta como string ISO (round-trip por JSON), não Date;
+  // o EpisodeGrid trata os dois formatos.
+  const episodesPromise = callInternalService<EpisodesResult>(process.env.CACHE_UPDATER_URL, "/ensure-episodes", {
+    animeId: anime.id,
+  }).then((delegated) => delegated ?? ensureEpisodes(anime));
+
+  const [seasons, furiganaHtml, ownedRecommendedAnime, scheduleRows, imageRows, franchiseSeasons] = await Promise.all([
     anime.seriesKey
       ? prisma.anime.findMany({
           where: { seriesKey: anime.seriesKey, userId: user.id },
@@ -88,13 +98,6 @@ export default async function AnimeDetailPage({
           select: { id: true, seasonNumber: true, titleRomaji: true },
         })
       : Promise.resolve([]),
-    // Nota: quando delegado, episodesResult.episodes[].airDate volta como
-    // string ISO (round-trip por JSON), não Date — diferente do caminho
-    // local. EpisodeGrid não usa airDate hoje, então é inofensivo, mas
-    // qualquer novo uso desse campo precisa tratar os dois formatos.
-    callInternalService<EpisodesResult>(process.env.CACHE_UPDATER_URL, "/ensure-episodes", {
-      animeId: anime.id,
-    }).then((delegated) => delegated ?? ensureEpisodes(anime)),
     ensureTitleFurigana(anime),
     // Recomendações (Epic 14) apontam pra outros anilistId — resolvidas
     // contra a própria lista do usuário aqui, na hora de renderizar (não
@@ -129,6 +132,8 @@ export default async function AnimeDetailPage({
     loadFranchiseSteps(anime.anilistId),
   ]);
   const officialSite = anime.officialSite ?? catalogMeta?.officialSite ?? null;
+  // OVA, ODA e filmes se ramificam da temporada em que foram ao ar; a página mostra os da temporada aberta junto dos episódios.
+  const branches = assignBranches(franchiseSeasons, branchesOf(timeline?.specials ?? []));
 
   const animeIdByAnilistId = new Map(ownedRecommendedAnime.map((a) => [a.anilistId, a.id]));
   const recommendations: RecommendationData[] = rawRecommendations.map((rec) => {
@@ -250,9 +255,6 @@ export default async function AnimeDetailPage({
           )}
 
           <SpecialsNotice timeline={timeline} />
-          <FranchiseSeasons seasons={franchiseSeasons} mine={mySeasons} signedIn />
-          <WorkSpecials timeline={timeline} />
-          <FranchiseTimeline steps={franchiseSteps} />
 
           {(anime.anidbAwards || anime.anidbResources) && (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1, borderLeft: 2, borderColor: "secondary.main", bgcolor: "background.paper", p: 2 }}>
@@ -338,28 +340,32 @@ export default async function AnimeDetailPage({
         </Box>
       )}
 
-      <Box sx={{ mt: 4, px: { xs: 3, sm: 5 } }}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 2 }}>
-          <Box sx={{ width: 6, height: 16, bgcolor: "primary.main", transform: "skewX(-12deg)" }} />
-          <Typography variant="h6" component="h2" sx={{ textTransform: "uppercase" }}>
-            Episódios
-          </Typography>
-        </Stack>
-        {episodesResult.episodes.length > 0 || scheduleRows.length > 0 ? (
-          <EpisodeGrid
-            episodes={episodesResult.episodes}
-            schedule={schedule}
-            episodeImages={episodeImages}
-            fallbackImage={anime.coverImage}
-            accentColor={anime.accentColor}
-          />
-        ) : (
-          <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            {episodesResult.error
-              ? `Não foi possível carregar os episódios (${episodesResult.error}).`
-              : "Nenhum episódio encontrado para este anime."}
-          </Typography>
-        )}
+      <Box sx={{ mt: 4, px: { xs: 3, sm: 5 }, display: "flex", flexDirection: "column", gap: 5 }}>
+        <Box id="episodios" sx={{ display: "flex", flexDirection: "column", gap: 2, scrollMarginTop: 80 }}>
+          {franchiseSeasons.length < 2 && (
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+              <Box sx={{ width: 6, height: 16, bgcolor: "primary.main", transform: "skewX(-12deg)" }} />
+              <Typography variant="h6" component="h2" sx={{ textTransform: "uppercase" }}>
+                Episódios
+              </Typography>
+            </Stack>
+          )}
+          <WorkSeasons seasons={franchiseSeasons} mine={mySeasons} signedIn branches={branches}>
+            <Suspense fallback={<EpisodesSkeleton />}>
+              <EpisodesPanel
+                episodesPromise={episodesPromise}
+                hasSchedule={scheduleRows.length > 0}
+                schedule={schedule}
+                episodeImages={episodeImages}
+                fallbackImage={anime.coverImage}
+                accentColor={anime.accentColor}
+                branches={branches[anime.anilistId] ?? []}
+               
+              />
+            </Suspense>
+          </WorkSeasons>
+        </Box>
+        <FranchiseTimeline steps={franchiseSteps} />
       </Box>
 
       <Box sx={{ mt: 4, px: { xs: 3, sm: 5 } }}>
@@ -392,5 +398,34 @@ export default async function AnimeDetailPage({
         </Row>
       )}
     </div>
+  );
+}
+
+/** Os episódios da obra em linha do tempo; é aqui que a página espera a fonte (o resto já apareceu). */
+async function EpisodesPanel({
+  episodesPromise,
+  hasSchedule,
+  schedule,
+  episodeImages,
+  fallbackImage,
+  accentColor,
+  branches,
+}: {
+  episodesPromise: Promise<EpisodesResult>;
+  hasSchedule: boolean;
+  schedule: Record<number, string>;
+  episodeImages: Record<number, string>;
+  fallbackImage: string | null;
+  accentColor: string | null;
+  branches: Branch[];
+}) {
+  const episodesResult = await episodesPromise;
+  if (episodesResult.episodes.length > 0 || hasSchedule) {
+    return <EpisodeGrid episodes={episodesResult.episodes} schedule={schedule} episodeImages={episodeImages} fallbackImage={fallbackImage} accentColor={accentColor} branches={branches} />;
+  }
+  return (
+    <Typography variant="body2" sx={{ color: "text.secondary" }}>
+      {episodesResult.error ? `Não foi possível carregar os episódios (${episodesResult.error}).` : "Nenhum episódio encontrado para este anime."}
+    </Typography>
   );
 }

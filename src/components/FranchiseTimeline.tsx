@@ -1,32 +1,25 @@
 import { Box, Chip, Typography } from "@mui/material";
 import { AppLink } from "@/components/AppLink";
+import { BranchCard } from "@/components/BranchCard";
 import { CoverImage } from "@/components/CoverImage";
-import { KIND_LABELS, type Kind } from "@/lib/curation/kind";
+import { VerticalTimeline, type TimelineNode } from "@/components/VerticalTimeline";
 import type { FranchiseStep } from "@/lib/curation/franchiseTimelineLoader";
+import type { Branch } from "@/lib/workJourney";
 
 const SEASON_LABEL: Record<string, string> = { WINTER: "Inverno", SPRING: "Primavera", SUMMER: "Verão", FALL: "Outono" };
 /** Quantos passos aparecem de cara; o resto abre com um clique (franquias grandes têm mais de cem obras). */
 const VISIBLE = 12;
 
-const kindLabel = (kind: string | null) => KIND_LABELS[(kind ?? "OTHER") as Kind] ?? "Outros";
-
-function stepLabel(step: FranchiseStep): string {
-  if (step.role === "MAIN") return `Temporada ${step.season}`;
-  if (step.role === "RELATED") return "Série relacionada";
-  return kindLabel(step.kind);
-}
-
-function Step({ step }: { step: FranchiseStep }) {
+function MainStep({ step }: { step: FranchiseStep }) {
   const when = step.seasonName && step.seasonYear ? `${SEASON_LABEL[step.seasonName] ?? step.seasonName} ${step.seasonYear}` : step.seasonYear ? String(step.seasonYear) : null;
   const facts = [when, step.episodes ? `${step.episodes} ${step.episodes === 1 ? "episódio" : "episódios"}` : null].filter(Boolean).join(" · ");
   const title = step.titleNative ?? step.titleRomaji;
   return (
-    <Box component="li" data-testid={`timeline-step-${step.anilistId}`} data-role={step.role} data-current={step.current ? "true" : undefined} sx={{ display: "flex", alignItems: "center", gap: 2, p: 1.5, borderRadius: "12px", border: 1, borderColor: step.current ? "primary.main" : "divider", bgcolor: "background.paper" }}>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 2, p: 1.5, borderRadius: "12px", border: 1, borderColor: step.current ? "primary.main" : "divider", bgcolor: "background.paper" }}>
       <Box sx={{ position: "relative", flexShrink: 0, width: 48, aspectRatio: "2 / 3", borderRadius: "6px", overflow: "hidden", bgcolor: "#171820" }}>{step.coverImage && <CoverImage src={step.coverImage} sizes="48px" />}</Box>
       <Box sx={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 0.5 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-          <Chip size="small" color={step.role === "MAIN" ? "primary" : "default"} label={stepLabel(step)} sx={{ fontWeight: 700 }} />
-          {step.role === "SPECIAL" && <Chip size="small" variant="outlined" label="Opcional" />}
+          <Chip size="small" color={step.role === "MAIN" ? "primary" : "default"} label={step.role === "MAIN" ? `Temporada ${step.season}` : "Série relacionada"} sx={{ fontWeight: 700 }} />
         </Box>
         {step.current ? (
           <Typography lang={step.titleNative ? "ja" : undefined} sx={{ fontSize: 16, fontWeight: 700, overflowWrap: "anywhere" }}>
@@ -43,9 +36,22 @@ function Step({ step }: { step: FranchiseStep }) {
   );
 }
 
+const asBranch = (s: FranchiseStep): Branch => ({
+  anilistId: s.anilistId, kind: s.kind, titleRomaji: s.titleRomaji, titleNative: s.titleNative, whenMs: null, season: s.seasonName, seasonYear: s.seasonYear, episodes: s.episodes, relationType: null, current: s.current,
+});
+
+const nodeOf = (step: FranchiseStep): TimelineNode => ({
+  key: String(step.anilistId),
+  branch: step.role === "SPECIAL",
+  tone: step.role === "SPECIAL" ? "branch" : "done",
+  testId: `timeline-step-${step.anilistId}`,
+  data: { role: step.role, current: step.current ? "true" : undefined },
+  children: step.role === "SPECIAL" ? <BranchCard branch={asBranch(step)} /> : <MainStep step={step} />,
+});
+
 /**
- * "Linha do tempo da franquia" (Epic 45): a obra inteira em ordem de estreia, com as temporadas da linha principal numeradas
- * e os OVA, ODA e filmes marcados como opcionais. A parte que contém a obra aberta nunca fica escondida.
+ * "Linha do tempo da franquia" (Epic 45/46): a obra inteira em ordem de estreia. As temporadas da linha principal correm pela
+ * linha; os OVA, ODA e filmes se ramificam dela, opcionais. A parte que contém a obra aberta nunca fica escondida.
  */
 export function FranchiseTimeline({ steps }: { steps: FranchiseStep[] | null }) {
   if (!steps || steps.length < 2) return null;
@@ -57,28 +63,20 @@ export function FranchiseTimeline({ steps }: { steps: FranchiseStep[] | null }) 
   const specials = steps.filter((s) => s.role === "SPECIAL").length;
   const main = steps.filter((s) => s.role === "MAIN").length;
   return (
-    <Box component="section" aria-labelledby="linha-do-tempo-heading" data-testid="franchise-timeline" sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <Box component="section" aria-labelledby="linha-do-tempo-heading" id="linha-do-tempo" data-testid="franchise-timeline" sx={{ display: "flex", flexDirection: "column", gap: 2, scrollMarginTop: 80 }}>
       <Typography id="linha-do-tempo-heading" component="h2" sx={{ fontSize: 26, lineHeight: 1.5 }}>
         Linha do tempo da franquia
       </Typography>
       <Typography sx={{ fontSize: 14, color: "text.secondary" }} data-testid="franchise-timeline-summary">
         {steps.length} obras em ordem de estreia: {main} {main === 1 ? "temporada" : "temporadas"} da linha principal e {specials} {specials === 1 ? "especial opcional" : "especiais opcionais"} (OVA, ODA, filmes).
       </Typography>
-      <Box component="ol" sx={{ display: "flex", flexDirection: "column", gap: 1.5, listStyle: "none", p: 0, m: 0 }}>
-        {head.map((s) => (
-          <Step key={s.anilistId} step={s} />
-        ))}
-      </Box>
+      <VerticalTimeline label="Linha do tempo da franquia" nodes={head.map(nodeOf)} />
       {rest.length > 0 && (
         <Box component="details" data-testid="franchise-timeline-more">
           <Box component="summary" sx={{ cursor: "pointer", fontSize: 14, fontWeight: 700, mb: 1.5, "&:focus-visible": { outline: "2px solid #ffd400", outlineOffset: 2 } }}>
             Ver as outras {rest.length} obras
           </Box>
-          <Box component="ol" start={shown + 1} sx={{ display: "flex", flexDirection: "column", gap: 1.5, listStyle: "none", p: 0, m: 0 }}>
-            {rest.map((s) => (
-              <Step key={s.anilistId} step={s} />
-            ))}
-          </Box>
+          <VerticalTimeline label="Restante da linha do tempo da franquia" nodes={rest.map(nodeOf)} />
         </Box>
       )}
     </Box>

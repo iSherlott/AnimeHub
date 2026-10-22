@@ -17,11 +17,14 @@ import {
   type SelectChangeEvent,
 } from "@mui/material";
 import type { Episode } from "@prisma/client";
+import { BranchCard } from "@/components/BranchCard";
 import { InfiniteFooter } from "@/components/InfiniteFooter";
+import { VerticalTimeline, type TimelineNode } from "@/components/VerticalTimeline";
 import { resolveTitleTextLenient, useTitlePreference } from "@/lib/titlePreference";
 import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
 import { useTimeZone } from "@/lib/useTimeZone";
 import { useWindowedList } from "@/lib/useWindowedList";
+import { interleave, type Branch } from "@/lib/workJourney";
 
 /** Quantos episódios aparecem de cada vez na lista (o resto vem ao rolar). */
 const EPISODE_WINDOW = 30;
@@ -148,6 +151,8 @@ export function EpisodeGrid({
   episodeImages = {},
   fallbackImage,
   accentColor,
+  branches = [],
+  nowMs,
 }: {
   episodes: Episode[];
   /** Número do episódio → horário de exibição (calendário). */
@@ -159,7 +164,12 @@ export function EpisodeGrid({
   fallbackImage?: string | null;
   /** Cor de destaque do anime — usada no cabeçalho do accordion. */
   accentColor?: string | null;
+  /** OVA, ODA e filmes que se ramificam desta temporada, no ponto em que foram ao ar. */
+  branches?: Branch[];
+  /** "Agora" no servidor, para o ponto de cada episódio (já exibido, próximo, a vir) bater na hidratação. */
+  nowMs?: number;
 }) {
+  const [now] = useState(() => nowMs ?? Date.now());
   // Episódios agendados que a Kitsu ainda não lista entram na lista (só com número, data e imagem).
   const episodes = useMemo(() => {
     const seasons = Array.from(new Set(kitsuEpisodes.map((e) => e.seasonNumber)));
@@ -204,10 +214,30 @@ export function EpisodeGrid({
         .sort((a, b) => a.number - b.number),
     [episodes, effectiveSeason, needle]
   );
+  // Cada episódio com a data em que foi (ou vai) ao ar; os especiais entram na ordem, ramificados da linha principal.
+  const dated = useMemo(
+    () =>
+      matching.map((ep) => {
+        const iso = schedule[ep.number] ?? ep.airDate;
+        const ms = iso ? new Date(iso).getTime() : Number.NaN;
+        return { ep, dateMs: Number.isNaN(ms) ? null : ms };
+      }),
+    [matching, schedule]
+  );
+  const items = useMemo(() => interleave(dated, needle ? [] : branches), [dated, branches, needle]);
+  const nextId = dated.find((d) => d.dateMs !== null && d.dateMs > now)?.ep.id;
   // Rolagem infinita: séries longas têm centenas de episódios, que aparecem aos poucos conforme a pessoa desce a lista.
-  const windowed = useWindowedList(matching, `${effectiveSeason}|${needle}`, EPISODE_WINDOW);
+  const windowed = useWindowedList(items, `${effectiveSeason}|${needle}`, EPISODE_WINDOW);
   const { ref: sentinelRef, supported: infiniteSupported } = useInfiniteScroll(windowed.loadMore, windowed.hasMore, windowed.shown);
-  const visibleEpisodes = windowed.visible;
+  const nodes: TimelineNode[] = windowed.visible.map((item) =>
+    item.type === "branch"
+      ? { key: `branch-${item.branch.anilistId}`, branch: true, children: <BranchCard branch={item.branch} /> }
+      : {
+          key: item.episode.ep.id,
+          tone: item.episode.ep.id === nextId ? "next" : item.episode.dateMs !== null && item.episode.dateMs > now ? "upcoming" : "done",
+          children: <EpisodeRow ep={item.episode.ep} fallbackImage={fallbackImage} airingAt={schedule[item.episode.ep.number]} calendarImage={episodeImages[item.episode.ep.number]} />,
+        }
+  );
 
   if (episodes.length === 0) return null;
 
@@ -255,9 +285,7 @@ export function EpisodeGrid({
             </Typography>
           ) : (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              {visibleEpisodes.map((ep) => (
-                <EpisodeRow key={ep.id} ep={ep} fallbackImage={fallbackImage} airingAt={schedule[ep.number]} calendarImage={episodeImages[ep.number]} />
-              ))}
+              <VerticalTimeline label="Episódios em ordem de exibição" testId="episode-timeline" nodes={nodes} />
               <InfiniteFooter
                 testId="episodes"
                 sentinelRef={sentinelRef}

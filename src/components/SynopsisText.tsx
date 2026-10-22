@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Typography, type TypographyProps } from "@mui/material";
+import { Box, Skeleton, Typography, type TypographyProps } from "@mui/material";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { htmlToPlainText } from "@/lib/plainText";
 import { useTitlePreference } from "@/lib/titlePreference";
@@ -103,6 +103,13 @@ export function SynopsisText({
       <Typography data-testid="synopsis" aria-busy={status === "pending" || undefined} {...props} sx={{ whiteSpace: "pre-wrap", ...(status === "pending" ? { fontStyle: "italic", color: "text.secondary" } : {}), ...props.sx }}>
         {text || empty}
       </Typography>
+      {status === "pending" && (
+        <Box aria-hidden data-testid="synopsis-skeleton" sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+          <Skeleton variant="text" animation="wave" width="100%" />
+          <Skeleton variant="text" animation="wave" width="92%" />
+          <Skeleton variant="text" animation="wave" width="60%" />
+        </Box>
+      )}
       {status === "unavailable" && (
         <Typography data-testid="synopsis-untranslated" sx={{ fontSize: 12, color: "text.secondary" }}>
           Sinopse original, em inglês: a tradução não está disponível agora.

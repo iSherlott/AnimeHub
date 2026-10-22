@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { waitEpisodesStreamed } from "./streaming";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { TEST_USER_EMAIL } from "./test-auth";
@@ -47,6 +48,7 @@ test.describe("Redesenho da lista de episódios — seletor de temporada e busca
     // A lista de episódios vem atrás de um accordion fechado por padrão
     // desde o lote 1 do Epic 27 — precisa abrir antes de qualquer episódio
     // ficar visível.
+    await waitEpisodesStreamed(page); // a lista chega em streaming: espera o esqueleto sumir e a troca terminar
     await page.getByText(/Ver episódios/).click();
 
     // Temporada 2 (a mais recente) vem selecionada por padrão.
@@ -64,6 +66,7 @@ test.describe("Redesenho da lista de episódios — seletor de temporada e busca
 
   test("a busca filtra por título dentro da temporada selecionada", async ({ page }) => {
     await page.goto(`/anime/${animeId}`);
+    await waitEpisodesStreamed(page); // a lista chega em streaming: espera o esqueleto sumir e a troca terminar
     await page.getByText(/Ver episódios/).click();
 
     await page.getByLabel("Temporada").click();
@@ -79,6 +82,7 @@ test.describe("Redesenho da lista de episódios — seletor de temporada e busca
 
   test("sinopse do episódio aparece quando existe", async ({ page }) => {
     await page.goto(`/anime/${animeId}`);
+    await waitEpisodesStreamed(page); // a lista chega em streaming: espera o esqueleto sumir e a troca terminar
     await page.getByText(/Ver episódios/).click();
     await page.getByLabel("Temporada").click();
     await page.getByRole("option", { name: "Temporada 1" }).click();
@@ -131,6 +135,7 @@ test.describe("Redesenho da lista de episódios — seletor reage a episódios n
 
   test("uma 2ª temporada chegando via router.refresh() (sem navegação) já aparece certa no seletor", async ({ page }) => {
     await page.goto(`/anime/${animeId}`);
+    await waitEpisodesStreamed(page); // a lista chega em streaming: espera o esqueleto sumir e a troca terminar
     await page.getByText(/Ver episódios/).click();
 
     // 1 temporada só — seletor nem aparece, e o EpisodeGrid já está
