@@ -6,6 +6,19 @@
  */
 export type TranslationTarget = "pt" | "ja";
 
+/** A cota do serviço de tradução acabou (MyMemory grátis: poucos milhares de caracteres por dia). Não adianta tentar de novo agora. */
+export class TranslationQuotaError extends Error {
+  constructor(message = "Cota de tradução esgotada") {
+    super(message);
+    this.name = "TranslationQuotaError";
+  }
+}
+
+/** Qual motor traduz: uma instância LibreTranslate própria (sem cota) ou o MyMemory gratuito (com cota diária pequena). */
+export function translationEngine(): "libretranslate" | "mymemory" {
+  return process.env.LIBRETRANSLATE_URL ? "libretranslate" : "mymemory";
+}
+
 const MYMEMORY_URL = "https://api.mymemory.translated.net/get";
 const CHUNK_LIMIT = 450;
 
@@ -51,6 +64,7 @@ async function translateChunk(chunk: string, target: TranslationTarget, fetcher:
       body: JSON.stringify({ q: chunk, source: "en", target, format: "text", api_key: process.env.LIBRETRANSLATE_API_KEY }),
       signal: AbortSignal.timeout(15_000),
     });
+    if (res.status === 429) throw new TranslationQuotaError("LibreTranslate limitou as chamadas");
     if (!res.ok) throw new Error(`LibreTranslate HTTP ${res.status}`);
     const data = (await res.json()) as { translatedText?: string };
     if (!data.translatedText) throw new Error("LibreTranslate sem texto");
@@ -59,11 +73,14 @@ async function translateChunk(chunk: string, target: TranslationTarget, fetcher:
   const base = process.env.MYMEMORY_URL || MYMEMORY_URL;
   const url = `${base}?q=${encodeURIComponent(chunk)}&langpair=en|${target}`;
   const res = await fetcher(url, { signal: AbortSignal.timeout(15_000) });
+  if (res.status === 429) throw new TranslationQuotaError();
   if (!res.ok) throw new Error(`MyMemory HTTP ${res.status}`);
   const data = (await res.json()) as { responseStatus?: number | string; responseData?: { translatedText?: string } };
   const text = data.responseData?.translatedText;
   // Cota estourada vem como texto de aviso com status 200/429.
-  if (!text || Number(data.responseStatus) >= 400 || /MYMEMORY WARNING/i.test(text)) throw new Error("MyMemory sem tradução");
+  if (text && /MYMEMORY WARNING/i.test(text)) throw new TranslationQuotaError();
+  if (Number(data.responseStatus) === 429) throw new TranslationQuotaError();
+  if (!text || Number(data.responseStatus) >= 400) throw new Error("MyMemory sem tradução");
   return text;
 }
 

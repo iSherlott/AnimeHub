@@ -47,7 +47,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
 
   const [nextEpisode, catalog, seasons, schedule, images, timeline] = await Promise.all([
     prisma.airingScheduleEntry.findFirst({ where: { anilistId, airingAt: { gte: new Date() } }, orderBy: { airingAt: "asc" } }),
-    prisma.catalogEntry.findUnique({ where: { anilistId }, select: { siteScore: true, siteScoreVotes: true, kind: true, officialSite: true } }),
+    prisma.catalogEntry.findUnique({ where: { anilistId }, select: { siteScore: true, siteScoreVotes: true, kind: true, officialSite: true, descriptionPt: true, descriptionJa: true } }),
     loadFranchiseSeasons(anilistId),
     prisma.airingScheduleEntry.findMany({ where: { anilistId }, orderBy: { episode: "asc" }, select: { episode: true, airingAt: true } }),
     prisma.episodeImage.findMany({ where: { anilistId }, select: { episode: true, thumbnail: true } }),
@@ -124,7 +124,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
             <Typography id="sinopse-heading" component="h2" sx={headingSx}>
               Sinopse
             </Typography>
-            <SynopsisText description={production.description} anilistId={production.anilistId} sx={{ fontSize: 16 }} />
+            <SynopsisText description={production.description} anilistId={production.anilistId} stored={{ pt: catalog?.descriptionPt, ja: catalog?.descriptionJa }} sx={{ fontSize: 16 }} />
           </Box>
           <SpecialsNotice timeline={timeline} />
           <FranchiseSeasons seasons={seasons} signedIn={Boolean(user)} />

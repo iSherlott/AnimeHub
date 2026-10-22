@@ -27,6 +27,8 @@ export type CalendarItem = {
    * manual pra anime sem dono. */
   description: string | null;
   descriptionPortuguese: string | null;
+  /** Sinopse já traduzida guardada no catálogo (português e japonês), para o preview nascer no idioma certo. */
+  storedSynopsis?: { pt: string | null; ja: string | null };
   isFavorite: boolean;
   /** Está na lista mas em modo "Espera" (não conta como `inMyList`). */
   waiting?: boolean;
@@ -57,7 +59,8 @@ export function calendarItemFromCache(
   myAnimeByAnilistId: Map<number, OwnedAnimeCalendarInfo>,
   delayed = false,
   episodeImage: string | null = null,
-  pendingFrom: number | null = null
+  pendingFrom: number | null = null,
+  storedSynopsis: { pt: string | null; ja: string | null } | null = null
 ): CalendarItem {
   const owned = myAnimeByAnilistId.get(entry.anilistId) ?? null;
   return {
@@ -77,6 +80,7 @@ export function calendarItemFromCache(
     waiting: owned?.waiting ?? false,
     description: owned?.description ?? entry.description ?? null,
     descriptionPortuguese: owned?.descriptionPortuguese ?? null,
+    ...(storedSynopsis && (storedSynopsis.pt || storedSynopsis.ja) ? { storedSynopsis } : {}),
     isFavorite: owned?.isFavorite ?? false,
     pendingFrom: owned && !owned.waiting ? pendingFrom : null,
     delayed,

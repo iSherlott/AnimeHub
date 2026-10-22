@@ -496,6 +496,15 @@ model CatalogEntry {
   /// Quando a curadoria passou por esta obra e com qual versão das regras (reprocessa quando a versão sobe).
   curatedAt         DateTime?
   curationVersion   Int       @default(0)
+  /// Franquia (Epic 45): menor anilistId do grupo de obras ligadas por sequência, spin-off, OVA, filme… Nulo = fora da AniList.
+  franchiseKey      Int?
+  /// Posição da obra na linha do tempo cronológica da franquia (1 = a mais antiga), com séries, OVA, ODA e filmes juntos.
+  timelineOrder     Int?
+  /// MAIN (série da linha principal), RELATED (outra série ligada) ou SPECIAL (OVA, ODA, filme, outros).
+  timelineRole      String?
+  /// Número da temporada na linha principal (1, 2, 3…); só nas obras MAIN.
+  timelineSeason    Int?
+  timelineAt        DateTime?
   fetchedAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -503,6 +512,7 @@ model CatalogEntry {
   @@index([onPlatform])
   @@index([format])
   @@index([kind])
+  @@index([franchiseKey, timelineOrder])
 }
 
 /**

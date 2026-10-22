@@ -7,6 +7,8 @@ import { ISSUE_CODES, ISSUE_LABELS, type IssueCode } from "@/lib/curation/issues
 import type { CurationStatus } from "@/lib/curation/engine";
 import { adminPanelSx } from "./AdminUi";
 import { CurationEntries } from "./CurationEntries";
+import { TimelinePanel } from "./TimelinePanel";
+import { TranslationPanel } from "./TranslationPanel";
 
 const CHANGED_LABELS: Array<[string, string]> = [
   ["titles", "Títulos completados"],
@@ -190,6 +192,10 @@ export function CurationPanel() {
           </Stack>
         </Box>
       </Box>
+
+      <TranslationPanel />
+
+      <TimelinePanel />
 
       <CurationEntries running={Boolean(running)} />
 

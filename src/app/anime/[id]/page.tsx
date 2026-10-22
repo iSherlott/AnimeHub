@@ -122,7 +122,7 @@ export default async function AnimeDetailPage({
 
   // Nota do site e linha do tempo (especiais) da obra; o site oficial do catálogo cobre quem ainda não o tem na lista.
   const [catalogMeta, timeline] = await Promise.all([
-    prisma.catalogEntry.findUnique({ where: { anilistId: anime.anilistId }, select: { siteScore: true, siteScoreVotes: true, officialSite: true } }),
+    prisma.catalogEntry.findUnique({ where: { anilistId: anime.anilistId }, select: { siteScore: true, siteScoreVotes: true, officialSite: true, descriptionPt: true, descriptionJa: true } }),
     loadTimeline(anime.anilistId),
   ]);
   const officialSite = anime.officialSite ?? catalogMeta?.officialSite ?? null;
@@ -242,6 +242,7 @@ export default async function AnimeDetailPage({
               description={anime.description}
               descriptionPortuguese={anime.descriptionPortuguese}
               anilistId={anime.anilistId}
+              stored={{ pt: catalogMeta?.descriptionPt, ja: catalogMeta?.descriptionJa }}
             />
           )}
 

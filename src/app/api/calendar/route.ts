@@ -96,6 +96,12 @@ export async function GET(request: NextRequest) {
     ])
   );
 
+  // Sinopse já traduzida (português/japonês) guardada no catálogo: o preview nasce no idioma certo.
+  const storedRows = weekAnilistIds.length
+    ? await prisma.catalogEntry.findMany({ where: { anilistId: { in: weekAnilistIds }, OR: [{ descriptionPt: { not: null } }, { descriptionJa: { not: null } }] }, select: { anilistId: true, descriptionPt: true, descriptionJa: true } })
+    : [];
+  const storedByAnilistId = new Map(storedRows.map((r) => [r.anilistId as number, { pt: r.descriptionPt, ja: r.descriptionJa }]));
+
   // "Adiado": em que episódio a pessoa parou, por obra da semana (só quem está logado).
   const pendingByAnilistId = user && myAnime.length ? await pendingFromMap(user.id, myAnime.map((a) => a.anilistId)) : new Map<number, number>();
 
@@ -189,7 +195,8 @@ export async function GET(request: NextRequest) {
         myAnimeByAnilistId,
         isDelayed(e.airingAt, e.episode, catalogNextById.get(e.anilistId), now),
         episodeImages.get(`${e.anilistId}-${e.episode}`) ?? null,
-        pendingByAnilistId.get(e.anilistId) ?? null
+        pendingByAnilistId.get(e.anilistId) ?? null,
+        storedByAnilistId.get(e.anilistId) ?? null
       )
     ),
     offGrid,

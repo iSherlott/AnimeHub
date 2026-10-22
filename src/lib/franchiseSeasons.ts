@@ -19,6 +19,8 @@ export type SeasonEntry = {
   season: string | null;
   seasonYear: number | null;
   episodes: number | null;
+  /** Sinopse já traduzida guardada no catálogo (português e japonês). */
+  stored?: { pt: string | null; ja: string | null };
   current: boolean;
 };
 
@@ -59,8 +61,16 @@ export async function loadFranchiseSeasons(anilistId: number): Promise<SeasonEnt
   add({ anilistId, seasonNumber: "seasonNumber" in base ? seasonNumberOf(base.seasonNumber, base.titleRomaji) : info.seasonNumber, titleRomaji: base.titleRomaji, titleEnglish: base.titleEnglish, titleNative: base.titleNative, coverImage: base.coverImage, description: base.description, format: "format" in base ? base.format : null, status: base.status, season: base.season, seasonYear: base.seasonYear, episodes: base.episodes });
 
   // "Temporadas" é a linha principal: OVA, ODA e filmes (já classificados pela curadoria) ficam em "Especiais e filmes".
-  const kinds = await prisma.catalogEntry.findMany({ where: { anilistId: { in: Array.from(entries.keys()) }, kind: { not: null } }, select: { anilistId: true, kind: true } });
-  for (const k of kinds) if (k.kind !== "EPISODE" && k.anilistId !== anilistId) entries.delete(k.anilistId as number);
+  const meta = await prisma.catalogEntry.findMany({ where: { anilistId: { in: Array.from(entries.keys()) } }, select: { anilistId: true, kind: true, descriptionPt: true, descriptionJa: true } });
+  for (const m of meta) {
+    const id = m.anilistId as number;
+    if (m.kind && m.kind !== "EPISODE" && id !== anilistId) {
+      entries.delete(id);
+      continue;
+    }
+    const entry = entries.get(id);
+    if (entry && (m.descriptionPt || m.descriptionJa)) entry.stored = { pt: m.descriptionPt, ja: m.descriptionJa };
+  }
 
   return Array.from(entries.values()).sort((a, b) => a.seasonNumber - b.seasonNumber || (a.seasonYear ?? 0) - (b.seasonYear ?? 0));
 }

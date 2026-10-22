@@ -2,6 +2,7 @@ import { Box, Typography } from "@mui/material";
 import { prisma } from "@/lib/prisma";
 import { AdminPageHeader, AdminPanel, AdminTable, JobStateLabel } from "@/components/admin/AdminUi";
 import { ImportForm } from "@/components/admin/ImportForm";
+import { OldWorksPanel } from "@/components/admin/OldWorksPanel";
 import { Notice } from "@/components/StatePanels";
 import { jobCounts } from "@/lib/adminImport/pipeline";
 import { jobGuard, type JobStage, type JobState } from "@/lib/adminImport/jobSteps";
@@ -25,6 +26,8 @@ export default async function AdminImportPage({ searchParams }: { searchParams: 
     <>
       <AdminPageHeader title="Importar temporada" titleCase="upper" subtitle="Cole o HTML da fonte para gerar uma prévia revisável. Nada é salvo automaticamente." />
       <ImportForm seasons={seasons} initialHtml={origin?.html ?? ""} initialSeason={origin?.season ?? undefined} />
+
+      <OldWorksPanel />
 
       <Notice tone="info" title="Revisão obrigatória">
         HTML → Parse → Normalize → Matching → Prévia → Confirmação → Commit. Campos ausentes não recebem valores inventados; conflitos e matches ambíguos devem ser resolvidos antes da confirmação.

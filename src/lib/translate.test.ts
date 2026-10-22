@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { splitForTranslation, translateText } from "./translate";
+import { splitForTranslation, TranslationQuotaError, translateText, translationEngine } from "./translate";
 
 describe("splitForTranslation", () => {
   it("mantém texto curto em um pedaço só", () => {
@@ -49,5 +49,31 @@ describe("translateText", () => {
   it("falha (em vez de devolver aviso de cota) quando o MyMemory estoura a cota", async () => {
     const fetcher = (async () => Response.json({ responseStatus: 429, responseData: { translatedText: "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS" } })) as unknown as typeof fetch;
     await expect(translateText("Hi.", "pt", fetcher)).rejects.toThrow();
+  });
+
+  it("distingue cota esgotada de um erro qualquer", async () => {
+    const quota = (async () => Response.json({ responseStatus: 200, responseData: { translatedText: "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY" } })) as unknown as typeof fetch;
+    await expect(translateText("Hi.", "pt", quota)).rejects.toBeInstanceOf(TranslationQuotaError);
+    const limited = (async () => new Response("slow down", { status: 429 })) as unknown as typeof fetch;
+    await expect(translateText("Hi.", "pt", limited)).rejects.toBeInstanceOf(TranslationQuotaError);
+    const broken = (async () => new Response("oops", { status: 500 })) as unknown as typeof fetch;
+    const error = await translateText("Hi.", "pt", broken).catch((e) => e);
+    expect(error).toBeInstanceOf(Error);
+    expect(error).not.toBeInstanceOf(TranslationQuotaError);
+  });
+});
+
+describe("translationEngine", () => {
+  it("usa o LibreTranslate quando há URL e o MyMemory quando não há", () => {
+    const old = process.env.LIBRETRANSLATE_URL;
+    try {
+      process.env.LIBRETRANSLATE_URL = "http://localhost:5000";
+      expect(translationEngine()).toBe("libretranslate");
+      delete process.env.LIBRETRANSLATE_URL;
+      expect(translationEngine()).toBe("mymemory");
+    } finally {
+      if (old === undefined) delete process.env.LIBRETRANSLATE_URL;
+      else process.env.LIBRETRANSLATE_URL = old;
+    }
   });
 });

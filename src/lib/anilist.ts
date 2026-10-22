@@ -241,6 +241,43 @@ export async function getSeasonalAnime(
 }
 
 /**
+ * Todas as obras que estrearam no ano `year` (pela data de estreia, não pela temporada): pega também as obras antigas que a
+ * AniList guarda só com o ano e, por isso, não aparecem na busca por temporada. Mesmos formatos de `getSeasonalAnime`.
+ */
+export async function getAnimeStartedInYear(year: number, { includeBlocked = false, fresh = false }: { includeBlocked?: boolean; fresh?: boolean } = {}): Promise<AniListMedia[]> {
+  const query = `
+    query ($after: FuzzyDateInt, $before: FuzzyDateInt, $page: Int) {
+      Page(page: $page, perPage: ${SEASON_PAGE_SIZE}) {
+        pageInfo {
+          hasNextPage
+        }
+        media(
+          startDate_greater: $after
+          startDate_lesser: $before
+          type: ANIME
+          sort: START_DATE
+          format_in: ${SEASON_FORMATS}
+        ) {
+          ${MEDIA_FIELDS}
+        }
+      }
+    }
+  `;
+  const all: AniListMedia[] = [];
+  for (let page = 1; page <= SEASON_MAX_PAGES * 2; page += 1) {
+    const data = await anilistRequest<{ Page: { pageInfo?: { hasNextPage?: boolean }; media: AniListMedia[] } }>(
+      query,
+      // A AniList guarda "só o ano" como AAAA0000: o limite inferior (exclusivo) precisa ficar um abaixo para incluí-las.
+      { after: year * 10000 - 1, before: (year + 1) * 10000, page },
+      { fresh }
+    );
+    all.push(...data.Page.media.map(normalizeMedia));
+    if (!data.Page.pageInfo?.hasNextPage) break;
+  }
+  return includeBlocked ? all : all.filter((m) => !hasBlockedGenre(m.genres));
+}
+
+/**
  * Dados atuais de várias obras de uma vez (complemento do que a plataforma já tem). Lotes de 50 ids por página;
  * conteúdo adulto (hentai) fica de fora.
  */

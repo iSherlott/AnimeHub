@@ -60,7 +60,7 @@ export function FranchiseSeasons({ seasons, mine = {}, signedIn = false }: { sea
                 </Box>
                 {!s.current && (
                   <Box sx={{ px: 1.5, pb: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
-                    <SynopsisText description={s.description} anilistId={s.anilistId} sx={{ fontSize: 14, color: "text.secondary" }} data-testid={`season-synopsis-${s.anilistId}`} />
+                    <SynopsisText description={s.description} anilistId={s.anilistId} stored={s.stored} sx={{ fontSize: 14, color: "text.secondary" }} data-testid={`season-synopsis-${s.anilistId}`} />
                     <Box>
                       <AppLink href={`/anime/${s.anilistId}`} underline="hover" sx={{ fontSize: 14, fontWeight: 700 }}>
                         Abrir a Temporada {s.seasonNumber}

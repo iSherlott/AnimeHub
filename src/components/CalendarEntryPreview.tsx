@@ -47,7 +47,7 @@ export function CalendarEntryPreview({
   const user = useCurrentUser();
   const timeZone = useTimeZone();
   const title = resolveTitleText(preference, item) || "Sem título";
-  const description = useSynopsis(item.description, item.anilistId, item.descriptionPortuguese);
+  const description = useSynopsis(item.description, item.anilistId, item.descriptionPortuguese, item.storedSynopsis);
   const [coverBroken, setCoverBroken] = useState(false);
   const hasImage = Boolean(item.episodeImage ?? item.coverImage) && !coverBroken;
 

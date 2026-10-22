@@ -4,7 +4,7 @@ import { getMediaForCuration, type CurationMedia } from "@/lib/anilist";
 import { siteScoreOf } from "@/lib/siteScore";
 import { recomputeSiteScore } from "@/lib/siteScoreDb";
 import { curateEntry, CURATION_VERSION } from "./curateEntry";
-import { ISSUE_CODES } from "./issues";
+import { AUDIT_CODES, ISSUE_CODES } from "./issues";
 import { loadAnidbGenres } from "./anidbGenres";
 
 /** Obras por consulta à AniList (a AniList limita a complexidade da consulta, que aqui traz etiquetas e relações). */
@@ -70,7 +70,8 @@ async function fetchMedia(ids: number[]): Promise<Map<number, CurationMedia> | n
 
 async function syncIssues(entry: CatalogEntry, issues: Array<{ code: string; detail?: string }>): Promise<void> {
   const codes = issues.map((i) => i.code);
-  await prisma.curationIssue.updateMany({ where: { entryId: entry.id, status: "OPEN", code: { notIn: codes } }, data: { status: "RESOLVED" } });
+  // As pendências da auditoria das linhas do tempo (AUDIT_CODES) pertencem a ela: a curadoria não as fecha.
+  await prisma.curationIssue.updateMany({ where: { entryId: entry.id, status: "OPEN", code: { notIn: [...codes, ...AUDIT_CODES] } }, data: { status: "RESOLVED" } });
   for (const issue of issues) {
     const common = { anilistId: entry.anilistId, anidbId: entry.anidbId, title: entry.titleRomaji, detail: issue.detail ?? null };
     await prisma.curationIssue.upsert({
