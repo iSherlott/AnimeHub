@@ -1,0 +1,361 @@
+{
+ "loot": "arcos-006",
+ "arcs": [
+  {
+   "anilistId": 813,
+   "source": "https://www.themoviedb.org/tv/12971/episode_group/62ef7c7c813cb600806d28f0",
+   "list": [
+    {
+     "nameEn": "Saiyan Saga",
+     "start": 1,
+     "end": 39
+    },
+    {
+     "nameEn": "Namek Saga",
+     "start": 40,
+     "end": 74
+    },
+    {
+     "nameEn": "Frieza Saga",
+     "start": 75,
+     "end": 107
+    },
+    {
+     "nameEn": "Androids Saga",
+     "start": 108,
+     "end": 139
+    },
+    {
+     "nameEn": "Cell Saga",
+     "start": 140,
+     "end": 165
+    },
+    {
+     "nameEn": "Cell Games Saga",
+     "start": 166,
+     "end": 194
+    },
+    {
+     "nameEn": "Great Saiyaman Saga",
+     "start": 195,
+     "end": 219
+    },
+    {
+     "nameEn": "Babidi and Buu Saga",
+     "start": 220,
+     "end": 253
+    },
+    {
+     "nameEn": "Majin Buu Saga",
+     "start": 254,
+     "end": 291
+    }
+   ]
+  },
+  {
+   "anilistId": 6702,
+   "source": "https://www.themoviedb.org/tv/46261/episode_group/67519cf5ab37fcd3e8850bb0",
+   "list": [
+    {
+     "nameEn": "Macao",
+     "start": 1,
+     "end": 2
+    },
+    {
+     "nameEn": "Daybreak",
+     "start": 3,
+     "end": 4
+    },
+    {
+     "nameEn": "Eisenwald",
+     "start": 5,
+     "end": 10
+    },
+    {
+     "nameEn": "Sub-Zero Emperor Lyon",
+     "start": 11,
+     "end": 20
+    },
+    {
+     "nameEn": "Phantom Lord",
+     "start": 21,
+     "end": 29
+    },
+    {
+     "nameEn": "Loke",
+     "start": 30,
+     "end": 32
+    },
+    {
+     "nameEn": "Tower of Heaven",
+     "start": 33,
+     "end": 40
+    },
+    {
+     "nameEn": "The Battle of Fairy Tail",
+     "start": 41,
+     "end": 51
+    },
+    {
+     "nameEn": "Oración Seis",
+     "start": 52,
+     "end": 68
+    },
+    {
+     "nameEn": "Daphne",
+     "start": 69,
+     "end": 75
+    },
+    {
+     "nameEn": "Edolas",
+     "start": 76,
+     "end": 95
+    },
+    {
+     "nameEn": "Tenrou Island",
+     "start": 96,
+     "end": 122
+    },
+    {
+     "nameEn": "X791",
+     "start": 123,
+     "end": 124
+    },
+    {
+     "nameEn": "Key of the Starry Sky",
+     "start": 125,
+     "end": 150
+    },
+    {
+     "nameEn": "Grand Magic Games",
+     "start": 151,
+     "end": 175
+    }
+   ]
+  },
+  {
+   "anilistId": 20626,
+   "source": "https://www.themoviedb.org/tv/46261/episode_group/67519cf5ab37fcd3e8850bb0",
+   "list": [
+    {
+     "nameEn": "Grand Magic Games",
+     "start": 1,
+     "end": 28
+    },
+    {
+     "nameEn": "Eclipse Celestial Spirits",
+     "start": 29,
+     "end": 51
+    },
+    {
+     "nameEn": "Sun Village",
+     "start": 52,
+     "end": 58
+    },
+    {
+     "nameEn": "Tartaros",
+     "start": 59,
+     "end": 90
+    },
+    {
+     "nameEn": "Zerø",
+     "start": 91,
+     "end": 100
+    },
+    {
+     "nameEn": "Avatar",
+     "start": 101,
+     "end": 102
+    }
+   ]
+  },
+  {
+   "anilistId": 99749,
+   "source": "https://www.themoviedb.org/tv/46261/episode_group/67519cf5ab37fcd3e8850bb0",
+   "list": [
+    {
+     "nameEn": "Avatar",
+     "start": 1,
+     "end": 7
+    },
+    {
+     "nameEn": "Alvarez",
+     "start": 8,
+     "end": 51
+    }
+   ]
+  },
+  {
+   "anilistId": 97938,
+   "source": "https://www.themoviedb.org/tv/70881/episode_group/6853ae42eaab1aa6d12569c2",
+   "list": [
+    {
+     "nameEn": "Academy Entrance",
+     "start": 1,
+     "end": 15
+    },
+    {
+     "nameEn": "Sarada Uchiha",
+     "start": 16,
+     "end": 24
+    },
+    {
+     "nameEn": "Field Trip",
+     "start": 25,
+     "end": 32
+    },
+    {
+     "nameEn": "Academy Graduation",
+     "start": 33,
+     "end": 39
+    },
+    {
+     "nameEn": "Byakuya Gang",
+     "start": 40,
+     "end": 50
+    },
+    {
+     "nameEn": "Chunin Exams",
+     "start": 51,
+     "end": 70
+    },
+    {
+     "nameEn": "Mitsuki's Disappearance",
+     "start": 71,
+     "end": 92
+    },
+    {
+     "nameEn": "Naruto Shinden",
+     "start": 93,
+     "end": 105
+    },
+    {
+     "nameEn": "Konoha Shinden: The Steam Ninja Scrolls",
+     "start": 106,
+     "end": 115
+    },
+    {
+     "nameEn": "Time Slip",
+     "start": 116,
+     "end": 136
+    },
+    {
+     "nameEn": "Mujina Gang",
+     "start": 137,
+     "end": 156
+    },
+    {
+     "nameEn": "Kara Actuation",
+     "start": 157,
+     "end": 176
+    },
+    {
+     "nameEn": "Vessel",
+     "start": 177,
+     "end": 192
+    },
+    {
+     "nameEn": "Kawaki: Kara Clash",
+     "start": 193,
+     "end": 205
+    },
+    {
+     "nameEn": "Kawaki: Otsutsuki Awakening",
+     "start": 206,
+     "end": 220
+    },
+    {
+     "nameEn": "Chunin Re-Examination",
+     "start": 221,
+     "end": 232
+    },
+    {
+     "nameEn": "Great Sea Battle of the Hidden Mist Village",
+     "start": 233,
+     "end": 257
+    },
+    {
+     "nameEn": "Kawaki & Himawari at the Ninja Academy",
+     "start": 258,
+     "end": 273
+    },
+    {
+     "nameEn": "Labyrinth Game",
+     "start": 274,
+     "end": 281
+    },
+    {
+     "nameEn": "Sasuke's Story",
+     "start": 282,
+     "end": 286
+    },
+    {
+     "nameEn": "Code's Assault",
+     "start": 287,
+     "end": 293
+    }
+   ]
+  },
+  {
+   "anilistId": 1604,
+   "source": "https://www.themoviedb.org/tv/45857/episode_group/6033710320ecaf003f19a1de",
+   "list": [
+    {
+     "nameEn": "Daily Life",
+     "start": 1,
+     "end": 19
+    },
+    {
+     "nameEn": "Kokuyo Academy",
+     "start": 20,
+     "end": 26
+    },
+    {
+     "nameEn": "Daily Life 2",
+     "start": 27,
+     "end": 33
+    },
+    {
+     "nameEn": "Ring Conflict",
+     "start": 34,
+     "end": 65
+    },
+    {
+     "nameEn": "Daily Life 3",
+     "start": 66,
+     "end": 73
+    },
+    {
+     "nameEn": "Future",
+     "start": 74,
+     "end": 101
+    },
+    {
+     "nameEn": "Future X",
+     "start": 102,
+     "end": 141
+    },
+    {
+     "nameEn": "Arcobaleno",
+     "start": 142,
+     "end": 153
+    },
+    {
+     "nameEn": "Future Choice",
+     "start": 154,
+     "end": 177
+    },
+    {
+     "nameEn": "Vongola Primo",
+     "start": 178,
+     "end": 189
+    },
+    {
+     "nameEn": "Future Decisive Battle",
+     "start": 190,
+     "end": 203
+    }
+   ]
+  }
+ ]
+}
