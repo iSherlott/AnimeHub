@@ -90,7 +90,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
           </Typography>
           <Box>
             <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap", alignItems: "center" }}>
-              <Typography component="h1" data-testid="anime-title" variant="h3" className="font-display" sx={{ textTransform: "uppercase", lineHeight: 1 }}>
+              <Typography component="h1" data-testid="anime-title" variant="h3" className="font-display" sx={{ textTransform: "uppercase", lineHeight: 1, fontSize: { xs: "2.25rem", sm: "3rem" }, overflowWrap: "anywhere" }}>
                 <AnimeTitle titles={{ titleRomaji: production.titleRomaji, titleEnglish: production.titleEnglish, titleNative: production.titleNative }} />
               </Typography>
               <SiteScoreChip score={catalog?.siteScore ?? 5} votes={catalog?.siteScoreVotes ?? 0} />
@@ -119,7 +119,10 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
             <FollowProductionButton anilistId={anilistId} initialAnimeId={null} loggedIn={Boolean(user)} />
             {!user && <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Entre para criar sua agenda pessoal.</Typography>}
           </Box>
-          <NextEpisodeBlock iso={nextEpisode ? nextEpisode.airingAt.toISOString() : null} episode={nextEpisode ? nextEpisode.episode : null} />
+          {/* Obra que já acabou e sem episódio por vir não tem "próximo episódio" para mostrar. */}
+          {(nextEpisode || (production.status !== "FINISHED" && production.status !== "CANCELLED")) && (
+            <NextEpisodeBlock iso={nextEpisode ? nextEpisode.airingAt.toISOString() : null} episode={nextEpisode ? nextEpisode.episode : null} />
+          )}
         </Box>
       </WorkHero>
 

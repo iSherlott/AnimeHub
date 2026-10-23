@@ -148,9 +148,10 @@ test.describe("Detalhe público da obra (/obra/[anilistId])", () => {
       await expect(seasons.locator(`a[href="/anime/${S1}"]`)).toHaveCount(1);
     });
 
-    test("sem previsão confirmada, diz isso em vez de inventar horário", async ({ page }) => {
+    test("obra finalizada, sem episódio por vir, não mostra o bloco de próximo episódio", async ({ page }) => {
       await page.goto(`/obra/${S1}`);
-      await expect(page.getByTestId("next-episode")).toContainText("Sem previsão confirmada.");
+      await expect(page.getByTestId("work-section-nav")).toBeVisible();
+      await expect(page.getByTestId("next-episode")).toHaveCount(0);
     });
 
     test("id inválido devolve 404", async ({ page }) => {

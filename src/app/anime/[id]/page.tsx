@@ -176,7 +176,7 @@ export default async function AnimeDetailPage({
           </Typography>
           <Box>
             <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap", alignItems: "center" }}>
-              <Typography component="h1" data-testid="anime-title" variant="h3" className="font-display" sx={{ textTransform: "uppercase", lineHeight: 1 }}>
+              <Typography component="h1" data-testid="anime-title" variant="h3" className="font-display" sx={{ textTransform: "uppercase", lineHeight: 1, fontSize: { xs: "2.25rem", sm: "3rem" }, overflowWrap: "anywhere" }}>
                 <AnimeTitle titles={{ titleRomaji: anime.titleRomaji, titleEnglish: anime.titleEnglish, titleNative: anime.titleNative, titlePortuguese: anime.titlePortuguese }} furiganaHtml={furiganaHtml} />
               </Typography>
               <SiteScoreChip score={catalogMeta?.siteScore ?? 5} votes={catalogMeta?.siteScoreVotes ?? 0} />

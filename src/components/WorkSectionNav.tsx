@@ -5,6 +5,9 @@ import { Box } from "@mui/material";
 
 export type WorkSection = { id: string; label: string };
 
+/** Distância do topo da janela (px) a partir da qual uma seção já conta como a que está sendo lida. */
+const ACTIVE_LINE = 200;
+
 /**
  * Atalhos das seções da página da obra (Epic 49): uma barra que acompanha a rolagem, com um link para cada seção que existe na
  * página (visão geral, franquia, episódios, elenco, comunidade…) e o destaque da seção que está na tela. Seção sem conteúdo na
@@ -20,15 +23,25 @@ export function WorkSectionNav({ sections }: { sections: WorkSection[] }) {
     setPresent(found);
     if (found.length === 0) return;
     const elements = found.map((id) => document.getElementById(id) as HTMLElement);
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        if (visible) setActive(visible.target.id);
-      },
-      { rootMargin: "-160px 0px -60% 0px", threshold: 0 }
-    );
-    for (const el of elements) observer.observe(el);
-    return () => observer.disconnect();
+    // A seção ativa é a última cujo topo já passou da linha logo abaixo do cabeçalho e da barra (a que está sendo lida).
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      let current = elements[0].id;
+      for (const el of elements) if (el.getBoundingClientRect().top <= ACTIVE_LINE) current = el.id;
+      setActive(current);
+    };
+    const schedule = () => {
+      if (frame === 0) frame = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      if (frame !== 0) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
   }, [sections]);
 
   const shown = present === null ? sections : sections.filter((s) => present.includes(s.id));

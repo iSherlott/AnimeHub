@@ -1,0 +1,42 @@
+{
+ "loot": "arcos-004",
+ "arcs": [
+  {
+   "anilistId": 5231,
+   "source": "https://www.themoviedb.org/tv/42912-inazuma-eleven/episode_group/601cb2391108a8003cc3d7a7",
+   "list": [
+    {
+     "nameEn": "Football Frontier",
+     "start": 1,
+     "end": 26
+    },
+    {
+     "nameEn": "Aliea Academy",
+     "start": 27,
+     "end": 67
+    },
+    {
+     "nameEn": "Football Frontier International",
+     "start": 68,
+     "end": 127
+    }
+   ]
+  },
+  {
+   "anilistId": 232,
+   "source": "https://en.wikipedia.org/wiki/Cardcaptor_Sakura",
+   "list": [
+    {
+     "nameEn": "Clow Card",
+     "start": 1,
+     "end": 46
+    },
+    {
+     "nameEn": "Sakura Card",
+     "start": 47,
+     "end": 70
+    }
+   ]
+  }
+ ]
+}

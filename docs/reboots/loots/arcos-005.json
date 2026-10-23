@@ -1,0 +1,73 @@
+{
+ "loot": "arcos-005",
+ "arcs": [
+  {
+   "anilistId": 263,
+   "source": "https://www.anime-planet.com/users/Di0Brando1/lists/hajime-no-ippo-fighting-spirit--watch-or-1393592",
+   "list": [
+    {
+     "nameEn": "Rookie King",
+     "start": 1,
+     "end": 34
+    },
+    {
+     "nameEn": "Class A Contender",
+     "start": 35,
+     "end": 58
+    },
+    {
+     "nameEn": "National Champion",
+     "start": 59,
+     "end": 75
+    }
+   ]
+  },
+  {
+   "anilistId": 6033,
+   "source": "https://ultimatepopculture.fandom.com/wiki/List_of_Dragon_Ball_Z_Kai_episodes",
+   "list": [
+    {
+     "nameEn": "Saiyan Saga",
+     "start": 1,
+     "end": 26
+    },
+    {
+     "nameEn": "Frieza Saga",
+     "start": 27,
+     "end": 54
+    },
+    {
+     "nameEn": "Androids Saga",
+     "start": 55,
+     "end": 77
+    },
+    {
+     "nameEn": "Cell Saga",
+     "start": 78,
+     "end": 97
+    }
+   ]
+  },
+  {
+   "anilistId": 20635,
+   "source": "https://en.wikipedia.org/wiki/List_of_Dragon_Ball_Z_Kai_episodes",
+   "list": [
+    {
+     "nameEn": "World Tournament Saga",
+     "start": 1,
+     "end": 24
+    },
+    {
+     "nameEn": "Majin Buu Saga",
+     "start": 25,
+     "end": 42
+    },
+    {
+     "nameEn": "Evil Buu Saga",
+     "start": 43,
+     "end": 69
+    }
+   ]
+  }
+ ]
+}

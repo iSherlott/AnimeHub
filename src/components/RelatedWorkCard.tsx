@@ -49,7 +49,7 @@ export function RelatedWorkCard({
         </Box>
       </MuiLink>
       <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-        <Typography lang={titleNative ? "ja" : undefined} sx={{ fontSize: 20, fontWeight: 700, lineHeight: 1.5 }}>
+        <Typography lang={titleNative ? "ja" : undefined} sx={{ fontSize: { xs: 16, sm: 20 }, fontWeight: 700, lineHeight: 1.4, overflowWrap: "anywhere" }}>
           <MuiLink component={NextLink} href={`/anime/${anilistId}`} underline="hover" color="inherit">
             {primary}
           </MuiLink>
