@@ -2,15 +2,20 @@
 # Gera as 7 imagens do Anime Hub no notebook e as entrega ao Kubernetes (os manifestos usam imagePullPolicy: Never,
 # sem registry). Rode da raiz do projeto: `bash deploy/k8s/build-images.sh`.
 #
-# Para onde vão as imagens (IMPORT_TO): k3s, microk8s, containerd (kubeadm com containerd) ou docker (cluster que
-# usa o próprio Docker, como o Docker Desktop/minikube com driver docker). Sem a variável, o script tenta descobrir.
+# Para onde vão as imagens (IMPORT_TO): k3d (k3s dentro do Docker; K3D_CLUSTER escolhe o cluster, padrão: o primeiro),
+# k3s, microk8s, containerd (kubeadm com containerd) ou docker (cluster que usa o próprio Docker, como o Docker
+# Desktop/minikube com driver docker). Sem a variável, o script tenta descobrir.
 set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 TAG="${TAG:-latest}"
+# Como root (servidor sem sudo) os comandos de importação rodam direto.
+SUDO=""
+if [ "$(id -u)" -ne 0 ]; then SUDO="sudo"; fi
 
 if [ -z "${IMPORT_TO:-}" ]; then
-  if command -v k3s >/dev/null 2>&1; then IMPORT_TO=k3s
+  if command -v k3d >/dev/null 2>&1 && [ -n "$(k3d cluster list --no-headers 2>/dev/null)" ]; then IMPORT_TO=k3d
+  elif command -v k3s >/dev/null 2>&1; then IMPORT_TO=k3s
   elif command -v microk8s >/dev/null 2>&1; then IMPORT_TO=microk8s
   elif command -v ctr >/dev/null 2>&1; then IMPORT_TO=containerd
   else IMPORT_TO=docker
@@ -34,9 +39,10 @@ refs=()
 for i in "${images[@]}"; do refs+=("animehub/$i:$TAG"); done
 
 case "$IMPORT_TO" in
-  k3s) docker save "${refs[@]}" | sudo k3s ctr images import - ;;
+  k3d) k3d image import "${refs[@]}" -c "${K3D_CLUSTER:-$(k3d cluster list --no-headers | awk 'NR==1 {print $1}')}" ;;
+  k3s) docker save "${refs[@]}" | $SUDO k3s ctr images import - ;;
   microk8s) docker save "${refs[@]}" | microk8s ctr image import - ;;
-  containerd) docker save "${refs[@]}" | sudo ctr -n k8s.io images import - ;;
+  containerd) docker save "${refs[@]}" | $SUDO ctr -n k8s.io images import - ;;
   docker) echo "O cluster usa o Docker: as imagens já estão lá." ;;
   *) echo "IMPORT_TO desconhecido: $IMPORT_TO" >&2; exit 1 ;;
 esac

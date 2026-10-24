@@ -1,4 +1,5 @@
 import type { CatalogEntry } from "@prisma/client";
+import { withStreamingDelay } from "@/lib/streamingDelay";
 import { prisma } from "@/lib/prisma";
 import { getAiringScheduleForMedia, getMediaByIds, getSeasonalAnime, fuzzyDateToISO, type AniListAiringEntry, type AniListMedia } from "@/lib/anilist";
 import { cacheAniListMedia } from "@/lib/catalogCache";
@@ -175,7 +176,7 @@ type ComplementField = (typeof COMPLEMENT_FIELDS)[number][0];
 
 const isEmpty = (value: unknown) => value === null || value === undefined || value === "";
 
-type Existing = Pick<CatalogEntry, ComplementField | "seasonYear" | "malId" | "nextEpisodeNumber" | "nextEpisodeAt">;
+type Existing = Pick<CatalogEntry, ComplementField | "seasonYear" | "malId" | "nextEpisodeNumber" | "nextEpisodeAt"> & Partial<Pick<CatalogEntry, "streamingDelayMinutes">>;
 
 /** Só fazem sentido numa obra que já terminou de ser exibida (no ar, a AniList ainda não tem total de episódios, nota nem fim). */
 const ONLY_WHEN_FINISHED: ReadonlySet<ComplementField> = new Set(["episodes", "averageScore", "endDate"]);
@@ -221,7 +222,7 @@ export function mergeCatalogFields(existing: Existing, incoming: AniListMedia, o
   if (isEmpty(existing.malId) && incoming.idMal) data.malId = incoming.idMal;
   if (incoming.nextAiringEpisode) {
     data.nextEpisodeNumber = incoming.nextAiringEpisode.episode;
-    data.nextEpisodeAt = new Date(incoming.nextAiringEpisode.airingAt * 1000);
+    data.nextEpisodeAt = withStreamingDelay(new Date(incoming.nextAiringEpisode.airingAt * 1000), existing.streamingDelayMinutes);
   }
   return { data, filled };
 }

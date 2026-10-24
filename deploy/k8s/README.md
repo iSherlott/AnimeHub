@@ -22,8 +22,12 @@ Todos os comandos rodam **no notebook**, na raiz do projeto, salvo onde está es
 ```bash
 kubectl get nodes -o wide        # o cluster responde? anote o INTERNAL-IP do nó
 kubectl version                  # "k3s" ou "microk8s" aparece na versão do servidor?
-docker version                   # Docker para gerar as imagens (sudo apt install docker.io, se faltar)
+docker version                   # Docker para gerar as imagens
 ```
+
+Se o Docker já existe, **não instale nada por cima**: o pacote `docker.io` do Debian remove o `docker-ce` oficial (e, com
+ele, qualquer cluster k3d ou contêiner que dependa dele). Só instale se faltar de verdade, pelo repositório oficial do
+Docker.
 
 ### 2. Trazer o projeto
 
@@ -99,6 +103,9 @@ kubectl -n animehub get svc web
 ```
 
 - **k3s:** o `EXTERNAL-IP` mostra o IP do notebook e a porta `8010`. Pronto.
+- **k3d (k3s dentro do Docker):** o Service abre a 8010 dentro do contêiner do nó; falta o balanceador do k3d
+  repassar a porta do notebook para ele (recria o `serverlb`, uns segundos fora do ar para as outras portas do
+  cluster): `k3d cluster edit <cluster> --port-add "8010:8010@loadbalancer"`.
 - **microk8s ou outro cluster sem balanceador** (`EXTERNAL-IP` fica `<pending>`): abra a porta direto no nó. Em
   `web.yaml`, troque o Service para `type: ClusterIP` e, no container, acrescente `hostPort: 8010` ao lado de
   `containerPort: 3000`; depois `kubectl apply -k deploy/k8s`.

@@ -505,6 +505,11 @@ model CatalogEntry {
   /// Número da temporada na linha principal (1, 2, 3…); só nas obras MAIN.
   timelineSeason    Int?
   timelineAt        DateTime?
+  /// Atraso do streaming (Epic 50): quantos minutos depois da TV japonesa (o horário da fonte) o episódio sai na
+  /// plataforma de streaming (`streamingSite`, ex.: Crunchyroll). A agenda (AiringScheduleEntry) e o próximo episódio já
+  /// são gravados com esse atraso somado; nulo = horário da TV japonesa.
+  streamingDelayMinutes Int?
+  streamingSite     String?
   fetchedAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 

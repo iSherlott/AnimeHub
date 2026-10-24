@@ -43,6 +43,9 @@ export type CalendarItem = {
   lastAiringAt?: string;
   /** ...e quando o bloco termina (último episódio + a duração de um espaço). */
   endsAt?: string;
+  /** Atraso do streaming (Epic 50): `airingAt` já é o horário da plataforma; aqui, qual plataforma e o horário da TV japonesa. */
+  streamingSite?: string | null;
+  tvAiringAt?: string;
 };
 
 export type OwnedAnimeCalendarInfo = {

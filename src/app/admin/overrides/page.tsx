@@ -2,6 +2,7 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import { prisma } from "@/lib/prisma";
 import { AdminPageHeader, AdminPanel, AdminTable } from "@/components/admin/AdminUi";
 import { RemoveOverrideButton } from "@/components/admin/RemoveOverrideButton";
+import { StreamingDelayPanel } from "@/components/admin/StreamingDelayPanel";
 import { EmptyState, Notice } from "@/components/StatePanels";
 import { fmtClock, fmtDayClock, fmtFull, requireAdminPage } from "@/lib/adminPage";
 
@@ -18,6 +19,8 @@ export default async function AdminOverridesPage() {
       <Notice tone="info" title="Override ativo não esconde o valor original">
         O valor efetivo pode mudar, mas a fonte, o original, o administrador e a data permanecem visíveis. Remover exige confirmação e restaura a origem.
       </Notice>
+
+      <StreamingDelayPanel />
 
       {overrides.length === 0 ? (
         <AdminPanel>

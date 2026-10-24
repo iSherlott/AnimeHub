@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { streamingDelays, tvAiringAt } from "@/lib/streamingDelay";
 import { prisma } from "@/lib/prisma";
 import { getCachedAiringSchedule } from "@/lib/airingCache";
 import { calendarItemFromCache } from "@/lib/calendarItem";
@@ -188,17 +189,22 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // Atraso do streaming (Epic 50): o horário já é o da plataforma; o card mostra também o da TV japonesa.
+  const delays = await streamingDelays(weekAnilistIds);
+
   return NextResponse.json({
-    results: entries.map((e) =>
-      calendarItemFromCache(
+    results: entries.map((e) => {
+      const item = calendarItemFromCache(
         e,
         myAnimeByAnilistId,
         isDelayed(e.airingAt, e.episode, catalogNextById.get(e.anilistId), now),
         episodeImages.get(`${e.anilistId}-${e.episode}`) ?? null,
         pendingByAnilistId.get(e.anilistId) ?? null,
         storedByAnilistId.get(e.anilistId) ?? null
-      )
-    ),
+      );
+      const delay = delays.get(e.anilistId);
+      return delay ? { ...item, streamingSite: delay.site, tvAiringAt: tvAiringAt(e.airingAt, delay.minutes).toISOString() } : item;
+    }),
     offGrid,
   });
 }

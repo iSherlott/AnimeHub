@@ -1,15 +1,18 @@
 import { prisma } from "@/lib/prisma";
+import { streamingDelays, tvAiringAt, withStreamingDelay } from "@/lib/streamingDelay";
 import type { AniListAiringEntry } from "@/lib/anilist";
 import type { AiringScheduleEntry } from "@prisma/client";
 import { findStaleEntryIds } from "@/lib/airingRefresh";
 import { isReschedule, recordRescheduleAlerts } from "@/lib/rescheduleAlerts";
 
 export async function cacheAiringSchedule(entries: AniListAiringEntry[]): Promise<void> {
+  // Atraso do streaming por obra (Epic 50): a agenda guarda o horário em que o episódio sai na plataforma.
+  const delays = await streamingDelays(Array.from(new Set(entries.map((e) => e.anilistId))));
   for (const entry of entries) {
     const data = {
       anilistId: entry.anilistId,
       episode: entry.episode,
-      airingAt: new Date(entry.airingAt * 1000),
+      airingAt: withStreamingDelay(new Date(entry.airingAt * 1000), delays.get(entry.anilistId)?.minutes),
       titleRomaji: entry.title.romaji,
       titleEnglish: entry.title.english,
       titleNative: entry.title.native,
@@ -48,10 +51,15 @@ export async function pruneMissingFutureEntries(
   now: Date = new Date()
 ): Promise<number> {
   const from = windowFrom > now ? windowFrom : now;
-  const existing = await prisma.airingScheduleEntry.findMany({
+  const rows = await prisma.airingScheduleEntry.findMany({
     where: { airingAt: { gte: from, lt: windowTo } },
-    select: { id: true, anilistId: true, episode: true },
+    select: { id: true, anilistId: true, episode: true, airingAt: true },
   });
+  // A AniList lista pelo horário da TV; com atraso do streaming (Epic 50) o gravado vem depois. Só entra na conferência
+  // o que, no horário da TV, também está dentro da janela lida — senão um episódio que já passou na TV, mas ainda vai
+  // sair no streaming, seria apagado por "sumir" da AniList.
+  const delays = await streamingDelays(Array.from(new Set(rows.map((r) => r.anilistId))));
+  const existing = rows.filter((r) => tvAiringAt(r.airingAt, delays.get(r.anilistId)?.minutes) >= from);
   const staleIds = findStaleEntryIds(existing, fetched);
   if (staleIds.length === 0) return 0;
   const result = await prisma.airingScheduleEntry.deleteMany({ where: { id: { in: staleIds } } });

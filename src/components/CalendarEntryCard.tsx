@@ -157,6 +157,12 @@ export function CalendarEntryCard({
       >
         <Typography component="span" sx={{ fontSize: "0.786em", fontWeight: 600, lineHeight: 1.3, color: "text.secondary", whiteSpace: "nowrap" }}>
           {time}
+          {/* Horário do streaming (Epic 50): diz a plataforma e quando passou na TV japonesa. */}
+          {item.tvAiringAt && (
+            <Box component="span" data-testid={`calendar-entry-streaming-${item.key}`} sx={{ display: "block", fontWeight: 500, whiteSpace: "normal" }}>
+              {item.streamingSite ?? "Streaming"} · no Japão {formatTimeInZone(new Date(item.tvAiringAt), timeZone)}
+            </Box>
+          )}
         </Typography>
         <Box sx={{ display: "flex", gap: "0.643em", alignItems: "flex-start", minWidth: 0 }}>
           {/* Imagem do episódio; sem ela, a capa do anime — dá a noção de qual obra/episódio é. */}
