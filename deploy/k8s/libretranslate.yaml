@@ -1,0 +1,55 @@
+# Tradução das sinopses (Admin → Curadoria → Tradução). Opcional: sem ele, tire LIBRETRANSLATE_URL do animehub.env e o site
+# usa o MyMemory gratuito (cota pequena). Pesado: ~2 GB de memória e ~1 GB de modelos baixados na primeira subida.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: libretranslate
+  namespace: animehub
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: { app: libretranslate }
+  template:
+    metadata:
+      labels: { app: libretranslate }
+    spec:
+      securityContext:
+        # A imagem roda como o usuário libretranslate (uid 1032): o volume dos modelos precisa ser dele.
+        fsGroup: 1032
+      containers:
+        - name: libretranslate
+          # A mesma imagem do container local (docker run … libretranslate/libretranslate); fixe uma versão se quiser.
+          image: libretranslate/libretranslate:latest
+          env:
+            - name: LT_LOAD_ONLY
+              value: "en,pt,ja"
+          ports:
+            - containerPort: 5000
+          volumeMounts:
+            - name: models
+              mountPath: /home/libretranslate/.local
+          readinessProbe:
+            httpGet: { path: /languages, port: 5000 }
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 40
+          resources:
+            requests: { cpu: 200m, memory: 1Gi }
+            limits: { memory: 3Gi }
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: animehub-libretranslate-models
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: libretranslate
+  namespace: animehub
+spec:
+  selector: { app: libretranslate }
+  ports:
+    - port: 5000
+      targetPort: 5000

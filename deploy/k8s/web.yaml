@@ -1,0 +1,64 @@
+# O site (Next.js). Atende na porta 8010 do notebook pelo Service LoadBalancer (no k3s, o ServiceLB abre a porta 8010
+# do próprio nó; em outro cluster, veja "Porta 8010" no README).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: animehub
+spec:
+  replicas: 1
+  # Um pod por vez: o volume de uploads é ReadWriteOnce.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: { app: web }
+  template:
+    metadata:
+      labels: { app: web }
+    spec:
+      containers:
+        - name: web
+          image: animehub/web:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 3000
+          env:
+            # O servidor do Next escuta no endereço de HOSTNAME: tem de ser todas as interfaces, não o nome do pod.
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            - name: PORT
+              value: "3000"
+          envFrom:
+            - secretRef:
+                name: animehub-env
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/storage/uploads
+          readinessProbe:
+            httpGet: { path: /api/auth/me, port: 3000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /api/auth/me, port: 3000 }
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 100m, memory: 384Mi }
+            limits: { memory: 1536Mi }
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: animehub-uploads
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: animehub
+spec:
+  type: LoadBalancer
+  selector: { app: web }
+  ports:
+    - name: http
+      port: 8010
+      targetPort: 3000

@@ -1,0 +1,10 @@
+# `kubectl apply -k deploy/k8s` sobe tudo, menos a migração (Job, rodado à parte a cada versão) e o Secret (criado do
+# animehub.env). Sem tradução própria, tire libretranslate.yaml da lista.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - storage.yaml
+  - web.yaml
+  - services.yaml
+  - libretranslate.yaml

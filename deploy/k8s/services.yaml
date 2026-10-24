@@ -1,0 +1,257 @@
+# Serviços de fundo (Epic 13). Nenhum é obrigatório para o site subir: cada rota cai no código local se o serviço
+# estiver fora do ar (src/lib/serviceDelegate.ts).
+---
+# Mantém o calendário (AiringScheduleEntry) quente sozinho, a cada 30 min.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calendar-loader
+  namespace: animehub
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: calendar-loader }
+  template:
+    metadata:
+      labels: { app: calendar-loader }
+    spec:
+      containers:
+        - name: calendar-loader
+          image: animehub/calendar-loader:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 4001
+          env:
+            - name: PORT
+              value: "4001"
+          envFrom:
+            - secretRef:
+                name: animehub-env
+          readinessProbe:
+            httpGet: { path: /health, port: 4001 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          livenessProbe:
+            # Só confere que o processo responde: o /health do calendar-loader fica 503 quando a AniList falha, e isso
+            # não deve reiniciar o pod.
+            tcpSocket: { port: 4001 }
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 50m, memory: 192Mi }
+            limits: { memory: 768Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: calendar-loader
+  namespace: animehub
+spec:
+  selector: { app: calendar-loader }
+  ports:
+    - port: 4001
+      targetPort: 4001
+---
+# Identidade das obras (série/temporada, gêneros, títulos) e furigana; sem banco próprio.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: name-resolver
+  namespace: animehub
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: name-resolver }
+  template:
+    metadata:
+      labels: { app: name-resolver }
+    spec:
+      containers:
+        - name: name-resolver
+          image: animehub/name-resolver:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 4002
+          env:
+            - name: PORT
+              value: "4002"
+          envFrom:
+            - secretRef:
+                name: animehub-env
+          readinessProbe:
+            httpGet: { path: /health, port: 4002 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          livenessProbe:
+            # Só confere que o processo responde: o /health do calendar-loader fica 503 quando a AniList falha, e isso
+            # não deve reiniciar o pod.
+            tcpSocket: { port: 4002 }
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 50m, memory: 192Mi }
+            limits: { memory: 768Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: name-resolver
+  namespace: animehub
+spec:
+  selector: { app: name-resolver }
+  ports:
+    - port: 4002
+      targetPort: 4002
+---
+# Busca, temporada, resolver obra, episódios e "Atualizar dados"; o site chama aqui e cai no código local se estiver fora.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cache-updater
+  namespace: animehub
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: cache-updater }
+  template:
+    metadata:
+      labels: { app: cache-updater }
+    spec:
+      containers:
+        - name: cache-updater
+          image: animehub/cache-updater:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 4003
+          env:
+            - name: PORT
+              value: "4003"
+          envFrom:
+            - secretRef:
+                name: animehub-env
+          readinessProbe:
+            httpGet: { path: /health, port: 4003 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          livenessProbe:
+            # Só confere que o processo responde: o /health do calendar-loader fica 503 quando a AniList falha, e isso
+            # não deve reiniciar o pod.
+            tcpSocket: { port: 4003 }
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 50m, memory: 192Mi }
+            limits: { memory: 768Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cache-updater
+  namespace: animehub
+spec:
+  selector: { app: cache-updater }
+  ports:
+    - port: 4003
+      targetPort: 4003
+---
+# Favoritos no ar agora (sino de notificações), a cada ~2 min.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notifier
+  namespace: animehub
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: notifier }
+  template:
+    metadata:
+      labels: { app: notifier }
+    spec:
+      containers:
+        - name: notifier
+          image: animehub/notifier:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 4004
+          env:
+            - name: PORT
+              value: "4004"
+          envFrom:
+            - secretRef:
+                name: animehub-env
+          readinessProbe:
+            httpGet: { path: /health, port: 4004 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          livenessProbe:
+            # Só confere que o processo responde: o /health do calendar-loader fica 503 quando a AniList falha, e isso
+            # não deve reiniciar o pod.
+            tcpSocket: { port: 4004 }
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 50m, memory: 192Mi }
+            limits: { memory: 768Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notifier
+  namespace: animehub
+spec:
+  selector: { app: notifier }
+  ports:
+    - port: 4004
+      targetPort: 4004
+---
+# Notícias da temporada (Comunidade → Notícias), uma vez por dia e pelo painel.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: news-fetcher
+  namespace: animehub
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: news-fetcher }
+  template:
+    metadata:
+      labels: { app: news-fetcher }
+    spec:
+      containers:
+        - name: news-fetcher
+          image: animehub/news-fetcher:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 4005
+          env:
+            - name: PORT
+              value: "4005"
+          envFrom:
+            - secretRef:
+                name: animehub-env
+          readinessProbe:
+            httpGet: { path: /health, port: 4005 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          livenessProbe:
+            # Só confere que o processo responde: o /health do calendar-loader fica 503 quando a AniList falha, e isso
+            # não deve reiniciar o pod.
+            tcpSocket: { port: 4005 }
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 50m, memory: 192Mi }
+            limits: { memory: 768Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: news-fetcher
+  namespace: animehub
+spec:
+  selector: { app: news-fetcher }
+  ports:
+    - port: 4005
+      targetPort: 4005

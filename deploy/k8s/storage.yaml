@@ -1,0 +1,24 @@
+# Uploads das pessoas (avatar, imagens dos posts): o site grava em /app/storage/uploads. Sem volume, tudo some a cada
+# reinício do pod. Usa a StorageClass padrão do cluster (no k3s, "local-path"; no microk8s, ligue o addon hostpath-storage).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: animehub-uploads
+  namespace: animehub
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Modelos de tradução do LibreTranslate (baixados na primeira subida; ~1 GB com en, pt e ja).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: animehub-libretranslate-models
+  namespace: animehub
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi

@@ -1,0 +1,21 @@
+# Aplica as migrações pendentes no banco (prisma migrate deploy) e termina. Rode a cada versão nova, ANTES de trocar o
+# site: `kubectl -n animehub delete job animehub-migrate --ignore-not-found && kubectl apply -f migrate-job.yaml`.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: animehub-migrate
+  namespace: animehub
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: animehub/migrate:latest
+          imagePullPolicy: Never
+          command: ["npx", "prisma", "migrate", "deploy"]
+          envFrom:
+            - secretRef:
+                name: animehub-env

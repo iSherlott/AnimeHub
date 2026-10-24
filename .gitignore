@@ -59,3 +59,6 @@ next-env.d.ts
 
 # Dependências dos serviços de fundo (npm run services)
 services/*/node_modules/
+
+# Segredos do deploy no Kubernetes (gerado de deploy/k8s/animehub.env.example)
+deploy/k8s/animehub.env

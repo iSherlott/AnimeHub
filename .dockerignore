@@ -11,3 +11,9 @@ test-results
 playwright-report
 blob-report
 npm-debug.log*
+# node_modules dos serviços (instalados no Windows) e o que não entra em imagem nenhuma.
+**/node_modules
+docs/carga
+logs
+storage
+deploy/k8s/animehub.env
