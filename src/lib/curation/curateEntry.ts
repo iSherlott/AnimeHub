@@ -1,3 +1,4 @@
+import { ADULT_CONTENT_BLOCKED } from "@/lib/contentPolicy";
 import type { CurationMedia } from "@/lib/anilist";
 import { getOfficialSiteUrl } from "@/lib/anilist";
 import { ADULT_MARKER, normalizeGenres, visibleGenres } from "@/lib/genreTaxonomy";
@@ -37,7 +38,7 @@ export type CuratePatch = {
 
 export type CurateResult = {
   patch: CuratePatch;
-  /** A AniList marca a obra como adulta: sai da plataforma. */
+  /** A AniList marca a obra como adulta: entra na categoria Hentai (ou sai da plataforma, com o bloqueio ligado). */
   adult: boolean;
   issues: Array<{ code: IssueCode; detail?: string }>;
   /** Campos que a curadoria preencheu ou corrigiu nesta obra (para o painel de andamento). */
@@ -77,7 +78,7 @@ export function curateEntry({
   if (entry.anilistId !== null && !media) issues.push({ code: "ANILIST_NOT_FOUND" });
 
   const adult = Boolean(media && (media.isAdult || media.genres.includes(ADULT_MARKER)));
-  if (adult) issues.push({ code: "ADULT_REMOVED" });
+  if (adult && ADULT_CONTENT_BLOCKED) issues.push({ code: "ADULT_REMOVED" });
 
   const titleEnglish = clean(entry.titleEnglish) ?? clean(media?.title.english);
   const titleNative = clean(entry.titleNative) ?? clean(media?.title.native);
@@ -90,7 +91,8 @@ export function curateEntry({
   if (!description) issues.push({ code: "SYNOPSIS_EN_MISSING" });
 
   // Gêneros: o que a obra já tinha (no vocabulário atual) mais o que as fontes trazem hoje (AniList: gêneros + etiquetas; AniDB: tags).
-  const merged = visibleGenres(normalizeGenres([...parseStoredGenres(entry.genres), ...(media?.genres ?? []), ...anidbGenres]));
+  // Obra adulta (a AniList a marca como +18) entra na categoria Hentai, mesmo que a fonte não traga o gênero.
+  const merged = visibleGenres(normalizeGenres([...parseStoredGenres(entry.genres), ...(media?.genres ?? []), ...anidbGenres, ...(adult ? [ADULT_MARKER] : [])]));
   const genres = merged.length ? merged.join(",") : null;
   if ((genres ?? "") !== (entry.genres ?? "")) changed.add("genres");
   if (!genres) issues.push({ code: "NO_GENRE" });

@@ -14,6 +14,23 @@ export type WorkFactsInput = {
   episodes?: number | null;
 };
 
+type CopyFacts = Pick<WorkFactsInput, "format" | "status" | "season" | "seasonYear" | "episodes">;
+
+/**
+ * A ficha da obra a partir da cópia da página (sua lista ou a produção da página pública), completando com o catálogo o
+ * que a cópia não tem: a cópia guarda o que veio na hora de acompanhar (e às vezes ficou sem ano, temporada ou formato),
+ * o catálogo é mantido pela curadoria. O que a cópia tem continua valendo.
+ */
+export function workFacts(copy: CopyFacts, catalog: CopyFacts | null | undefined): Required<{ [K in keyof CopyFacts]: CopyFacts[K] | null }> {
+  return {
+    format: copy.format ?? catalog?.format ?? null,
+    status: copy.status ?? catalog?.status ?? null,
+    season: copy.season ?? catalog?.season ?? null,
+    seasonYear: copy.seasonYear ?? catalog?.seasonYear ?? null,
+    episodes: copy.episodes ?? catalog?.episodes ?? null,
+  };
+}
+
 /** "Série (TV)", "Filme", "OVA (OVA)"… o tipo na história e o formato da fonte. */
 export function typeLabel({ kind, format }: Pick<WorkFactsInput, "kind" | "format">): string | null {
   const formatLabel = format ? (FORMAT_LABEL[format] ?? format) : null;

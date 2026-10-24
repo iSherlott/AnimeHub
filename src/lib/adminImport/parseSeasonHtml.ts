@@ -44,7 +44,7 @@ export type ParsedRecord = {
   links: Array<{ site: string; url: string }>;
   /** Gêneros da fonte (tags do AniDB) já na taxonomia fechada do app. */
   genres: string[];
-  /** A fonte marca conteúdo adulto explícito (tags do AniDB): fora da plataforma. */
+  /** A fonte marca conteúdo adulto explícito (tags do AniDB): entra na categoria Hentai (ver `contentPolicy`). */
   adult: boolean;
 };
 
@@ -231,7 +231,7 @@ function parseAnidbBoxes(clean: string, season: SeasonRef | null, warnings: stri
       episodes: general.episodes,
       imageUrl,
       links,
-      genres: normalizeGenres(tags),
+      genres: normalizeGenres(tags.some((t) => ADULT_TAGS.includes(t)) ? [...tags, "Hentai"] : tags),
       adult: tags.some((t) => ADULT_TAGS.includes(t)),
     });
   });

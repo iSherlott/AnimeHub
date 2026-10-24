@@ -45,11 +45,11 @@ describe("cacheAniListMedia", () => {
     expect(com).toMatchObject({ season: "FALL", seasonYear: 2026 });
   });
 
-  it("nunca guarda conteúdo adulto (hentai)", async () => {
+  it("guarda o conteúdo adulto (hentai) como os demais: ele é uma categoria da plataforma", async () => {
     upsert.mockClear();
     await cacheAniListMedia([media(1, ["Comedy"]), media(2, ["Hentai", "Comedy"]), media(3, ["Romance"])]);
     const ids = (upsert.mock.calls as unknown as Array<[{ where: { anilistId: number } }]>).map((c) => c[0].where.anilistId);
-    expect(ids.sort()).toEqual([1, 3]);
+    expect(ids.sort()).toEqual([1, 2, 3]);
   });
 });
 

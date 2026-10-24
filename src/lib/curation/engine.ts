@@ -1,3 +1,4 @@
+import { ADULT_CONTENT_BLOCKED } from "@/lib/contentPolicy";
 import type { CatalogEntry } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getMediaForCuration, type CurationMedia } from "@/lib/anilist";
@@ -93,7 +94,7 @@ async function curateOne(
   const result = curateEntry({ entry, media, translations, anidbGenres });
   await prisma.catalogEntry.update({
     where: { id: entry.id },
-    data: { ...result.patch, siteScore: score.score, siteScoreVotes: score.votes, curatedAt: new Date(), curationVersion: CURATION_VERSION, ...(result.adult ? { onPlatform: false } : {}) },
+    data: { ...result.patch, siteScore: score.score, siteScoreVotes: score.votes, curatedAt: new Date(), curationVersion: CURATION_VERSION, ...(result.adult && ADULT_CONTENT_BLOCKED ? { onPlatform: false } : {}) },
   });
 
   // O que é derivado também vai para as cópias da obra (produção, lista de cada pessoa, calendário).
@@ -114,7 +115,7 @@ async function curateOne(
   const kind = result.patch.kind ?? "UNKNOWN";
   progress.kinds[kind] = (progress.kinds[kind] ?? 0) + 1;
   for (const issue of result.issues) progress.issues[issue.code] = (progress.issues[issue.code] ?? 0) + 1;
-  if (result.adult) progress.adultRemoved += 1;
+  if (result.adult && ADULT_CONTENT_BLOCKED) progress.adultRemoved += 1;
   if (result.patch.descriptionPt) progress.withPt += 1;
   if (result.patch.descriptionJa) progress.withJa += 1;
   progress.currentTitle = entry.titleRomaji;

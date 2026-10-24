@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN } from "./test-auth";
 
-// Carga das obras antigas (antes de 2000) pela AniList falsa: busca por temporada + por data de estreia, sem conteúdo adulto,
+// Carga das obras antigas (antes de 2000) pela AniList falsa: busca por temporada + por data de estreia, com o conteúdo adulto na categoria Hentai,
 // obra que a AniList guarda só com o ano, e a segunda rodada não duplica nada.
 const WITH_SEASON = 998001; // 1985, inverno
 const YEAR_ONLY = 998002; // 1985, só o ano
@@ -76,15 +76,15 @@ test.describe.serial("Carga das obras antigas", () => {
     }
   });
 
-  test("traz as obras, sem adultas, e guarda o ano de quem só tem o ano", async ({ request }) => {
+  test("traz as obras, inclusive a adulta (categoria Hentai), e guarda o ano de quem só tem o ano", async ({ request }) => {
     const response = await request.post("/api/admin/anilist/years", { data: { from: 1985, to: 1986 } });
     expect(response.status()).toBe(200);
-    expect(await response.json()).toMatchObject({ years: 2, found: 3, brought: 3, alreadyIn: 0, blocked: 1, yearOnly: 1 });
+    expect(await response.json()).toMatchObject({ years: 2, found: 4, brought: 4, alreadyIn: 0, blocked: 0, yearOnly: 1 });
 
     const entries = await prisma.catalogEntry.findMany({ where: { anilistId: { in: IDS } } });
     const byId = new Map(entries.map((e) => [e.anilistId, e]));
-    expect(byId.has(ADULT)).toBe(false);
-    for (const id of [WITH_SEASON, YEAR_ONLY, NEXT_YEAR]) expect(byId.get(id)?.onPlatform).toBe(true);
+    for (const id of [WITH_SEASON, YEAR_ONLY, ADULT, NEXT_YEAR]) expect(byId.get(id)?.onPlatform).toBe(true);
+    expect(byId.get(ADULT)?.genres?.split(",")).toContain("Hentai");
     expect(byId.get(WITH_SEASON)).toMatchObject({ season: "WINTER", seasonYear: 1985 });
     expect(byId.get(YEAR_ONLY)).toMatchObject({ season: null, seasonYear: 1985 });
     expect(byId.get(NEXT_YEAR)).toMatchObject({ season: "SUMMER", seasonYear: 1986 });
@@ -95,8 +95,8 @@ test.describe.serial("Carga das obras antigas", () => {
 
   test("a segunda rodada não duplica nem muda nada", async ({ request }) => {
     const response = await request.post("/api/admin/anilist/years", { data: { from: 1985, to: 1986 } });
-    expect(await response.json()).toMatchObject({ found: 3, brought: 0, alreadyIn: 3, blocked: 1 });
-    expect(await prisma.catalogEntry.count({ where: { anilistId: { in: IDS } } })).toBe(3);
+    expect(await response.json()).toMatchObject({ found: 4, brought: 0, alreadyIn: 4, blocked: 0 });
+    expect(await prisma.catalogEntry.count({ where: { anilistId: { in: IDS } } })).toBe(4);
   });
 
   test("o painel do Admin pede a carga, mostra o resultado e barra anos inválidos", async ({ page }) => {
@@ -109,7 +109,7 @@ test.describe.serial("Carga das obras antigas", () => {
     await panel.getByTestId("old-works-to").fill("1985");
     await expect(panel.getByTestId("old-works-start")).toBeEnabled();
     await panel.getByTestId("old-works-start").click();
-    await expect(panel.getByTestId("old-works-result")).toContainText("1 ano percorrido: 0 obra(s) trazida(s), 2 já estavam, 1 adulta(s) recusada(s)", { timeout: 60_000 });
+    await expect(panel.getByTestId("old-works-result")).toContainText("1 ano percorrido: 0 obra(s) trazida(s), 3 já estavam e", { timeout: 60_000 });
   });
 });
 

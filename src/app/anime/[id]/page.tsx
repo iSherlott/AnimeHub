@@ -30,9 +30,10 @@ import type { AniListCharacterEntry, AniListRecommendation } from "@/lib/anilist
 import { loadFranchiseSeasons } from "@/lib/franchiseSeasons";
 import { WorkSeasons } from "@/components/WorkSeasons";
 import { WorkSectionNav } from "@/components/WorkSectionNav";
-import { WorkBadgeRow, WorkCard, WorkInfoList } from "@/components/WorkInfoCard";
+import { AdultContentNotice, WorkBadgeRow, WorkCard, WorkInfoList } from "@/components/WorkInfoCard";
+import { isAdultContent } from "@/lib/contentPolicy";
 import { AppLink } from "@/components/AppLink";
-import { episodesLabel, seasonLabel, statusLabel, typeLabel, workBadges } from "@/lib/workLabels";
+import { episodesLabel, seasonLabel, statusLabel, typeLabel, workBadges, workFacts } from "@/lib/workLabels";
 import { BranchOnlyTimeline } from "@/components/BranchOnlyTimeline";
 import { EpisodesSkeleton } from "@/components/WorkSkeletons";
 import { assignBranches, branchesOf, type Branch } from "@/lib/workJourney";
@@ -132,7 +133,7 @@ export default async function AnimeDetailPage({
 
   // Nota do site e linha do tempo (especiais) da obra; o site oficial do catálogo cobre quem ainda não o tem na lista.
   const [catalogMeta, timeline, franchiseSteps] = await Promise.all([
-    prisma.catalogEntry.findUnique({ where: { anilistId: anime.anilistId }, select: { siteScore: true, siteScoreVotes: true, kind: true, officialSite: true, descriptionPt: true, descriptionJa: true } }),
+    prisma.catalogEntry.findUnique({ where: { anilistId: anime.anilistId }, select: { siteScore: true, siteScoreVotes: true, kind: true, officialSite: true, descriptionPt: true, descriptionJa: true, format: true, status: true, season: true, seasonYear: true, episodes: true } }),
     loadTimeline(anime.anilistId),
     loadFranchiseSteps(anime.anilistId),
   ]);
@@ -155,7 +156,9 @@ export default async function AnimeDetailPage({
   });
 
   const titlePrimary = anime.titleNative ?? anime.titleRomaji;
-  const badges = workBadges({ kind: catalogMeta?.kind, format: anime.format, status: anime.status, season: anime.season, seasonYear: anime.seasonYear, episodes: anime.episodes });
+  // A cópia da lista pode ter ficado sem ano, temporada ou formato: o que faltar vem do catálogo.
+  const facts = workFacts(anime, catalogMeta);
+  const badges = workBadges({ kind: catalogMeta?.kind, ...facts });
   const awards = anime.anidbAwards ? anime.anidbAwards.split(",").filter(Boolean) : [];
   const resources = anime.anidbResources ? (JSON.parse(anime.anidbResources) as Record<string, string>) : null;
   const hasTrailer = anime.trailerSite?.toLowerCase() === "youtube" && Boolean(anime.trailerId);
@@ -194,6 +197,7 @@ export default async function AnimeDetailPage({
             )}
           </Box>
           <WorkBadgeRow badges={badges} />
+          {isAdultContent(genres) && <AdultContentNotice />}
           {genres.length > 0 && (
             <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", alignItems: "center", rowGap: 1 }}>
               {genres.map((g) => (
@@ -282,10 +286,10 @@ export default async function AnimeDetailPage({
           <WorkCard title="Ficha" testId="work-card-info">
             <WorkInfoList
               rows={[
-                ["Tipo", typeLabel({ kind: catalogMeta?.kind, format: anime.format })],
-                ["Situação", statusLabel(anime.status)],
-                ["Época", seasonLabel({ season: anime.season, seasonYear: anime.seasonYear })],
-                ["Episódios", episodesLabel(anime.episodes)],
+                ["Tipo", typeLabel({ kind: catalogMeta?.kind, format: facts.format })],
+                ["Situação", statusLabel(facts.status)],
+                ["Época", seasonLabel(facts)],
+                ["Episódios", episodesLabel(facts.episodes)],
                 ["Temporada", `Temporada ${productionRow?.seasonNumber ?? anime.seasonNumber}`],
                 ["Nota da AniList", anime.averageScore ? `${(anime.averageScore / 10).toFixed(1)} / 10` : null],
                 ["Nota da AniDB", anime.anidbRating ? `${anime.anidbRating.toFixed(1)} / 10${anime.anidbVotes ? ` (${anime.anidbVotes} votos)` : ""}` : null],

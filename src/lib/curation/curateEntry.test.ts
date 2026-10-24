@@ -101,12 +101,15 @@ describe("curateEntry", () => {
     expect(codes(r)).toContain("KIND_UNKNOWN");
   });
 
-  it("obra adulta sai da plataforma e o marcador nunca vira gênero", () => {
+  it("obra adulta fica na plataforma, na categoria Hentai, sem pendência", () => {
     const r = curateEntry({ entry: entry(), media: media({ genres: ["Hentai", "Comedy"] }), translations: {} });
     expect(r.adult).toBe(true);
-    expect(r.patch.genres).toBe("Comedy");
-    expect(codes(r)).toContain("ADULT_REMOVED");
-    expect(curateEntry({ entry: entry(), media: media({ isAdult: true }), translations: {} }).adult).toBe(true);
+    expect(r.patch.genres).toBe("Hentai,Comedy");
+    expect(codes(r)).not.toContain("ADULT_REMOVED");
+    // A AniList a marca como +18 mesmo sem o gênero: entra na categoria do mesmo jeito.
+    const flagged = curateEntry({ entry: entry(), media: media({ isAdult: true, genres: ["Romance"] }), translations: {} });
+    expect(flagged.adult).toBe(true);
+    expect(flagged.patch.genres).toBe("Romance,Hentai");
   });
 
   it("traz as sinopses traduzidas já guardadas, sem apagar as existentes", () => {

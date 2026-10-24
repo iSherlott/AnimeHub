@@ -84,11 +84,37 @@ async function translateChunk(chunk: string, target: TranslationTarget, fetcher:
   return text;
 }
 
+/**
+ * Trechos em japonês/chinês dentro da sinopse em inglês (títulos de episódio, nomes de comerciais: "【デレステ】5周年CM").
+ * O LibreTranslate apaga esses trechos ao traduzir do inglês; eles saem do texto antes e voltam depois, intactos. Um trecho
+ * vai do primeiro ao último caractere japonês, levando junto o que estiver entre eles (números, espaços, letras).
+ */
+const CJK_CHAR = "\\u3000-\\u30ff\\u3400-\\u9fff\\uf900-\\ufaff\\uff00-\\uffef";
+const CJK_RUN = new RegExp(`[${CJK_CHAR}]+(?:[\\w\\s・!?.,'’&-]*[${CJK_CHAR}]+)*`, "g");
+const placeholder = (n: number) => `ZQX${n}ZQ`;
+
+export function protectForeignRuns(text: string): { masked: string; runs: string[] } {
+  const runs: string[] = [];
+  const masked = text.replace(CJK_RUN, (run) => placeholder(runs.push(run) - 1));
+  return { masked, runs };
+}
+
+/** Devolve os trechos protegidos; se o tradutor perdeu algum marcador, falha em vez de devolver texto faltando pedaço. */
+export function restoreForeignRuns(translated: string, runs: readonly string[]): string {
+  let out = translated;
+  runs.forEach((run, n) => {
+    if (!out.includes(placeholder(n))) throw new Error("A tradução perdeu um trecho em japonês");
+    out = out.replace(placeholder(n), () => run);
+  });
+  return out;
+}
+
 /** Traduz o texto inteiro; qualquer pedaço que falhe derruba a tradução (devolve erro, nunca texto pela metade). */
 export async function translateText(text: string, target: TranslationTarget, fetcher: Fetcher = fetch): Promise<string> {
+  const { masked, runs } = protectForeignRuns(text);
   const out: string[] = [];
-  for (const chunk of splitForTranslation(text)) {
+  for (const chunk of splitForTranslation(masked)) {
     out.push(chunk === "\n\n" ? chunk : await translateChunk(chunk, target, fetcher));
   }
-  return out.join("");
+  return restoreForeignRuns(out.join(""), runs);
 }

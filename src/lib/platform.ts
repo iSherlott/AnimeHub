@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { hasBlockedGenre, NOT_BLOCKED_GENRE } from "@/lib/contentPolicy";
+import { ADULT_CONTENT_BLOCKED, hasBlockedGenre, NOT_BLOCKED_GENRE } from "@/lib/contentPolicy";
 
 /**
  * Quais obras fazem parte da plataforma. O catálogo (`CatalogEntry`) também guarda CACHE da AniList, marcado com
@@ -25,7 +25,8 @@ export async function platformAnilistIds(): Promise<Set<number>> {
  */
 export async function hiddenAnilistIds(): Promise<Set<number>> {
   const rows = await prisma.catalogEntry.findMany({
-    where: { anilistId: { not: null }, OR: [{ onPlatform: false }, { genres: { contains: "hentai", mode: "insensitive" } }] },
+    // Conteúdo adulto só some quando o bloqueio está ligado (`contentPolicy`); hoje ele é uma categoria da plataforma.
+    where: { anilistId: { not: null }, OR: [{ onPlatform: false }, ...(ADULT_CONTENT_BLOCKED ? [{ genres: { contains: "hentai", mode: "insensitive" as const } }] : [])] },
     select: { anilistId: true },
   });
   const hidden = new Set(rows.map((r) => r.anilistId as number));

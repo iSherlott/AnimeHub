@@ -44,10 +44,10 @@ describe("genreWhere", () => {
 
 describe("catalogWhere", () => {
   const base = parse("");
-  it("sempre só obras da plataforma e sem conteúdo adulto", () => {
+  it("sempre só obras da plataforma, com o conteúdo adulto como categoria (sem filtro de gênero bloqueado)", () => {
     const where = catalogWhere(base, null);
     expect(where.onPlatform).toBe(true);
-    expect(JSON.stringify(where.AND)).toContain("hentai");
+    expect(JSON.stringify(where.AND ?? [])).not.toContain("hentai");
   });
 
   it("junta cada filtro", () => {

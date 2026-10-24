@@ -1,3 +1,4 @@
+import { ADULT_CONTENT_BLOCKED } from "@/lib/contentPolicy";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { CATALOG_CANDIDATE_PREFIX, loadLocalCandidates, toCandidate } from "./candidates";
@@ -173,10 +174,11 @@ export async function analyzeImport(input: { html: string; source: string; seaso
       compared += 1;
       const titles = [rec.titleRomaji, rec.titleNative, rec.titleEnglish].filter((t): t is string => Boolean(t));
       const matchInput = { sourceKey: rec.sourceKey, titles, seasonLabel: label, year: rec.year };
-      // Conteúdo adulto (hentai) não entra na plataforma: o registro já nasce ignorado, com o motivo — seja porque o
-      // AniDB o marca com tag explícita, seja porque casa com um hentai da AniList.
+      // Com o bloqueio de conteúdo adulto ligado (`contentPolicy`), o registro adulto já nasce ignorado, com o motivo —
+      // seja porque o AniDB o marca com tag explícita, seja porque casa com um hentai da AniList. Desligado, ele segue como
+      // os demais, já com o gênero Hentai.
       const adultMatch = rankCandidates(matchInput, blockedPool, 1)[0];
-      if (rec.adult || (adultMatch && adultMatch.score >= AUTO_THRESHOLD)) {
+      if (ADULT_CONTENT_BLOCKED && (rec.adult || (adultMatch && adultMatch.score >= AUTO_THRESHOLD))) {
         adult += 1;
         recordRows.push({
           jobSeq: job.seq,
@@ -542,7 +544,7 @@ export async function reapplyImport(seq: number, actor: AdminActor): Promise<Act
     for (const rec of job.records) {
       const fresh = bySource.get(rec.sourceKey);
       if (!fresh) continue;
-      const adult = fresh.adult && rec.state !== "IGNORED";
+      const adult = ADULT_CONTENT_BLOCKED && fresh.adult && rec.state !== "IGNORED";
       await prisma.importRecord.update({
         where: { id: rec.id },
         data: {

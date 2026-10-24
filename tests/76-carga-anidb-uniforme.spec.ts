@@ -4,7 +4,7 @@ import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN } from "./test-auth";
 
 // Carga uniforme: toda obra do HTML do AniDB chega à plataforma com capa inteira, gêneros e status coerente;
-// conteúdo adulto fica de fora; "Reaplicar vínculos" refaz o lote sem duplicar nada.
+// conteúdo adulto entra na categoria Hentai; "Reaplicar vínculos" refaz o lote sem duplicar nada.
 const FUTURE = { anidbId: 29761, title: "Qwe Comedia Futura Round76" };
 const RUNNING = { anidbId: 29762, title: "Asd Serie Em Exibicao Round76" };
 const ADULT = { anidbId: 29763, title: "Zxc Obra Adulta Round76" };
@@ -63,7 +63,7 @@ test.describe("Carga do AniDB — uniforme", () => {
     await prisma.$disconnect();
   });
 
-  test("conteúdo adulto é ignorado já na análise; os demais seguem como novos", async ({ page }) => {
+  test("conteúdo adulto segue como novo, já na categoria Hentai; os demais também", async ({ page }) => {
     await page.goto("/admin/importacoes");
     await page.getByLabel("HTML da temporada").fill(html);
     await page.getByRole("button", { name: "Analisar" }).click();
@@ -71,16 +71,17 @@ test.describe("Carga do AniDB — uniforme", () => {
     seq = Number(page.url().split("/").pop());
 
     await expect(page.getByTestId("result-found")).toContainText("3");
-    await expect(page.getByTestId("result-new")).toContainText("2");
+    await expect(page.getByTestId("result-new")).toContainText("3");
     await expect(page.getByTestId("result-pending")).toContainText("0");
 
     const adult = await prisma.importRecord.findFirstOrThrow({ where: { jobSeq: seq, sourceKey: String(ADULT.anidbId) } });
-    expect(adult.state).toBe("IGNORED");
+    expect(adult.state).not.toBe("IGNORED");
+    expect(adult.genres?.split(",")).toContain("Hentai"); // a tag "sex" do AniDB põe a obra na categoria
     const comedy = await prisma.importRecord.findFirstOrThrow({ where: { jobSeq: seq, sourceKey: String(FUTURE.anidbId) } });
     expect(comedy.genres).toBe("Comedy,Romance");
   });
 
-  test("confirmar entrega capa inteira, gêneros e status; o adulto não entra e o resumo é mostrado", async ({ page }) => {
+  test("confirmar entrega capa inteira, gêneros e status; o adulto entra como Hentai e o resumo é mostrado", async ({ page }) => {
     await page.goto(`/admin/importacoes/${seq}`);
     await page.getByTestId("confirm-import").click();
     await page.getByTestId("confirm-import-dialog").click();
@@ -97,17 +98,19 @@ test.describe("Carga do AniDB — uniforme", () => {
     expect(running.status).toBe("RELEASING");
     expect(running.genres).toContain("Adventure");
 
-    expect(await prisma.catalogEntry.count({ where: { anidbId: ADULT.anidbId } })).toBe(0);
+    const adult = await prisma.catalogEntry.findUniqueOrThrow({ where: { anidbId: ADULT.anidbId } });
+    expect(adult.onPlatform).toBe(true);
+    expect(adult.genres?.split(",")).toContain("Hentai");
 
     await page.goto(`/admin/importacoes/${seq}`);
-    await expect(page.getByTestId("result-done")).toContainText("2 novas");
+    await expect(page.getByTestId("result-done")).toContainText("3 novas");
   });
 
   test("Reaplicar vínculos refaz o lote sem duplicar obras", async ({ page }) => {
     await page.goto(`/admin/importacoes/${seq}`);
     await page.getByTestId("reapply-import").click();
     await expect(page.getByTestId("reapply-result")).toContainText("Lote reaplicado");
-    expect(await prisma.catalogEntry.count({ where: { anidbId: { in: IDS } } })).toBe(2);
+    expect(await prisma.catalogEntry.count({ where: { anidbId: { in: IDS } } })).toBe(3);
   });
 
   test("a capa do AniDB é aceita pelo otimizador de imagens (host liberado)", async ({ request }) => {

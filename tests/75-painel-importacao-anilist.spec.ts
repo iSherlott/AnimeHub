@@ -119,21 +119,22 @@ test.describe.serial("Painel de importação da AniList", () => {
   test.describe("pela API do admin", () => {
     test.use({ storageState: adminState });
 
-    test("buscar a temporada lista o que a AniList tem, deixa o hentai de fora e guarda só como cache", async ({ request, page }) => {
+    test("buscar a temporada lista o que a AniList tem, inclusive o hentai (categoria da plataforma), e guarda só como cache", async ({ request, page }) => {
       const res = await request.get(`/api/admin/anilist/season?season=${TARGET.season}&seasonYear=${TARGET.year}`);
       expect(res.status()).toBe(200);
       const { items, blocked } = (await res.json()) as { items: Array<{ anilistId: number; state: string }>; blocked: number };
-      expect(items).toHaveLength(3);
-      expect(blocked).toBe(1);
+      expect(items).toHaveLength(4);
+      expect(blocked).toBe(0);
       const state = (id: number) => items.find((i) => i.anilistId === id)?.state;
       expect(state(NEW_A)).toBe("new");
       expect(state(NEW_B)).toBe("new");
       expect(state(ON_PLATFORM)).toBe("platform");
-      expect(state(ADULT)).toBeUndefined();
+      expect(state(ADULT)).toBe("new");
 
-      // Consultar não traz nada: vira cache invisível; o hentai nem é guardado; o que já era da plataforma não é tocado.
+      // Consultar não traz nada: vira cache invisível (o hentai também); o que já era da plataforma não é tocado.
       const cached = await prisma.catalogEntry.findMany({ where: { anilistId: { in: ids } }, orderBy: { anilistId: "asc" } });
-      expect(cached.map((c) => [c.anilistId, c.onPlatform])).toEqual([[NEW_A, false], [NEW_B, false], [ON_PLATFORM, true], [LACKING, true]]);
+      expect(cached.filter((c) => c.anilistId !== ADULT).map((c) => [c.anilistId, c.onPlatform])).toEqual([[NEW_A, false], [NEW_B, false], [ON_PLATFORM, true], [LACKING, true]]);
+      expect(cached.find((c) => c.anilistId === ADULT)?.onPlatform).toBe(false);
       expect(cached.find((c) => c.anilistId === ON_PLATFORM)?.titleEnglish).toBe("Titulo Local");
       const catalog = await (await page.request.get("/api/catalog")).json();
       expect(catalog.results.map((r: { anilistId: number }) => r.anilistId)).not.toContain(NEW_A);
@@ -156,7 +157,7 @@ test.describe.serial("Painel de importação da AniList", () => {
       expect(shown).not.toContain(NEW_B);
     });
 
-    test("trazer de novo é seguro, e o que não foi consultado ou é adulto é recusado", async ({ request }) => {
+    test("trazer de novo é seguro, e o que não foi consultado é recusado", async ({ request }) => {
       const res = await request.post("/api/admin/anilist/import", { data: { ids: [NEW_A, 999999] } });
       expect(res.status()).toBe(200);
       expect(await res.json()).toMatchObject({ brought: 0, alreadyIn: 1, missing: 1, blocked: 0, episodes: 0 });
@@ -195,7 +196,7 @@ test.describe.serial("Painel de importação da AniList", () => {
       expect(labels.some((l) => l.startsWith("Complementar "))).toBe(true);
       for (const job of jobs) expect(job).toMatchObject({ source: "AniList", state: "SUCCESS", progressNote: null });
       const search = jobs.find((j) => (j.season ?? "").startsWith("Buscar "));
-      expect(JSON.parse(search?.resultJson ?? "{}")).toEqual({ obras: 3, bloqueadas: 1 });
+      expect(JSON.parse(search?.resultJson ?? "{}")).toEqual({ obras: 4, bloqueadas: 0 });
       await prisma.adminJob.deleteMany({ where: { kind: "ANILIST" } });
     });
   });

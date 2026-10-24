@@ -1,3 +1,5 @@
+import { ADULT_CONTENT_BLOCKED } from "@/lib/contentPolicy";
+
 /**
  * Vocabulário fechado de gêneros (Epic 3, redefinido no Epic 42). Cada fonte (AniList, Kitsu, Jikan, Shikimori, AniDB) tem
  * a sua própria lista livre de gêneros/categorias/temas; em vez de mostrar esse texto cru, todo termo é mapeado para uma
@@ -101,7 +103,10 @@ export function genresFromAniList(genres: string[], tags: AniListTag[] = []): Ge
   return normalizeGenres([...genres, ...usable]);
 }
 
-/** Os gêneros que a plataforma mostra (sem o marcador interno de conteúdo adulto). */
+/**
+ * Os gêneros que a plataforma mostra. Com o conteúdo adulto como categoria (`contentPolicy`), o "Hentai" aparece como os
+ * outros; com o bloqueio ligado, ele é só o marcador interno e fica escondido.
+ */
 export function visibleGenres(genres: readonly string[]): string[] {
-  return genres.filter((g) => g !== ADULT_MARKER);
+  return ADULT_CONTENT_BLOCKED ? genres.filter((g) => g !== ADULT_MARKER) : [...genres];
 }

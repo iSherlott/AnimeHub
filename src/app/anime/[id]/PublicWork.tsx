@@ -11,8 +11,9 @@ import { AppLink } from "@/components/AppLink";
 import { FollowProductionButton } from "@/components/FollowProductionButton";
 import { WorkSeasons } from "@/components/WorkSeasons";
 import { WorkSectionNav } from "@/components/WorkSectionNav";
-import { WorkBadgeRow, WorkCard, WorkInfoList } from "@/components/WorkInfoCard";
-import { episodesLabel, seasonLabel, statusLabel, typeLabel, workBadges } from "@/lib/workLabels";
+import { AdultContentNotice, WorkBadgeRow, WorkCard, WorkInfoList } from "@/components/WorkInfoCard";
+import { isAdultContent } from "@/lib/contentPolicy";
+import { episodesLabel, seasonLabel, statusLabel, typeLabel, workBadges, workFacts } from "@/lib/workLabels";
 import { BranchOnlyTimeline } from "@/components/BranchOnlyTimeline";
 import { assignBranches, branchesOf } from "@/lib/workJourney";
 import { loadStoryContext } from "@/lib/story/context";
@@ -50,7 +51,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
 
   const [nextEpisode, catalog, allSeasons, schedule, images, timeline, franchiseSteps, story] = await Promise.all([
     prisma.airingScheduleEntry.findFirst({ where: { anilistId, airingAt: { gte: new Date() } }, orderBy: { airingAt: "asc" } }),
-    prisma.catalogEntry.findUnique({ where: { anilistId }, select: { siteScore: true, siteScoreVotes: true, kind: true, officialSite: true, descriptionPt: true, descriptionJa: true } }),
+    prisma.catalogEntry.findUnique({ where: { anilistId }, select: { siteScore: true, siteScoreVotes: true, kind: true, officialSite: true, descriptionPt: true, descriptionJa: true, format: true, status: true, season: true, seasonYear: true, episodes: true } }),
     loadFranchiseSeasons(anilistId),
     prisma.airingScheduleEntry.findMany({ where: { anilistId }, orderBy: { episode: "asc" }, select: { episode: true, airingAt: true } }),
     prisma.episodeImage.findMany({ where: { anilistId }, select: { episode: true, thumbnail: true } }),
@@ -73,7 +74,9 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
   const genres = production.genres ? production.genres.split(",").filter(Boolean) : [];
   const titlePrimary = production.titleNative ?? production.titleRomaji;
 
-  const badges = workBadges({ kind: catalog?.kind, format: production.format, status: production.status, season: production.season, seasonYear: production.seasonYear, episodes: production.episodes });
+  // A produção pode ter ficado sem ano, temporada ou episódios: o que faltar vem do catálogo.
+  const facts = workFacts(production, catalog);
+  const badges = workBadges({ kind: catalog?.kind, ...facts });
 
   return (
     <div className="min-h-screen bg-ink pb-16">
@@ -107,6 +110,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
             )}
           </Box>
           <WorkBadgeRow badges={badges} />
+          {isAdultContent(genres) && <AdultContentNotice />}
           {genres.length > 0 && (
             <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", alignItems: "center", rowGap: 1 }}>
               {genres.map((g) => (
@@ -120,7 +124,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
             {!user && <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Entre para criar sua agenda pessoal.</Typography>}
           </Box>
           {/* Obra que já acabou e sem episódio por vir não tem "próximo episódio" para mostrar. */}
-          {(nextEpisode || (production.status !== "FINISHED" && production.status !== "CANCELLED")) && (
+          {(nextEpisode || (facts.status !== "FINISHED" && facts.status !== "CANCELLED")) && (
             <NextEpisodeBlock iso={nextEpisode ? nextEpisode.airingAt.toISOString() : null} episode={nextEpisode ? nextEpisode.episode : null} />
           )}
         </Box>
@@ -176,10 +180,10 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
           <WorkCard title="Ficha" testId="work-card-info">
             <WorkInfoList
               rows={[
-                ["Tipo", typeLabel({ kind: catalog?.kind, format: production.format })],
-                ["Situação", statusLabel(production.status)],
-                ["Época", seasonLabel({ season: production.season, seasonYear: production.seasonYear })],
-                ["Episódios", episodesLabel(production.episodes)],
+                ["Tipo", typeLabel({ kind: catalog?.kind, format: facts.format })],
+                ["Situação", statusLabel(facts.status)],
+                ["Época", seasonLabel(facts)],
+                ["Episódios", episodesLabel(facts.episodes)],
                 ["Temporada", `Temporada ${production.seasonNumber}`],
                 ["Franquia", production.franchise.name],
                 [

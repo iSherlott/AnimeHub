@@ -99,7 +99,7 @@ describe("genresFromAniList", () => {
     expect(genresFromAniList(["Hentai", "Comedy"])).toEqual(["Hentai", "Comedy"]);
   });
 
-  it("visibleGenres tira o marcador adulto", () => {
-    expect(visibleGenres(["Comedy", "Hentai"])).toEqual(["Comedy"]);
+  it("visibleGenres mostra o Hentai como categoria (conteúdo adulto não é mais bloqueado)", () => {
+    expect(visibleGenres(["Comedy", "Hentai"])).toEqual(["Comedy", "Hentai"]);
   });
 });

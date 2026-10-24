@@ -1,19 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { hasBlockedGenre } from "@/lib/contentPolicy";
+import { ADULT_CONTENT_BLOCKED, hasBlockedGenre, isAdultContent, NOT_BLOCKED_GENRE } from "@/lib/contentPolicy";
 
-describe("hasBlockedGenre", () => {
-  it("bloqueia o gênero Hentai em lista ou em texto, sem diferenciar caixa nem espaços", () => {
-    expect(hasBlockedGenre(["Comedy", "Hentai"])).toBe(true);
-    expect(hasBlockedGenre("Comedy, hentai ,Romance")).toBe(true);
-    expect(hasBlockedGenre(["HENTAI"])).toBe(true);
+describe("política de conteúdo adulto como categoria", () => {
+  it("o bloqueio está desligado: nada é barrado, nem o Hentai", () => {
+    expect(ADULT_CONTENT_BLOCKED).toBe(false);
+    expect(hasBlockedGenre(["Comedy", "Hentai"])).toBe(false);
+    expect(hasBlockedGenre("Comedy, hentai ,Romance")).toBe(false);
+    expect(NOT_BLOCKED_GENRE).toEqual({});
   });
 
-  it("não bloqueia Ecchi nem gêneros comuns, nem vazio", () => {
-    expect(hasBlockedGenre(["Ecchi", "Comedy"])).toBe(false);
-    expect(hasBlockedGenre("Comedy,Romance")).toBe(false);
-    expect(hasBlockedGenre([])).toBe(false);
-    expect(hasBlockedGenre("")).toBe(false);
-    expect(hasBlockedGenre(null)).toBe(false);
-    expect(hasBlockedGenre(undefined)).toBe(false);
+  it("reconhece o conteúdo adulto pelo gênero Hentai, em lista ou em texto, sem diferenciar caixa nem espaços", () => {
+    expect(isAdultContent(["Comedy", "Hentai"])).toBe(true);
+    expect(isAdultContent("Comedy, hentai ,Romance")).toBe(true);
+    expect(isAdultContent(["HENTAI"])).toBe(true);
+  });
+
+  it("Ecchi, gêneros comuns e vazio não são conteúdo adulto", () => {
+    expect(isAdultContent(["Ecchi", "Comedy"])).toBe(false);
+    expect(isAdultContent("Comedy,Romance")).toBe(false);
+    expect(isAdultContent([])).toBe(false);
+    expect(isAdultContent("")).toBe(false);
+    expect(isAdultContent(null)).toBe(false);
+    expect(isAdultContent(undefined)).toBe(false);
   });
 });

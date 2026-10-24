@@ -36,6 +36,23 @@ describe("translateText", () => {
     expect(await translateText("Hello.\n\nWorld.", "pt", fetcher)).toBe("PT(Hello.)\n\nPT(World.)");
   });
 
+  it("trechos em japonês não passam pelo tradutor e voltam intactos", async () => {
+    const sent: string[] = [];
+    const fetcher = (async (url: string) => {
+      const q = decodeURIComponent(new URL(url).searchParams.get("q") ?? "");
+      sent.push(q);
+      return Response.json({ responseStatus: 200, responseData: { translatedText: q.replace("Commercial", "Comercial") } });
+    }) as unknown as typeof fetch;
+    const text = "Commercial 1) 【デレステ】5周年CM　夢見 りあむ 篇【アイドルマスター】 (17 Sep 2020) and 新春特番.";
+    expect(await translateText(text, "pt", fetcher)).toBe("Comercial 1) 【デレステ】5周年CM　夢見 りあむ 篇【アイドルマスター】 (17 Sep 2020) and 新春特番.");
+    expect(sent.join("")).not.toMatch(/[぀-ヿ一-鿿]/);
+  });
+
+  it("falha se o tradutor perder um trecho protegido", async () => {
+    const fetcher = (async () => Response.json({ responseStatus: 200, responseData: { translatedText: "sem marcador" } })) as unknown as typeof fetch;
+    await expect(translateText("Song 夢見.", "pt", fetcher)).rejects.toThrow(/japonês/);
+  });
+
   it("pede o par en|ja para japonês", async () => {
     let called = "";
     const fetcher = (async (url: string) => {

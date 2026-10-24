@@ -63,7 +63,7 @@ export function OldWorksPanel() {
       <ImportProgress running={running} since={since} kind="ANILIST" title="Trazendo as obras antigas" fallbackNote="Buscando na AniList…" />
       {summary && (
         <Alert severity="success" data-testid="old-works-result">
-          {fmt(summary.years)} {summary.years === 1 ? "ano percorrido" : "anos percorridos"}: {fmt(summary.brought)} obra(s) trazida(s), {fmt(summary.alreadyIn)} já estavam, {fmt(summary.blocked)} adulta(s) recusada(s) e {fmt(summary.yearOnly)} só com o ano. Agora rode a curadoria e a tradução.
+          {fmt(summary.years)} {summary.years === 1 ? "ano percorrido" : "anos percorridos"}: {fmt(summary.brought)} obra(s) trazida(s), {fmt(summary.alreadyIn)} já estavam{summary.blocked > 0 ? `, ${fmt(summary.blocked)} adulta(s) recusada(s)` : ""} e {fmt(summary.yearOnly)} só com o ano. Agora rode a curadoria e a tradução.
         </Alert>
       )}
       {error && <Alert severity="error">{error}</Alert>}

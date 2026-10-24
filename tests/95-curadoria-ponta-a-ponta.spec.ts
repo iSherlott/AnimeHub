@@ -180,10 +180,11 @@ test.describe.serial("Curadoria de ponta a ponta", () => {
     expect(list.items[0].issues).toEqual(expect.arrayContaining(["TITLE_EN_MISSING", "OFFICIAL_SITE_MISSING"]));
   });
 
-  test("obra adulta sai da plataforma e a que sumiu da AniList fica registrada, sem perder o que tinha", async () => {
+  test("obra adulta fica na plataforma na categoria Hentai e a que sumiu da AniList fica registrada, sem perder o que tinha", async () => {
     const adult = await prisma.catalogEntry.findUniqueOrThrow({ where: { anilistId: ADULT } });
-    expect(adult.onPlatform).toBe(false);
-    expect((await prisma.curationIssue.findFirstOrThrow({ where: { entryId: adult.id, code: "ADULT_REMOVED" } })).status).toBe("OPEN");
+    expect(adult.onPlatform).toBe(true);
+    expect(adult.genres?.split(",")).toEqual(["Comedy", "Hentai"]);
+    expect(await prisma.curationIssue.count({ where: { entryId: adult.id, code: "ADULT_REMOVED" } })).toBe(0);
 
     const gone = await prisma.catalogEntry.findUniqueOrThrow({ where: { anilistId: GONE } });
     expect(gone).toMatchObject({ onPlatform: true, kind: "EPISODE", description: "Já tinha.", titleEnglish: "Gone", titleNative: "消えた", officialSite: "https://gone.example" });
@@ -194,7 +195,7 @@ test.describe.serial("Curadoria de ponta a ponta", () => {
   test("rodar de novo não muda nada (idempotente) e o painel mostra as obras como curadas", async ({ request, page }) => {
     const second = await runAndWait(request);
     expect(second.changed).toEqual({});
-    expect(second.adultRemoved).toBe(0); // a obra adulta já saiu da plataforma e não entra de novo
+    expect(second.adultRemoved).toBe(0); // conteúdo adulto não sai mais da plataforma
 
     await page.goto("/admin/curadoria");
     const list = page.getByTestId("curation-entries");

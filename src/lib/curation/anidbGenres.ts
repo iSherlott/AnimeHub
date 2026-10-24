@@ -1,3 +1,4 @@
+import { ADULT_CONTENT_BLOCKED } from "@/lib/contentPolicy";
 import { prisma } from "@/lib/prisma";
 import { parseSeasonSlug } from "@/lib/exploreGroups";
 import { ADULT_MARKER, normalizeGenres } from "@/lib/genreTaxonomy";
@@ -21,8 +22,8 @@ export async function loadAnidbGenres(): Promise<Map<number, string[]>> {
     }
     for (const record of records) {
       const id = Number(record.sourceKey);
-      const genres = record.genres.filter((g) => g !== ADULT_MARKER);
-      if (!Number.isFinite(id) || record.adult || genres.length === 0) continue;
+      const genres = ADULT_CONTENT_BLOCKED ? record.genres.filter((g) => g !== ADULT_MARKER) : record.genres;
+      if (!Number.isFinite(id) || (record.adult && ADULT_CONTENT_BLOCKED) || genres.length === 0) continue;
       byAnidb.set(id, normalizeGenres([...(byAnidb.get(id) ?? []), ...genres]));
     }
   }

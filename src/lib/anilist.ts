@@ -38,6 +38,8 @@ export type AniListMedia = {
   tags?: AniListTag[];
   /** Nota média da comunidade AniList, 0-100 (mesma escala que o site deles). */
   averageScore: number | null;
+  /** A AniList marca a obra como +18: entra na categoria Hentai (ver `contentPolicy`). */
+  isAdult?: boolean | null;
   startDate: AniListFuzzyDate | null;
   endDate: AniListFuzzyDate | null;
   nextAiringEpisode: { episode: number; airingAt: number } | null;
@@ -69,6 +71,7 @@ export function getOfficialSiteUrl(media: Pick<AniListMedia, "externalLinks">): 
 const MEDIA_FIELDS = `
   id
   idMal
+  isAdult
   title {
     romaji
     english
@@ -175,7 +178,8 @@ async function anilistRequest<T>(
  * pra todo consumidor (cache do catálogo, criação de anime, refresh, etc.)
  * já receber a lista fechada, sem precisar normalizar de novo. */
 function normalizeMedia(media: AniListMedia): AniListMedia {
-  return { ...media, genres: genresFromAniList(media.genres ?? [], media.tags ?? []) };
+  // Obra marcada como +18 vai para a categoria Hentai mesmo quando a AniList não lista esse gênero.
+  return { ...media, genres: genresFromAniList([...(media.genres ?? []), ...(media.isAdult ? ["Hentai"] : [])], media.tags ?? []) };
 }
 
 export async function searchAnime(search: string): Promise<AniListMedia[]> {

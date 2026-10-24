@@ -32,6 +32,22 @@ export function WorkInfoList({ rows }: { rows: Array<[string, ReactNode | null |
   );
 }
 
+/** Aviso no topo da obra adulta (categoria Hentai): a plataforma tem esse conteúdo, mas avisa antes. */
+export function AdultContentNotice() {
+  return (
+    <Box
+      role="note"
+      data-testid="adult-content-notice"
+      sx={{ display: "inline-flex", alignItems: "center", gap: 1, alignSelf: "flex-start", px: 1.5, py: 0.75, borderRadius: "8px", border: 1, borderColor: "error.main", color: "error.light", fontSize: 13, fontWeight: 700 }}
+    >
+      <Box component="span" sx={{ px: 0.75, borderRadius: "4px", bgcolor: "error.main", color: "#fff", fontSize: 12 }}>
+        +18
+      </Box>
+      Conteúdo adulto · categoria Hentai
+    </Box>
+  );
+}
+
 /** As etiquetas curtas do topo (tipo, situação, época, episódios). */
 export function WorkBadgeRow({ badges }: { badges: string[] }) {
   if (badges.length === 0) return null;
