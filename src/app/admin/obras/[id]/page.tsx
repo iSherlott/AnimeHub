@@ -5,6 +5,7 @@ import { FetchAnidbEpisodesButton } from "@/components/admin/AnidbEpisodesAction
 import { AdminPageHeader, AdminPanel, AdminTable, SmallChip } from "@/components/admin/AdminUi";
 import { WorkEditForm, type EditableValues } from "@/components/admin/WorkEditForm";
 import { WorkVisibilityControl } from "@/components/admin/WorkVisibilityControl";
+import { WorkExtrasAdmin } from "@/components/admin/WorkExtrasAdmin";
 import { fmtDate, fmtFull, requireAdminPage } from "@/lib/adminPage";
 import { FIELD_LABELS, FORMATS, STATUSES } from "@/lib/catalogEdit";
 import { ISSUE_LABELS } from "@/lib/curation/issues";
@@ -12,6 +13,9 @@ import { KINDS, KIND_LABELS } from "@/lib/curation/kind";
 import { activeGenreKeys } from "@/lib/genres";
 import { ADULT_GENRE } from "@/lib/contentPolicy";
 import { loadWorkDetail } from "@/lib/workDetail";
+import { prisma } from "@/lib/prisma";
+import { EXTRA_ORDER, toExtraView } from "@/lib/episodeExtras";
+import { EXTRA_FIELD_LABELS } from "@/lib/extraEdit";
 import { SEASON_LABEL, STATUS_LABEL } from "@/lib/workLabels";
 
 export const dynamic = "force-dynamic";
@@ -24,8 +28,15 @@ const ORIGIN_LABEL: Record<string, string> = { ADMIN: "Admin", IMPORT: "Importa�
 export default async function AdminWorkDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { timeZone } = await requireAdminPage("catalog");
   const historyPage = Math.max(0, Number((await searchParams).historico) || 0);
-  const [detail, genreKeys] = await Promise.all([loadWorkDetail((await params).id, historyPage), activeGenreKeys()]);
+  const id = (await params).id;
+  const [detail, genreKeys, extraRows] = await Promise.all([loadWorkDetail(id, historyPage), activeGenreKeys(), prisma.episodeExtra.findMany({ where: { catalogEntryId: id } })]);
   if (!detail) notFound();
+  const extras = extraRows
+    .map((e) => ({ ...toExtraView(e), updatedAt: e.updatedAt.toISOString(), manualFields: e.manualFields }))
+    .sort((a, b) => EXTRA_ORDER.indexOf(a.kind) - EXTRA_ORDER.indexOf(b.kind) || a.number - b.number);
+  // No histórico, o campo de um extra vem com o rótulo dele ("Extra · Título (romaji)").
+  const fieldLabel = (r: { entity: string; field: string }) =>
+    r.entity === "EpisodeExtra" ? `Extra · ${EXTRA_FIELD_LABELS[r.field as keyof typeof EXTRA_FIELD_LABELS] ?? FIELD_LABELS[r.field as keyof typeof FIELD_LABELS] ?? r.field}` : FIELD_LABELS[r.field as keyof typeof FIELD_LABELS] ?? r.field;
   const { entry, episodes } = detail;
   const openIssues = detail.issues.filter((i) => i.status === "OPEN");
 
@@ -128,6 +139,13 @@ export default async function AdminWorkDetailPage({ params, searchParams }: { pa
         </AdminPanel>
       </Box>
 
+      <AdminPanel title={`Extras do AniDB (${extras.length})`} testId="work-detail-extras">
+        <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+          Especiais, aberturas e encerramentos, trailers e paródias: ficam fora da sequência 1, 2, 3, não contam como lançados e não entram no calendário.
+        </Typography>
+        <WorkExtrasAdmin extras={extras} />
+      </AdminPanel>
+
       <AdminPanel title="Editar a obra" testId="work-detail-edit">
         <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
           Valores da fonte e da curadoria aparecem aqui como estão hoje; os marcados &quot;manual&quot; foram corrigidos à mão e a importação não os altera.
@@ -229,7 +247,7 @@ export default async function AdminWorkDetailPage({ params, searchParams }: { pa
               columns={[
                 { key: "t", label: "Quando", render: (r) => <span suppressHydrationWarning>{fmtFull(new Date(r.at), timeZone)}</span> },
                 { key: "o", label: "Origem", render: (r) => [ORIGIN_LABEL[r.origin] ?? r.origin, r.actorName].filter(Boolean).join(" · ") },
-                { key: "f", label: "Campo", render: (r) => FIELD_LABELS[r.field as keyof typeof FIELD_LABELS] ?? r.field },
+                { key: "f", label: "Campo", render: (r) => fieldLabel(r) },
                 { key: "b", label: "Antes", render: (r) => <span style={{ overflowWrap: "anywhere" }}>{value(r.before).slice(0, 200)}</span> },
                 { key: "a", label: "Depois", render: (r) => <span style={{ overflowWrap: "anywhere" }}>{value(r.after).slice(0, 200)}</span> },
                 { key: "r", label: "Motivo", render: (r) => r.reason ?? "—" },

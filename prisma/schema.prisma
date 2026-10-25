@@ -545,6 +545,39 @@ model CatalogEntry {
   schedule          AiringScheduleEntry[]
   /// Índice dos gêneros (Fase 7, ADR 0010): mantido pelo banco a partir de `genres`.
   genreLinks        CatalogGenre[]
+  /// Extras do AniDB (especiais, aberturas/encerramentos, trailers…), fora da sequência regular.
+  extras            EpisodeExtra[]
+}
+
+/**
+ * Extras de uma obra vindos do AniDB: especiais (S1), aberturas e encerramentos (C1), trailers (T1), paródias (P1) e
+ * outros (O1). Ficam fora da sequência 1, 2, 3 — não contam como episódio lançado, não entram no calendário nem no sino.
+ * Identidade: (obra do catálogo, código do AniDB). Apagados junto com a obra (são só dados da fonte).
+ */
+model EpisodeExtra {
+  id             String       @id @default(cuid())
+  catalogEntryId String
+  catalogEntry   CatalogEntry @relation(fields: [catalogEntryId], references: [id], onDelete: Cascade)
+  /// Código do AniDB: S1, C2, T1, P1, O1.
+  code           String
+  /// SPECIAL | CREDIT | TRAILER | PARODY | OTHER
+  kind           String
+  /// Número dentro do tipo (o 2 de "S2").
+  number         Int
+  title          String?
+  titleEn        String?
+  titleJa        String?
+  synopsis       String?
+  /// Só o dia (o AniDB não informa horário).
+  airDate        DateTime?    @db.Date
+  source         String       @default("anidb")
+  /// Campos corrigidos à mão: a fonte não sobrescreve.
+  manualFields   String[]     @default([])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @default(now()) @updatedAt
+
+  @@unique([catalogEntryId, code])
+  @@index([catalogEntryId, kind])
 }
 
 /**

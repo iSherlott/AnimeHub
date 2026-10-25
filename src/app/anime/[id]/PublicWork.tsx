@@ -29,6 +29,8 @@ import { asScheduledEpisodes, loadGlobalEpisodes } from "@/lib/globalEpisodes";
 import { SynopsisText } from "@/components/SynopsisText";
 import { WatchLinks } from "@/components/WatchLinks";
 import { WorkHero } from "@/components/WorkHero";
+import { WorkExtras } from "@/components/WorkExtras";
+import { loadExtras } from "@/lib/episodeExtras";
 import { WorkDiscussions, WorkQuizEntry, WorkRelated } from "@/components/WorkSections";
 
 /**
@@ -50,7 +52,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
     : null;
   if (owned) redirect(`/anime/${owned.id}`);
 
-  const [nextEpisode, catalog, allSeasons, schedule, images, timeline, franchiseSteps, story] = await Promise.all([
+  const [nextEpisode, catalog, allSeasons, schedule, images, timeline, franchiseSteps, story, extras] = await Promise.all([
     prisma.airingScheduleEntry.findFirst({ where: { anilistId, airingAt: { gte: new Date() }, status: "ACTIVE" }, orderBy: { airingAt: "asc" }, select: { episode: true, airingAt: true } }),
     prisma.catalogEntry.findUnique({ where: { anilistId }, select: { siteScore: true, siteScoreVotes: true, kind: true, officialSite: true, descriptionPt: true, descriptionJa: true, format: true, status: true, season: true, seasonYear: true, episodes: true } }),
     loadFranchiseSeasons(anilistId),
@@ -60,6 +62,8 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
     loadFranchiseSteps(anilistId),
     // Reboot e arcos (Epic 48): a outra versão da história e os arcos dos episódios.
     loadStoryContext(anilistId),
+    // Especiais, aberturas, trailers… do AniDB: seção própria, fora da sequência de episódios.
+    loadExtras({ anilistId }),
   ]);
   // As temporadas da outra versão da história (reboot) não entram nas desta.
   const otherVersion = new Set(story.otherVersionIds);
@@ -174,6 +178,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
                 </WorkSeasons>
               </>
             )}
+            <WorkExtras extras={extras} />
           </Box>
         </Box>
 

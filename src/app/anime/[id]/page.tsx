@@ -48,6 +48,8 @@ import { loadTimeline } from "@/lib/curation/timelineLoader";
 import { loadFranchiseSteps, stepsFromTimeline } from "@/lib/curation/franchiseTimelineLoader";
 import { FranchiseNav } from "@/components/FranchiseNav";
 import { WorkHero } from "@/components/WorkHero";
+import { WorkExtras } from "@/components/WorkExtras";
+import { loadExtras } from "@/lib/episodeExtras";
 import { WorkDiscussions, WorkQuizEntry, WorkRelated } from "@/components/WorkSections";
 import { PublicWork } from "@/app/anime/[id]/PublicWork";
 
@@ -133,10 +135,12 @@ export default async function AnimeDetailPage({
   const mySeasons = Object.fromEntries(mySeasonRows.map((a) => [a.anilistId, { animeId: a.id, watchState: a.watchState, waiting: a.waiting, userScore: a.userScore }]));
 
   // Nota do site e linha do tempo (especiais) da obra; o site oficial do catálogo cobre quem ainda não o tem na lista.
-  const [catalogMeta, timeline, franchiseSteps] = await Promise.all([
+  const [catalogMeta, timeline, franchiseSteps, extras] = await Promise.all([
     prisma.catalogEntry.findUnique({ where: { anilistId: anime.anilistId }, select: { siteScore: true, siteScoreVotes: true, kind: true, officialSite: true, descriptionPt: true, descriptionJa: true, format: true, status: true, season: true, seasonYear: true, episodes: true } }),
     loadTimeline(anime.anilistId),
     loadFranchiseSteps(anime.anilistId),
+    // Especiais, aberturas, trailers… do AniDB: seção própria, fora da sequência de episódios.
+    loadExtras({ anilistId: anime.anilistId }),
   ]);
   const officialSite = anime.officialSite ?? catalogMeta?.officialSite ?? null;
   // OVA, ODA e filmes se ramificam da temporada em que foram ao ar; a página mostra os da temporada aberta junto dos episódios.
@@ -262,6 +266,7 @@ export default async function AnimeDetailPage({
                 />
               </Suspense>
             </WorkSeasons>
+            <WorkExtras extras={extras} />
           </Box>
 
           {hasTrailer && (

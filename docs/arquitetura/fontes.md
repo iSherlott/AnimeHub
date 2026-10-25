@@ -44,7 +44,7 @@ A regra geral vale para todas as fontes:
 | Identificador | `anidbId`. |
 | Campos | Títulos em vários idiomas (pt, ja, x-jat, en), sinopse, imagem, episódios (número, títulos, dia), nota, prêmios e recursos. O HTML da temporada é colado pelo admin. |
 | Limite | API com cliente registrado (uma requisição a cada 2 s; quem abusa é bloqueado). Uso em "Atualizar dados" de uma obra e nos episódios das obras só do AniDB (`src/lib/anidbEpisodes.ts`): lote com intervalo de `ANIDB_REQUEST_GAP_MS` (padrão 4 s), cada obra no máximo uma vez a cada 30 dias, e o lote para no primeiro sinal de bloqueio. O HTML colado não faz requisição. |
-| Não traz | Sinopse e miniatura por episódio, horário. Especiais têm numeração própria (`S1`, `C2`…) e não entram na sequência regular. |
+| Não traz | Sinopse e miniatura por episódio, horário. Especiais, aberturas/encerramentos, trailers e paródias têm numeração própria (`S1`, `C2`, `T1`, `P1`, `O1`): não entram na sequência regular e viram extras da obra (`EpisodeExtra`, `src/lib/episodeExtras.ts`), só com o dia. |
 | Atribuição | Origem `anidb`. Nas obras sem AniList ID, o AniDB é a fonte dos episódios (`DATE_ONLY`). As correspondências AniDB ↔ AniList são revisadas em Admin → Correspondências. |
 
 ## Jikan, MyMemory/LibreTranslate, notícias

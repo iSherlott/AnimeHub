@@ -167,7 +167,8 @@ Depois siga os passos de "Atualizar para uma versão nova" acima e confira o res
 3. Admin → Taxonomia lista os gêneros. Os que aparecem como "não registrados" vieram de dados antigos fora do vocabulário: registre como variação de um gênero, mescle ou exclua.
 4. Os papéis novos (Curador, Moderador) só se dão em Admin → Acesso e moderação → Usuários. Ninguém ganha papel sozinho.
 
-A migração `20261031100000_anidb_only_episodes` (episódios das obras só do AniDB) veio depois, na mesma atualização.
+As migrações `20261031100000_anidb_only_episodes` (episódios das obras só do AniDB) e `20261101100000_episode_extras`
+(especiais, aberturas, trailers do AniDB como extras da obra) vieram depois, na mesma atualização.
 Para o lote do AniDB funcionar, o servidor precisa de `ANIDB_CLIENT_NAME` e `ANIDB_CLIENT_VERSION` (o client registrado no
 AniDB). Opcional: `ANIDB_REQUEST_GAP_MS` (intervalo entre obras, padrão 4000 ms; não baixe de 2000).
 

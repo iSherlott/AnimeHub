@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAnidbAnimeById, isAnidbConfigured, type AnidbAnime } from "@/lib/anidb";
 import { upsertSourceEpisodes, type SourceEpisode } from "@/lib/globalEpisodes";
 import { markCancelled, startExclusiveJob } from "@/lib/jobLock";
+import { extraEpisodes, upsertExtras } from "@/lib/episodeExtras";
 
 /**
  * Episódios das obras sem AniList ID (obras só do AniDB). A AniList não tem essas obras, então o episódio vem do AniDB:
@@ -33,15 +34,18 @@ export function regularEpisodes(anime: Pick<AnidbAnime, "episodes">): SourceEpis
 }
 
 /** Busca e grava os episódios de uma obra no AniDB. Devolve quantos episódios foram gravados ou completados. */
-export async function fetchAnidbEpisodes(entry: Pick<CatalogEntry, "id" | "anidbId" | "anilistId" | "titleRomaji" | "titleEnglish" | "titleNative">, mode: "fill" | "refresh" = "fill"): Promise<{ found: number; written: number }> {
+export async function fetchAnidbEpisodes(entry: Pick<CatalogEntry, "id" | "anidbId" | "anilistId" | "titleRomaji" | "titleEnglish" | "titleNative">, mode: "fill" | "refresh" = "fill"): Promise<{ found: number; written: number; extras: number }> {
   if (entry.anidbId === null) throw new Error("A obra não tem AniDB ID.");
   if (!isAnidbConfigured()) throw new Error("AniDB não configurada (ANIDB_CLIENT_NAME e ANIDB_CLIENT_VERSION).");
   try {
     const anime = await getAnidbAnimeById(entry.anidbId);
     const episodes = regularEpisodes(anime);
     const written = await upsertSourceEpisodes(entry.anilistId, { titleRomaji: entry.titleRomaji, titleEnglish: entry.titleEnglish, titleNative: entry.titleNative, catalogEntryId: entry.id }, episodes, "anidb", mode);
+    // Especiais, aberturas/encerramentos, trailers… viram extras da obra (fora da sequência regular).
+    const extras = extraEpisodes(anime);
+    await upsertExtras(entry.id, extras, mode);
     await prisma.anidbEpisodeCheck.upsert({ where: { catalogEntryId: entry.id }, create: { catalogEntryId: entry.id, anidbId: entry.anidbId, found: episodes.length }, update: { anidbId: entry.anidbId, found: episodes.length, error: null, checkedAt: new Date() } });
-    return { found: episodes.length, written };
+    return { found: episodes.length, written, extras: extras.length };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await prisma.anidbEpisodeCheck

@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { moveExtras } from "@/lib/episodeExtras";
 
 /**
  * Identidade interna da obra (Fase 2, ADR 0008). O catálogo (`CatalogEntry.id`) é a chave; o `anilistId` é só um
@@ -33,6 +34,7 @@ export async function reassignCatalogEntry(fromId: string, toId: string, db: Db 
     db.anime.updateMany({ where: { catalogEntryId: fromId }, data: { catalogEntryId: toId } }),
   ]);
   const schedule = await mergeScheduleInto(fromId, toId, target?.anilistId ?? null, db);
+  await moveExtras(fromId, toId, db);
   return { productions: productions.count, listEntries: listEntries.count, schedule };
 }
 

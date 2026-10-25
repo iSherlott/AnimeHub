@@ -129,7 +129,6 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 
 ## O que fica para depois
 
-- **Especiais com numeração própria (AniDB `S1`, `C2`).** Ficam fora da sequência regular, e não há tela para criá-los como episódio extra.
 - **Apagar as tabelas descontinuadas.** `Episode` e `WatchProgress` estão sem uso, mas continuam no banco. A remoção só depois de conferir em produção.
 - **Kitsu e AniDB na atualização seletiva.** Hoje a comparação é só com a AniList.
 - **Prioridade das pendências pela tela.** Hoje ela é configurada por variável de ambiente, não pelo painel.
@@ -144,3 +143,13 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 - **Banco.** `20261031100000_anidb_only_episodes`.
 - **Testes.** Spec 111, com AniDB e AniList falsos.
 - **Limitação.** Essas obras continuam sem página pública, então os episódios aparecem só no admin e passam a valer na página quando a obra é ligada à AniList.
+
+## Depois: extras do AniDB (especiais, créditos, trailers)
+
+- **O que mudou.** Os códigos do AniDB fora da sequência regular (`S1` especial, `C2` abertura/encerramento, `T1` trailer, `P1` paródia, `O1` outro) viram extras da obra.
+  - Tabela `EpisodeExtra`, identidade (obra do catálogo, código). Vêm na mesma consulta dos episódios, sem consulta a mais ao AniDB.
+  - Página da obra: seção "Extras", minimizada, separada da lista de episódios e agrupada por tipo; o título segue o idioma escolhido.
+  - Admin → detalhe da obra: painel "Extras do AniDB" com edição (título, sinopse, dia), versão otimista (409), proteção contra o AniDB e histórico.
+  - Não contam como lançados, não entram no calendário, no sino nem no "próximo episódio". Ligar a obra à AniList leva os extras.
+- **Banco.** `20261101100000_episode_extras` (só cria a tabela).
+- **Testes.** Spec 112, com AniDB e AniList falsos; testes de unidade em `src/lib/episodeExtras.test.ts`.

@@ -18,7 +18,7 @@ export function FetchAnidbEpisodesButton({ workId }: { workId: string }) {
     try {
       const res = await fetch(`/api/admin/works/${workId}/anidb-episodes`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
-      setMsg(res.ok ? { tone: "ok", text: `${data.found} episódio(s) no AniDB; ${data.written} gravado(s) ou completado(s).` } : { tone: "error", text: data.error ?? "Não foi possível." });
+      setMsg(res.ok ? { tone: "ok", text: `${data.found} episódio(s) no AniDB; ${data.written} gravado(s) ou completado(s); ${data.extras} extra(s).` } : { tone: "error", text: data.error ?? "Não foi possível." });
       if (res.ok) router.refresh();
     } finally {
       setBusy(false);

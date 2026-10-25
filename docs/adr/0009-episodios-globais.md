@@ -50,5 +50,12 @@ acompanhamento é por obra" era violada pelo "Adiar" ("parei no EP02", "2 episó
   Busca por obra (detalhe da obra) ou em lote (Admin → Episódios; job ANIDB_EPISODES, uma obra a cada
   `ANIDB_REQUEST_GAP_MS`, padrão 4 s; cada obra no máximo uma vez a cada 30 dias; para no primeiro sinal de bloqueio).
 - Especiais sem numeração regular não entram na sequência; ficam como obras próprias (OVA/ODA/filme) na linha do tempo.
+- Extras do AniDB (desde 01/11/2026): os códigos `S` (especial), `C` (abertura/encerramento), `T` (trailer/promocional),
+  `P` (paródia) e `O` (outro) viram linhas de `EpisodeExtra`, identidade (obra do catálogo, código). Ficam numa seção
+  própria da página da obra e do detalhe no admin: não contam como lançados, não entram no calendário nem no sino e não
+  mexem no "próximo episódio". Vêm na mesma consulta dos episódios (busca da obra, lote e "Atualizar dados"); o que o
+  admin corrige (título, sinopse, dia) fica protegido (`manualFields`) e vai para o histórico da obra (entidade
+  `EpisodeExtra`). Extra que o AniDB deixou de listar não é apagado. Ao ligar a obra à AniList (`moveExtras`), o extra
+  com o mesmo código no destino fica e só se completa; os outros mudam de obra. Apagar a obra apaga os extras (cascata).
 - Reverter: as colunas novas podem ser ignoradas; `airingAt` volta a NOT NULL só depois de apagar ou datar as linhas sem
   hora (`DELETE FROM "AiringScheduleEntry" WHERE "airingAt" IS NULL`), o que perde os episódios copiados da tabela antiga.

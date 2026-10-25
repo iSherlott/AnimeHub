@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { getAnimeById, getOfficialSiteUrl } from "@/lib/anilist";
 import { refetchEpisodes } from "@/lib/episodes";
 import { upsertSourceEpisodes } from "@/lib/globalEpisodes";
+import { extraEpisodes, upsertExtras } from "@/lib/episodeExtras";
+import { catalogEntryIdFor } from "@/lib/catalogLink";
 import { searchJikanAnime } from "@/lib/jikan";
 import { searchShikimoriAnime } from "@/lib/shikimori";
 import { getAnidbAnimeById, isAnidbConfigured } from "@/lib/anidb";
@@ -203,6 +205,9 @@ export async function refreshAnimeData(initialAnime: Anime): Promise<RefreshResu
           "refresh"
         );
         episodeCount = await prisma.airingScheduleEntry.count({ where: { anilistId: anime.anilistId } });
+        // Especiais, aberturas/encerramentos, trailers… viram extras da obra do catálogo.
+        const catalogEntryId = await catalogEntryIdFor(anime.anilistId);
+        if (catalogEntryId) await upsertExtras(catalogEntryId, extraEpisodes(anidbData), "refresh");
       }
 
       status.anidb = "ok";

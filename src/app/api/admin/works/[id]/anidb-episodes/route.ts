@@ -16,7 +16,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   if (!isAnidbConfigured()) return NextResponse.json({ error: "AniDB não configurada no servidor." }, { status: 503 });
   try {
     const result = await fetchAnidbEpisodes(entry, "refresh");
-    await prisma.adminLog.create({ data: { source: "AniDB", event: "AniDB episodes", message: `${entry.titleRomaji}: ${result.found} episódio(s) no AniDB, ${result.written} gravado(s) ou completado(s).`, context: `catalog:${entry.id}`, adminName: user.displayName } });
+    await prisma.adminLog.create({ data: { source: "AniDB", event: "AniDB episodes", message: `${entry.titleRomaji}: ${result.found} episódio(s) no AniDB, ${result.written} gravado(s) ou completado(s), ${result.extras} extra(s).`, context: `catalog:${entry.id}`, adminName: user.displayName } });
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json({ error: `O AniDB não respondeu: ${(error instanceof Error ? error.message : String(error)).slice(0, 200)}` }, { status: 502 });
