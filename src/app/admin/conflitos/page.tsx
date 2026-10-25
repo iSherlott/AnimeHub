@@ -2,6 +2,7 @@ import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import { Box, Typography } from "@mui/material";
 import { prisma } from "@/lib/prisma";
+import { OVERRIDE_SOURCE } from "@/lib/airingCache";
 import { AdminButtonLink } from "@/components/admin/AdminButtonLink";
 import { adminPanelSx, AdminPageHeader, AdminPanel, SmallChip } from "@/components/admin/AdminUi";
 import { ConflictActions } from "@/components/admin/ConflictActions";
@@ -29,7 +30,7 @@ function SourcePanel({ label, source, value, timeZone, meta }: { label: string; 
 
 /** Admin → Conflitos (Figma `8:4327`): duas fontes divergem num campo; a decisão é humana e auditável. */
 export default async function AdminConflictsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const { timeZone } = await requireAdminPage();
+  const { timeZone } = await requireAdminPage("catalog");
   const wanted = (await searchParams).id;
 
   const pending = await prisma.catalogConflict.findMany({ where: { status: "PENDING" }, orderBy: { createdAt: "asc" }, take: 50 });
@@ -50,7 +51,9 @@ export default async function AdminConflictsPage({ searchParams }: { searchParam
     );
   }
 
-  const bMeta = selected.bMeta ? (JSON.parse(selected.bMeta) as { sourceKey?: string; parserVersion?: string; capturedAt?: string }) : {};
+  const bMeta = selected.bMeta ? (JSON.parse(selected.bMeta) as { sourceKey?: string; parserVersion?: string; capturedAt?: string; overrideReason?: string; overrideBy?: string; previousSourceValue?: string }) : {};
+  // Fase 5: "a fonte mudou depois do override" — a decisão do admin foi tomada sobre um valor que a fonte já trocou.
+  const overrideConflict = selected.bSource === OVERRIDE_SOURCE;
   const isPending = selected.status === "PENDING";
   const others = pending.filter((c) => c.id !== selected.id);
 
@@ -92,9 +95,18 @@ export default async function AdminConflictsPage({ searchParams }: { searchParam
           source={`${selected.bSource}${bMeta.sourceKey ? ` #${bMeta.sourceKey}` : ""}`}
           value={selected.bValue}
           timeZone={timeZone}
-          meta={[`Broadcast origem · ${selected.bValue.toISOString()}`, ...(bMeta.capturedAt ? [`Captura · ${fmtFull(new Date(bMeta.capturedAt), timeZone)}`] : []), ...(bMeta.parserVersion ? [`ParserVersion · ${bMeta.parserVersion}`] : []), "HTML colado"]}
+          meta={
+            overrideConflict
+              ? [`Override de ${bMeta.overrideBy ?? "admin"}${bMeta.overrideReason ? ` · ${bMeta.overrideReason}` : ""}`, ...(bMeta.previousSourceValue ? [`Valor da fonte quando o override foi feito · ${fmtFull(new Date(bMeta.previousSourceValue), timeZone)}`] : [])]
+              : [`Broadcast origem · ${selected.bValue.toISOString()}`, ...(bMeta.capturedAt ? [`Captura · ${fmtFull(new Date(bMeta.capturedAt), timeZone)}`] : []), ...(bMeta.parserVersion ? [`ParserVersion · ${bMeta.parserVersion}`] : []), "HTML colado"]
+          }
         />
       </Box>
+      {overrideConflict && isPending && (
+        <Notice tone="warning" title="A fonte mudou depois do override" testId="conflict-override-note">
+          O horário manual foi definido sobre um valor que a AniList já trocou. Até a decisão, o calendário continua usando o override. &quot;Usar fonte A&quot; tira o override; &quot;fonte B&quot; mantém o horário manual.
+        </Notice>
+      )}
 
       {isPending ? (
         <ConflictActions

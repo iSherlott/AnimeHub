@@ -95,3 +95,33 @@ export async function deleteQuiz(quizId: string, actor: AdminActor): Promise<"ok
   await logEvent({ source: "Quiz", event: "Quiz deleted", message: `Quiz da obra #${quiz.anilistId} removido.`, context: `Obra AniList #${quiz.anilistId}`, actor });
   return "ok";
 }
+
+/** Arquivar / desarquivar (Fase 9): o quiz sai do ar sem apagar perguntas, tentativas nem títulos concedidos. */
+export async function setArchived(quizId: string, archived: boolean, actor: AdminActor): Promise<boolean> {
+  const quiz = await prisma.quiz.findUnique({ where: { id: quizId } });
+  if (!quiz) return false;
+  await prisma.quiz.update({ where: { id: quizId }, data: { archivedAt: archived ? new Date() : null } });
+  await prisma.adminLog.create({ data: { source: "Quiz", event: archived ? "Quiz archived" : "Quiz unarchived", message: `Quiz da obra #${quiz.anilistId} ${archived ? "arquivado (fora do ar)" : "desarquivado"}.`, context: `quiz:${quizId}`, adminName: actor.name } });
+  return true;
+}
+
+/**
+ * Erros de configuração que impedem publicar (Fase 9): posições 1..10 faltando ou repetidas, texto vazio, alternativas
+ * repetidas ou vazias, resposta certa fora de A–D, título de recompensa vazio.
+ */
+export function quizConfigErrors(quiz: { titleReward: string }, questions: Array<{ position: number; text: string; optionA: string; optionB: string; optionC: string; optionD: string; correct: number }>): string[] {
+  const errors: string[] = [];
+  if (!quiz.titleReward.trim()) errors.push("sem título de recompensa");
+  const positions = questions.map((q) => q.position).sort((a, b) => a - b);
+  const missing = Array.from({ length: QUIZ_LENGTH }, (_, i) => i + 1).filter((p) => !positions.includes(p));
+  if (missing.length) errors.push(`faltam as perguntas ${missing.join(", ")}`);
+  if (new Set(positions).size !== positions.length) errors.push("posição repetida");
+  for (const q of questions) {
+    const options = [q.optionA, q.optionB, q.optionC, q.optionD].map((o) => o.trim().toLowerCase());
+    if (!q.text.trim()) errors.push(`pergunta ${q.position} sem texto`);
+    if (options.some((o) => !o)) errors.push(`pergunta ${q.position} com alternativa vazia`);
+    else if (new Set(options).size !== options.length) errors.push(`pergunta ${q.position} com alternativas repetidas`);
+    if (!Number.isInteger(q.correct) || q.correct < 0 || q.correct > 3) errors.push(`pergunta ${q.position} com resposta fora de A–D`);
+  }
+  return errors;
+}

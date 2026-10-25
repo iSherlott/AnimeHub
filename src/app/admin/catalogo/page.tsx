@@ -22,7 +22,7 @@ const FORMAT_LABEL: Record<string, string> = { TV: "TV", TV_SHORT: "TV curta", M
  * A tabela rola sem fim: a primeira página vem pronta e as seguintes chegam ao descer.
  */
 export default async function AdminCatalogPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  await requireAdminPage();
+  await requireAdminPage("catalog");
   const filters = parseAdminCatalogFilters(await searchParams);
   const { q, tipo, status, fonte } = filters;
 

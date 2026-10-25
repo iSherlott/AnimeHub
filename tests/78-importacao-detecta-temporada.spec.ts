@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN } from "./test-auth";
@@ -36,7 +37,7 @@ test.describe("Importação — temporada pelas datas do HTML", () => {
 
   async function cleanup() {
     await prisma.adminJob.deleteMany({ where: { records: { some: { sourceKey: { in: IDS.map(String) } } } } });
-    await prisma.catalogEntry.deleteMany({ where: { anidbId: { in: IDS } } });
+    await deleteCatalogEntries(prisma, { where: { anidbId: { in: IDS } } });
   }
 
   test.beforeAll(async () => {

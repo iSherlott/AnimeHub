@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { TEST_USER_EMAIL } from "./test-auth";
@@ -24,7 +25,7 @@ test.describe.serial("Plataforma: cache fora, hentai como categoria", () => {
     const { season, seasonYear } = currentSeason();
     await prisma.anime.deleteMany({ where: { anilistId: SOURCE } });
     await prisma.airingScheduleEntry.deleteMany({ where: { anilistId: { in: ids } } });
-    await prisma.catalogEntry.deleteMany({ where: { anilistId: { in: ids } } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: { in: ids } } });
     const base = { season, seasonYear, source: "anilist" };
     await prisma.catalogEntry.createMany({
       data: [
@@ -51,7 +52,7 @@ test.describe.serial("Plataforma: cache fora, hentai como categoria", () => {
   test.afterAll(async () => {
     await prisma.anime.deleteMany({ where: { anilistId: SOURCE } });
     await prisma.airingScheduleEntry.deleteMany({ where: { anilistId: { in: ids } } });
-    await prisma.catalogEntry.deleteMany({ where: { anilistId: { in: ids } } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: { in: ids } } });
     await prisma.$disconnect();
   });
 

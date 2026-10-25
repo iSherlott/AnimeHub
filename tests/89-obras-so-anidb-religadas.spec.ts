@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_SESSION_TOKEN } from "./test-auth";
@@ -25,7 +26,7 @@ test.describe.serial("Obras só do AniDB religadas à AniList", () => {
     await prisma.production.deleteMany({ where: { anilistId: { in: [ANILIST, SPELL_ANILIST] } } });
     await prisma.franchise.deleteMany({ where: { rootAnilistId: { in: [ANILIST, SPELL_ANILIST] } } });
     await prisma.airingScheduleEntry.deleteMany({ where: { anilistId: { in: [ANILIST, SPELL_ANILIST] } } });
-    await prisma.catalogEntry.deleteMany({ where: { OR: [{ anilistId: { in: [ANILIST, SPELL_ANILIST] } }, { anidbId: { in: [ANIDB, ALONE_ANIDB, SPELL_ANIDB] } }] } });
+    await deleteCatalogEntries(prisma, { where: { OR: [{ anilistId: { in: [ANILIST, SPELL_ANILIST] } }, { anidbId: { in: [ANIDB, ALONE_ANIDB, SPELL_ANIDB] } }] } });
   }
 
   test.beforeAll(async () => {

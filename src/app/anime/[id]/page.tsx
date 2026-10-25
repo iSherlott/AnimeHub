@@ -24,6 +24,7 @@ import { platformAnilistIds } from "@/lib/platform";
 import { Row } from "@/components/Row";
 import { RecommendationCard, type RecommendationData } from "@/components/RecommendationCard";
 import { ensureEpisodes, type EpisodesResult } from "@/lib/episodes";
+import { timed } from "@/lib/episodeState";
 import { ensureTitleFurigana } from "@/lib/ensureFurigana";
 import { callInternalService } from "@/lib/serviceDelegate";
 import type { AniListCharacterEntry, AniListRecommendation } from "@/lib/anilist";
@@ -121,7 +122,7 @@ export default async function AnimeDetailPage({
   // As temporadas da outra versão da história (reboot) não entram nas desta.
   const otherVersion = new Set(story.otherVersionIds);
   const franchiseSeasons = allSeasons.filter((s) => !otherVersion.has(s.anilistId));
-  const schedule = Object.fromEntries(scheduleRows.map((r) => [r.episode, r.airingAt.toISOString()]));
+  const schedule = Object.fromEntries(timed(scheduleRows).map((r) => [r.episode, r.airingAt.toISOString()]));
   const episodeImages = Object.fromEntries(imageRows.map((r) => [r.episode, r.thumbnail]));
 
   // O andamento de cada temporada da obra na lista de quem olha (para escolher: acompanhando, terminei, dropei…).

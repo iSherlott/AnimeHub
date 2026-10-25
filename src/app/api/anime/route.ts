@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { catalogEntryIdFor } from "@/lib/catalogLink";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { deriveSeriesInfo } from "@/lib/series";
@@ -93,6 +94,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId: user.id,
         anilistId: media.id,
+        catalogEntryId: await catalogEntryIdFor(media.id),
         titleRomaji: media.titleRomaji,
         titleEnglish: media.titleEnglish,
         titleNative: media.titleNative,

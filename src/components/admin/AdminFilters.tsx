@@ -14,7 +14,7 @@ export type AdminFilterField =
  * (`?q=…&estado=…`), então a lista é uma página de servidor compartilhável e o
  * botão voltar restaura o filtro. A busca espera 350 ms depois de digitar.
  */
-export function AdminFilters({ fields }: { fields: AdminFilterField[] }) {
+export function AdminFilters({ fields, keep = {} }: { fields: AdminFilterField[]; keep?: Record<string, string> }) {
   const router = useRouter();
   const pathname = usePathname();
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(fields.map((f) => [f.name, f.value])));
@@ -28,8 +28,9 @@ export function AdminFilters({ fields }: { fields: AdminFilterField[] }) {
   );
 
   function push(next: Record<string, string>) {
+    // `keep`: parâmetros fixos da página (ex.: a obra escolhida em Episódios), que os filtros não mostram mas não podem perder.
     const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(next)) if (value) params.set(key, value);
+    for (const [key, value] of Object.entries({ ...keep, ...next })) if (value) params.set(key, value);
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname);
   }

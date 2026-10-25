@@ -1,6 +1,8 @@
 import { ADULT_CONTENT_BLOCKED } from "@/lib/contentPolicy";
+import { stripProtected } from "@/lib/workPropagation";
 import type { CatalogEntry } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { markCancelled, startExclusiveJob } from "@/lib/jobLock";
 import { getMediaForCuration, type CurationMedia } from "@/lib/anilist";
 import { siteScoreOf } from "@/lib/siteScore";
 import { recomputeSiteScore } from "@/lib/siteScoreDb";
@@ -14,6 +16,8 @@ const FETCH_RETRIES = 3;
 const STALE_AFTER_MS = 10 * 60 * 1000;
 
 export type CurationProgress = {
+  /** Parou a pedido (Fase 8). */
+  cancelled?: boolean;
   version: number;
   /** Obras da plataforma. */
   total: number;
@@ -71,15 +75,23 @@ async function fetchMedia(ids: number[]): Promise<Map<number, CurationMedia> | n
 
 async function syncIssues(entry: CatalogEntry, issues: Array<{ code: string; detail?: string }>): Promise<void> {
   const codes = issues.map((i) => i.code);
+  const now = new Date();
   // As pendências da auditoria das linhas do tempo (AUDIT_CODES) pertencem a ela: a curadoria não as fecha.
-  await prisma.curationIssue.updateMany({ where: { entryId: entry.id, status: "OPEN", code: { notIn: [...codes, ...AUDIT_CODES] } }, data: { status: "RESOLVED" } });
+  // A condição sumiu: resolvida (inclusive a ignorada — se voltar, reabre como nova ocorrência).
+  await prisma.curationIssue.updateMany({ where: { entryId: entry.id, status: { in: ["OPEN", "DISMISSED"] }, code: { notIn: [...codes, ...AUDIT_CODES] } }, data: { status: "RESOLVED", resolvedAt: now } });
+  const existing = new Map((await prisma.curationIssue.findMany({ where: { entryId: entry.id, code: { in: codes } }, select: { code: true, status: true } })).map((i) => [i.code, i.status]));
   for (const issue of issues) {
     const common = { anilistId: entry.anilistId, anidbId: entry.anidbId, title: entry.titleRomaji, detail: issue.detail ?? null };
-    await prisma.curationIssue.upsert({
-      where: { entryId_code: { entryId: entry.id, code: issue.code } },
-      create: { entryId: entry.id, code: issue.code, ...common },
-      update: { ...common, status: "OPEN" },
-    });
+    const status = existing.get(issue.code);
+    if (status === undefined) {
+      await prisma.curationIssue.create({ data: { entryId: entry.id, code: issue.code, ...common } });
+    } else if (status === "RESOLVED") {
+      // O problema reapareceu (Fase 7): reabre e conta a recorrência.
+      await prisma.curationIssue.update({ where: { entryId_code: { entryId: entry.id, code: issue.code } }, data: { ...common, status: "OPEN", resolvedAt: null, reopenCount: { increment: 1 } } });
+    } else {
+      // Aberta continua aberta; ignorada com justificativa continua ignorada enquanto a condição for a mesma.
+      await prisma.curationIssue.update({ where: { entryId_code: { entryId: entry.id, code: issue.code } }, data: common });
+    }
   }
 }
 
@@ -92,9 +104,13 @@ async function curateOne(
   progress: CurationProgress
 ): Promise<void> {
   const result = curateEntry({ entry, media, translations, anidbGenres });
+  // Campos corrigidos à mão (Fase 3) ficam como o admin deixou.
+  result.patch = stripProtected(result.patch, entry.manualFields);
+  // Sinopse em português vinda do cache de traduções: é automática (Fase 7).
+  const ptStatus = result.patch.descriptionPt && result.patch.descriptionPt !== entry.descriptionPt ? { descriptionPtStatus: "AUTO" } : {};
   await prisma.catalogEntry.update({
     where: { id: entry.id },
-    data: { ...result.patch, siteScore: score.score, siteScoreVotes: score.votes, curatedAt: new Date(), curationVersion: CURATION_VERSION, ...(result.adult && ADULT_CONTENT_BLOCKED ? { onPlatform: false } : {}) },
+    data: { ...result.patch, ...ptStatus, siteScore: score.score, siteScoreVotes: score.votes, curatedAt: new Date(), curationVersion: CURATION_VERSION, ...(result.adult && ADULT_CONTENT_BLOCKED ? { onPlatform: false } : {}) },
   });
 
   // O que é derivado também vai para as cópias da obra (produção, lista de cada pessoa, calendário).
@@ -140,9 +156,13 @@ export async function runCuration(
   const total = anilistIds ? all.length : await prisma.catalogEntry.count({ where: { onPlatform: true } });
   const ids = limit ? all.slice(0, limit) : all;
   const progress = emptyProgress(total, anilistIds ? 0 : total - all.length);
+  // Sinal de vida a cada passo (Fase 8): a trava de concorrência sabe que o job está vivo, e o pedido de cancelamento
+  // é visto aqui.
+  let cancelRequested = false;
   const save = async (note: string) => {
     progress.updatedAt = new Date().toISOString();
-    await prisma.adminJob.update({ where: { seq }, data: { processed: progress.done, total, progressNote: note, resultJson: JSON.stringify(progress) } }).catch(() => undefined);
+    const job = await prisma.adminJob.update({ where: { seq }, data: { processed: progress.done, total, progressNote: note, resultJson: JSON.stringify(progress), heartbeatAt: new Date() }, select: { cancelRequestedAt: true } }).catch(() => null);
+    cancelRequested = Boolean(job?.cancelRequestedAt);
     onBatch?.(progress);
   };
   await save(`Preparando a curadoria de ${ids.length} obras…`);
@@ -150,6 +170,10 @@ export async function runCuration(
   const anidbGenres = ids.length ? await loadAnidbGenres() : new Map<number, string[]>();
 
   for (let start = 0; start < ids.length; start += CURATION_BATCH) {
+    if (cancelRequested) {
+      progress.cancelled = true;
+      break;
+    }
     const entries = await prisma.catalogEntry.findMany({ where: { id: { in: ids.slice(start, start + CURATION_BATCH) } }, orderBy: { id: "asc" } });
     const anilistIds = entries.map((e) => e.anilistId).filter((x): x is number => x !== null);
     const media = await fetchMedia(anilistIds);
@@ -183,17 +207,9 @@ export async function runCuration(
 
 /** Cria o job de curadoria (kind CURATION) e devolve o número dele. Recusa se já houver um rodando. */
 export async function createCurationJob(actor: { id: string; name: string }): Promise<{ seq: number } | { running: number }> {
-  const running = await prisma.adminJob.findFirst({ where: { kind: "CURATION", state: "RUNNING" }, orderBy: { seq: "desc" }, select: { seq: true, resultJson: true } });
-  if (running) {
-    const updatedAt = running.resultJson ? (JSON.parse(running.resultJson) as CurationProgress).updatedAt : null;
-    const stale = !updatedAt || Date.now() - Date.parse(updatedAt) > STALE_AFTER_MS;
-    if (!stale) return { running: running.seq };
-    await prisma.adminJob.update({ where: { seq: running.seq }, data: { state: "FAILED", error: "Interrompido (sem sinal de vida).", finishedAt: new Date() } });
-  }
-  const job = await prisma.adminJob.create({
-    data: { kind: "CURATION", source: "Catálogo", season: `Curadoria v${CURATION_VERSION}`, state: "RUNNING", stage: "COMMIT", progressNote: "Iniciando…", adminId: actor.id, adminName: actor.name },
-  });
-  return { seq: job.seq };
+  // Um por vez, de forma atômica (Fase 8, `jobLock`); um job sem sinal de vida é dado como interrompido.
+  const started = await startExclusiveJob("CURATION", { source: "Catálogo", season: `Curadoria v${CURATION_VERSION}`, stage: "COMMIT", progressNote: "Iniciando…", adminId: actor.id, adminName: actor.name }, STALE_AFTER_MS);
+  return started.ok ? { seq: started.job.seq } : { running: started.running.seq };
 }
 
 /** Roda a curadoria inteira como job auditável (SUCCESS com o resumo, ou FAILED com o motivo). */
@@ -214,6 +230,10 @@ export async function curateCatalog({
   if ("running" in created) return created;
   try {
     const progress = await runCuration(created.seq, { force, limit, anilistIds, onBatch });
+    if (progress.cancelled) {
+      await markCancelled(created.seq, `Cancelado a pedido depois de ${progress.done} obra(s); o que já foi curado fica (rodar de novo continua daí).`);
+      return progress;
+    }
     await prisma.adminJob.update({
       where: { seq: created.seq },
       data: { state: "SUCCESS", stage: "NOTIFICATION", progressNote: null, processed: progress.done, total: progress.total, finishedAt: new Date(), resultJson: JSON.stringify(progress) },

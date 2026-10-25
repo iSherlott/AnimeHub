@@ -28,7 +28,7 @@ function parseResult(json: string | null): ApplySummary | null {
 
 /** Admin → Importações → Resultado (Figma `8:4020`): a PRÉVIA do lote; nada foi salvo antes da confirmação. */
 export default async function ImportResultPage({ params, searchParams }: { params: Promise<{ seq: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
-  const { timeZone } = await requireAdminPage();
+  const { timeZone } = await requireAdminPage("catalog");
   const seq = Number((await params).seq);
   if (!Number.isInteger(seq) || seq < 1) notFound();
   const job = await prisma.adminJob.findUnique({ where: { seq }, select: { seq: true, source: true, season: true, state: true, error: true, createdAt: true, parserVersion: true, resultJson: true } });

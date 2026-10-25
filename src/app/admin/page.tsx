@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 /** Admin → Dashboard (Figma `8:3436`, "Operação do catálogo"): o lote em análise, conflitos, jobs e atividades. */
 export default async function AdminDashboardPage() {
-  const { timeZone } = await requireAdminPage();
+  const { timeZone } = await requireAdminPage("catalog");
   const now = new Date();
 
   const [running, latest, lastAniDbOk, lastAniDb, jobs, logs, conflicts, pendingRecords] = await Promise.all([

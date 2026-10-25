@@ -13,7 +13,7 @@ const LETTERS = ["A", "B", "C", "D"];
 
 /** Admin → Quizzes → revisar: as 10 perguntas com o gabarito (só aqui), aprovação individual ou de uma vez. */
 export default async function AdminQuizReviewPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdminPage();
+  await requireAdminPage("catalog");
   const quiz = await prisma.quiz.findUnique({
     where: { id: (await params).id },
     include: { questions: { orderBy: { position: "asc" } }, _count: { select: { attempts: true, titles: true } } },
@@ -40,7 +40,7 @@ export default async function AdminQuizReviewPage({ params }: { params: Promise<
         <Typography sx={{ fontSize: 14 }}>
           O quiz só abre para as pessoas com as {QUIZ_LENGTH} perguntas aprovadas. {quiz._count.attempts} tentativa(s) · {quiz._count.titles} título(s) concedido(s).
         </Typography>
-        <QuizReviewActions quizId={quiz.id} allApproved={available} removable={quiz._count.attempts === 0 && quiz._count.titles === 0} />
+        <QuizReviewActions quizId={quiz.id} allApproved={available} removable={quiz._count.attempts === 0 && quiz._count.titles === 0} archived={Boolean(quiz.archivedAt)} />
       </AdminPanel>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>

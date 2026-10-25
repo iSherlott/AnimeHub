@@ -25,6 +25,7 @@ import { loadFranchiseSteps, stepsFromTimeline } from "@/lib/curation/franchiseT
 import { FranchiseNav } from "@/components/FranchiseNav";
 import { NextEpisodeBlock } from "@/components/NextEpisodeBlock";
 import { ScheduleEpisodeList } from "@/components/ScheduleEpisodeList";
+import { asScheduledEpisodes, loadGlobalEpisodes } from "@/lib/globalEpisodes";
 import { SynopsisText } from "@/components/SynopsisText";
 import { WatchLinks } from "@/components/WatchLinks";
 import { WorkHero } from "@/components/WorkHero";
@@ -50,10 +51,10 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
   if (owned) redirect(`/anime/${owned.id}`);
 
   const [nextEpisode, catalog, allSeasons, schedule, images, timeline, franchiseSteps, story] = await Promise.all([
-    prisma.airingScheduleEntry.findFirst({ where: { anilistId, airingAt: { gte: new Date() } }, orderBy: { airingAt: "asc" } }),
+    prisma.airingScheduleEntry.findFirst({ where: { anilistId, airingAt: { gte: new Date() }, status: "ACTIVE" }, orderBy: { airingAt: "asc" }, select: { episode: true, airingAt: true } }),
     prisma.catalogEntry.findUnique({ where: { anilistId }, select: { siteScore: true, siteScoreVotes: true, kind: true, officialSite: true, descriptionPt: true, descriptionJa: true, format: true, status: true, season: true, seasonYear: true, episodes: true } }),
     loadFranchiseSeasons(anilistId),
-    prisma.airingScheduleEntry.findMany({ where: { anilistId }, orderBy: { episode: "asc" }, select: { episode: true, airingAt: true } }),
+    loadGlobalEpisodes(anilistId),
     prisma.episodeImage.findMany({ where: { anilistId }, select: { episode: true, thumbnail: true } }),
     loadTimeline(anilistId),
     loadFranchiseSteps(anilistId),
@@ -125,7 +126,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
           </Box>
           {/* Obra que já acabou e sem episódio por vir não tem "próximo episódio" para mostrar. */}
           {(nextEpisode || (facts.status !== "FINISHED" && facts.status !== "CANCELLED")) && (
-            <NextEpisodeBlock iso={nextEpisode ? nextEpisode.airingAt.toISOString() : null} episode={nextEpisode ? nextEpisode.episode : null} />
+            <NextEpisodeBlock iso={nextEpisode?.airingAt ? nextEpisode.airingAt.toISOString() : null} episode={nextEpisode ? nextEpisode.episode : null} />
           )}
         </Box>
       </WorkHero>
@@ -166,7 +167,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
                 )}
                 <WorkSeasons seasons={seasons} signedIn={Boolean(user)} branches={branches}>
                   {schedule.length > 0 ? (
-                    <ScheduleEpisodeList episodes={schedule.map((s) => ({ episode: s.episode, airingAt: s.airingAt.toISOString(), image: imageByEpisode.get(s.episode) ?? null }))} branches={branches[anilistId] ?? []} arcs={story.arcs} markers={markers} />
+                    <ScheduleEpisodeList episodes={asScheduledEpisodes(schedule, imageByEpisode)} branches={branches[anilistId] ?? []} arcs={story.arcs} markers={markers} />
                   ) : (
                     <BranchOnlyTimeline message="Os episódios desta temporada ainda não têm data no calendário." branches={branches[anilistId] ?? []} arcs={story.arcs} markers={markers} />
                   )}

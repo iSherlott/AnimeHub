@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN } from "./test-auth";
@@ -58,7 +59,7 @@ test.describe("Admin — fluxo de importação revisada", () => {
     await prisma.catalogConflict.deleteMany({ where: { anilistId: { in: [ANILIST_AUTO, ANILIST_REVIEW] } } });
     await prisma.adminJob.deleteMany({ where: { seq: { in: jobSeqs } } });
     await prisma.airingScheduleEntry.deleteMany({ where: { anilistId: { in: [ANILIST_AUTO, ANILIST_REVIEW] } } });
-    await prisma.catalogEntry.deleteMany({ where: { anidbId: ANIDB_NEW } });
+    await deleteCatalogEntries(prisma, { where: { anidbId: ANIDB_NEW } });
     await prisma.production.deleteMany({ where: { anilistId: { in: [ANILIST_AUTO, ANILIST_REVIEW] } } });
     await prisma.franchise.deleteMany({ where: { rootAnilistId: { in: [964001, 964002] } } });
   }
@@ -134,7 +135,7 @@ test.describe("Admin — fluxo de importação revisada", () => {
     const item = data.results.find((r: { key: string }) => r.key === `${ANILIST_AUTO}-3`);
     expect(new Date(item.airingAt).getTime()).toBe(importedAt.getTime());
     const row = await prisma.airingScheduleEntry.findFirstOrThrow({ where: { anilistId: ANILIST_AUTO, episode: 3 } });
-    expect(row.airingAt.getTime()).toBe(originalAt.getTime());
+    expect(row.airingAt?.getTime()).toBe(originalAt.getTime());
   });
 
   test("Confirmar importação: diálogo com foco em Cancelar; só o commit explícito aplica ao catálogo", async ({ page }) => {

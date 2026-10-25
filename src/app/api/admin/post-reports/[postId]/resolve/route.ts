@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 
 type Params = { params: Promise<{ postId: string }> };
 
@@ -10,7 +10,7 @@ type Params = { params: Promise<{ postId: string }> };
  * também soft-deleta o post; `"keep"` só limpa a fila.
  */
 export async function POST(request: Request, { params }: Params) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("moderation");
   if (!user) return response;
 
   const { postId } = await params;

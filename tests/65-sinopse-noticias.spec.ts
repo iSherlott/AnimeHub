@@ -1,4 +1,5 @@
 ﻿import { createServer, type Server } from "node:http";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { test, expect } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
@@ -96,7 +97,7 @@ test.afterAll(async () => {
   await prisma.user.deleteMany({ where: { email: HUB_EMAIL_CLEANUP } });
   await prisma.animeNews.deleteMany({ where: { anilistId: { in: [NEWS_A.anilistId, NEWS_B.anilistId] } } });
   await prisma.anime.deleteMany({ where: { anilistId: NEWS_A.anilistId } });
-  await prisma.catalogEntry.deleteMany({ where: { anilistId: { in: [NEWS_A.anilistId, NEWS_B.anilistId] } } });
+  await deleteCatalogEntries(prisma, { where: { anilistId: { in: [NEWS_A.anilistId, NEWS_B.anilistId] } } });
   await prisma.production.deleteMany({ where: { anilistId: SYNOPSIS_ID } });
   await prisma.franchise.deleteMany({ where: { rootAnilistId: SYNOPSIS_ID } });
   await prisma.$disconnect();

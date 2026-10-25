@@ -1,13 +1,18 @@
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { can, isStaff, type Permission } from "@/lib/auth/permissions";
 import { resolveTimeZone, weekdayName } from "@/lib/timeZone";
 import type { AdminActor } from "@/lib/adminImport/pipeline";
 
-/** Guarda das páginas Admin: quem não é administrador recebe 404 (a área não existe para essa pessoa). */
-export async function requireAdminPage(): Promise<{ actor: AdminActor; name: string; timeZone: string }> {
+/**
+ * Guarda das páginas Admin (Fase 9): quem não tem a permissão da área recebe 404 (a área não existe para essa pessoa).
+ * `catalog` (administrador e curador), `moderation` (administrador e moderador), `admin` (só administrador);
+ * `staff` = qualquer papel da equipe (a casca da área).
+ */
+export async function requireAdminPage(permission: Permission | "staff" = "admin"): Promise<{ actor: AdminActor; name: string; timeZone: string; role: string }> {
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") notFound();
-  return { actor: { id: user.id, name: user.displayName }, name: user.displayName, timeZone: resolveTimeZone(user.timeZone) };
+  if (!user || (permission === "staff" ? !isStaff(user.role) : !can(user.role, permission))) notFound();
+  return { actor: { id: user.id, name: user.displayName }, name: user.displayName, timeZone: resolveTimeZone(user.timeZone), role: user.role };
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");

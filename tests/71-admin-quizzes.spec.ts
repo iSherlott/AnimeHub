@@ -92,7 +92,7 @@ test.describe.serial("Admin — carga de perguntas do quiz", () => {
       await expect(page.getByTestId("quiz-import-done")).toContainText(`Obra #${A}: quiz criado (aguardando revisão)`);
       const row = page.getByTestId("admin-quiz-table").locator("tr", { hasText: `AniList #${A}` });
       await expect(row).toContainText("0/10 aprovadas");
-      await expect(row).toContainText("Em revisão");
+      await expect(row).toContainText("Rascunho");
       const quiz = await prisma.quiz.findUniqueOrThrow({ where: { anilistId: A }, include: { questions: true } });
       expect(quiz.questions).toHaveLength(10);
       expect(quiz.questions.every((q) => !q.approved && q.correct === 2 && q.category === "PERSONAGENS")).toBe(true);
@@ -120,7 +120,7 @@ test.describe.serial("Admin — carga de perguntas do quiz", () => {
       await expect(page.getByTestId("quiz-approve-all")).toHaveCount(0);
 
       await page.goto("/admin/quizzes");
-      await expect(page.getByTestId("admin-quiz-table").locator("tr", { hasText: `AniList #${A}` })).toContainText("Disponível");
+      await expect(page.getByTestId("admin-quiz-table").locator("tr", { hasText: `AniList #${A}` })).toContainText("Publicado");
     });
 
     test("recarregar um quiz sem tentativas substitui as perguntas (e volta para revisão)", async ({ page }) => {
@@ -147,7 +147,7 @@ test.describe.serial("Admin — carga de perguntas do quiz", () => {
       const quiz = await prisma.quiz.findUniqueOrThrow({ where: { anilistId: B }, include: { questions: true } });
       expect(quiz).toMatchObject({ scope: "Season 2 — ambientação", titleReward: "Guardião do palácio" });
       expect(quiz.questions.every((q) => q.approved && q.correct === 3)).toBe(true);
-      await expect(page.getByTestId("admin-quiz-table").locator("tr", { hasText: `AniList #${B}` })).toContainText("Disponível");
+      await expect(page.getByTestId("admin-quiz-table").locator("tr", { hasText: `AniList #${B}` })).toContainText("Publicado");
     });
 
     test("quiz com tentativas não pode ser substituído nem removido; sem tentativas pode ser removido", async ({ page, request }) => {

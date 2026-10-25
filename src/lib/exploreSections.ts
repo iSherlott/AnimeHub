@@ -1,3 +1,4 @@
+import { timed } from "@/lib/episodeState";
 import type { AiringScheduleEntry, CatalogEntry } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { NOT_BLOCKED_GENRE } from "@/lib/contentPolicy";
@@ -71,7 +72,7 @@ export function takeUnique(lists: Array<readonly DiscoverItem[]>, limit: number)
   return out;
 }
 
-function fromAiring(entry: AiringScheduleEntry, catalog: CatalogEntry | undefined): DiscoverItem {
+function fromAiring(entry: AiringScheduleEntry & { airingAt: Date }, catalog: CatalogEntry | undefined): DiscoverItem {
   const base: DiscoverItem = catalog
     ? discoverItemFromCatalogEntry(catalog)
     : {
@@ -106,7 +107,7 @@ export async function loadAiringToday(timeZone: string, userId: string | null, n
   const from = startOfDayInZone(now, timeZone);
   const to = startOfDayInZone(new Date(from.getTime() + 36 * 3600_000), timeZone);
   const [entries, hidden] = await Promise.all([
-    prisma.airingScheduleEntry.findMany({ where: { airingAt: { gte: from, lt: to } }, orderBy: { airingAt: "asc" } }),
+    prisma.airingScheduleEntry.findMany({ where: { airingAt: { gte: from, lt: to }, status: "ACTIVE" }, orderBy: { airingAt: "asc" } }).then(timed),
     hiddenAnilistIds(),
   ]);
   const visible = entries.filter((e) => !hidden.has(e.anilistId));

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_SESSION_TOKEN } from "./test-auth";
@@ -32,7 +33,7 @@ test.describe.serial("Auditoria das linhas do tempo", () => {
   async function clean() {
     const entries = await prisma.catalogEntry.findMany({ where: { OR: [{ anilistId: { in: IDS } }, { anidbId: ANIDB_TWIN }] }, select: { id: true } });
     await prisma.curationIssue.deleteMany({ where: { entryId: { in: entries.map((e) => e.id) } } });
-    await prisma.catalogEntry.deleteMany({ where: { id: { in: entries.map((e) => e.id) } } });
+    await deleteCatalogEntries(prisma, { where: { id: { in: entries.map((e) => e.id) } } });
   }
 
   async function runAndWait(request: import("@playwright/test").APIRequestContext) {

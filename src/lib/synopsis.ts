@@ -21,9 +21,11 @@ export async function originalSynopsis(anilistId: number): Promise<string> {
  * AniDB, sem `anilistId`) e, quando há `anilistId`, no cache de traduções (`SynopsisTranslation`).
  */
 export async function storeSynopsis({ entryId, anilistId, lang, text }: { entryId?: string; anilistId?: number | null; lang: TranslationTarget; text: string }): Promise<void> {
-  const column = lang === "pt" ? { descriptionPt: text } : { descriptionJa: text };
-  if (entryId) await prisma.catalogEntry.update({ where: { id: entryId }, data: column }).catch(() => undefined);
-  else if (anilistId) await prisma.catalogEntry.updateMany({ where: { anilistId }, data: column });
+  // Tradução automática (Fase 7): marcada como tal, e nunca por cima de uma revisada ou escrita pelo admin (protegida).
+  const column = lang === "pt" ? { descriptionPt: text, descriptionPtStatus: "AUTO", descriptionPtSource: translationEngine(), descriptionPtReviewedBy: null, descriptionPtReviewedAt: null } : { descriptionJa: text };
+  const unprotected = lang === "pt" ? { NOT: { manualFields: { has: "descriptionPt" } } } : {};
+  if (entryId) await prisma.catalogEntry.updateMany({ where: { id: entryId, ...unprotected }, data: column }).catch(() => undefined);
+  else if (anilistId) await prisma.catalogEntry.updateMany({ where: { anilistId, ...unprotected }, data: column });
   if (anilistId) {
     await prisma.synopsisTranslation.upsert({
       where: { anilistId_lang: { anilistId, lang } },

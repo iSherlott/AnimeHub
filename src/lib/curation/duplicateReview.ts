@@ -99,6 +99,6 @@ export async function mergeDuplicate(anidbId: number, anilistId: number, actor: 
   if (!result.ok) return result;
   const target = await prisma.catalogEntry.findUnique({ where: { anilistId }, select: { id: true } });
   const ids = [orphan?.id, target?.id].filter((id): id is string => Boolean(id));
-  await prisma.curationIssue.updateMany({ where: { ...OPEN, entryId: { in: ids } }, data: { status: "RESOLVED" } });
+  await prisma.curationIssue.updateMany({ where: { ...OPEN, entryId: { in: ids } }, data: { status: "RESOLVED", resolvedAt: new Date() } });
   return { ok: true };
 }

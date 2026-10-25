@@ -1,4 +1,5 @@
 import { createServer, type Server } from "node:http";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { test, expect } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
@@ -56,7 +57,7 @@ test.describe.serial("Match name — obras sem página", () => {
     await prisma.production.deleteMany({ where: { anilistId: { in: [ANILIST_SUGGESTED, ANILIST_FOUND, ANILIST_WRONG] } } });
     await prisma.franchise.deleteMany({ where: { rootAnilistId: { in: [ANILIST_SUGGESTED, ANILIST_FOUND, ANILIST_WRONG] } } });
     await prisma.airingScheduleEntry.deleteMany({ where: { anilistId: { in: [ANILIST_SUGGESTED, ANILIST_FOUND, ANILIST_WRONG] } } });
-    await prisma.catalogEntry.deleteMany({ where: { OR: [{ anilistId: { in: [ANILIST_SUGGESTED, ANILIST_FOUND, ANILIST_WRONG] } }, { anidbId: { in: [SUGGESTED, REJECTED, SEARCHED] } }] } });
+    await deleteCatalogEntries(prisma, { where: { OR: [{ anilistId: { in: [ANILIST_SUGGESTED, ANILIST_FOUND, ANILIST_WRONG] } }, { anidbId: { in: [SUGGESTED, REJECTED, SEARCHED] } }] } });
   }
 
   test.beforeAll(async () => {
@@ -175,7 +176,7 @@ test.describe.serial("Match name — obras sem página", () => {
       expect(await prisma.catalogEntry.findUniqueOrThrow({ where: { anilistId: ANILIST_NO_SEASON } })).toMatchObject({ anidbId: NO_SEASON_ANIDB, season: "SPRING", seasonYear: 2024 });
       // A própria ligação já refez o cache a partir da AniList (sem temporada): a do AniDB continua.
     } finally {
-      await prisma.catalogEntry.deleteMany({ where: { OR: [{ anidbId: NO_SEASON_ANIDB }, { anilistId: ANILIST_NO_SEASON }] } });
+      await deleteCatalogEntries(prisma, { where: { OR: [{ anidbId: NO_SEASON_ANIDB }, { anilistId: ANILIST_NO_SEASON }] } });
       await prisma.production.deleteMany({ where: { anilistId: ANILIST_NO_SEASON } });
     }
   });
@@ -186,7 +187,7 @@ test.describe.serial("Match name — obras sem página", () => {
       const res = await request.post("/api/admin/anidb-candidates", { data: { anidbId: 29914, action: "confirm", anilistId: ANILIST_FOUND } });
       expect(res.status()).toBe(409);
     } finally {
-      await prisma.catalogEntry.deleteMany({ where: { anidbId: 29914 } });
+      await deleteCatalogEntries(prisma, { where: { anidbId: 29914 } });
     }
   });
 });

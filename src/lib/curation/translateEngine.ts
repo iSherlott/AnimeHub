@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { markCancelled, startExclusiveJob } from "@/lib/jobLock";
 import { htmlToPlainText } from "@/lib/plainText";
 import { storeSynopsis } from "@/lib/synopsis";
 import { translateText, translationEngine, TranslationQuotaError, type TranslationTarget } from "@/lib/translate";
@@ -13,6 +14,8 @@ const STALE_AFTER_MS = 10 * 60 * 1000;
 const MAX_CONSECUTIVE_FAILURES = 8;
 
 export type TranslationProgress = {
+  /** Parou a pedido (Fase 8). */
+  cancelled?: boolean;
   lang: TranslationTarget;
   engine: "libretranslate" | "mymemory";
   /** Obras com sinopse original. */
@@ -92,7 +95,9 @@ export async function runTranslation(
   };
   const save = async (note: string) => {
     progress.updatedAt = new Date().toISOString();
-    await prisma.adminJob.update({ where: { seq }, data: { processed: progress.done, total: progress.total, progressNote: note, resultJson: JSON.stringify(progress) } }).catch(() => undefined);
+    // Sinal de vida e pedido de cancelamento (Fase 8): os trabalhadores param no próximo item.
+    const job = await prisma.adminJob.update({ where: { seq }, data: { processed: progress.done, total: progress.total, progressNote: note, resultJson: JSON.stringify(progress), heartbeatAt: new Date() }, select: { cancelRequestedAt: true } }).catch(() => null);
+    if (job?.cancelRequestedAt) progress.cancelled = true;
     onBatch?.(progress);
   };
   await save(`Traduzindo ${pending.length} sinopses…`);
@@ -104,7 +109,7 @@ export async function runTranslation(
   let consecutiveFailures = 0;
   let sinceSave = 0;
   const worker = async () => {
-    while (!stop) {
+    while (!stop && !progress.cancelled) {
       const entry = pending[next++];
       if (!entry) return;
       const original = htmlToPlainText(entry.description);
@@ -149,16 +154,9 @@ export async function runTranslation(
 }
 
 export async function createTranslationJob(actor: { id: string; name: string }, lang: TranslationTarget): Promise<{ seq: number } | { running: number }> {
-  const running = await prisma.adminJob.findFirst({ where: { kind: "TRANSLATION", state: "RUNNING" }, orderBy: { seq: "desc" }, select: { seq: true, resultJson: true } });
-  if (running) {
-    const updatedAt = running.resultJson ? (JSON.parse(running.resultJson) as TranslationProgress).updatedAt : null;
-    if (updatedAt && Date.now() - Date.parse(updatedAt) <= STALE_AFTER_MS) return { running: running.seq };
-    await prisma.adminJob.update({ where: { seq: running.seq }, data: { state: "FAILED", error: "Interrompido (sem sinal de vida).", finishedAt: new Date() } });
-  }
-  const job = await prisma.adminJob.create({
-    data: { kind: "TRANSLATION", source: "Catálogo", season: `Tradução das sinopses (${lang})`, state: "RUNNING", stage: "COMMIT", progressNote: "Iniciando…", adminId: actor.id, adminName: actor.name },
-  });
-  return { seq: job.seq };
+  // Um por vez, de forma atômica (Fase 8, `jobLock`).
+  const started = await startExclusiveJob("TRANSLATION", { source: "Catálogo", season: `Tradução das sinopses (${lang})`, stage: "COMMIT", progressNote: "Iniciando…", adminId: actor.id, adminName: actor.name }, STALE_AFTER_MS);
+  return started.ok ? { seq: started.job.seq } : { running: started.running.seq };
 }
 
 /** Roda a tradução em lote como job auditável (SUCCESS com o resumo, ou FAILED com o motivo). */
@@ -179,6 +177,10 @@ export async function translateCatalog({
   if ("running" in created) return created;
   try {
     const progress = await runTranslation(created.seq, { lang, limit, translate, onBatch });
+    if (progress.cancelled) {
+      await markCancelled(created.seq, `Cancelado a pedido depois de ${progress.done} sinopse(s); as traduzidas ficam.`);
+      return progress;
+    }
     await prisma.adminJob.update({
       where: { seq: created.seq },
       data: { state: "SUCCESS", stage: "NOTIFICATION", progressNote: null, processed: progress.done, total: progress.total, finishedAt: new Date(), resultJson: JSON.stringify(progress) },

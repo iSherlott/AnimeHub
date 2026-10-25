@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 /** Admin → Importações (Figma `8:3894`): HTML colado → prévia revisável. Nada é salvo automaticamente. */
 export default async function AdminImportPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const { timeZone } = await requireAdminPage();
+  const { timeZone } = await requireAdminPage("catalog");
   const sp = await searchParams;
   const from = Number(sp.from);
   const origin = Number.isInteger(from) && from > 0 ? await prisma.adminJob.findUnique({ where: { seq: from }, select: { html: true, season: true } }) : null;

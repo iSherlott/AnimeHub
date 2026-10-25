@@ -117,6 +117,9 @@ model Anime {
   /// dois usuários diferentes podem (e vão) acompanhar o mesmo anime, cada
   /// um com sua própria linha. A unicidade é por usuário (@@unique abaixo).
   anilistId       Int
+  /// Obra do catálogo (Fase 2): a identidade interna da obra que a pessoa acompanha.
+  catalogEntryId  String?
+  catalogEntry    CatalogEntry? @relation(fields: [catalogEntryId], references: [id], onDelete: Restrict)
   kitsuId         Int?
   malId           Int?
   shikimoriId     Int?
@@ -220,6 +223,7 @@ model Anime {
   @@unique([userId, kitsuId])
   @@index([seriesKey])
   @@index([userId])
+  @@index([catalogEntryId])
   @@index([userId, isFavorite])
   @@index([userId, waiting])
 }
@@ -248,6 +252,9 @@ model Franchise {
 model Production {
   id           String    @id @default(cuid())
   anilistId    Int       @unique
+  /// Obra do catálogo (Fase 2): a identidade interna; preenchida pelo anilistId e mantida por quem cria a produção.
+  catalogEntryId String?  @unique
+  catalogEntry   CatalogEntry? @relation(fields: [catalogEntryId], references: [id], onDelete: Restrict)
   franchiseId  String
   franchise    Franchise @relation(fields: [franchiseId], references: [id], onDelete: Restrict)
   /// 1 + temporadas (TV/TV_SHORT) anteriores na cadeia da franquia.
@@ -346,6 +353,8 @@ model Block {
   @@index([blockedId])
 }
 
+/// DESCONTINUADA (Fase 4, ADR 0009): cópia POR USUÁRIO dos episódios. Os episódios agora são globais
+/// (`AiringScheduleEntry`); a tabela fica só para leitura histórica e não recebe mais gravações.
 model Episode {
   id            String    @id @default(cuid())
   animeId       String
@@ -488,6 +497,13 @@ model CatalogEntry {
   /// Sinopse em português e em japonês (a original em inglês é `description`); preenchidas pela tradução guardada.
   descriptionPt     String?
   descriptionJa     String?
+  /// Estado da sinopse em português (Fase 7): AUTO (tradução automática) | REVIEWED (automática aprovada) | MANUAL
+  /// (escrita pelo admin). Nulo com `descriptionPt` vazio = pendente (há original) ou ausente (não há).
+  descriptionPtStatus String?
+  /// De onde veio a tradução (motor, ex.: "libretranslate", "mymemory", ou "admin").
+  descriptionPtSource String?
+  descriptionPtReviewedBy String?
+  descriptionPtReviewedAt DateTime?
   /// JSON [{id, titleRomaji, format, relationType}] — relações da AniList (sequência, OVA, filme…): base da linha do tempo.
   relationsJson     String?
   /// Nota do site (0-10): começa em 5 e é regulada pelas notas de quem terminou a obra (src/lib/siteScore.ts).
@@ -518,6 +534,54 @@ model CatalogEntry {
   @@index([format])
   @@index([kind])
   @@index([franchiseKey, timelineOrder])
+
+  /// Campos corrigidos à mão (Fase 3): a importação e a curadoria não os sobrescrevem. Ex.: ["titleRomaji", "description"].
+  manualFields      String[]  @default([])
+
+  // Identidade interna (Fase 2, ADR 0008): as cópias e a agenda apontam para a obra pelo id do catálogo; o anilistId é só
+  // um identificador externo (obras só do AniDB não têm).
+  productions       Production[]
+  listEntries       Anime[]
+  schedule          AiringScheduleEntry[]
+  /// Índice dos gêneros (Fase 7, ADR 0010): mantido pelo banco a partir de `genres`.
+  genreLinks        CatalogGenre[]
+}
+
+/**
+ * Vocabulário de gêneros (Fase 7, ADR 0010). `key` é o nome gravado nas obras (`CatalogEntry.genres`). O banco aplica o
+ * vocabulário em toda gravação: variações (`aliases`) e gêneros mesclados (`mergedInto`) viram o destino; gênero
+ * excluído some. Gênero que aparece numa obra sem estar aqui entra como não registrado, para o admin revisar.
+ */
+model Genre {
+  key         String         @id
+  /// Como aparece no produto (os nomes ficam em inglês/japonês romanizado; ver genreTaxonomy).
+  label       String
+  description String?
+  /// Variações de escrita que viram este gênero (comparação sem maiúsculas).
+  aliases     String[]       @default([])
+  /// Gênero mesclado: o destino. Toda gravação com esta chave passa a gravar o destino.
+  mergedInto  String?
+  /// Marcador de conteúdo adulto (ver contentPolicy).
+  adult       Boolean        @default(false)
+  /// false = excluído (as obras foram transferidas ou desligadas antes).
+  active      Boolean        @default(true)
+  /// false = apareceu numa obra sem estar no vocabulário: revisar (registrar, mesclar ou excluir).
+  registered  Boolean        @default(true)
+  position    Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @default(now()) @updatedAt
+  works       CatalogGenre[]
+}
+
+/** Obra ↔ gênero (Fase 7): índice relacional mantido por gatilho a partir de `CatalogEntry.genres`. */
+model CatalogGenre {
+  catalogEntryId String
+  catalogEntry   CatalogEntry @relation(fields: [catalogEntryId], references: [id], onDelete: Cascade)
+  genreKey       String
+  genre          Genre        @relation(fields: [genreKey], references: [key], onUpdate: Cascade, onDelete: Restrict)
+
+  @@id([catalogEntryId, genreKey])
+  @@index([genreKey])
 }
 
 /**
@@ -533,10 +597,15 @@ model CurationIssue {
   /// Motivo (ver src/lib/curation/issues.ts).
   code      String
   detail    String?
-  /// OPEN | RESOLVED
+  /// OPEN | RESOLVED | DISMISSED (ignorada com justificativa)
   status    String   @default("OPEN")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  /// Fase 7: quando foi resolvida (para o tempo médio de resolução), quantas vezes reabriu, e a justificativa de ignorar.
+  resolvedAt      DateTime?
+  reopenCount     Int       @default(0)
+  dismissedReason String?
+  dismissedBy     String?
 
   @@unique([entryId, code])
   @@index([code, status])
@@ -552,8 +621,14 @@ model CurationIssue {
 model AiringScheduleEntry {
   id           String   @id @default(cuid())
   anilistId    Int
+  /// Obra do catálogo (Fase 2).
+  catalogEntryId String?
+  catalogEntry   CatalogEntry? @relation(fields: [catalogEntryId], references: [id], onDelete: Restrict)
   episode      Int
-  airingAt     DateTime
+  /// Instante real (UTC) do lançamento no streaming. Nulo quando a fonte só tem a data (`airDate`) ou nada (Fase 4):
+  /// nunca se inventa horário.
+  airingAt     DateTime?
+  /// Os títulos abaixo são cópias do título da OBRA (para o calendário); os do EPISÓDIO ficam em `episodeTitle*`.
   titleRomaji  String
   titleEnglish String?
   titleNative  String?
@@ -565,11 +640,39 @@ model AiringScheduleEntry {
   /// calendário mostrar sinopse mesmo de anime fora da lista do viewer.
   description  String?
   fetchedAt    DateTime @default(now())
+  /// Episódio global (Fase 4, ADR 0009): título, sinopse e imagem do episódio, iguais para todo mundo.
+  episodeTitle   String?
+  episodeTitleEn String?
+  episodeTitleJa String?
+  synopsis       String?
+  thumbnail      String?
+  /// Só a data, quando a fonte não informa o horário.
+  airDate        DateTime? @db.Date
+  /// Grau de certeza da data: EXACT (data e hora) | DATE_ONLY (só o dia) | UNKNOWN (sem data).
+  dateCertainty  String    @default("EXACT")
+  /// Situação informada pela fonte ou pelo admin: ACTIVE | POSTPONED | CANCELLED. "Exibido" não é guardado: vem da data.
+  status         String    @default("ACTIVE")
+  /// De onde veio o registro: anilist | kitsu | anidb | manual.
+  source         String    @default("anilist")
+  /// Campos corrigidos à mão: a fonte não sobrescreve.
+  manualFields   String[]  @default([])
+  updatedAt      DateTime  @default(now()) @updatedAt
 
   @@unique([anilistId, episode])
   @@index([airingAt])
+  @@index([catalogEntryId])
 }
 
+/** Última consulta de episódios de uma obra a uma fonte (Fase 4): evita perguntar de novo a cada visita. */
+model EpisodeSourceCheck {
+  anilistId Int      @id
+  kitsuId   Int?
+  found     Int      @default(0)
+  checkedAt DateTime @default(now())
+}
+
+/// DESCONTINUADA (Fase 2, ADR 0008): progresso pessoal por episódio, proibido pela regra "acompanhar é por obra". Sem
+/// nenhum consumidor no código e sem linhas; fica no schema até a remoção ser confirmada (ver docs/auditoria).
 model WatchProgress {
   id              String    @id @default(cuid())
   animeId         String    @unique
@@ -853,14 +956,44 @@ model AdminJob {
   adminName     String?
   createdAt     DateTime          @default(now())
   finishedAt    DateTime?
+  /// Sinal de vida (Fase 8): o job grava a cada passo; sem sinal por muito tempo, é dado como interrompido.
+  heartbeatAt   DateTime?
+  /// Pedido de cancelamento (Fase 8): o job para no próximo passo, sem desfazer o que já gravou.
+  cancelRequestedAt DateTime?
   records       ImportRecord[]
   conflicts     CatalogConflict[]
   logs          AdminLog[]
+  fieldUpdates  FieldUpdateItem[]
 
   @@index([createdAt])
 }
 
 /** Registro extraído do HTML e o resultado do matching contra o catálogo (Figma `8:4020`, `8:4179`). */
+/**
+ * Atualização seletiva de campos (Fase 6, Cenário F): o que a fonte devolveu para cada obra, campo a campo, ANTES de
+ * tocar no catálogo. Uma linha por (lote, obra). O admin escolhe os campos; a execução confere se o valor atual ainda é
+ * o da coleta e registra cada mudança no ChangeLog com o lote.
+ */
+model FieldUpdateItem {
+  id             String    @id @default(cuid())
+  jobSeq         Int
+  job            AdminJob  @relation(fields: [jobSeq], references: [seq], onDelete: Cascade)
+  catalogEntryId String
+  anilistId      Int?
+  title          String
+  /// JSON [{ field, group, current, incoming, changed, protected, missing }]
+  diffJson       String?
+  /// JSON string[]: campos escolhidos para aplicar
+  selectedJson   String?
+  /// PENDING | COLLECTED | NOT_FOUND | FAILED | APPLIED | UNCHANGED | SKIPPED | CONFLICT
+  state          String    @default("PENDING")
+  message        String?
+  collectedAt    DateTime?
+  appliedAt      DateTime?
+
+  @@index([jobSeq, state])
+}
+
 model ImportRecord {
   id                  String   @id @default(cuid())
   jobSeq              Int
@@ -1119,6 +1252,8 @@ model Quiz {
   titleReward String
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+  /// Arquivado (Fase 9): sai do ar sem apagar perguntas, tentativas nem títulos já concedidos.
+  archivedAt  DateTime?
   questions   QuizQuestion[]
   attempts    QuizAttempt[]
   titles      UserTitle[]
@@ -1182,7 +1317,8 @@ model PendingEpisode {
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   anilistId   Int
-  fromEpisode Int
+  /// DESCONTINUADO (Fase 4, D5): "Adiar" vale para a OBRA, sem número de episódio. Fica só nas linhas antigas.
+  fromEpisode Int?
   postponedAt DateTime @default(now())
 
   @@unique([userId, anilistId])
@@ -1249,4 +1385,32 @@ model StoryReview {
 
   @@unique([anilistIdA, anilistIdB])
   @@index([verdict])
+}
+
+/// Histórico de alterações (Fase 2, ADR 0008): uma linha por campo alterado, com antes e depois, quem, de onde e por quê.
+/// É a trilha da edição no admin, das importações seletivas e das correções de curadoria; "desfazer" lê daqui.
+model ChangeLog {
+  id             String   @id @default(cuid())
+  at             DateTime @default(now())
+  actorId        String?
+  actorName      String?
+  /// ADMIN | IMPORT | CURATION | JOB | SYSTEM
+  origin         String
+  /// CatalogEntry | Episode | Genre | Translation | Franchise …
+  entity         String
+  entityId       String
+  /// A obra relacionada (histórico da obra no admin), quando houver.
+  catalogEntryId String?
+  field          String
+  /// Valores em JSON (texto), para qualquer tipo de campo.
+  before         String?
+  after          String?
+  reason         String?
+  jobSeq         Int?
+  batchId        String?
+
+  @@index([entity, entityId, at])
+  @@index([catalogEntryId, at])
+  @@index([at])
+  @@index([batchId])
 }

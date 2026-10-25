@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { MAX_STREAMING_DELAY_MINUTES, parseStreamingDelay, setStreamingDelay } from "@/lib/streamingDelay";
 
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 /** Admin → Overrides: obras com atraso do streaming (Epic 50). */
 export async function GET() {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   const rows = await prisma.catalogEntry.findMany({
     where: { streamingDelayMinutes: { not: null } },
@@ -22,7 +22,7 @@ export async function GET() {
  * A agenda e o próximo episódio já gravados andam junto.
  */
 export async function POST(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   let body: unknown;
   try {

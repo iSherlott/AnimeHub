@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 
 /** Acima disto sem um ciclo "OK" o job é considerado atrasado (o loader roda a cada ~30 min). */
 const STALE_AFTER_MS: Record<string, number> = { "calendar-loader": 3 * 3600 * 1000 };
@@ -11,7 +11,7 @@ const STALE_AFTER_MS: Record<string, number> = { "calendar-loader": 3 * 3600 * 1
  * Somente leitura.
  */
 export async function GET(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
 
   const { searchParams } = new URL(request.url);

@@ -1,18 +1,23 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/session";
-import { deleteQuiz, setApproval } from "@/lib/quizAdmin";
+import { requireStaff } from "@/lib/auth/session";
+import { deleteQuiz, setApproval, setArchived } from "@/lib/quizAdmin";
 
 type Params = { params: Promise<{ id: string }> };
 
-/** Aprovar / voltar para revisão: uma pergunta (`questionId`) ou todas. */
+/** Aprovar / voltar para revisão: uma pergunta (`questionId`) ou todas; ou arquivar (`archived`). */
 export async function PATCH(request: Request, { params }: Params) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
-  let body: { approved?: unknown; questionId?: unknown };
+  let body: { approved?: unknown; questionId?: unknown; archived?: unknown };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Corpo da requisição inválido." }, { status: 400 });
+  }
+  // Arquivar / desarquivar (Fase 9).
+  if (typeof body.archived === "boolean") {
+    const ok = await setArchived((await params).id, body.archived, { id: user.id, name: user.displayName });
+    return ok ? NextResponse.json({ archived: body.archived }) : NextResponse.json({ error: "Quiz não encontrado." }, { status: 404 });
   }
   if (typeof body.approved !== "boolean") return NextResponse.json({ error: "Informe approved (true/false)." }, { status: 400 });
   const questionId = typeof body.questionId === "string" ? body.questionId : undefined;
@@ -23,7 +28,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
 /** Remove o quiz — só se ninguém respondeu. */
 export async function DELETE(_request: Request, { params }: Params) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   const result = await deleteQuiz((await params).id, { id: user.id, name: user.displayName });
   if (result === "not-found") return NextResponse.json({ error: "Quiz não encontrado." }, { status: 404 });

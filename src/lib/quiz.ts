@@ -65,7 +65,8 @@ export async function getQuizState(anilistId: number, userId: string | null): Pr
   ]);
 
   let available = false;
-  if (quiz) available = isComplete((await approvedQuestions(quiz.id)).map((q) => q.position));
+  // Arquivado (Fase 9) sai do ar: quem já ganhou o título continua com ele.
+  if (quiz && !quiz.archivedAt) available = isComplete((await approvedQuestions(quiz.id)).map((q) => q.position));
 
   return {
     quiz: quiz ? { scope: quiz.scope, titleReward: quiz.titleReward, available } : null,
@@ -80,6 +81,7 @@ export async function getQuizState(anilistId: number, userId: string | null): Pr
 async function requireAccess(anilistId: number, userId: string) {
   const quiz = await prisma.quiz.findUnique({ where: { anilistId } });
   if (!quiz) throw new QuizError("NOT_FOUND", "Esta obra ainda não tem quiz.");
+  if (quiz.archivedAt) throw new QuizError("UNAVAILABLE", "Este quiz foi arquivado.");
   const questions = await approvedQuestions(quiz.id);
   if (!isComplete(questions.map((q) => q.position))) throw new QuizError("UNAVAILABLE", "Este quiz ainda não tem 10 perguntas aprovadas.");
   const following = await prisma.anime.findUnique({ where: { userId_anilistId: { userId, anilistId } }, select: { id: true } });

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 /** Admin → Overrides (Figma `8:4471`): valores manuais com prioridade, origem preservada e trilha de auditoria. */
 export default async function AdminOverridesPage() {
-  const { timeZone } = await requireAdminPage();
+  const { timeZone } = await requireAdminPage("catalog");
   const overrides = await prisma.catalogOverride.findMany({ where: { removedAt: null }, orderBy: { createdAt: "desc" }, take: 100 });
 
   return (

@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
+import { clearGlobalEpisodes, seedGlobalEpisodes } from "./global-episodes";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
 import { waitEpisodesStreamed } from "./streaming";
 
@@ -36,10 +38,10 @@ test.describe.serial("Reboot: versões, linhas do tempo separadas e arcos", () =
     const entries = await prisma.catalogEntry.findMany({ where: { anilistId: { in: ALL } }, select: { id: true } });
     await prisma.curationIssue.deleteMany({ where: { entryId: { in: entries.map((e) => e.id) } } });
     await prisma.anime.deleteMany({ where: { anilistId: { in: ALL } } });
-    await prisma.airingScheduleEntry.deleteMany({ where: { anilistId: { in: ALL } } });
+    await clearGlobalEpisodes(prisma, ALL);
     await prisma.production.deleteMany({ where: { anilistId: { in: ALL } } });
     await prisma.franchise.deleteMany({ where: { rootAnilistId: { in: ALL } } });
-    await prisma.catalogEntry.deleteMany({ where: { anilistId: { in: ALL } } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: { in: ALL } } });
     await prisma.storyLink.deleteMany({ where: { OR: [{ oldAnilistId: { in: ALL } }, { newAnilistId: { in: ALL } }] } });
     await prisma.storyArc.deleteMany({ where: { anilistId: { in: ALL } } });
     await prisma.storyReview.deleteMany({ where: { OR: [{ anilistIdA: { in: ALL } }, { anilistIdB: { in: ALL } }] } });
@@ -80,7 +82,7 @@ test.describe.serial("Reboot: versões, linhas do tempo separadas e arcos", () =
 
     // O reboot está na lista da pessoa (episódios do Kitsu); a versão antiga é vista pela página pública (calendário).
     animeNew = (await prisma.anime.create({ data: { userId, anilistId: NEW, titleRomaji: "Reboot Novo Round101", genres: "" } })).id;
-    await prisma.episode.createMany({ data: Array.from({ length: 10 }, (_, i) => ({ animeId: animeNew, number: i + 1, seasonNumber: 1, titleRomaji: `Episódio ${i + 1} do reboot`, airDate: new Date(Date.UTC(2011, 9 + i, 5)) })) });
+    await seedGlobalEpisodes(prisma, NEW, { titleRomaji: "Reboot Novo Round101" }, Array.from({ length: 10 }, (_, i) => ({ number: i + 1, titleRomaji: `Episódio ${i + 1} do reboot`, airDate: new Date(Date.UTC(2011, 9 + i, 5)) })));
     for (let episode = 1; episode <= 6; episode += 1) {
       await prisma.airingScheduleEntry.create({ data: { anilistId: OLD, episode, airingAt: new Date(Date.UTC(1999, 9 + episode, 5)), titleRomaji: "Reboot Velho Round101" } });
     }

@@ -37,7 +37,7 @@ export function CalendarEntryPreview({
 }: {
   item: CalendarItem;
   onFollowed?: (anilistId: number, animeId: string) => void;
-  onPendingChange?: (anilistId: number, fromEpisode: number | null) => void;
+  onPendingChange?: (anilistId: number, postponed: boolean) => void;
   /** Deixou de acompanhar pelo botão do preview (a obra sai da lista). */
   onUnfollowed?: (anilistId: number) => void;
   /** Voltou a acompanhar uma obra que estava em "Espera". */
@@ -113,23 +113,23 @@ export function CalendarEntryPreview({
     }
   }
 
-  // "Adiar": o episódio do dia que não deu para ver vira pendência em "Para assistir" (só para obras da lista, depois de ir ao ar).
+  // "Adiar a obra" (D5): a obra vai para "Para assistir" — um lembrete por obra, sem número de episódio (só obras da lista, depois de ir ao ar).
   const [pendingBusy, setPendingBusy] = useState(false);
   const [pendingError, setPendingError] = useState<string | null>(null);
   async function togglePending() {
     setPendingBusy(true);
     setPendingError(null);
     try {
-      const resolving = item.pendingFrom != null;
+      const resolving = Boolean(item.postponed);
       const res = resolving
         ? await fetch(`/api/pending/${item.anilistId}`, { method: "DELETE" })
-        : await fetch("/api/pending", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ anilistId: item.anilistId, episode: item.episode }) });
+        : await fetch("/api/pending", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ anilistId: item.anilistId }) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setPendingError(data.error ?? "Não foi possível salvar. Tente novamente.");
         return;
       }
-      onPendingChange?.(item.anilistId, resolving ? null : (data.fromEpisode as number));
+      onPendingChange?.(item.anilistId, !resolving);
     } catch {
       setPendingError("Não foi possível falar com o servidor. Tente novamente.");
     } finally {
@@ -263,16 +263,16 @@ export function CalendarEntryPreview({
                 </Button>
               )}
               {!hasImage && followToggle}
-              {(released || item.pendingFrom != null) && (
+              {(released || item.postponed) && (
                 <Button
                   size="small"
                   disabled={pendingBusy}
                   onClick={() => void togglePending()}
-                  startIcon={item.pendingFrom != null ? <BookmarkAddedIcon /> : <BookmarkAddIcon />}
+                  startIcon={item.postponed ? <BookmarkAddedIcon /> : <BookmarkAddIcon />}
                   sx={buttonSx}
-                  data-testid={item.pendingFrom != null ? "preview-pending-resolve" : "preview-postpone"}
+                  data-testid={item.postponed ? "preview-pending-resolve" : "preview-postpone"}
                 >
-                  {item.pendingFrom != null ? "Já assisti" : "Adiar"}
+                  {item.postponed ? "Retomar" : "Adiar a obra"}
                 </Button>
               )}
             </>
@@ -286,9 +286,9 @@ export function CalendarEntryPreview({
             </Button>
           )}
         </Box>
-        {item.pendingFrom != null && (
+        {item.postponed && (
           <Typography data-testid="preview-pending-note" sx={{ fontSize: 11, color: "warning.main" }}>
-            Adiado · parei no EP{String(item.pendingFrom).padStart(2, "0")} — está em “Para assistir”.
+            Obra adiada — está em “Para assistir”.
           </Typography>
         )}
         {toggleError && (

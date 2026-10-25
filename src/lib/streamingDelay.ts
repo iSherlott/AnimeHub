@@ -1,3 +1,4 @@
+import { timed } from "@/lib/episodeState";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -53,7 +54,8 @@ export async function setStreamingDelay({ anilistId, minutes, site }: { anilistI
       data: { streamingDelayMinutes: minutes, streamingSite: site, ...(delta && entry.nextEpisodeAt ? { nextEpisodeAt: new Date(entry.nextEpisodeAt.getTime() + delta * 60_000) } : {}) },
     });
     if (delta === 0) return { episodes: 0 };
-    const rows = await tx.airingScheduleEntry.findMany({ where: { anilistId }, select: { id: true, airingAt: true } });
+    // Só horários da fonte (com instante): o que o admin corrigiu à mão não é deslocado.
+    const rows = timed(await tx.airingScheduleEntry.findMany({ where: { anilistId, NOT: { manualFields: { has: "airingAt" } } }, select: { id: true, airingAt: true } }));
     for (const row of rows) await tx.airingScheduleEntry.update({ where: { id: row.id }, data: { airingAt: new Date(row.airingAt.getTime() + delta * 60_000) } });
     return { episodes: rows.length };
   });

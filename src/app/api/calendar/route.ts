@@ -3,11 +3,10 @@ import { streamingDelays, tvAiringAt } from "@/lib/streamingDelay";
 import { prisma } from "@/lib/prisma";
 import { getCachedAiringSchedule } from "@/lib/airingCache";
 import { calendarItemFromCache } from "@/lib/calendarItem";
-import { applyAiringOverrides, loadActiveOverrides } from "@/lib/airingOverrides";
 import { animeSeasonOf, civilDay, classifyOffGrid, DELAY_GRACE_MS, isDelayed, type OffGridItem } from "@/lib/calendarOffGrid";
 import { getCurrentUser } from "@/lib/auth/session";
 import { startOfWeekMonday } from "@/lib/calendarWeek";
-import { pendingFromMap } from "@/lib/pending";
+import { postponedSet } from "@/lib/pending";
 import { hiddenAnilistIds } from "@/lib/platform";
 import { hasBlockedGenre } from "@/lib/contentPolicy";
 
@@ -68,12 +67,11 @@ export async function GET(request: NextRequest) {
   const from = weekStart - BUFFER_SECONDS;
   const to = weekStart + WEEK_SECONDS + BUFFER_SECONDS;
 
+  // Horário efetivo: overrides manuais ativos (Admin → Overrides) já vêm aplicados.
   const cached = await getCachedAiringSchedule(new Date(from * 1000), new Date(to * 1000));
-  // Horário efetivo: overrides manuais ativos (Admin → Overrides) valem sobre o da fonte.
   // Só obras da plataforma (trazidas pelo admin) e nunca conteúdo adulto — o cache pode guardar mais do que isso.
   const hiddenIds = await hiddenAnilistIds();
-  const visible = cached.filter((e) => !hiddenIds.has(e.anilistId) && !hasBlockedGenre(e.genres));
-  const entries = applyAiringOverrides(visible, await loadActiveOverrides(Array.from(new Set(visible.map((e) => e.anilistId)))));
+  const entries = cached.filter((e) => !hiddenIds.has(e.anilistId) && !hasBlockedGenre(e.genres));
 
   // Navegar o calendário nunca exige login — sem sessão, ninguém aparece
   // marcado como "já está na minha lista" (não existe "minha lista" pra
@@ -104,24 +102,13 @@ export async function GET(request: NextRequest) {
   const storedByAnilistId = new Map(storedRows.map((r) => [r.anilistId as number, { pt: r.descriptionPt, ja: r.descriptionJa }]));
 
   // "Adiado": em que episódio a pessoa parou, por obra da semana (só quem está logado).
-  const pendingByAnilistId = user && myAnime.length ? await pendingFromMap(user.id, myAnime.map((a) => a.anilistId)) : new Map<number, number>();
+  const postponedIds = user && myAnime.length ? await postponedSet(user.id, myAnime.map((a) => a.anilistId)) : new Set<number>();
 
-  // Miniatura do episódio: só obras da lista têm episódios carregados (Episode.thumbnail).
-  const ownedIdToAnilist = new Map(myAnime.map((a) => [a.id, a.anilistId]));
+  // Miniatura do episódio: a do episódio global (Fase 4) primeiro; depois a do job diário de imagens.
   const weekEpisodes = Array.from(new Set(entries.map((e) => e.episode)));
-  const thumbnails = ownedIdToAnilist.size
-    ? await prisma.episode.findMany({
-        where: { animeId: { in: Array.from(ownedIdToAnilist.keys()) }, thumbnail: { not: null }, number: { in: weekEpisodes } },
-        select: { animeId: true, number: true, thumbnail: true },
-        orderBy: { seasonNumber: "desc" },
-      })
-    : [];
   const episodeImages = new Map<string, string>();
-  for (const t of thumbnails) {
-    const key = `${ownedIdToAnilist.get(t.animeId)}-${t.number}`;
-    if (t.thumbnail && !episodeImages.has(key)) episodeImages.set(key, t.thumbnail);
-  }
-  // Imagens de qualquer anime do calendário (job diário das 00:00); a miniatura da própria lista tem prioridade.
+  for (const e of entries) if (e.thumbnail) episodeImages.set(`${e.anilistId}-${e.episode}`, e.thumbnail);
+  // Imagens de qualquer anime do calendário (job diário das 00:00); a do episódio global tem prioridade.
   const cachedImages = weekAnilistIds.length
     ? await prisma.episodeImage.findMany({ where: { anilistId: { in: weekAnilistIds }, episode: { in: weekEpisodes } }, select: { anilistId: true, episode: true, thumbnail: true } })
     : [];
@@ -199,7 +186,7 @@ export async function GET(request: NextRequest) {
         myAnimeByAnilistId,
         isDelayed(e.airingAt, e.episode, catalogNextById.get(e.anilistId), now),
         episodeImages.get(`${e.anilistId}-${e.episode}`) ?? null,
-        pendingByAnilistId.get(e.anilistId) ?? null,
+        postponedIds.has(e.anilistId),
         storedByAnilistId.get(e.anilistId) ?? null
       );
       const delay = delays.get(e.anilistId);

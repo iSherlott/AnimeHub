@@ -18,7 +18,7 @@ async function call(url: string, method: "PATCH" | "DELETE", body?: unknown): Pr
 }
 
 /** Aprovar/revisar perguntas e remover o quiz (só sem tentativas). Cada ação recarrega a página com o novo estado. */
-export function QuizReviewActions({ quizId, allApproved, removable }: { quizId: string; allApproved: boolean; removable: boolean }) {
+export function QuizReviewActions({ quizId, allApproved, removable, archived = false }: { quizId: string; allApproved: boolean; removable: boolean; archived?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +45,10 @@ export function QuizReviewActions({ quizId, allApproved, removable }: { quizId: 
             Aprovar as 10 perguntas
           </Button>
         )}
+        {/* Fase 9: arquivar tira do ar sem apagar perguntas, tentativas nem títulos concedidos. */}
+        <Button onClick={() => void run(() => call(`/api/admin/quizzes/${quizId}`, "PATCH", { archived: !archived }))} disabled={busy} sx={ELEVATED_BUTTON_SX} data-testid="quiz-archive">
+          {archived ? "Desarquivar" : "Arquivar (tirar do ar)"}
+        </Button>
         <Button onClick={() => setConfirm(true)} disabled={busy || !removable} sx={ELEVATED_BUTTON_SX} data-testid="quiz-delete">
           Remover quiz
         </Button>

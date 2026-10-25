@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { stripProtected } from "@/lib/workPropagation";
 import { streamingDelays, withStreamingDelay } from "@/lib/streamingDelay";
 import { fuzzyDateToISO, type AniListMedia } from "@/lib/anilist";
 import type { CatalogEntry } from "@prisma/client";
@@ -59,6 +60,7 @@ export async function cacheAniListMedia(
     const batch = allowed.slice(start, start + BATCH);
     // Título fixado (o do AniDB, ao religar a obra): a AniList atualiza o resto, mas não o nome.
     const locked = new Set((await prisma.catalogEntry.findMany({ where: { anilistId: { in: batch.map((m) => m.id) }, titleLocked: true }, select: { anilistId: true } })).map((r) => r.anilistId));
+    const protectedFields = new Map((await prisma.catalogEntry.findMany({ where: { anilistId: { in: batch.map((m) => m.id) }, NOT: { manualFields: { isEmpty: true } } }, select: { anilistId: true, manualFields: true } })).map((r) => [r.anilistId as number, r.manualFields]));
     const delays = await streamingDelays(batch.map((m) => m.id));
     await Promise.all(
       batch.map((media, offset) => {
@@ -67,7 +69,8 @@ export async function cacheAniListMedia(
         if (data.nextEpisodeAt) data.nextEpisodeAt = withStreamingDelay(data.nextEpisodeAt, delays.get(media.id)?.minutes);
         const { titleRomaji: _keep, ...withoutTitle } = data;
         void _keep;
-        return prisma.catalogEntry.upsert({ where: { anilistId: media.id }, create: { ...data, onPlatform: false }, update: locked.has(media.id) ? withoutTitle : data });
+        const update = stripProtected(locked.has(media.id) ? withoutTitle : data, protectedFields.get(media.id));
+        return prisma.catalogEntry.upsert({ where: { anilistId: media.id }, create: { ...data, onPlatform: false }, update });
       })
     );
   }

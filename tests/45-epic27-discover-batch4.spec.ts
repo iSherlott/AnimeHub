@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 
@@ -26,7 +27,7 @@ test.describe("Epic 27 (lote 4) — Descobrir: grade responsiva pros resultados 
 
   test.afterAll(async () => {
     const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
-    await prisma.catalogEntry.deleteMany({ where: { anilistId: { in: ANILIST_IDS } } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: { in: ANILIST_IDS } } });
     await prisma.$disconnect();
   });
 

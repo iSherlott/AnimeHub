@@ -147,6 +147,28 @@ kubectl apply -k deploy/k8s
 kubectl -n animehub rollout restart deploy
 ```
 
+### Atualização das Fases 2 a 10 (catálogo, episódios e painel administrativo)
+
+Esta versão traz 6 migrações (`20261025100000` a `20261030100000`). Todas só acrescentam: colunas, tabelas, gatilhos e cópias dos dados antigos. Nada é apagado. Mesmo assim, duas delas mexem em muitas linhas:
+
+- **episódios globais:** copia os episódios por usuário para o episódio da obra;
+- **taxonomia:** regrava os gêneros pelo vocabulário e cria os gatilhos.
+
+Por isso, faça um backup do schema antes:
+
+```bash
+pg_dump "<URL do banco sem ?schema=…>" --schema=animehub -Fc -f animehub-antes-fase10.dump
+```
+
+Depois siga os passos de "Atualizar para uma versão nova" acima e confira o resultado:
+
+1. `kubectl -n animehub logs job/animehub-migrate` termina com "All migrations have been successfully applied".
+2. Admin → Saúde do catálogo abre, e a seção "Integridade" mostra o que ainda está sem vínculo (o botão "Ligar ao catálogo" resolve).
+3. Admin → Taxonomia lista os gêneros. Os que aparecem como "não registrados" vieram de dados antigos fora do vocabulário: registre como variação de um gênero, mescle ou exclua.
+4. Os papéis novos (Curador, Moderador) só se dão em Admin → Acesso e moderação → Usuários. Ninguém ganha papel sozinho.
+
+Variável opcional: `CURATION_PRIORITIES` (JSON). Ela muda a prioridade de um tipo de pendência, por exemplo `{"OFFICIAL_SITE_MISSING":"media"}` (veja `docs/arquitetura/pendencias.md`).
+
 ## Problemas comuns
 
 | Sintoma | O que fazer |

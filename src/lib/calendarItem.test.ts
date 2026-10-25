@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { AiringScheduleEntry } from "@prisma/client";
 import { calendarItemFromCache, mergeConsecutiveEpisodes, type OwnedAnimeCalendarInfo } from "./calendarItem";
 
-function entry(overrides: Partial<AiringScheduleEntry> = {}): AiringScheduleEntry {
+function entry(overrides: Partial<AiringScheduleEntry> & { airingAt?: Date } = {}): AiringScheduleEntry & { airingAt: Date } {
   return {
     id: "e1",
     anilistId: 10,
@@ -17,7 +17,7 @@ function entry(overrides: Partial<AiringScheduleEntry> = {}): AiringScheduleEntr
     description: "Sinopse do cache",
     fetchedAt: new Date(),
     ...overrides,
-  } as AiringScheduleEntry;
+  } as AiringScheduleEntry & { airingAt: Date };
 }
 
 const owned: OwnedAnimeCalendarInfo = {

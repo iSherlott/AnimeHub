@@ -1,4 +1,5 @@
 import { createServer, type Server } from "node:http";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { test, expect } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
@@ -33,7 +34,7 @@ test.describe.serial("Carga das obras antigas", () => {
   async function clean() {
     const entries = await prisma.catalogEntry.findMany({ where: { anilistId: { in: IDS } }, select: { id: true } });
     await prisma.curationIssue.deleteMany({ where: { entryId: { in: entries.map((e) => e.id) } } });
-    await prisma.catalogEntry.deleteMany({ where: { anilistId: { in: IDS } } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: { in: IDS } } });
     await prisma.adminJob.deleteMany({ where: { kind: "ANILIST", season: { startsWith: "Obras antigas" } } });
   }
 

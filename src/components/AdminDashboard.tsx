@@ -22,6 +22,7 @@ import {
 } from "@mui/material";
 import { AdminExtraReports } from "@/components/AdminExtraReports";
 import { AdminDataPanel } from "@/components/AdminDataPanel";
+import { ROLE_LABELS } from "@/lib/auth/permissions";
 
 /** A tabela de Usuários rola na horizontal no mobile pra caber Desde/Ações
  * — sem fixar a 1ª coluna, rolar até "Resetar senha" (ação que derruba
@@ -86,7 +87,11 @@ function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR");
 }
 
-export function AdminDashboard() {
+/**
+ * `canManageUsers` (Fase 9): só o administrador vê convites, usuários, papéis e as execuções dos serviços; o moderador vê
+ * as denúncias. O servidor confere de novo em cada API.
+ */
+export function AdminDashboard({ canManageUsers = true, currentUserId }: { canManageUsers?: boolean; currentUserId?: string }) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [invites, setInvites] = useState<AdminInvite[]>([]);
   const [commentReports, setCommentReports] = useState<AdminCommentReport[]>([]);
@@ -109,9 +114,10 @@ export function AdminDashboard() {
   async function loadAll() {
     setLoading(true);
     try {
+      const none = new Response(JSON.stringify({}));
       const [usersRes, invitesRes, reportsRes, postReportsRes] = await Promise.all([
-        fetch("/api/admin/users"),
-        fetch("/api/admin/invites"),
+        canManageUsers ? fetch("/api/admin/users") : Promise.resolve(none.clone()),
+        canManageUsers ? fetch("/api/admin/invites") : Promise.resolve(none.clone()),
         fetch("/api/admin/comment-reports"),
         fetch("/api/admin/post-reports"),
       ]);
@@ -174,6 +180,8 @@ export function AdminDashboard() {
     // Mesmo caso canônico de "buscar dados num efeito" dos docs do React.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadAll();
+    // `canManageUsers` vem do servidor e não muda enquanto a página está aberta: carregar uma vez basta.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleCreateInvite() {
@@ -193,6 +201,18 @@ export function AdminDashboard() {
       creatingInviteRef.current = false;
       setCreatingInvite(false);
     }
+  }
+
+  // Papel (Fase 9): só o administrador muda; o servidor recusa tirar o próprio papel e deixar o sistema sem administrador.
+  async function handleRoleChange(userId: string, role: string) {
+    setError(null);
+    const res = await fetch(`/api/admin/users/${userId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "Falha ao mudar o papel");
+      return;
+    }
+    setUsers((current) => current.map((u) => (u.id === userId ? { ...u, role } : u)));
   }
 
   async function handleResetPassword(userId: string) {
@@ -401,8 +421,9 @@ export function AdminDashboard() {
 
       <AdminExtraReports />
 
-      <AdminDataPanel />
+      {canManageUsers && <AdminDataPanel />}
 
+      {canManageUsers && (
       <Box component="section">
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1.5 }}>
           <Typography variant="h6" component="h2" className="font-display" sx={{ textTransform: "uppercase" }}>
@@ -459,6 +480,9 @@ export function AdminDashboard() {
         )}
       </Box>
 
+      )}
+
+      {canManageUsers && (
       <Box component="section">
         <Typography variant="h6" component="h2" className="font-display" sx={{ mb: 1.5, textTransform: "uppercase" }}>
           Usuários
@@ -470,6 +494,7 @@ export function AdminDashboard() {
                 <TableCell sx={STICKY_NAME_CELL_SX}>Nome</TableCell>
                 <TableCell>E-mail</TableCell>
                 <TableCell>Desde</TableCell>
+                <TableCell>Papel</TableCell>
                 <TableCell align="right">Ações</TableCell>
               </TableRow>
             </TableHead>
@@ -488,6 +513,21 @@ export function AdminDashboard() {
                   </TableCell>
                   <TableCell sx={{ color: "text.secondary" }}>{u.email}</TableCell>
                   <TableCell sx={{ color: "text.secondary" }}>{fmtDate(u.createdAt)}</TableCell>
+                  <TableCell>
+                    <Box
+                      component="select"
+                      aria-label={`Papel de ${u.displayName}`}
+                      data-testid={`user-role-${u.id}`}
+                      value={u.role}
+                      disabled={u.id === currentUserId}
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => void handleRoleChange(u.id, e.target.value)}
+                      sx={{ bgcolor: "background.paper", color: "text.primary", border: 1, borderColor: "divider", borderRadius: "6px", p: 0.5 }}
+                    >
+                      {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </Box>
+                  </TableCell>
                   <TableCell align="right">
                     <Button onClick={() => handleResetPassword(u.id)} size="small" color="inherit">
                       Resetar senha
@@ -499,6 +539,7 @@ export function AdminDashboard() {
           </Table>
         </TableContainer>
       </Box>
+      )}
 
       {/* Diálogo em vez de revelar inline na tabela — o Alert inline
           (mt: 1 dentro da célula) visualmente sobrepunha a linha de baixo

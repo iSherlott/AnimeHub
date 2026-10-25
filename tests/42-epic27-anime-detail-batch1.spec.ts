@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { waitEpisodesStreamed } from "./streaming";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
+import { seedGlobalEpisodes } from "./global-episodes";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
 
 // anilistId fora da faixa usada por outras fixtures.
@@ -98,10 +99,8 @@ test.describe("Epic 27 (lote 1) — lista de episódios em accordion fechado por
       update: {},
     });
     animeId = anime.id;
-    await prisma.episode.deleteMany({ where: { animeId } });
-    await prisma.episode.createMany({
-      data: [{ animeId, number: 1, seasonNumber: 1, titleRomaji: "Episódio Único" }],
-    });
+    // Episódio global (Fase 4): a linha da agenda da obra.
+    await seedGlobalEpisodes(prisma, ACCORDION_ANILIST_ID, { titleRomaji: "Anime Pra Testar Accordion De Episódios" }, [{ number: 1, titleRomaji: "Episódio Único" }]);
     await prisma.$disconnect();
   });
 

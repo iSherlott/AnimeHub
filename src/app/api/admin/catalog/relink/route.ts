@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { relinkAnidbOnlyEntries } from "@/lib/adminImport/relink";
 import { logEvent } from "@/lib/adminImport/pipeline";
 
@@ -9,7 +9,7 @@ import { logEvent } from "@/lib/adminImport/pipeline";
  * (uma consulta por obra, ~1 s cada: pode levar vários minutos).
  */
 export async function POST(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   const params = new URL(request.url).searchParams;
   const dryRun = params.get("dryRun") === "true";

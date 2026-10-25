@@ -1,4 +1,6 @@
+import { timed } from "@/lib/episodeState";
 import { Prisma } from "@prisma/client";
+import { catalogEntryIdFor } from "@/lib/catalogLink";
 import { prisma } from "@/lib/prisma";
 import { deriveSeriesInfo } from "@/lib/series";
 import { hasBlockedGenre } from "@/lib/contentPolicy";
@@ -171,6 +173,7 @@ async function followContinuation(userId: string, work: WorkSnapshot, seriesKey:
       data: {
         userId,
         anilistId: work.anilistId,
+        catalogEntryId: await catalogEntryIdFor(work.anilistId),
         titleRomaji: work.titleRomaji,
         titleEnglish: work.titleEnglish,
         titleNative: work.titleNative,
@@ -219,6 +222,7 @@ export async function ensureEarlierSeasons(userId: string, anilistId: number): P
         data: {
           userId,
           anilistId: id,
+          catalogEntryId: await catalogEntryIdFor(id),
           titleRomaji: season.titleRomaji,
           titleEnglish: season.titleEnglish,
           titleNative: season.titleNative,
@@ -269,11 +273,13 @@ export async function backfillEarlierSeasons(): Promise<number> {
 export async function syncContinuations(now: Date = new Date()): Promise<ContinuationSummary> {
   const summary: ContinuationSummary = { returned: 0, followed: 0, alerts: 0, backfilled: 0 };
   try {
-    const upcoming = await prisma.airingScheduleEntry.findMany({
-      where: { airingAt: { gte: now } },
-      orderBy: { airingAt: "asc" },
-      select: { anilistId: true, airingAt: true },
-    });
+    const upcoming = timed(
+      await prisma.airingScheduleEntry.findMany({
+        where: { airingAt: { gte: now }, status: "ACTIVE" },
+        orderBy: { airingAt: "asc" },
+        select: { anilistId: true, airingAt: true },
+      })
+    );
     if (upcoming.length === 0) return summary;
     const firstAt = new Map<number, Date>();
     for (const u of upcoming) if (!firstAt.has(u.anilistId)) firstAt.set(u.anilistId, u.airingAt);

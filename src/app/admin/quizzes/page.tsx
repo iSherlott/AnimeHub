@@ -6,16 +6,20 @@ import { QuizImportForm } from "@/components/admin/QuizImportForm";
 import { Notice } from "@/components/StatePanels";
 import { requireAdminPage } from "@/lib/adminPage";
 import { QUIZ_LENGTH } from "@/lib/quiz";
+import { quizConfigErrors } from "@/lib/quizAdmin";
 
 export const dynamic = "force-dynamic";
 
 /** Admin → Quizzes: carga das perguntas anime a anime, revisão/aprovação e o estado de cada quiz. */
 export default async function AdminQuizzesPage() {
-  await requireAdminPage();
+  await requireAdminPage("catalog");
   const quizzes = await prisma.quiz.findMany({
     orderBy: { updatedAt: "desc" },
-    include: { questions: { select: { approved: true } }, _count: { select: { attempts: true, titles: true } } },
+    include: { questions: { select: { approved: true, position: true, text: true, optionA: true, optionB: true, optionC: true, optionD: true, correct: true } }, _count: { select: { attempts: true, titles: true } } },
   });
+  // Resultados (Fase 9): concluídas e nota média, por quiz — só agregados, sem dados de quem respondeu.
+  const results = quizzes.length ? await prisma.quizAttempt.groupBy({ by: ["quizId"], where: { quizId: { in: quizzes.map((q) => q.id) }, status: "COMPLETED" }, _count: { _all: true }, _avg: { score: true } }) : [];
+  const resultBy = new Map(results.map((r) => [r.quizId, { completed: r._count._all, avg: r._avg.score }]));
   const ids = quizzes.map((q) => q.anilistId);
   const [productions, catalog] = ids.length
     ? await Promise.all([
@@ -28,7 +32,7 @@ export default async function AdminQuizzesPage() {
 
   const rows = quizzes.map((q) => {
     const approved = q.questions.filter((x) => x.approved).length;
-    return { quiz: q, approved, total: q.questions.length, name: names.get(q.anilistId) ?? `Obra #${q.anilistId}` };
+    return { quiz: q, approved, total: q.questions.length, name: names.get(q.anilistId) ?? `Obra #${q.anilistId}`, errors: quizConfigErrors(q, q.questions), result: resultBy.get(q.id) ?? null };
   });
 
   return (
@@ -70,9 +74,24 @@ export default async function AdminQuizzesPage() {
               {
                 key: "state",
                 label: "Estado",
-                render: (r) => (r.approved === QUIZ_LENGTH && r.total === QUIZ_LENGTH ? <SmallChip tone="success">Disponível</SmallChip> : <SmallChip tone="warning">Em revisão</SmallChip>),
+                render: (r) => (
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }} data-testid={`quiz-state-${r.quiz.id}`}>
+                    {r.quiz.archivedAt ? (
+                      <SmallChip>Arquivado</SmallChip>
+                    ) : r.approved === QUIZ_LENGTH && r.total === QUIZ_LENGTH && r.errors.length === 0 ? (
+                      <SmallChip tone="success">Publicado</SmallChip>
+                    ) : (
+                      <SmallChip tone="warning">Rascunho</SmallChip>
+                    )}
+                    {r.errors.length > 0 && <Typography sx={{ fontSize: 12, color: "warning.main" }}>{r.errors.slice(0, 3).join(" · ")}</Typography>}
+                  </Box>
+                ),
               },
-              { key: "att", label: "Tentativas / Títulos", render: (r) => `${r.quiz._count.attempts} / ${r.quiz._count.titles}` },
+              {
+                key: "att",
+                label: "Tentativas · concluídas · nota média · títulos",
+                render: (r) => `${r.quiz._count.attempts} · ${r.result?.completed ?? 0} · ${r.result?.avg != null ? r.result.avg.toFixed(1) : "—"} · ${r.quiz._count.titles}`,
+              },
               {
                 key: "act",
                 label: "Ação",

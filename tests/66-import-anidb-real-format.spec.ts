@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN } from "./test-auth";
@@ -51,7 +52,7 @@ test.describe("Importação — listagem de temporada do AniDB", () => {
 
   async function cleanup() {
     await prisma.adminJob.deleteMany({ where: { records: { some: { sourceKey: { in: [String(CATALOG_ONLY.anidbId), String(PRODUCED.anidbId), String(BRAND_NEW.anidbId)] } } } } });
-    await prisma.catalogEntry.deleteMany({ where: { OR: [{ anilistId: CATALOG_ONLY.anilistId }, { anidbId: BRAND_NEW.anidbId }] } });
+    await deleteCatalogEntries(prisma, { where: { OR: [{ anilistId: CATALOG_ONLY.anilistId }, { anidbId: BRAND_NEW.anidbId }] } });
     await prisma.production.deleteMany({ where: { anilistId: { in: [CATALOG_ONLY.anilistId, PRODUCED.anilistId] } } });
     await prisma.franchise.deleteMany({ where: { rootAnilistId: { in: [CATALOG_ONLY.anilistId, PRODUCED.anilistId] } } });
   }
@@ -148,7 +149,7 @@ test.describe("Importação — listagem de temporada do AniDB", () => {
       expect(seen.size).toBe(70);
       await expect(page.getByTestId("admin-catalog-count")).toContainText("70 obras só no catálogo");
     } finally {
-      await prisma.catalogEntry.deleteMany({ where: { anilistId: { gte: 966000, lt: 966070 } } });
+      await deleteCatalogEntries(prisma, { where: { anilistId: { gte: 966000, lt: 966070 } } });
     }
   });
 

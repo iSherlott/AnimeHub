@@ -1,4 +1,5 @@
 import type { CatalogEntry } from "@prisma/client";
+import { reassignCatalogEntry } from "@/lib/catalogLink";
 import { prisma } from "@/lib/prisma";
 import { getMediaByIds, searchAnime, type AniListMedia } from "@/lib/anilist";
 import { cacheAniListMedia } from "@/lib/catalogCache";
@@ -121,11 +122,13 @@ async function linkEntry(entry: CatalogEntry, anilistId: number): Promise<string
   const title = anidbDisplayTitle(entry.titleRomaji, target.titleRomaji);
   // O nome da AniList não some: vira o título alternativo (e continua achando na busca).
   const alias = title && target.titleEnglish === null ? { titleEnglish: target.titleRomaji } : {};
-  await prisma.$transaction([
+  await prisma.$transaction(async (tx) => {
+    // O que apontava para a entrada do AniDB (identidade interna, Fase 2) passa para a obra da AniList antes de ela sair.
+    await reassignCatalogEntry(entry.id, target.id, tx);
     // A entrada do AniDB sai primeiro: o `anidbId` é único e passa para a obra da AniList.
-    prisma.catalogEntry.delete({ where: { id: entry.id } }),
-    prisma.catalogEntry.update({ where: { id: target.id }, data: { ...fill, ...alias, ...(title ? { titleRomaji: title, titleLocked: true } : {}), anidbId: entry.anidbId, onPlatform: true } }),
-  ]);
+    await tx.catalogEntry.delete({ where: { id: entry.id } });
+    await tx.catalogEntry.update({ where: { id: target.id }, data: { ...fill, ...alias, ...(title ? { titleRomaji: title, titleLocked: true } : {}), anidbId: entry.anidbId, onPlatform: true } });
+  });
   return title;
 }
 

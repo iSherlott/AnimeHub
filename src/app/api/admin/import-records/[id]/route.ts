@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { resolveRecord, type RecordAction } from "@/lib/adminImport/pipeline";
 
 /** Decisão sobre um registro da prévia: confirmar, ignorar, marcar como novo ou trocar o candidato. */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
 
   let body: { action?: unknown; reason?: unknown; productionId?: unknown };

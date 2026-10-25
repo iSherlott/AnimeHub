@@ -1,4 +1,5 @@
 import { createServer, type Server } from "node:http";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { test, expect } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
@@ -53,7 +54,7 @@ test.describe.serial("Painel de importação da AniList", () => {
 
   async function clean() {
     await prisma.airingScheduleEntry.deleteMany({ where: { anilistId: { in: ids } } });
-    await prisma.catalogEntry.deleteMany({ where: { anilistId: { in: ids } } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: { in: ids } } });
   }
 
   test.beforeAll(async () => {

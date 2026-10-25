@@ -22,9 +22,13 @@ const { findMany, deleteMany, createMany, upsert, count, animeUpdate, findUnique
   })
 );
 
+const { upsertSourceEpisodes } = vi.hoisted(() => ({ upsertSourceEpisodes: vi.fn() }));
+vi.mock("@/lib/globalEpisodes", () => ({ upsertSourceEpisodes }));
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     episode: { findMany, deleteMany, createMany, upsert, count },
+    airingScheduleEntry: { count },
     anime: { update: animeUpdate, findUniqueOrThrow, findUnique },
   },
 }));
@@ -43,6 +47,7 @@ vi.mock("@/lib/anidb", () => ({ getAnidbAnimeById, isAnidbConfigured }));
 function makeAnime(overrides: Partial<Anime> = {}): Anime {
   return {
     id: "anime-1",
+    catalogEntryId: null,
     userId: "user-1",
     anilistId: 1,
     kitsuId: null,
@@ -121,100 +126,35 @@ beforeEach(() => {
   findUnique.mockResolvedValue(null);
 });
 
-describe("refreshAnimeData — passo da AniDB, preservação de seasonNumber/sinopse/miniatura", () => {
-  // Regressão da 13ª rodada de auditoria (Epic 18): a AniDB não tem conceito
-  // de temporada, então seu deleteMany+createMany de episódios só sabia
-  // recriar tudo com seasonNumber=1 (default do schema) — colapsando
-  // qualquer anime multi-season (numeração da Kitsu, que reinicia por
-  // temporada) de volta pra uma temporada só. A 1ª correção guardava os
-  // episódios existentes num Map chaveado só por `number`, que ainda assim
-  // perdia informação quando 2 temporadas diferentes compartilhavam o mesmo
-  // number (ex.: S1E1 e S2E1) — só um dos 2 sobrevivia no Map, arriscando
-  // atribuir a temporada errada. Este teste cobre exatamente esse caso.
-  it("não herda seasonNumber/sinopse/miniatura quando o number já existente é ambíguo entre temporadas", async () => {
-    findMany.mockResolvedValueOnce([
-      { number: 1, seasonNumber: 1, synopsis: "Sinopse da S1E1", thumbnail: "s1e1.jpg" },
-      { number: 1, seasonNumber: 2, synopsis: "Sinopse da S2E1", thumbnail: "s2e1.jpg" },
-    ]);
-    getAnidbAnimeById.mockResolvedValueOnce(
-      makeAnidbAnime({
-        episodes: [{ number: "1", airDate: null, titles: [{ language: "en", title: "Episode One" }] }],
-      })
-    );
-
-    const { refreshAnimeData } = await import("@/lib/refreshAnimeData");
-    await refreshAnimeData(makeAnime());
-
-    expect(upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { animeId_seasonNumber_number: { animeId: "anime-1", seasonNumber: 1, number: 1 } },
-        create: expect.objectContaining({
-          number: 1,
-          seasonNumber: 1, // cai pro padrão seguro, não arrisca qual das 2 temporadas
-          synopsis: null,
-          thumbnail: null,
-        }),
-      })
-    );
-  });
-
-  it("herda seasonNumber/sinopse/miniatura normalmente quando o number já existente não é ambíguo", async () => {
-    findMany.mockResolvedValueOnce([
-      { number: 1, seasonNumber: 1, synopsis: "Sinopse da S1E1", thumbnail: "s1e1.jpg" },
-      { number: 2, seasonNumber: 2, synopsis: "Sinopse da S2E2", thumbnail: "s2e2.jpg" },
-    ]);
+describe("refreshAnimeData — passo da AniDB grava no episódio global (Fase 4)", () => {
+  it("manda título e dia de cada episódio para o episódio global da obra, em modo refresh", async () => {
     getAnidbAnimeById.mockResolvedValueOnce(
       makeAnidbAnime({
         episodes: [
-          { number: "1", airDate: null, titles: [] },
+          { number: "1", airDate: "2026-10-05", titles: [{ language: "en", title: "Episode One" }, { language: "x-jat", title: "Dai Ichi Wa" }, { language: "ja", title: "第一話" }] },
           { number: "2", airDate: null, titles: [] },
         ],
       })
     );
+    count.mockResolvedValueOnce(2);
 
     const { refreshAnimeData } = await import("@/lib/refreshAnimeData");
-    await refreshAnimeData(makeAnime());
+    const result = await refreshAnimeData(makeAnime());
 
-    expect(upsert).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        where: { animeId_seasonNumber_number: { animeId: "anime-1", seasonNumber: 1, number: 1 } },
-        create: expect.objectContaining({ synopsis: "Sinopse da S1E1", thumbnail: "s1e1.jpg" }),
-      })
-    );
-    expect(upsert).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        where: { animeId_seasonNumber_number: { animeId: "anime-1", seasonNumber: 2, number: 2 } },
-        create: expect.objectContaining({ synopsis: "Sinopse da S2E2", thumbnail: "s2e2.jpg" }),
-      })
-    );
+    const [[anilistId, , list, source, mode]] = upsertSourceEpisodes.mock.calls;
+    expect([anilistId, source, mode]).toEqual([1, "anidb", "refresh"]);
+    expect(list[0]).toEqual({ number: 1, titleRomaji: "Dai Ichi Wa", titleEnglish: "Episode One", titleJapanese: "第一話", airDate: new Date("2026-10-05") });
+    expect(list[1]).toMatchObject({ number: 2, airDate: null });
+    expect(result.episodeCount).toBe(2);
+    expect(upsert).not.toHaveBeenCalled(); // a tabela por usuário (Episode) não recebe mais gravações
   });
 
-  // Regressão da 14ª rodada de auditoria (Epic 18): a correção anterior
-  // ainda apagava TODOS os episódios do anime (deleteMany({animeId}))
-  // antes de recriar só o subconjunto que a AniDB devolveu — destruindo de
-  // verdade (não só reagrupando errado) episódios de outras temporadas que
-  // a própria AniDB nem menciona, já que ela não agrupa por temporada como
-  // a Kitsu (1 anidbId cobre só 1 temporada/cour). Este teste garante que
-  // nenhum `deleteMany` roda mais nesse passo.
-  it("nunca apaga episódios de outras temporadas que a AniDB não menciona", async () => {
-    findMany.mockResolvedValueOnce([
-      { number: 1, seasonNumber: 1, synopsis: null, thumbnail: null },
-      { number: 1, seasonNumber: 2, synopsis: null, thumbnail: null },
-      { number: 2, seasonNumber: 2, synopsis: null, thumbnail: null },
-    ]);
-    // A AniDB só devolve 1 episódio (uma temporada/cour só) — bem menos do
-    // que o anime já tem gravado nas outras temporadas.
-    getAnidbAnimeById.mockResolvedValueOnce(
-      makeAnidbAnime({ episodes: [{ number: "1", airDate: null, titles: [] }] })
-    );
+  it("especial da AniDB (S1, C2…) não vira o episódio 1, 2… da obra", async () => {
+    getAnidbAnimeById.mockResolvedValueOnce(makeAnidbAnime({ episodes: [{ number: "S1", airDate: null, titles: [] }] }));
 
     const { refreshAnimeData } = await import("@/lib/refreshAnimeData");
     await refreshAnimeData(makeAnime());
 
-    expect(deleteMany).not.toHaveBeenCalled();
-    expect(createMany).not.toHaveBeenCalled();
-    expect(upsert).toHaveBeenCalledTimes(1);
+    expect(upsertSourceEpisodes.mock.calls[0][2][0].number).toBe(0); // 0 = descartado pelo upsert (sem numeração regular)
   });
 });

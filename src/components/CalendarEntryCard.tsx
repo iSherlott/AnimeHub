@@ -64,7 +64,7 @@ export function CalendarEntryCard({
 }: {
   item: CalendarItem;
   onFollowed?: (anilistId: number, animeId: string) => void;
-  onPendingChange?: (anilistId: number, fromEpisode: number | null) => void;
+  onPendingChange?: (anilistId: number, postponed: boolean) => void;
   onUnfollowed?: (anilistId: number) => void;
   onResumed?: (anilistId: number) => void;
   /** Destaca (vermelho) o que é da minha lista — só faz sentido em "Todos"; em "Minha Lista" tudo seria vermelho. */
@@ -200,10 +200,10 @@ export function CalendarEntryCard({
             Atrasado
           </Badge>
         )}
-        {item.pendingFrom != null && (
+        {item.postponed && (
           <Box data-testid={`calendar-pending-${item.key}`}>
             <Badge tone="warning" icon={<BookmarkAddedIcon />}>
-              Adiado · EP{pad(item.pendingFrom)}
+              Obra adiada
             </Badge>
           </Box>
         )}

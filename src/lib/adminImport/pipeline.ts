@@ -1,3 +1,5 @@
+import { timed } from "@/lib/episodeState";
+import { OVERRIDE_SOURCE } from "@/lib/airingCache";
 import { ADULT_CONTENT_BLOCKED } from "@/lib/contentPolicy";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -235,10 +237,12 @@ export async function analyzeImport(input: { html: string; source: string; seaso
       // Divergência de horário: só quando a fonte informou data E hora e existe um episódio próximo no cache.
       if (outcome.best && rec.airsAt && rec.airsAtHasTime) {
         const anilistId = outcome.best.candidate.anilistId;
-        const near = await prisma.airingScheduleEntry.findMany({
-          where: { anilistId, airingAt: { gte: new Date(rec.airsAt.getTime() - 3 * 86400_000), lte: new Date(rec.airsAt.getTime() + 3 * 86400_000) } },
-          orderBy: { airingAt: "asc" },
-        });
+        const near = timed(
+          await prisma.airingScheduleEntry.findMany({
+            where: { anilistId, airingAt: { gte: new Date(rec.airsAt.getTime() - 3 * 86400_000), lte: new Date(rec.airsAt.getTime() + 3 * 86400_000) } },
+            orderBy: { airingAt: "asc" },
+          })
+        );
         const entry = near.sort((a, b) => Math.abs(a.airingAt.getTime() - rec.airsAt!.getTime()) - Math.abs(b.airingAt.getTime() - rec.airsAt!.getTime()))[0];
         if (entry && Math.abs(entry.airingAt.getTime() - rec.airsAt.getTime()) > RESCHEDULE_THRESHOLD_MS) {
           const [overridden, openConflict] = await Promise.all([
@@ -459,6 +463,13 @@ export async function resolveConflict(conflictId: string, input: ConflictResolut
   }
 
   await prisma.$transaction(async (tx) => {
+    // Conflito "a fonte mudou depois do override" (Fase 5): ficar com a fonte (A) é tirar o override.
+    if (input.resolution === "A" && conflict.bSource === OVERRIDE_SOURCE) {
+      await tx.catalogOverride.updateMany({
+        where: { anilistId: conflict.anilistId, episode: conflict.episode, field: conflict.field, removedAt: null },
+        data: { removedAt: new Date(), removedByName: actor.name },
+      });
+    }
     if (input.resolution !== "A") {
       // Um único override ativo por episódio: o novo substitui o anterior.
       await tx.catalogOverride.updateMany({

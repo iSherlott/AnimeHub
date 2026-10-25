@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 
 type Params = { params: Promise<{ userId: string }> };
 
@@ -10,7 +10,7 @@ type Params = { params: Promise<{ userId: string }> };
  * guardada em resolvedById/resolvedAt.
  */
 export async function POST(_request: Request, { params }: Params) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("moderation");
   if (!user) return response;
 
   const { userId } = await params;

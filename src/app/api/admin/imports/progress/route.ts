@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 
 /**
  * Andamento de uma carga para a tela mostrar o que está acontecendo.
@@ -9,7 +9,7 @@ import { requireAdmin } from "@/lib/auth/session";
  *  - `&kind=ANILIST`: o mesmo, para as operações do painel da AniList (buscar, trazer, complementar).
  */
 export async function GET(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
 
   const { searchParams } = new URL(request.url);

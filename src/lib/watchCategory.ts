@@ -2,8 +2,8 @@ import type { SeasonRef } from "@/lib/exploreGroups";
 
 /**
  * Em que pé está cada anime da lista da pessoa. Modo "misto": a pessoa pode marcar na mão
- * (`Anime.watchState`), e enquanto não marca a plataforma deduz do que já sabe — se há episódio adiado
- * ("parei no EP02"), se a obra está no ar nesta temporada ou se já terminou de ser exibida.
+ * (`Anime.watchState`), e enquanto não marca a plataforma deduz do que já sabe — se a obra foi adiada
+ * ("Para assistir"), se está no ar nesta temporada ou se já terminou de ser exibida.
  */
 /** DROPPED = vi até aqui e desisti: fora do calendário e sem avisos, e as próximas temporadas não entram sozinhas. */
 export const WATCH_STATES = ["WATCHING", "UNFINISHED", "FINISHED", "DROPPED"] as const;
@@ -34,7 +34,7 @@ const FROM_STATE: Record<WatchState, WatchCategory> = { WATCHING: "watching", UN
 
 export type CategoryInput = {
   watchState: string | null;
-  /** Há episódio adiado em "Para assistir". */
+  /** A obra está adiada em "Para assistir". */
   hasPending: boolean;
   waiting: boolean;
   status: string | null;

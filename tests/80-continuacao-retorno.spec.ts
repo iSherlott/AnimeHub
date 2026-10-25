@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
@@ -30,7 +31,7 @@ test.describe.serial("Continuação e retorno de obras", () => {
     await prisma.anime.deleteMany({ where: { anilistId: { in: ALL } } });
     await prisma.production.deleteMany({ where: { anilistId: { in: ALL } } });
     await prisma.franchise.deleteMany({ where: { rootAnilistId: { in: ALL } } });
-    await prisma.catalogEntry.deleteMany({ where: { anilistId: { in: ALL } } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: { in: ALL } } });
   }
 
   const runSync = async (playwright: import("@playwright/test").PlaywrightWorkerArgs["playwright"], baseURL: string | undefined) => {

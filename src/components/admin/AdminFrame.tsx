@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
+import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
+import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
 import CompareArrowsOutlinedIcon from "@mui/icons-material/CompareArrowsOutlined";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
@@ -13,17 +15,36 @@ import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import FilterListOutlinedIcon from "@mui/icons-material/FilterListOutlined";
 import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import LibraryBooksOutlinedIcon from "@mui/icons-material/LibraryBooksOutlined";
+import JoinInnerOutlinedIcon from "@mui/icons-material/JoinInnerOutlined";
 import LinkOutlinedIcon from "@mui/icons-material/LinkOutlined";
+import MonitorHeartOutlinedIcon from "@mui/icons-material/MonitorHeartOutlined";
+import MovieFilterOutlinedIcon from "@mui/icons-material/MovieFilterOutlined";
 import QuizOutlinedIcon from "@mui/icons-material/QuizOutlined";
 import RadarOutlinedIcon from "@mui/icons-material/RadarOutlined";
+import RuleOutlinedIcon from "@mui/icons-material/RuleOutlined";
+import SyncAltOutlinedIcon from "@mui/icons-material/SyncAltOutlined";
+import TimelineOutlinedIcon from "@mui/icons-material/TimelineOutlined";
+import TranslateOutlinedIcon from "@mui/icons-material/TranslateOutlined";
+import VideoLibraryOutlinedIcon from "@mui/icons-material/VideoLibraryOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import { Box, Typography } from "@mui/material";
+import { can, type Permission } from "@/lib/auth/permissions";
 
-type NavItem = { href: string; label: string; icon: ReactNode; crumb: string };
+type NavItem = { href: string; label: string; icon: ReactNode; crumb: string; perm?: Permission };
 
 const NAV: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: <DashboardOutlinedIcon />, crumb: "DASHBOARD" },
-  { href: "/admin/catalogo", label: "Catálogo", icon: <LibraryBooksOutlinedIcon />, crumb: "CATÁLOGO" },
+  { href: "/admin/saude", label: "Saúde do catálogo", icon: <MonitorHeartOutlinedIcon />, crumb: "SAÚDE DO CATÁLOGO" },
+  { href: "/admin/obras", label: "Catálogo de obras", icon: <MovieFilterOutlinedIcon />, crumb: "CATÁLOGO DE OBRAS" },
+  { href: "/admin/episodios", label: "Episódios", icon: <VideoLibraryOutlinedIcon />, crumb: "EPISÓDIOS" },
+  { href: "/admin/calendario", label: "Calendário", icon: <CalendarMonthOutlinedIcon />, crumb: "CALENDÁRIO" },
+  { href: "/admin/correspondencias", label: "Correspondências", icon: <JoinInnerOutlinedIcon />, crumb: "CORRESPONDÊNCIAS" },
+  { href: "/admin/atualizacoes", label: "Atualização seletiva", icon: <SyncAltOutlinedIcon />, crumb: "ATUALIZAÇÃO SELETIVA" },
+  { href: "/admin/franquias", label: "Franquias", icon: <TimelineOutlinedIcon />, crumb: "FRANQUIAS" },
+  { href: "/admin/catalogo", label: "Produções e franquias", icon: <LibraryBooksOutlinedIcon />, crumb: "PRODUÇÕES E FRANQUIAS" },
+  { href: "/admin/taxonomia", label: "Taxonomia", icon: <CategoryOutlinedIcon />, crumb: "TAXONOMIA" },
+  { href: "/admin/traducoes", label: "Traduções", icon: <TranslateOutlinedIcon />, crumb: "TRADUÇÕES" },
+  { href: "/admin/pendencias", label: "Pendências", icon: <RuleOutlinedIcon />, crumb: "PENDÊNCIAS" },
   { href: "/admin/curadoria", label: "Curadoria", icon: <FactCheckOutlinedIcon />, crumb: "CURADORIA" },
   { href: "/admin/importacoes", label: "Importações", icon: <FileDownloadOutlinedIcon />, crumb: "IMPORTAÇÕES" },
   { href: "/admin/match-name", label: "Match name", icon: <LinkOutlinedIcon />, crumb: "MATCH NAME" },
@@ -34,7 +55,7 @@ const NAV: NavItem[] = [
   { href: "/admin/conflitos", label: "Conflitos", icon: <WarningAmberOutlinedIcon />, crumb: "CONFLITOS" },
   { href: "/admin/overrides", label: "Overrides", icon: <EditOutlinedIcon />, crumb: "OVERRIDES" },
   { href: "/admin/logs", label: "Logs", icon: <FilterListOutlinedIcon />, crumb: "LOGS" },
-  { href: "/admin/acesso", label: "Acesso e moderação", icon: <AdminPanelSettingsOutlinedIcon />, crumb: "ACESSO E MODERAÇÃO" },
+  { href: "/admin/acesso", label: "Acesso e moderação", icon: <AdminPanelSettingsOutlinedIcon />, crumb: "ACESSO E MODERAÇÃO", perm: "moderation" },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -46,9 +67,11 @@ function isActive(pathname: string, href: string): boolean {
  * com as seções operacionais, faixa superior com o caminho (breadcrumb), a
  * data e o fuso, e o conteúdo da seção. Acesso restrito a administradores.
  */
-export function AdminFrame({ adminName, timeZone, children }: { adminName: string; timeZone: string; children: ReactNode }) {
+export function AdminFrame({ adminName, timeZone, role, children }: { adminName: string; timeZone: string; role: string; children: ReactNode }) {
   const pathname = usePathname();
-  const current = NAV.find((item) => isActive(pathname, item.href) && item.href !== "/admin") ?? NAV[0];
+  // Fase 9: o menu mostra só as áreas que o papel pode abrir (o servidor confere de novo em cada página e API).
+  const nav = NAV.filter((item) => can(role, item.perm ?? "catalog"));
+  const current = nav.find((item) => isActive(pathname, item.href) && item.href !== "/admin") ?? nav[0] ?? NAV[0];
   const now = new Date();
   const dateLabel = `${new Intl.DateTimeFormat("pt-BR", { timeZone, weekday: "short" }).format(now).replace(".", "").toUpperCase()} ${new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit" }).format(now)} ${new Intl.DateTimeFormat("pt-BR", { timeZone, month: "short" }).format(now).replace(".", "").toUpperCase()} ${new Intl.DateTimeFormat("pt-BR", { timeZone, year: "numeric" }).format(now)} · ${timeZone}`;
 
@@ -83,7 +106,7 @@ export function AdminFrame({ adminName, timeZone, children }: { adminName: strin
           </Typography>
         </Box>
         <Box component="nav" aria-label="Administração" sx={{ display: "flex", flexDirection: { xs: "row", md: "column" }, flexWrap: "wrap", gap: 0.5 }}>
-          {NAV.map((item) => {
+          {nav.map((item) => {
             const active = isActive(pathname, item.href);
             return (
               <Box

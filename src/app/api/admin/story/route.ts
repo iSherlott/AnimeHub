@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { auditTimelines } from "@/lib/curation/timelineAudit";
 import { applyLoot, validateLoot } from "@/lib/story/loot";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 /** Admin → Curadoria: andamento da pesquisa de reboots e arcos (fila de candidatos, conferidos e lotes aplicados). */
 export async function GET() {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   return NextResponse.json(await getStoryStatus(), { headers: { "Cache-Control": "no-store" } });
 }
@@ -20,7 +20,7 @@ export async function GET() {
  * história passa a ter a sua).
  */
 export async function POST(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   let body: unknown;
   try {

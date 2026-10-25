@@ -11,6 +11,7 @@ import { Divider, IconButton, ListItemIcon, Menu, MenuItem, Tooltip, Typography 
 import { LanguageMenuItems } from "@/components/TitleLanguageMenu";
 import { UserAvatar } from "@/components/UserAvatar";
 import type { PublicUser } from "@/lib/auth/session";
+import { can, isStaff } from "@/lib/auth/permissions";
 
 /**
  * Dropdown único pra quem está logado (Epic 27, lote 3) — funde o que
@@ -85,8 +86,8 @@ export function AccountMenu({ user, onLogout }: { user: PublicUser; onLogout: ()
           </ListItemIcon>
           Configurações
         </MenuItem>
-        {user.role === "ADMIN" && (
-          <MenuItem component={NextLink} href="/admin" onClick={handleClose}>
+        {isStaff(user.role) && (
+          <MenuItem component={NextLink} href={can(user.role, "catalog") ? "/admin" : "/admin/acesso"} onClick={handleClose}>
             <ListItemIcon>
               <AdminPanelSettingsIcon fontSize="small" />
             </ListItemIcon>

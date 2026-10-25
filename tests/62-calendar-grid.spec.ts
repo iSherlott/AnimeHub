@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { todayAtNoonSaoPaulo } from "./test-time";
@@ -35,7 +36,7 @@ test.describe("Calendário em colunas por dia", () => {
 
   test.afterAll(async () => {
     await prisma.airingScheduleEntry.deleteMany({ where: { anilistId: { in: [...IDS, DELAYED_ID] } } });
-    await prisma.catalogEntry.deleteMany({ where: { anilistId: { in: [DELAYED_ID, ...OFF_GRID_IDS] } } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: { in: [DELAYED_ID, ...OFF_GRID_IDS] } } });
     await prisma.$disconnect();
   });
 
@@ -116,7 +117,7 @@ test.describe("Calendário em colunas por dia", () => {
     const exact = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate() + 2));
     while (exact.getUTCDate() === 1) exact.setUTCDate(exact.getUTCDate() + 1);
     const base = { source: "anilist", season, seasonYear: year, popularityRank: -1000 };
-    await prisma.catalogEntry.deleteMany({ where: { anilistId: { in: OFF_GRID_IDS } } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: { in: OFF_GRID_IDS } } });
     await prisma.catalogEntry.createMany({
       data: [
         { ...base, anilistId: OFF_GRID_IDS[0], titleRomaji: "Fora Dia Exato", status: "NOT_YET_RELEASED", startDate: exact },
@@ -183,12 +184,12 @@ test.describe("Calendário — imagem do episódio", () => {
       create: { userId: user.id, anilistId: IMG_IDS[0], titleRomaji: "Imagem Com Episodio", genres: "" },
       update: {},
     });
-    await prisma.episode.deleteMany({ where: { animeId: anime.id } });
-    await prisma.episode.create({ data: { animeId: anime.id, number: 4, seasonNumber: 1, titleRomaji: "Ep 4", thumbnail: `${HOST}/episode-thumb.jpg` } });
+    expect(anime.id).toBeTruthy();
     await prisma.airingScheduleEntry.deleteMany({ where: { anilistId: { in: IMG_IDS } } });
     await prisma.airingScheduleEntry.createMany({
       data: [
-        { anilistId: IMG_IDS[0], episode: 4, airingAt: todayAtNoonSaoPaulo(), titleRomaji: "Imagem Com Episodio", coverImage: `${HOST}/cover-a.jpg` },
+        // Episódio global (Fase 4): a imagem do episódio fica no próprio episódio.
+        { anilistId: IMG_IDS[0], episode: 4, airingAt: todayAtNoonSaoPaulo(), titleRomaji: "Imagem Com Episodio", coverImage: `${HOST}/cover-a.jpg`, episodeTitle: "Ep 4", thumbnail: `${HOST}/episode-thumb.jpg` },
         { anilistId: IMG_IDS[1], episode: 2, airingAt: todayAtNoonSaoPaulo(), titleRomaji: "Imagem So Capa", coverImage: `${HOST}/cover-b.jpg` },
         { anilistId: IMG_IDS[2], episode: 1, airingAt: todayAtNoonSaoPaulo(), titleRomaji: "Imagem Nenhuma" },
       ],

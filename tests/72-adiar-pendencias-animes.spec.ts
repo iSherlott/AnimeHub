@@ -50,26 +50,30 @@ test.describe.serial("Adiar, Para assistir e Animes no perfil", () => {
     await page.route(/s4\.anilist\.co\/file\/anilistcdn\/spec72/, (route) => route.fulfill({ status: 200, contentType: "image/png", body: PNG }));
   });
 
-  test("API: adiar guarda o episódio mais antigo, recusa obra não acompanhada e episódio inválido, e dá para resolver", async ({ request }) => {
-    expect((await request.post("/api/pending", { data: { anilistId: 972999, episode: 1 } })).status()).toBe(403);
-    expect((await request.post("/api/pending", { data: { anilistId: P, episode: 0 } })).status()).toBe(400);
-    expect((await request.post("/api/pending", { data: { anilistId: "x", episode: 1 } })).status()).toBe(400);
+  // D5 (Fase 4): adiar vale para a OBRA — sem número de episódio, sem "parei no", sem "faltam N para ver".
+  test("API: adiar a obra, recusa obra não acompanhada, ignora número de episódio e dá para retomar", async ({ request }) => {
+    expect((await request.post("/api/pending", { data: { anilistId: 972999 } })).status()).toBe(403);
+    expect((await request.post("/api/pending", { data: { anilistId: "x" } })).status()).toBe(400);
 
-    expect((await (await request.post("/api/pending", { data: { anilistId: P, episode: 3 } })).json()).fromEpisode).toBe(3);
-    // Adiar um episódio mais antigo recua; um mais novo depois não avança.
-    expect((await (await request.post("/api/pending", { data: { anilistId: P, episode: 2 } })).json()).fromEpisode).toBe(2);
-    expect((await (await request.post("/api/pending", { data: { anilistId: P, episode: 4 } })).json()).fromEpisode).toBe(2);
+    const first = await request.post("/api/pending", { data: { anilistId: P } });
+    expect(first.status()).toBe(201);
+    const { postponedAt } = await first.json();
+    // Adiar de novo (mesmo com um número de episódio de cliente antigo) mantém a data do primeiro adiamento.
+    expect((await (await request.post("/api/pending", { data: { anilistId: P, episode: 2 } })).json()).postponedAt).toBe(postponedAt);
+    expect((await prisma.pendingEpisode.findUniqueOrThrow({ where: { userId_anilistId: { userId, anilistId: P } } })).fromEpisode).toBeNull();
 
     const { pending } = await (await request.get("/api/pending")).json();
     const row = pending.find((p: { anilistId: number }) => p.anilistId === P);
-    expect(row).toMatchObject({ fromEpisode: 2, latestAired: 3, latestAiredThisWeek: true, behind: 2, stillAiring: true });
+    expect(row).toMatchObject({ latestAired: 3, latestAiredThisWeek: true, stillAiring: true });
+    expect(row).not.toHaveProperty("fromEpisode");
+    expect(row).not.toHaveProperty("behind");
     expect(row.next.episode).toBe(4);
 
     expect((await request.delete(`/api/pending/${P}`)).status()).toBe(200);
     expect((await prisma.pendingEpisode.count({ where: { userId, anilistId: P } }))).toBe(0);
   });
 
-  test("calendário: Adiar no preview marca 'Adiado · EP' no item, e 'Já assisti' desfaz", async ({ page }) => {
+  test("calendário: 'Adiar a obra' no preview marca 'Obra adiada' no item, e 'Retomar' desfaz", async ({ page }) => {
     const at = new Date(Date.now() - 2 * 60 * 1000);
     await page.route("**/api/calendar**", (route) =>
       route.fulfill({
@@ -79,7 +83,7 @@ test.describe.serial("Adiar, Para assistir e Animes no perfil", () => {
               key: `${P}-3`, anilistId: P, animeId, episode: 3, airingAt: at.toISOString(),
               titleRomaji: "Pendente Round72", titleEnglish: null, titleNative: null, titlePortuguese: null,
               coverImage: "https://s4.anilist.co/file/anilistcdn/spec72/p.png", episodeImage: null, genres: [],
-              inMyList: true, description: "Sinopse.", descriptionPortuguese: null, isFavorite: false, delayed: false, pendingFrom: null,
+              inMyList: true, description: "Sinopse.", descriptionPortuguese: null, isFavorite: false, delayed: false, postponed: false,
             },
           ],
           offGrid: [],
@@ -90,27 +94,29 @@ test.describe.serial("Adiar, Para assistir e Animes no perfil", () => {
     await page.getByRole("link", { name: /Pendente Round72/ }).hover();
     const preview = page.getByTestId("calendar-preview");
     await preview.getByTestId("preview-postpone").click();
-    await expect(preview.getByTestId("preview-pending-note")).toContainText("parei no EP03");
-    await expect(page.getByTestId(`calendar-pending-${P}-3`)).toContainText("Adiado · EP03");
-    expect((await prisma.pendingEpisode.findUniqueOrThrow({ where: { userId_anilistId: { userId, anilistId: P } } })).fromEpisode).toBe(3);
+    await expect(preview.getByTestId("preview-pending-note")).toContainText("Obra adiada");
+    await expect(page.getByTestId(`calendar-pending-${P}-3`)).toContainText("Obra adiada");
+    expect((await prisma.pendingEpisode.findUniqueOrThrow({ where: { userId_anilistId: { userId, anilistId: P } } })).fromEpisode).toBeNull();
 
     await preview.getByTestId("preview-pending-resolve").click();
     await expect(page.getByTestId(`calendar-pending-${P}-3`)).toHaveCount(0);
     expect(await prisma.pendingEpisode.count({ where: { userId, anilistId: P } })).toBe(0);
   });
 
-  test("Para assistir: mostra onde parou, até onde saiu, o próximo, e 'Marcar como assistido' tira da lista", async ({ page }) => {
-    await prisma.pendingEpisode.create({ data: { userId, anilistId: P, fromEpisode: 2 } });
+  test("Para assistir: mostra quando foi adiada, até onde a obra saiu, o próximo, e 'Retomar' tira da lista", async ({ page }) => {
+    await prisma.pendingEpisode.create({ data: { userId, anilistId: P } });
     await page.goto("/minha-lista");
     await expect(page.getByTestId("tab-pending")).toContainText("Para assistir · 1");
     await page.getByTestId("tab-pending").click();
     await expect(page).toHaveURL(/\/minha-lista\/pendencias$/);
 
     const row = page.getByTestId(`pending-row-${P}`);
-    await expect(row.getByTestId("pending-from")).toContainText("Parei no EP02");
+    await expect(row.getByTestId("pending-from")).toContainText("Adiada em");
+    await expect(row).not.toContainText("Parei no");
     await expect(row).toContainText("Já saiu até o EP03 · esta semana");
     await expect(row).toContainText("Próximo: EP04");
-    await expect(row.getByTestId("pending-behind")).toContainText("2 episódios para ver");
+    await expect(row.getByTestId("pending-new")).toContainText("Episódio novo esta semana");
+    await expect(row.getByTestId("pending-behind")).toHaveCount(0);
     await expect(row.getByTestId("pending-open")).toHaveAttribute("href", `/anime/${animeId}`);
 
     await row.getByTestId("pending-resolve").click();
@@ -145,7 +151,7 @@ test.describe.serial("Adiar, Para assistir e Animes no perfil", () => {
   });
 
   test("entrar em espera limpa a pendência de 'Para assistir' e a API valida o pedido", async ({ request }) => {
-    await prisma.pendingEpisode.create({ data: { userId, anilistId: P, fromEpisode: 2 } });
+    await prisma.pendingEpisode.create({ data: { userId, anilistId: P } });
     expect((await request.patch(`/api/anime/${animeId}/waiting`, { data: { waiting: "sim" } })).status()).toBe(400);
     expect((await request.patch("/api/anime/nao-existe/waiting", { data: { waiting: true } })).status()).toBe(404);
     expect((await request.patch(`/api/anime/${animeId}/waiting`, { data: { waiting: true } })).status()).toBe(200);

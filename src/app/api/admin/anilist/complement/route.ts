@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { complementSelected, defaultImportDeps, MAX_SELECTION, parseIds } from "@/lib/anilistImport";
 import { withProgressJob } from "@/lib/progressJob";
+import { JobBusyError } from "@/lib/jobLock";
 
 /**
  * Admin → AniList: complementa com informação da AniList as obras que JÁ estão na plataforma (`{ ids, overwrite? }`).
  * Por padrão só preenche o que está vazio; com `overwrite` a AniList passa a valer em tudo.
  */
 export async function POST(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   let body: { ids?: unknown; overwrite?: unknown };
   try {
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
       )
     );
   } catch (error) {
+    if (error instanceof JobBusyError) return NextResponse.json({ error: error.message, running: error.running.seq }, { status: 409 });
     console.error("[admin-anilist] complemento falhou:", error);
     return NextResponse.json({ error: "O complemento falhou no meio. O que já foi preenchido foi mantido; tente de novo." }, { status: 502 });
   }

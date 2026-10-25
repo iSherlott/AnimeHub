@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
  * junção manual de obras com nomes diferentes (“Naruto” → “Boruto”). Confirmar junta as duas na mesma franquia.
  */
 export default async function AdminMatchNamePage() {
-  await requireAdminPage();
+  await requireAdminPage("catalog");
   const panel = await loadWorkLinkPanel();
   return (
     <>

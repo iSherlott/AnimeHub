@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { prisma } from "../../../src/lib/prisma";
 import { isTodaysRelease, notifyRangeForNow } from "../../../src/lib/airingWindow";
 import { resolveTimeZone } from "../../../src/lib/timeZone";
+import { getCachedAiringSchedule } from "../../../src/lib/airingCache";
 import { recordIngestionRun } from "../../../src/lib/ingestionRuns";
 import { RESCHEDULE_THRESHOLD_MS } from "../../../src/lib/rescheduleAlerts";
 import { backfillEarlierSeasons, syncContinuations } from "../../../src/lib/continuation";
@@ -30,10 +31,9 @@ async function tick(): Promise<void> {
     // Avisa dos lançamentos das próximas 24 h (hoje) e dos que acabaram de ir ao ar.
     const { from, to } = notifyRangeForNow(now);
 
-    const airingNow = await prisma.airingScheduleEntry.findMany({
-      where: { airingAt: { gte: from, lte: to } },
-      select: { anilistId: true, episode: true, airingAt: true },
-    });
+    // Só episódio com dia e hora e sem adiamento/cancelamento informado gera aviso (Fase 4), no horário EFETIVO:
+    // o override do admin vale sobre o da fonte (Fase 5), como no calendário.
+    const airingNow = await getCachedAiringSchedule(from, to);
 
     let processed = 0;
 

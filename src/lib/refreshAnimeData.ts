@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getAnimeById, getOfficialSiteUrl } from "@/lib/anilist";
 import { refetchEpisodes } from "@/lib/episodes";
+import { upsertSourceEpisodes } from "@/lib/globalEpisodes";
 import { searchJikanAnime } from "@/lib/jikan";
 import { searchShikimoriAnime } from "@/lib/shikimori";
 import { getAnidbAnimeById, isAnidbConfigured } from "@/lib/anidb";
@@ -183,87 +184,25 @@ export async function refreshAnimeData(initialAnime: Anime): Promise<RefreshResu
       });
 
       if (anidbData.episodes.length > 0) {
-        // A AniDB não traz sinopse nem miniatura por episódio — só título e
-        // data. Sem preservar o que o passo da Kitsu (refetchEpisodes, logo
-        // acima) já tinha acabado de gravar pro mesmo número de episódio,
-        // esse deleteMany+createMany apagava esses 2 campos toda vez que o
-        // anime também tinha AniDB ID vinculado (achado real da revisão de
-        // código do redesenho da lista de episódios).
-        //
-        // A AniDB também não expõe seasonNumber (a numeração dela é única
-        // por anime, sem o conceito de temporada que a Kitsu/EpisodeGrid
-        // usam) — sem preservar o seasonNumber que já existia pro mesmo
-        // número, esse mesmo deleteMany+createMany gravava toda temporada
-        // com seasonNumber = 1 (default do schema), colapsando em silêncio
-        // o agrupamento por temporada de qualquer anime multi-season que já
-        // tivesse AniDB ID vinculado (achado real da 13ª rodada de
-        // auditoria, Epic 18).
-        //
-        // O `number` da AniDB é único por anime, mas o `number` já existente
-        // no banco (gravado pela Kitsu, logo acima) reinicia a cada
-        // temporada — então mais de um episódio existente pode ter o mesmo
-        // `number` (ex.: S1E1 e S2E1, ambos number=1). Casar só por `number`
-        // não dá pra saber qual dos dois é o de verdade; guardar só "o
-        // último visto" nesse caso reintroduzia exatamente o tipo de
-        // atribuição errada e silenciosa que esta correção existe pra
-        // evitar — quando `number` é ambíguo entre temporadas, não herda
-        // nada (cai pro padrão seguro: temporada 1, sem sinopse/miniatura)
-        // em vez de arriscar a temporada errada.
-        const existingEpisodes = await prisma.episode.findMany({
-          where: { animeId: id },
-          select: { number: true, seasonNumber: true, synopsis: true, thumbnail: true },
-        });
-        const numberCounts = new Map<number, number>();
-        for (const ep of existingEpisodes) {
-          numberCounts.set(ep.number, (numberCounts.get(ep.number) ?? 0) + 1);
-        }
-        const existingByNumber = new Map(
-          existingEpisodes.filter((ep) => numberCounts.get(ep.number) === 1).map((ep) => [ep.number, ep])
+        // Episódio global (Fase 4): a AniDB traz título e dia de cada episódio (sem sinopse nem miniatura, que ficam
+        // como estão). A numeração dela é única por obra; número repetido é ambíguo e fica de fora; campo corrigido
+        // pelo admin não muda; o dia só entra quando a agenda não tem o horário da AniList.
+        await upsertSourceEpisodes(
+          anime.anilistId,
+          { titleRomaji: anime.titleRomaji, titleEnglish: anime.titleEnglish, titleNative: anime.titleNative },
+          anidbData.episodes.map((ep) => ({
+            // Especiais da AniDB ("S1", "C2", "T1"…) não têm numeração regular: não viram o episódio 1, 2… da obra.
+            number: /^\d+$/.test(ep.number.trim()) ? Number(ep.number.trim()) : 0,
+            // "x-jat" (transliterado do japonês) é o romaji de verdade.
+            titleRomaji: ep.titles.find((t) => t.language === "x-jat")?.title ?? null,
+            titleEnglish: ep.titles.find((t) => t.language === "en")?.title ?? null,
+            titleJapanese: ep.titles.find((t) => t.language === "ja")?.title ?? null,
+            airDate: ep.airDate ? new Date(ep.airDate) : null,
+          })),
+          "anidb",
+          "refresh"
         );
-
-        // upsert por episódio, nunca deleteMany+createMany no anime
-        // inteiro: a AniDB não agrupa por temporada como a Kitsu — um
-        // anidbId cobre só 1 temporada/cour, então `anidbData.episodes` é
-        // só um subconjunto do que o anime pode ter. O deleteMany
-        // anterior apagava TODAS as temporadas do anime antes de recriar
-        // só essa (achado real da 14ª rodada de auditoria, Epic 18:
-        // vincular AniDB num anime de 3 temporadas — 30 episódios — e
-        // rodar "Atualizar dados" com uma AniDB de 12 episódios apagava os
-        // 18 episódios das outras 2 temporadas pra sempre, não só
-        // reagrupava errado). Upsert por (animeId, seasonNumber, number)
-        // só cria/atualiza os episódios que a própria AniDB está
-        // fornecendo dado novo, sem tocar em nenhum episódio de outra
-        // temporada que ela nem menciona.
-        for (const ep of anidbData.episodes) {
-          const num = parseInt(ep.number.replace(/\D/g, ""), 10) || 0;
-          const existing = existingByNumber.get(num);
-          const seasonNumber = existing?.seasonNumber ?? 1;
-          // "x-jat" (transliterado do japonês) é o romaji de verdade — sem
-          // cair pra "en" aqui, que agora tem seu próprio campo
-          // (titleEnglish), em vez de ser confundido com romaji quando a
-          // AniDB não tem x-jat pra esse episódio.
-          const titleRomaji = ep.titles.find((t) => t.language === "x-jat")?.title ?? null;
-          const titleEnglish = ep.titles.find((t) => t.language === "en")?.title ?? null;
-          const titleJapanese = ep.titles.find((t) => t.language === "ja")?.title ?? null;
-          const airDate = ep.airDate ? new Date(ep.airDate) : null;
-
-          await prisma.episode.upsert({
-            where: { animeId_seasonNumber_number: { animeId: id, seasonNumber, number: num } },
-            create: {
-              animeId: id,
-              number: num,
-              seasonNumber,
-              titleRomaji,
-              titleEnglish,
-              titleJapanese,
-              airDate,
-              synopsis: existing?.synopsis ?? null,
-              thumbnail: existing?.thumbnail ?? null,
-            },
-            update: { titleRomaji, titleEnglish, titleJapanese, airDate },
-          });
-        }
-        episodeCount = await prisma.episode.count({ where: { animeId: id } });
+        episodeCount = await prisma.airingScheduleEntry.count({ where: { anilistId: anime.anilistId } });
       }
 
       status.anidb = "ok";

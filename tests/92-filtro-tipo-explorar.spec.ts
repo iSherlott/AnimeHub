@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN } from "./test-auth";
@@ -21,7 +22,7 @@ test.describe.serial("Explorar — filtro Tipo", () => {
 
   async function clean() {
     await prisma.adminJob.deleteMany({ where: { records: { some: { sourceKey: String(ANIDB_NEW) } } } });
-    await prisma.catalogEntry.deleteMany({ where: { OR: [{ anilistId: { in: IDS } }, { anidbId: ANIDB_NEW }] } });
+    await deleteCatalogEntries(prisma, { where: { OR: [{ anilistId: { in: IDS } }, { anidbId: ANIDB_NEW }] } });
   }
 
   test.beforeAll(async () => {

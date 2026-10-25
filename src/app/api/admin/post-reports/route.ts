@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 
 /**
  * Fila de denúncias, agrupada por post (várias pessoas podem denunciar o
@@ -9,7 +9,7 @@ import { requireAdmin } from "@/lib/auth/session";
  * — animeTitleRomaji já está congelado no próprio Post.
  */
 export async function GET() {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("moderation");
   if (!user) return response;
 
   const reports = await prisma.postReport.findMany({

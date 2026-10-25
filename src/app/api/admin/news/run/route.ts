@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { callInternalService } from "@/lib/serviceDelegate";
 import { isNewsRunning, runNewsSync } from "@/lib/animeNews";
 
@@ -9,7 +9,7 @@ import { isNewsRunning, runNewsSync } from "@/lib/animeNews";
  * 409 se já houver uma execução em andamento.
  */
 export async function POST() {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
 
   if (await isNewsRunning()) return NextResponse.json({ error: "Já existe uma execução em andamento." }, { status: 409 });

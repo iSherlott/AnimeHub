@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { CATALOG_CANDIDATE_PREFIX } from "@/lib/adminImport/pipeline";
 
 /** Busca de produções para "Outro candidato" no Matching: por título ou AniList id. */
 export async function GET(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
 
   const q = (new URL(request.url).searchParams.get("q") ?? "").trim().slice(0, 80);

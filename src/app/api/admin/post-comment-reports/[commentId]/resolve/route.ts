@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 
 type Params = { params: Promise<{ commentId: string }> };
 
 /** Resolve todas as denúncias pendentes de uma resposta; `remove` também a apaga (soft delete). */
 export async function POST(request: Request, { params }: Params) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("moderation");
   if (!user) return response;
 
   const { commentId } = await params;

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 /** Admin → Matching: fila de registros que precisam de decisão humana (Figma `8:4179` mostra um por vez). */
 export default async function AdminMatchingPage() {
-  await requireAdminPage();
+  await requireAdminPage("catalog");
   const pending = await prisma.importRecord.findMany({
     where: { state: "PENDING", job: { state: "RUNNING" } },
     orderBy: [{ jobSeq: "desc" }, { titleRomaji: "asc" }],

@@ -27,7 +27,7 @@ export function CalendarDayColumn({
   /** Fuso em que o dia foi montado (instante 00:00 nesse fuso). */
   timeZone: string;
   onFollowed?: (anilistId: number, animeId: string) => void;
-  onPendingChange?: (anilistId: number, fromEpisode: number | null) => void;
+  onPendingChange?: (anilistId: number, postponed: boolean) => void;
   onUnfollowed?: (anilistId: number) => void;
   onResumed?: (anilistId: number) => void;
   highlightMine?: boolean;

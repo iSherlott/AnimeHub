@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 
@@ -9,7 +10,7 @@ test.describe("Filtro de temporada só com o que tem anime", () => {
   let prisma: PrismaClient;
 
   async function clean() {
-    await prisma.catalogEntry.deleteMany({ where: { anilistId: { in: IDS } } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: { in: IDS } } });
   }
 
   test.beforeAll(async () => {

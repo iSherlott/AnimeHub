@@ -24,7 +24,7 @@ type Exec = { key: string; service: string; at: Date; ok: boolean; result: strin
  * (Importações); o calendário vem da API pública da AniList via `calendar-loader`.
  */
 export default async function AdminScrapersPage() {
-  const { timeZone } = await requireAdminPage();
+  const { timeZone } = await requireAdminPage("catalog");
   const [aniDbJobs, aniDbLastOk, runs, runOk] = await Promise.all([
     prisma.adminJob.findMany({ where: { source: "AniDB" }, orderBy: { seq: "desc" }, take: 3 }),
     prisma.adminJob.findFirst({ where: { source: "AniDB", state: "SUCCESS" }, orderBy: { finishedAt: "desc" }, select: { finishedAt: true } }),

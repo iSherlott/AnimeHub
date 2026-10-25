@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN } from "./test-auth";
@@ -21,7 +22,7 @@ test.describe.serial("Atraso do streaming", () => {
 
   async function clean() {
     await prisma.airingScheduleEntry.deleteMany({ where: { anilistId: { in: [WORK, OTHER] } } });
-    await prisma.catalogEntry.deleteMany({ where: { anilistId: { in: [WORK, OTHER] } } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: { in: [WORK, OTHER] } } });
   }
 
   test.beforeAll(async () => {
@@ -48,7 +49,7 @@ test.describe.serial("Atraso do streaming", () => {
     await prisma.$disconnect();
   });
 
-  const schedule = async () => (await prisma.airingScheduleEntry.findMany({ where: { anilistId: WORK }, orderBy: { episode: "asc" } })).map((s) => s.airingAt.getTime());
+  const schedule = async () => (await prisma.airingScheduleEntry.findMany({ where: { anilistId: WORK }, orderBy: { episode: "asc" } })).map((s) => s.airingAt?.getTime());
 
   test("só o administrador grava o atraso", async ({ request }) => {
     const res = await request.post("/api/admin/streaming-delay", { data: { anilistId: WORK, minutes: 120 } });

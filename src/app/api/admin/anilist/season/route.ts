@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { defaultImportDeps, previewSeason, type Season } from "@/lib/anilistImport";
 import { seasonLabel } from "@/lib/exploreGroups";
 import { withProgressJob } from "@/lib/progressJob";
@@ -11,7 +11,7 @@ const SEASONS: readonly string[] = ["WINTER", "SPRING", "SUMMER", "FALL"];
  * invisível); nada entra na plataforma aqui. Conteúdo adulto é contado e deixado de fora.
  */
 export async function GET(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   const params = new URL(request.url).searchParams;
   const season = params.get("season") ?? "";

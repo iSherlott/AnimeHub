@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { decideWorkLink, loadWorkLinkPanel, removeWorkLink } from "@/lib/workLinkActions";
 
 /** Admin → Match name: o que parece continuação pelo nome e o que já foi decidido. */
 export async function GET() {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   return NextResponse.json(await loadWorkLinkPanel());
 }
 
 /** Confirma ("é continuação") ou recusa ("não é") um par de obras; também serve à junção manual. */
 export async function POST(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
 
   let body: { earlierAnilistId?: unknown; laterAnilistId?: unknown; decision?: unknown; origin?: unknown };
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
 /** Desfaz uma decisão (`?id=`): a ligação confirmada separa as franquias; a recusa deixa a sugestão voltar. */
 export async function DELETE(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   const id = new URL(request.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Informe a ligação." }, { status: 400 });

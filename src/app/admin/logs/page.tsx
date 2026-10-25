@@ -17,7 +17,7 @@ const LEVEL_LABEL: Record<string, string> = { INFO: "Informação", WARN: "Aten�
 
 /** Admin → Logs (Figma `8:5077`): eventos de domínio legíveis, cada um com contexto técnico e origem. */
 export default async function AdminLogsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const { timeZone } = await requireAdminPage();
+  const { timeZone } = await requireAdminPage("catalog");
   const sp = await searchParams;
   const jobSeq = /^\d{1,9}$/.test(sp.job ?? "") ? Number(sp.job) : null;
   const fonte = (sp.fonte ?? "").slice(0, 40);

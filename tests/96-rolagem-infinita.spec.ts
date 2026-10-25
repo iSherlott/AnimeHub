@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { TEST_USER_EMAIL } from "./test-auth";
@@ -21,7 +22,7 @@ test.describe.serial("Rolagem infinita", () => {
 
   async function clean() {
     await prisma.anime.deleteMany({ where: { titleRomaji: { startsWith: "Lista96 " } } });
-    await prisma.catalogEntry.deleteMany({ where: { OR: [{ anilistId: { gte: BASE_ID, lt: BASE_ID + 1000 } }, { titleRomaji: { startsWith: "Bishoujyo Round96" } }] } });
+    await deleteCatalogEntries(prisma, { where: { OR: [{ anilistId: { gte: BASE_ID, lt: BASE_ID + 1000 } }, { titleRomaji: { startsWith: "Bishoujyo Round96" } }] } });
     await prisma.user.deleteMany({ where: { email: { startsWith: "round96-user-" } } });
   }
 

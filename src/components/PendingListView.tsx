@@ -13,6 +13,7 @@ import { formatTimeInZone, weekdayName } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
 
 const pad = (n: number) => String(n).padStart(2, "0");
+const dayMonth = (d: Date, timeZone: string) => new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit", month: "short" }).format(d).replace(".", "");
 
 /** "Já saiu até o EP03 · esta semana" / "Próximo: EP04 · qui 12:00" / "Finalizado". */
 function progressText(entry: PendingEntryDTO, timeZone: string): string {
@@ -66,7 +67,7 @@ function PendingActions({ entry }: { entry: PendingEntryDTO }) {
           </Button>
         )}
         <Button onClick={() => void resolve()} disabled={busy} startIcon={<CheckIcon />} sx={ELEVATED_BUTTON_SX} data-testid="pending-resolve">
-          {busy ? "Salvando…" : "Marcar como assistido"}
+          {busy ? "Salvando…" : "Retomar"}
         </Button>
       </Box>
       {error && (
@@ -79,8 +80,8 @@ function PendingActions({ entry }: { entry: PendingEntryDTO }) {
 }
 
 /**
- * "Para assistir": as obras em que a pessoa adiou episódios. Cada linha diz onde parou ("Parei no EP02"),
- * até onde a obra já saiu e quantos episódios faltam ver. Lembrete pessoal — não há registro de episódios vistos.
+ * "Para assistir": as obras que a pessoa adiou (D5: a obra, não um episódio). Cada linha diz quando foi adiada e os fatos
+ * globais da obra (até onde já saiu, o próximo lançamento). Lembrete pessoal — não há registro de episódios vistos.
  */
 export function PendingListView({ entries }: { entries: PendingEntryDTO[] }) {
   const timeZone = useTimeZone();
@@ -92,17 +93,17 @@ export function PendingListView({ entries }: { entries: PendingEntryDTO[] }) {
           testId={`pending-row-${entry.anilistId}`}
           timeTestId="pending-from"
           href={`/anime/${entry.animeId}`}
-          time={`Parei no EP${pad(entry.fromEpisode)}`}
+          time={`Adiada em ${dayMonth(new Date(entry.postponedAt), timeZone)}`}
           episodeLabel={progressText(entry, timeZone)}
           cover={entry.coverImage}
           titles={entry}
-          highlighted={entry.behind > 1}
+          highlighted={entry.latestAiredThisWeek}
           badge={
-            entry.behind > 0 ? (
-              <Box sx={{ display: "inline-flex", alignItems: "center", gap: 1, px: 1, py: 0.75, borderRadius: "6px", bgcolor: "#171820", color: "warning.main" }} data-testid="pending-behind">
+            entry.latestAiredThisWeek ? (
+              <Box sx={{ display: "inline-flex", alignItems: "center", gap: 1, px: 1, py: 0.75, borderRadius: "6px", bgcolor: "#171820", color: "warning.main" }} data-testid="pending-new">
                 <EventRepeatIcon sx={{ fontSize: 14 }} />
                 <Typography component="span" sx={{ fontSize: 11, fontWeight: 700, color: "inherit", whiteSpace: "nowrap" }}>
-                  {entry.behind === 1 ? "1 episódio para ver" : `${entry.behind} episódios para ver`}
+                  Episódio novo esta semana
                 </Typography>
               </Box>
             ) : undefined

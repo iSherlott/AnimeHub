@@ -32,8 +32,8 @@ export type CalendarItem = {
   isFavorite: boolean;
   /** Está na lista mas em modo "Espera" (não conta como `inMyList`). */
   waiting?: boolean;
-  /** "Adiado": a pessoa parou neste episódio e ainda não viu (ver `PendingEpisode`); só para obras da lista. */
-  pendingFrom?: number | null;
+  /** "Obra adiada" (D5): a pessoa adiou a obra (lembrete em "Para assistir"; ver `PendingEpisode`). Só obras da lista. */
+  postponed?: boolean;
   /** "Atrasado" (Figma `8:2106`): o horário previsto passou e a fonte ainda
    * não confirmou o episódio — ver `isDelayed`. A previsão original é mantida. */
   delayed: boolean;
@@ -58,11 +58,11 @@ export type OwnedAnimeCalendarInfo = {
 };
 
 export function calendarItemFromCache(
-  entry: AiringScheduleEntry,
+  entry: AiringScheduleEntry & { airingAt: Date },
   myAnimeByAnilistId: Map<number, OwnedAnimeCalendarInfo>,
   delayed = false,
   episodeImage: string | null = null,
-  pendingFrom: number | null = null,
+  postponed = false,
   storedSynopsis: { pt: string | null; ja: string | null } | null = null
 ): CalendarItem {
   const owned = myAnimeByAnilistId.get(entry.anilistId) ?? null;
@@ -85,7 +85,7 @@ export function calendarItemFromCache(
     descriptionPortuguese: owned?.descriptionPortuguese ?? null,
     ...(storedSynopsis && (storedSynopsis.pt || storedSynopsis.ja) ? { storedSynopsis } : {}),
     isFavorite: owned?.isFavorite ?? false,
-    pendingFrom: owned && !owned.waiting ? pendingFrom : null,
+    postponed: Boolean(owned && !owned.waiting && postponed),
     delayed,
   };
 }

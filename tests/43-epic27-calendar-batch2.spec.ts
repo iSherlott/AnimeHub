@@ -148,6 +148,10 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     // suíte sempre está) desde o lote 3 do Epic 27. Em inglês, vale a original.
     await page.getByRole("button", { name: "Menu da conta" }).click();
     await page.getByRole("menuitem", { name: "EN" }).click();
+    // O menu leva um instante para fechar; passar o mouse antes disso cai no fundo do menu e o preview não abre.
+    // (o papel "menu" some da árvore de acessibilidade antes: espera o elemento do menu sair de verdade).
+    await expect(page.locator(".MuiMenu-root")).toHaveCount(0);
+    await page.mouse.move(0, 0);
 
     await mineLink.hover();
     await expect(page.getByText("Sinopse original em inglês do calendário.")).toBeVisible();

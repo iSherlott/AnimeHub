@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { resolveRecordsBulk, type BulkDecision } from "@/lib/adminImport/pipeline";
 
 const MAX_DECISIONS = 500;
@@ -7,7 +7,7 @@ const ACTIONS = ["confirm", "new", "ignore"] as const;
 
 /** Decisões de vários registros pendentes de uma vez (a tela de revisão em lote da importação). */
 export async function PATCH(request: Request, { params }: { params: Promise<{ seq: string }> }) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   const seq = Number((await params).seq);
   if (!Number.isInteger(seq) || seq < 1) return NextResponse.json({ error: "Importação inválida." }, { status: 400 });

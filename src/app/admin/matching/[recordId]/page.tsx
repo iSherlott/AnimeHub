@@ -32,7 +32,7 @@ function ScoreBar({ label, value, emptyLabel = "n/d" }: { label: string; value: 
 
 /** Admin → Matching → Revisar correspondência (Figma `8:4179`): origem × candidato, score por critério e a decisão humana. */
 export default async function MatchReviewPage({ params }: { params: Promise<{ recordId: string }> }) {
-  const { timeZone } = await requireAdminPage();
+  const { timeZone } = await requireAdminPage("catalog");
   const record = await prisma.importRecord.findUnique({ where: { id: (await params).recordId }, include: { job: { select: { seq: true, state: true, source: true, parserVersion: true } } } });
   if (!record) notFound();
 

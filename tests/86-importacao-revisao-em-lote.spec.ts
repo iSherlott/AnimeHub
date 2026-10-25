@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_SESSION_TOKEN } from "./test-auth";
@@ -22,7 +23,7 @@ test.describe.serial("Revisão em lote das pendências da importação", () => {
     await prisma.adminJob.deleteMany({ where: { season: "Summer2031", source: "AniDB", kind: "IMPORT" } });
     await prisma.production.deleteMany({ where: { anilistId: { in: [CANDIDATE, OTHER] } } });
     await prisma.franchise.deleteMany({ where: { rootAnilistId: { in: [CANDIDATE, OTHER] } } });
-    await prisma.catalogEntry.deleteMany({ where: { anilistId: { in: [CANDIDATE, OTHER] } } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: { in: [CANDIDATE, OTHER] } } });
   }
 
   test.beforeAll(async () => {

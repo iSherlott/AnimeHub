@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { parseQuizImport } from "@/lib/quizImport";
 import { importQuizzes } from "@/lib/quizAdmin";
 
@@ -9,7 +9,7 @@ import { importQuizzes } from "@/lib/quizAdmin";
  * revisão (o quiz só fica disponível com as 10 aprovadas). Tudo ou nada.
  */
 export async function POST(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
 
   let body: { text?: unknown; anilistId?: unknown; scope?: unknown; titleReward?: unknown; approve?: unknown; dryRun?: unknown };

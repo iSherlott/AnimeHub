@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { TEST_USER_EMAIL } from "./test-auth";
@@ -90,7 +91,7 @@ const SUGGESTION_NAME = "Epic26 Sidebar Suggestion User";
   test.afterAll(async () => {
     const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
     await prisma.comment.deleteMany({ where: { anilistId: THREAD_ANILIST_ID } });
-    await prisma.catalogEntry.deleteMany({ where: { anilistId: RECOMMENDED_TARGET_ANILIST_ID } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: RECOMMENDED_TARGET_ANILIST_ID } });
     await prisma.user.deleteMany({ where: { email: SUGGESTION_EMAIL } });
     await prisma.$disconnect();
   });

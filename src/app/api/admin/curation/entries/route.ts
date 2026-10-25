@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { CURATION_VERSION } from "@/lib/curation/curateEntry";
 
@@ -15,7 +15,7 @@ type Filter = (typeof FILTERS)[number];
  * pendências em aberto). `?filter=all|curated|todo|issues`, `?q=` (parte do título) e `?page=`.
  */
 export async function GET(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   const url = new URL(request.url);
   const filterParam = url.searchParams.get("filter") ?? "all";

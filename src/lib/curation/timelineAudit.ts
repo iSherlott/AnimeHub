@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { markCancelled, startExclusiveJob } from "@/lib/jobLock";
 import { AUDIT_CODES, type IssueCode } from "./issues";
 import { classifyKind } from "./kind";
 import { checkTitles } from "./titleCheck";
@@ -19,6 +20,8 @@ const SAVE_EVERY_MS = 1000;
 export type TimelinePhase = "names" | "timeline" | "duplicates" | "issues" | "done";
 
 export type TimelineProgress = {
+  /** Parou a pedido (Fase 8). */
+  cancelled?: boolean;
   phase: TimelinePhase;
   /** Obras da plataforma. */
   entries: number;
@@ -67,14 +70,17 @@ async function syncAuditIssues(code: IssueCode, desired: Map<string, IssueDraft>
   for (const { entryId } of dismissed) desired.delete(entryId);
   const open = await prisma.curationIssue.findMany({ where: { code, status: "OPEN" }, select: { entryId: true } });
   const stale = open.map((o) => o.entryId).filter((id) => !desired.has(id));
-  await inChunks(stale, (chunk) => prisma.curationIssue.updateMany({ where: { code, status: "OPEN", entryId: { in: chunk } }, data: { status: "RESOLVED" } }));
+  const now = new Date();
+  await inChunks(stale, (chunk) => prisma.curationIssue.updateMany({ where: { code, status: "OPEN", entryId: { in: chunk } }, data: { status: "RESOLVED", resolvedAt: now } }));
+  // Fase 7: o que estava resolvido e voltou reabre contando a recorrência.
+  const resolved = new Set((await prisma.curationIssue.findMany({ where: { code, status: "RESOLVED", entryId: { in: [...desired.keys()] } }, select: { entryId: true } })).map((r) => r.entryId));
   await inChunks([...desired.entries()], (chunk) =>
     prisma.$transaction(
       chunk.map(([entryId, draft]) =>
         prisma.curationIssue.upsert({
           where: { entryId_code: { entryId, code } },
           create: { entryId, code, ...draft },
-          update: { ...draft, status: "OPEN" },
+          update: { ...draft, status: "OPEN", ...(resolved.has(entryId) ? { resolvedAt: null, reopenCount: { increment: 1 } } : {}) },
         })
       )
     )
@@ -86,7 +92,7 @@ export async function runTimelineAudit(seq: number, { onBatch }: { onBatch?: (p:
     where: { onPlatform: true },
     select: {
       id: true, anilistId: true, anidbId: true, titleRomaji: true, titleEnglish: true, titleNative: true, kind: true, format: true,
-      season: true, seasonYear: true, startDate: true, relationsJson: true, franchiseKey: true, timelineOrder: true, timelineRole: true, timelineSeason: true,
+      season: true, seasonYear: true, startDate: true, relationsJson: true, franchiseKey: true, timelineOrder: true, timelineRole: true, timelineSeason: true, manualFields: true,
     },
     orderBy: { id: "asc" },
   });
@@ -95,11 +101,14 @@ export async function runTimelineAudit(seq: number, { onBatch }: { onBatch?: (p:
     undated: 0, conflicts: 0, duplicateEntries: 0, duplicateGroups: 0, startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), finished: false, currentTitle: null,
   };
   let lastSave = 0;
+  let cancelRequested = false;
   const save = async (note: string, processed: number, total: number, force = false) => {
     if (!force && Date.now() - lastSave < SAVE_EVERY_MS) return;
     lastSave = Date.now();
     progress.updatedAt = new Date().toISOString();
-    await prisma.adminJob.update({ where: { seq }, data: { processed, total, progressNote: note, resultJson: JSON.stringify(progress) } }).catch(() => undefined);
+    // Sinal de vida e pedido de cancelamento (Fase 8).
+    const job = await prisma.adminJob.update({ where: { seq }, data: { processed, total, progressNote: note, resultJson: JSON.stringify(progress), heartbeatAt: new Date() }, select: { cancelRequestedAt: true } }).catch(() => null);
+    cancelRequested = Boolean(job?.cancelRequestedAt);
     onBatch?.(progress);
   };
   await save(`Conferindo ${entries.length} obras…`, 0, entries.length, true);
@@ -143,6 +152,10 @@ export async function runTimelineAudit(seq: number, { onBatch }: { onBatch?: (p:
   const conflictIssues = new Map<string, IssueDraft>();
   const now = new Date();
   for (const franchise of franchises) {
+    if (cancelRequested) {
+      progress.cancelled = true;
+      return progress;
+    }
     const writes = [];
     for (const place of franchise.members) {
       const entry = byAnilist.get(place.anilistId) as (typeof entries)[number];
@@ -158,8 +171,12 @@ export async function runTimelineAudit(seq: number, { onBatch }: { onBatch?: (p:
         progress.conflicts += 1;
         conflictIssues.set(entry.id, { title: entry.titleRomaji, anilistId: entry.anilistId, anidbId: entry.anidbId, detail: place.conflict });
       }
-      if (entry.franchiseKey !== place.franchiseKey || entry.timelineOrder !== place.order || entry.timelineRole !== place.role || entry.timelineSeason !== place.season) {
-        writes.push(prisma.catalogEntry.update({ where: { id: entry.id }, data: { franchiseKey: place.franchiseKey, timelineOrder: place.order, timelineRole: place.role, timelineSeason: place.season, timelineAt: now } }));
+      // Ordem, papel e temporada definidos pelo admin (Fase 7) não mudam: a auditoria só preenche o que não é manual.
+      const manual = new Set(entry.manualFields);
+      const computed = { franchiseKey: place.franchiseKey, timelineOrder: place.order, timelineRole: place.role, timelineSeason: place.season };
+      const data = Object.fromEntries(Object.entries(computed).filter(([field, value]) => !manual.has(field) && (entry as Record<string, unknown>)[field] !== value));
+      if (Object.keys(data).length) {
+        writes.push(prisma.catalogEntry.update({ where: { id: entry.id }, data: { ...data, timelineAt: now } }));
       }
     }
     if (writes.length) await inChunks(writes, (chunk) => prisma.$transaction(chunk));
@@ -204,16 +221,9 @@ export async function runTimelineAudit(seq: number, { onBatch }: { onBatch?: (p:
 }
 
 export async function createTimelineJob(actor: { id: string; name: string }): Promise<{ seq: number } | { running: number }> {
-  const running = await prisma.adminJob.findFirst({ where: { kind: "TIMELINE", state: "RUNNING" }, orderBy: { seq: "desc" }, select: { seq: true, resultJson: true } });
-  if (running) {
-    const updatedAt = running.resultJson ? (JSON.parse(running.resultJson) as TimelineProgress).updatedAt : null;
-    if (updatedAt && Date.now() - Date.parse(updatedAt) <= STALE_AFTER_MS) return { running: running.seq };
-    await prisma.adminJob.update({ where: { seq: running.seq }, data: { state: "FAILED", error: "Interrompido (sem sinal de vida).", finishedAt: new Date() } });
-  }
-  const job = await prisma.adminJob.create({
-    data: { kind: "TIMELINE", source: "Catálogo", season: "Linhas do tempo e nomes", state: "RUNNING", stage: "COMMIT", progressNote: "Iniciando…", adminId: actor.id, adminName: actor.name },
-  });
-  return { seq: job.seq };
+  // Um por vez, de forma atômica (Fase 8, `jobLock`).
+  const started = await startExclusiveJob("TIMELINE", { source: "Catálogo", season: "Linhas do tempo e nomes", stage: "COMMIT", progressNote: "Iniciando…", adminId: actor.id, adminName: actor.name }, STALE_AFTER_MS);
+  return started.ok ? { seq: started.job.seq } : { running: started.running.seq };
 }
 
 /** Roda a auditoria como job auditável (SUCCESS com o resumo, ou FAILED com o motivo). */
@@ -222,6 +232,10 @@ export async function auditTimelines({ actor, onBatch }: { actor: { id: string; 
   if ("running" in created) return created;
   try {
     const progress = await runTimelineAudit(created.seq, { onBatch });
+    if (progress.cancelled) {
+      await markCancelled(created.seq, `Cancelado a pedido depois de ${progress.franchisesDone} franquia(s); as já auditadas ficam.`);
+      return progress;
+    }
     await prisma.adminJob.update({
       where: { seq: created.seq },
       data: { state: "SUCCESS", stage: "NOTIFICATION", progressNote: null, processed: progress.franchises, total: progress.franchises, finishedAt: new Date(), resultJson: JSON.stringify(progress) },

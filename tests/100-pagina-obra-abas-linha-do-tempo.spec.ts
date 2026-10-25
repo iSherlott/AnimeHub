@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { waitEpisodesStreamed } from "./streaming";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
+import { clearGlobalEpisodes, seedGlobalEpisodes } from "./global-episodes";
 import { TEST_USER_EMAIL } from "./test-auth";
 
 // Epic 46: a página da obra mostra as temporadas em abas (Tabs), os episódios numa linha do tempo vertical com os OVA, ODA e
@@ -21,10 +23,11 @@ test.describe.serial("Página da obra: abas, linha do tempo e nota em estrelas",
   let anime2: string;
 
   async function clean() {
+    await clearGlobalEpisodes(prisma, ALL);
     await prisma.anime.deleteMany({ where: { anilistId: { in: ALL } } });
     await prisma.production.deleteMany({ where: { anilistId: { in: ALL } } });
     await prisma.franchise.deleteMany({ where: { rootAnilistId: S1 } });
-    await prisma.catalogEntry.deleteMany({ where: { anilistId: { in: ALL } } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: { in: ALL } } });
   }
 
   test.beforeAll(async () => {
@@ -48,12 +51,11 @@ test.describe.serial("Página da obra: abas, linha do tempo e nota em estrelas",
 
     anime1 = (await prisma.anime.create({ data: { userId, anilistId: S1, titleRomaji: "Linha Round100", genres: "", seriesKey: "linha round100", seasonNumber: 1 } })).id;
     anime2 = (await prisma.anime.create({ data: { userId, anilistId: S2, titleRomaji: "Linha Round100 Season 2", genres: "", seriesKey: "linha round100", seasonNumber: 2 } })).id;
-    await prisma.episode.createMany({
-      data: [
-        { animeId: anime2, number: 1, seasonNumber: 1, titleRomaji: "A Volta", airDate: new Date("2022-10-05T00:00:00Z") },
-        { animeId: anime2, number: 2, seasonNumber: 1, titleRomaji: "O Reencontro", airDate: new Date("2023-01-05T00:00:00Z") },
-      ],
-    });
+    // Episódios globais (Fase 4) da temporada 2.
+    await seedGlobalEpisodes(prisma, S2, { titleRomaji: "Linha Round100 Season 2" }, [
+      { number: 1, titleRomaji: "A Volta", airDate: new Date("2022-10-05T00:00:00Z") },
+      { number: 2, titleRomaji: "O Reencontro", airDate: new Date("2023-01-05T00:00:00Z") },
+    ]);
   });
 
   test.afterAll(async () => {

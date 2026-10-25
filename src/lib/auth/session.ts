@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sessionCookieSecure } from "@/lib/auth/cookieSecure";
+import { can, type Permission } from "@/lib/auth/permissions";
 import type { User } from "@prisma/client";
 import type { UserPreferences } from "@/lib/userSettings";
 
@@ -97,23 +98,34 @@ export async function requireUser(): Promise<
 }
 
 /**
- * Como requireUser(), mas também exige role === "ADMIN". Uso:
- *   const { user, response } = await requireAdmin();
+ * Exige sessão e a permissão da área (Fase 9): `catalog` (ADMIN, CURATOR), `moderation` (ADMIN, MODERATOR) ou `admin`
+ * (só ADMIN). A recusa de quem tem sessão fica registrada no log de administração (auditoria de acessos negados). Uso:
+ *   const { user, response } = await requireStaff("catalog");
  *   if (!user) return response;
  */
-export async function requireAdmin(): Promise<
+export async function requireStaff(permission: Permission): Promise<
   { user: User; response: null } | { user: null; response: NextResponse }
 > {
   const { user, response } = await requireUser();
   if (!user) return { user: null, response };
-  if (user.role !== "ADMIN") {
+  if (!can(user.role, permission)) {
+    await prisma.adminLog
+      .create({ data: { level: "WARN", event: "Access denied", message: `Acesso negado: ${user.displayName} (${user.role}) sem a permissão "${permission}".`, context: `user:${user.id}` } })
+      .catch(() => undefined);
     return {
       user: null,
       response: NextResponse.json(
-        { error: "Apenas administradores podem fazer isso" },
+        { error: permission === "admin" ? "Apenas administradores podem fazer isso" : "Você não tem permissão para esta área" },
         { status: 403 }
       ),
     };
   }
   return { user, response: null };
+}
+
+/** Só administradores (usuários, convites, papéis). Uso: `const { user, response } = await requireAdmin();` */
+export async function requireAdmin(): Promise<
+  { user: User; response: null } | { user: null; response: NextResponse }
+> {
+  return requireStaff("admin");
 }

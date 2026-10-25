@@ -28,7 +28,7 @@ test.describe.serial("Andamento dos animes no perfil", () => {
     // Estreia em outra temporada (bem à frente): não é "desta temporada".
     await prisma.anime.create({ data: base(UPCOMING, "Sequencia Futura Round77", "NOT_YET_RELEASED", { season: "WINTER", seasonYear: 2099 }) });
     const behind = await prisma.anime.create({ data: base(BEHIND, "Parei No Meio Round77", "RELEASING") });
-    await prisma.pendingEpisode.create({ data: { userId, anilistId: BEHIND, fromEpisode: 2 } });
+    await prisma.pendingEpisode.create({ data: { userId, anilistId: BEHIND } });
     expect(behind.id).toBeTruthy();
   });
 
@@ -82,7 +82,7 @@ test.describe.serial("Andamento dos animes no perfil", () => {
     await expect(list.getByTestId(`profile-anime-category-${AIRING}`)).toHaveText("Terminei");
     expect((await prisma.anime.findFirstOrThrow({ where: { userId, anilistId: AIRING } })).watchState).toBe("FINISHED");
 
-    // "Terminei" encerra o episódio adiado de "Para assistir".
+    // "Terminei" tira a obra adiada de "Para assistir".
     await list.getByTestId(`watch-state-${BEHIND}`).selectOption("FINISHED");
     await expect(list.getByTestId(`profile-anime-category-${BEHIND}`)).toHaveText("Terminei");
     expect(await prisma.pendingEpisode.count({ where: { userId, anilistId: BEHIND } })).toBe(0);
@@ -108,10 +108,10 @@ test.describe.serial("Andamento dos animes no perfil", () => {
     expect((await request.patch(`/api/anime/inexistente/watch-state`, { data: { state: null } })).status()).toBe(404);
   });
 
-  test("adiar um episódio desfaz o 'Terminei' marcado antes", async ({ request }) => {
+  test("adiar a obra desfaz o 'Terminei' marcado antes", async ({ request }) => {
     const own = await prisma.anime.findFirstOrThrow({ where: { userId, anilistId: AIRING } });
     expect((await request.patch(`/api/anime/${own.id}/watch-state`, { data: { state: "FINISHED" } })).status()).toBe(200);
-    const res = await request.post("/api/pending", { data: { anilistId: AIRING, episode: 3 } });
+    const res = await request.post("/api/pending", { data: { anilistId: AIRING } });
     expect(res.status()).toBeLessThan(300);
     expect((await prisma.anime.findFirstOrThrow({ where: { userId, anilistId: AIRING } })).watchState).toBeNull();
     await prisma.pendingEpisode.deleteMany({ where: { userId, anilistId: AIRING } });

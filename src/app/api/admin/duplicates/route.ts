@@ -1,19 +1,19 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { dismissDuplicate, listDuplicateReview, mergeDuplicate } from "@/lib/curation/duplicateReview";
 
 export const dynamic = "force-dynamic";
 
 /** Admin → Curadoria: pares de obras que a auditoria suspeita serem a mesma, para o admin decidir. */
 export async function GET() {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   return NextResponse.json({ pairs: await listDuplicateReview() }, { headers: { "Cache-Control": "no-store" } });
 }
 
 /** Decisão do admin: `merge` (`{ anidbId, anilistId }`: a cópia do AniDB vira a obra da AniList) ou `dismiss` (`{ entryIds }`: não é a mesma obra). */
 export async function POST(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   let body: { action?: unknown; anidbId?: unknown; anilistId?: unknown; entryIds?: unknown };
   try {

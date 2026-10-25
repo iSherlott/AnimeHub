@@ -122,15 +122,15 @@ export default function CalendarPage() {
 
   // "Acompanhando" no preview: clicar tira a obra da lista (o item deixa de ser "da minha lista") ou retoma uma em espera.
   function markUnfollowed(anilistId: number) {
-    setItems((current) => current.map((i) => (i.anilistId === anilistId ? { ...i, inMyList: false, animeId: null, waiting: false, pendingFrom: null } : i)));
+    setItems((current) => current.map((i) => (i.anilistId === anilistId ? { ...i, inMyList: false, animeId: null, waiting: false, postponed: false } : i)));
   }
   function markResumed(anilistId: number) {
     setItems((current) => current.map((i) => (i.anilistId === anilistId ? { ...i, inMyList: true, waiting: false } : i)));
   }
 
-  // "Adiar" no preview: o selo "Adiado · EPnn" aparece (ou some) em todos os itens da obra sem recarregar.
-  function markPending(anilistId: number, fromEpisode: number | null) {
-    setItems((current) => current.map((i) => (i.anilistId === anilistId ? { ...i, pendingFrom: fromEpisode } : i)));
+  // "Adiar a obra" no preview: o selo "Obra adiada" aparece (ou some) em todos os itens da obra sem recarregar.
+  function markPending(anilistId: number, postponed: boolean) {
+    setItems((current) => current.map((i) => (i.anilistId === anilistId ? { ...i, postponed } : i)));
   }
 
   const weekDays = useMemo(() => buildWeekDaysInZone(weekOffset, timeZone), [weekOffset, timeZone]);

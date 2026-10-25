@@ -1,21 +1,31 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { Anime, Episode } from "@prisma/client";
+import type { Anime } from "@prisma/client";
+import type { GlobalEpisodeRow } from "@/lib/globalEpisodes";
 import type { KitsuAnimeMatch, KitsuEpisode } from "@/lib/kitsu";
 import { ensureEpisodes, refetchEpisodes } from "@/lib/episodes";
 
-const { findMany, deleteMany, createMany, update, animeFindFirst } = vi.hoisted(() => ({
+const { findMany, upsertSourceEpisodes, recentlyChecked, markEpisodesChecked, update, animeFindFirst } = vi.hoisted(() => ({
   findMany: vi.fn(),
-  deleteMany: vi.fn(),
-  createMany: vi.fn(),
+  upsertSourceEpisodes: vi.fn(),
+  recentlyChecked: vi.fn(),
+  markEpisodesChecked: vi.fn(),
   update: vi.fn(),
   animeFindFirst: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    episode: { findMany, deleteMany, createMany },
     anime: { update, findFirst: animeFindFirst },
   },
+}));
+
+// Fase 4: os episódios são globais (a linha da agenda); a gravação em si é testada em globalEpisodes.test.ts.
+vi.mock("@/lib/globalEpisodes", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/globalEpisodes")>()),
+  loadGlobalEpisodes: findMany,
+  upsertSourceEpisodes,
+  recentlyChecked,
+  markEpisodesChecked,
 }));
 
 const { searchKitsuAnime, getKitsuEpisodes } = vi.hoisted(() => ({
@@ -28,6 +38,7 @@ vi.mock("@/lib/kitsu", () => ({ searchKitsuAnime, getKitsuEpisodes }));
 function makeAnime(overrides: Partial<Anime> = {}): Anime {
   return {
     id: "anime-1",
+    catalogEntryId: null,
     userId: null,
     anilistId: 1,
     kitsuId: null,
@@ -107,25 +118,30 @@ function makeKitsuEpisode(overrides: Partial<KitsuEpisode> = {}): KitsuEpisode {
   };
 }
 
-function makeStoredEpisode(overrides: Partial<Episode> = {}): Episode {
+function makeStoredEpisode(overrides: Partial<GlobalEpisodeRow> = {}): GlobalEpisodeRow {
   return {
     id: "ep-1",
-    animeId: "anime-1",
-    number: 1,
-    seasonNumber: 1,
-    titleRomaji: "Episode 1",
-    titleEnglish: null,
-    titleJapanese: null,
+    anilistId: 1,
+    episode: 1,
+    airingAt: null,
+    airDate: null,
+    dateCertainty: "UNKNOWN",
+    status: "ACTIVE",
+    source: "kitsu",
+    manualFields: [],
+    episodeTitle: "Episode 1",
+    episodeTitleEn: null,
+    episodeTitleJa: null,
     synopsis: null,
     thumbnail: null,
-    airDate: null,
-    createdAt: new Date(),
     ...overrides,
   };
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  recentlyChecked.mockResolvedValue(false);
+  upsertSourceEpisodes.mockImplementation(async (_id: number, _work: unknown, list: unknown[]) => list.length);
 });
 
 describe("ensureEpisodes", () => {
@@ -135,8 +151,20 @@ describe("ensureEpisodes", () => {
 
     const result = await ensureEpisodes(makeAnime());
 
-    expect(result).toEqual({ episodes: cached, source: "cache" });
+    expect(result.source).toBe("cache");
+    expect(result.episodes).toEqual([expect.objectContaining({ number: 1, seasonNumber: 1, titleRomaji: "Episode 1" })]);
     expect(searchKitsuAnime).not.toHaveBeenCalled();
+  });
+
+  it("does not ask Kitsu again when it was checked recently, even with no content", async () => {
+    findMany.mockResolvedValueOnce([makeStoredEpisode({ episodeTitle: null })]);
+    recentlyChecked.mockResolvedValueOnce(true);
+
+    const result = await ensureEpisodes(makeAnime());
+
+    expect(result.source).toBe("cache");
+    expect(searchKitsuAnime).not.toHaveBeenCalled();
+    expect(getKitsuEpisodes).not.toHaveBeenCalled();
   });
 
   it("searches Kitsu and enriches the anime when there is no cache and no kitsuId yet", async () => {
@@ -356,24 +384,16 @@ describe("refetchEpisodes", () => {
 
     await refetchEpisodes(makeAnime({ kitsuId: 42 }));
 
-    expect(createMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: [
-          expect.objectContaining({ number: 1, titleRomaji: "First copy" }),
-          expect.objectContaining({ number: 2, titleRomaji: "Episode 2" }),
-        ],
-      })
-    );
+    const [[anilistId, , list, source, mode]] = upsertSourceEpisodes.mock.calls;
+    expect([anilistId, source, mode]).toEqual([1, "kitsu", "refresh"]);
+    expect(list).toEqual([expect.objectContaining({ number: 1, titleRomaji: "First copy" }), expect.objectContaining({ number: 2, titleRomaji: "Episode 2" })]);
+    expect(markEpisodesChecked).toHaveBeenCalledWith(1, 42, 2);
   });
 
-  // Regressão (13ª rodada de auditoria, Epic 18): number "reinicia a cada
-  // temporada" (comentário do próprio schema em Episode.number), então um
-  // anime com múltiplas seasonNumber na mesma entrada Kitsu (ex.: One Piece)
-  // tem episódios de temporadas diferentes com o mesmo `number`. O dedup por
-  // `ep.number` sozinho (sem `seasonNumber`) descartava silenciosamente toda
-  // a 2ª temporada em diante sempre que a numeração local colidia com a 1ª —
-  // nem chegava a bater no @@unique do banco, sumia antes disso.
-  it("keeps episodes from different seasons even when their per-season number repeats", async () => {
+  // Regressão (13ª rodada de auditoria, Epic 18): number "reinicia a cada temporada" interna da Kitsu (ex.: One Piece).
+  // O dedup por (temporada, número) passa as duas temporadas adiante; no episódio global (Fase 4) o número repetido é
+  // ambíguo e o upsert o deixa de fora (ver globalEpisodes.unambiguous) em vez de gravar a temporada errada.
+  it("passes episodes from different internal seasons on, even when their per-season number repeats", async () => {
     searchKitsuAnime.mockResolvedValueOnce(makeKitsuMatch());
     getKitsuEpisodes.mockResolvedValueOnce([
       makeKitsuEpisode({ number: 1, seasonNumber: 1, titleRomaji: "S1E1" }),
@@ -385,16 +405,12 @@ describe("refetchEpisodes", () => {
 
     await refetchEpisodes(makeAnime({ kitsuId: 42 }));
 
-    expect(createMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: [
-          expect.objectContaining({ number: 1, seasonNumber: 1, titleRomaji: "S1E1" }),
-          expect.objectContaining({ number: 2, seasonNumber: 1, titleRomaji: "S1E2" }),
-          expect.objectContaining({ number: 1, seasonNumber: 2, titleRomaji: "S2E1" }),
-          expect.objectContaining({ number: 2, seasonNumber: 2, titleRomaji: "S2E2" }),
-        ],
-      })
-    );
+    expect(upsertSourceEpisodes.mock.calls[0][2]).toEqual([
+      expect.objectContaining({ number: 1, seasonNumber: 1, titleRomaji: "S1E1" }),
+      expect.objectContaining({ number: 2, seasonNumber: 1, titleRomaji: "S1E2" }),
+      expect.objectContaining({ number: 1, seasonNumber: 2, titleRomaji: "S2E1" }),
+      expect.objectContaining({ number: 2, seasonNumber: 2, titleRomaji: "S2E2" }),
+    ]);
   });
 
   it("reports an error when Kitsu has no episodes registered", async () => {
@@ -408,8 +424,7 @@ describe("refetchEpisodes", () => {
       source: "kitsu",
       error: "Sem episódios cadastrados na Kitsu",
     });
-    expect(deleteMany).not.toHaveBeenCalled();
-    expect(createMany).not.toHaveBeenCalled();
+    expect(markEpisodesChecked).toHaveBeenCalledWith(1, 42, 0);
   });
 
   it("turns an unexpected failure into a friendly error instead of throwing", async () => {

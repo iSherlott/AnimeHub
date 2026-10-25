@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { loadAdminCatalogPage, parseAdminCatalogFilters } from "@/lib/adminCatalog";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
  * e `cursor` = quantas linhas já foram mostradas.
  */
 export async function GET(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   const { searchParams } = new URL(request.url);
   const cursor = Number(searchParams.get("cursor"));

@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { defaultImportDeps, importSelected, MAX_SELECTION, parseIds } from "@/lib/anilistImport";
 import { withProgressJob } from "@/lib/progressJob";
+import { JobBusyError } from "@/lib/jobLock";
 
 /** Admin → AniList: traz para a plataforma só as obras escolhidas (`{ ids }`, até 150) e carrega os episódios delas no calendário. */
 export async function POST(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   let body: { ids?: unknown };
   try {
@@ -20,6 +21,7 @@ export async function POST(request: Request) {
       await withProgressJob({ kind: "ANILIST", source: "AniList", label: `Trazer ${ids.length} obras`, stage: "COMMIT", actor: { id: user.id, name: user.displayName } }, (report) => importSelected(ids, defaultImportDeps, report))
     );
   } catch (error) {
+    if (error instanceof JobBusyError) return NextResponse.json({ error: error.message, running: error.running.seq }, { status: 409 });
     console.error("[admin-anilist] importação falhou:", error);
     return NextResponse.json({ error: "A importação falhou no meio. O que já entrou foi mantido; tente de novo para completar." }, { status: 502 });
   }

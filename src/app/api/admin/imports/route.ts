@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { analyzeImport } from "@/lib/adminImport/pipeline";
 
 /**
@@ -8,7 +8,7 @@ import { analyzeImport } from "@/lib/adminImport/pipeline";
  * explícita (`POST /api/admin/imports/[seq]/commit`).
  */
 export async function POST(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
 
   let body: unknown;

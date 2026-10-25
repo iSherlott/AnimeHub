@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { TEST_USER_EMAIL } from "./test-auth";
@@ -95,7 +96,7 @@ test.describe("Epic 18 — 6ª rodada — chip de gênero clicável leva ao Desc
 
   test.afterAll(async () => {
     const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
-    await prisma.catalogEntry.deleteMany({ where: { anilistId: GENRE_ANILIST_ID } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: GENRE_ANILIST_ID } });
     await prisma.$disconnect();
   });
 

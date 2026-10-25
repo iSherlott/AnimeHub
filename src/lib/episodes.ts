@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getKitsuEpisodes, searchKitsuAnime } from "@/lib/kitsu";
+import { asEpisodes, hasEpisodeContent, loadGlobalEpisodes, markEpisodesChecked, recentlyChecked, upsertSourceEpisodes } from "@/lib/globalEpisodes";
 import type { Anime, Episode } from "@prisma/client";
 
 export type EpisodesResult = {
@@ -33,47 +34,30 @@ async function kitsuIdAvailable(
   return conflict === null;
 }
 
-async function fetchAndStoreEpisodes(
-  animeId: string,
-  kitsuId: number
-): Promise<Episode[]> {
-  const kitsuEpisodes = await getKitsuEpisodes(kitsuId);
-  if (kitsuEpisodes.length === 0) return [];
-
-  // Chave composta (seasonNumber + number), não só `number`: o campo
-  // "reinicia a cada temporada" (ver comentário de Episode.number no
-  // schema), então um anime com várias seasonNumber numa única entrada
-  // Kitsu (ex.: One Piece) tem episódios de temporadas diferentes com o
-  // mesmo `number` — dedup só por `number` descartava silenciosamente
-  // toda temporada 2+ sempre que a numeração local colidia com a 1ª
-  // (achado real da 13ª rodada de auditoria, Epic 18).
-  const seenKeys = new Set<string>();
-  const uniqueEpisodes = kitsuEpisodes.filter((ep) => {
+/**
+ * Busca os episódios na Kitsu e grava no episódio GLOBAL da obra (Fase 4): o mesmo para todo mundo, nunca uma cópia
+ * por usuário. `refresh` troca o que mudou (botão "Atualizar dados"); senão só completa o que falta.
+ */
+async function fetchAndStoreEpisodes(anime: Anime, kitsuId: number, mode: "fill" | "refresh" = "fill"): Promise<Episode[]> {
+  // A mesma (temporada, número) repetida é o mesmo episódio; números iguais em temporadas internas diferentes são
+  // ambíguos e ficam de fora no upsert (a contagem reinicia e não dá para saber qual é o desta obra).
+  const seen = new Set<string>();
+  const kitsuEpisodes = (await getKitsuEpisodes(kitsuId)).filter((ep) => {
     const key = `${ep.seasonNumber}:${ep.number}`;
-    if (seenKeys.has(key)) return false;
-    seenKeys.add(key);
+    if (seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
-
-  await prisma.episode.deleteMany({ where: { animeId } });
-  await prisma.episode.createMany({
-    data: uniqueEpisodes.map((ep) => ({
-      animeId,
-      number: ep.number,
-      seasonNumber: ep.seasonNumber,
-      titleRomaji: ep.titleRomaji,
-      titleEnglish: ep.titleEnglish,
-      titleJapanese: ep.titleJapanese,
-      synopsis: ep.synopsis,
-      thumbnail: ep.thumbnail,
-      airDate: ep.airDate ? new Date(ep.airDate) : null,
-    })),
-  });
-
-  return prisma.episode.findMany({
-    where: { animeId },
-    orderBy: { number: "asc" },
-  });
+  const written = await upsertSourceEpisodes(
+    anime.anilistId,
+    { titleRomaji: anime.titleRomaji, titleEnglish: anime.titleEnglish, titleNative: anime.titleNative },
+    kitsuEpisodes.map((ep) => ({ ...ep, airDate: ep.airDate ? new Date(ep.airDate) : null })),
+    "kitsu",
+    mode
+  );
+  await markEpisodesChecked(anime.anilistId, kitsuId, kitsuEpisodes.length);
+  if (kitsuEpisodes.length === 0 && written === 0) return [];
+  return asEpisodes(await loadGlobalEpisodes(anime.anilistId));
 }
 
 /**
@@ -82,19 +66,17 @@ async function fetchAndStoreEpisodes(
  * aproveita pra completar título JP / capa que estiverem faltando.
  */
 export async function ensureEpisodes(anime: Anime): Promise<EpisodesResult> {
-  const cached = await prisma.episode.findMany({
-    where: { animeId: anime.id },
-    orderBy: { number: "asc" },
-  });
-  if (cached.length > 0) {
-    return { episodes: cached, source: "cache" };
+  // Episódios globais da obra. Com título/sinopse/imagem já gravados, ou consultada há pouco, não pergunta à Kitsu de novo.
+  const rows = await loadGlobalEpisodes(anime.anilistId);
+  if (hasEpisodeContent(rows) || (await recentlyChecked(anime.anilistId))) {
+    return { episodes: asEpisodes(rows), source: "cache" };
   }
 
   if (OTHER_SOURCES_DISABLED) {
     return {
-      episodes: [],
+      episodes: asEpisodes(rows),
       source: "cache",
-      error: "Kitsu desativada temporariamente (modo AniDB-only) — vincule o ID da AniDB e use Atualizar dados",
+      error: rows.length > 0 ? undefined : "Kitsu desativada temporariamente (modo AniDB-only) — vincule o ID da AniDB e use Atualizar dados",
     };
   }
 
@@ -123,14 +105,14 @@ export async function ensureEpisodes(anime: Anime): Promise<EpisodesResult> {
       });
     }
 
-    const episodes = await fetchAndStoreEpisodes(anime.id, kitsuId);
+    const episodes = await fetchAndStoreEpisodes(anime, kitsuId);
     if (episodes.length === 0) {
-      return { episodes: [], source: "kitsu", error: "Sem episódios cadastrados na Kitsu" };
+      return { episodes: asEpisodes(rows), source: "kitsu", error: rows.length > 0 ? undefined : "Sem episódios cadastrados na Kitsu" };
     }
     return { episodes, source: "kitsu" };
   } catch (error) {
     return {
-      episodes: [],
+      episodes: asEpisodes(rows),
       source: "kitsu",
       error: error instanceof Error ? error.message : "Falha ao buscar episódios",
     };
@@ -168,7 +150,7 @@ export async function refetchEpisodes(anime: Anime): Promise<EpisodesResult> {
       });
     }
 
-    const episodes = await fetchAndStoreEpisodes(anime.id, kitsuId);
+    const episodes = await fetchAndStoreEpisodes(anime, kitsuId, "refresh");
     if (episodes.length === 0) {
       return { episodes: [], source: "kitsu", error: "Sem episódios cadastrados na Kitsu" };
     }

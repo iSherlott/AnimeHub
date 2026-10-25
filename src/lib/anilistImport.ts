@@ -176,7 +176,7 @@ type ComplementField = (typeof COMPLEMENT_FIELDS)[number][0];
 
 const isEmpty = (value: unknown) => value === null || value === undefined || value === "";
 
-type Existing = Pick<CatalogEntry, ComplementField | "seasonYear" | "malId" | "nextEpisodeNumber" | "nextEpisodeAt"> & Partial<Pick<CatalogEntry, "streamingDelayMinutes">>;
+type Existing = Pick<CatalogEntry, ComplementField | "seasonYear" | "malId" | "nextEpisodeNumber" | "nextEpisodeAt"> & Partial<Pick<CatalogEntry, "streamingDelayMinutes" | "manualFields">>;
 
 /** Só fazem sentido numa obra que já terminou de ser exibida (no ar, a AniList ainda não tem total de episódios, nota nem fim). */
 const ONLY_WHEN_FINISHED: ReadonlySet<ComplementField> = new Set(["episodes", "averageScore", "endDate"]);
@@ -210,15 +210,16 @@ export function mergeCatalogFields(existing: Existing, incoming: AniListMedia, o
     ["endDate", endISO ? new Date(endISO) : null],
   ];
   const label = new Map<string, string>(COMPLEMENT_FIELDS);
+  const manual = new Set(existing.manualFields ?? []);
   for (const [key, value] of candidates) {
-    if (isEmpty(value)) continue;
+    if (isEmpty(value) || manual.has(key)) continue; // campo protegido pelo admin (Fase 3)
     const current = existing[key];
     const same = current instanceof Date && value instanceof Date ? current.getTime() === value.getTime() : current === value;
     if (same || (!overwrite && !isEmpty(current))) continue;
     data[key] = value;
     filled.push(label.get(key) ?? key);
   }
-  if (incoming.season && (overwrite || isEmpty(existing.seasonYear)) && incoming.seasonYear && existing.seasonYear !== incoming.seasonYear) data.seasonYear = incoming.seasonYear;
+  if (incoming.season && !manual.has("seasonYear") && (overwrite || isEmpty(existing.seasonYear)) && incoming.seasonYear && existing.seasonYear !== incoming.seasonYear) data.seasonYear = incoming.seasonYear;
   if (isEmpty(existing.malId) && incoming.idMal) data.malId = incoming.idMal;
   if (incoming.nextAiringEpisode) {
     data.nextEpisodeNumber = incoming.nextAiringEpisode.episode;

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { confirmCandidate, listAnidbOnly, rejectCandidate } from "@/lib/anidbCandidates";
 
 /** Admin → Match name → Obras sem página: lista (`?tab=suggested|none&page=`). */
 export async function GET(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   const params = new URL(request.url).searchParams;
   const tab = params.get("tab") === "none" ? "none" : "suggested";
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
 /** Decisão do admin: `confirm` (a sugerida, ou a escolhida em `anilistId`) ou `reject`. */
 export async function POST(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   let body: { anidbId?: unknown; action?: unknown; anilistId?: unknown };
   try {

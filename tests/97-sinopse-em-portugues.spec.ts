@@ -1,4 +1,5 @@
 import { createServer, type Server } from "node:http";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { test, expect } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
@@ -29,7 +30,7 @@ test.describe.serial("Sinopse em português", () => {
     await prisma.synopsisTranslation.deleteMany({ where: { anilistId: { in: ALL } } });
     await prisma.production.deleteMany({ where: { anilistId: { in: ALL } } });
     await prisma.franchise.deleteMany({ where: { rootAnilistId: { in: ALL } } });
-    await prisma.catalogEntry.deleteMany({ where: { OR: [{ anilistId: { in: ALL } }, { anidbId: ANIDB_ID }] } });
+    await deleteCatalogEntries(prisma, { where: { OR: [{ anilistId: { in: ALL } }, { anidbId: ANIDB_ID }] } });
     await prisma.adminJob.deleteMany({ where: { kind: "TRANSLATION", adminName: { not: null } } });
   }
 

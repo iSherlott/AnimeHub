@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { isIssueCode, ISSUE_LABELS } from "@/lib/curation/issues";
 
@@ -17,7 +17,7 @@ const csvCell = (value: string | number | null) => {
  * (`&format=csv`) para tratar fora do sistema.
  */
 export async function GET(request: Request) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
   const url = new URL(request.url);
   const code = url.searchParams.get("code");

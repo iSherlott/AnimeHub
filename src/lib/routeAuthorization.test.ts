@@ -56,7 +56,7 @@ describe("autorização das rotas de API", () => {
     const unguarded = files.filter((rel) => {
       if (PUBLIC_BY_DESIGN.has(rel)) return false;
       const source = readFileSync(path.join(API_ROOT, rel), "utf8");
-      return !/requireUser|requireAdmin|getCurrentUser/.test(source);
+      return !/requireUser|requireAdmin|requireStaff|getCurrentUser/.test(source);
     });
     expect(unguarded).toEqual([]);
   });
@@ -66,10 +66,18 @@ describe("autorização das rotas de API", () => {
     expect(missing).toEqual([]);
   });
 
-  it("rotas administrativas usam requireAdmin", () => {
+  // Fase 9: as rotas administrativas exigem papel da equipe — requireAdmin (só administrador) ou requireStaff(área).
+  it("rotas administrativas exigem administrador ou a permissão da área", () => {
     const adminFiles = files.filter((rel) => rel.startsWith("admin/"));
     expect(adminFiles.length).toBeGreaterThan(0);
-    const weak = adminFiles.filter((rel) => !/requireAdmin/.test(readFileSync(path.join(API_ROOT, rel), "utf8")));
+    const weak = adminFiles.filter((rel) => !/requireAdmin\(\)|requireStaff\("(catalog|moderation|admin)"\)/.test(readFileSync(path.join(API_ROOT, rel), "utf8")));
     expect(weak).toEqual([]);
+  });
+
+  it("usuários, convites e papéis são só do administrador", () => {
+    const adminOnly = files.filter((rel) => rel.startsWith("admin/users") || rel.startsWith("admin/invites"));
+    expect(adminOnly.length).toBeGreaterThan(0);
+    const leaking = adminOnly.filter((rel) => /requireStaff\("(catalog|moderation)"\)/.test(readFileSync(path.join(API_ROOT, rel), "utf8")));
+    expect(leaking).toEqual([]);
   });
 });

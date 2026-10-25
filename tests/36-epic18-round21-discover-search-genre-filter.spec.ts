@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 
@@ -29,7 +30,7 @@ test.describe("Epic 18 — 21ª rodada de auditoria de UX/UI — filtro de gêne
 
   test.afterAll(async () => {
     const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
-    await prisma.catalogEntry.deleteMany({
+    await deleteCatalogEntries(prisma, {
       where: { anilistId: { in: [CATALOG_ANILIST_ID_A, CATALOG_ANILIST_ID_B] } },
     });
     await prisma.$disconnect();

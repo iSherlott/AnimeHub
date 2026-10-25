@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_EMAIL, TEST_ADMIN_SESSION_TOKEN } from "./test-auth";
@@ -37,7 +38,7 @@ test.describe.serial("Explorar — fileiras, temporadas e cartões", () => {
     await prisma.airingScheduleEntry.deleteMany({ where: { anilistId: { in: IDS } } });
     await prisma.production.deleteMany({ where: { anilistId: { in: IDS } } });
     await prisma.franchise.deleteMany({ where: { rootAnilistId: { in: IDS } } });
-    await prisma.catalogEntry.deleteMany({ where: { anilistId: { in: IDS } } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: { in: IDS } } });
   }
 
   const entry = (anilistId: number, title: string, genres: string, over: Record<string, unknown> = {}) =>

@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { waitEpisodesStreamed } from "./streaming";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
+import { seedGlobalEpisodes } from "./global-episodes";
 import { TEST_USER_EMAIL } from "./test-auth";
 
 // Lista de episódios com data de lançamento, sinopse e imagem (calendário) + favorito sobre a imagem no preview.
@@ -22,21 +23,13 @@ test.describe("Episódios: data, sinopse e imagem", () => {
       update: {},
     });
     animeId = anime.id;
-    await prisma.episode.deleteMany({ where: { animeId } });
-    await prisma.episode.createMany({
-      data: [
-        { animeId, number: 1, seasonNumber: 1, titleRomaji: "Primeiro", synopsis: "Sinopse do primeiro episódio.", thumbnail: "https://s4.anilist.co/file/anilistcdn/media/anime/ep1-68.jpg", airDate: new Date("2026-10-05T00:00:00Z") },
-        { animeId, number: 2, seasonNumber: 1, titleRomaji: "Segundo", synopsis: null, thumbnail: null, airDate: null },
-      ],
-    });
-    // Calendário: horários dos 3 episódios; o 3º ainda não está na Kitsu. Imagem do EP2 capturada pelo agente.
-    for (const [episode, airingAt] of [[1, new Date("2026-10-05T13:00:00Z")], [2, new Date("2026-10-12T13:00:00Z")], [3, ep3At]] as const) {
-      await prisma.airingScheduleEntry.upsert({
-        where: { anilistId_episode: { anilistId: ANILIST_ID, episode } },
-        create: { anilistId: ANILIST_ID, episode, airingAt, titleRomaji: "Episodios Round68" },
-        update: { airingAt },
-      });
-    }
+    // Episódios globais (Fase 4): a AniList dá dia e hora dos 3; a Kitsu completou título, sinopse e imagem do EP1 e o
+    // título do EP2; o 3º ainda não tem nada além do horário. Imagem do EP2 capturada pelo agente.
+    await seedGlobalEpisodes(prisma, ANILIST_ID, { titleRomaji: "Episodios Round68" }, [
+      { number: 1, titleRomaji: "Primeiro", synopsis: "Sinopse do primeiro episódio.", thumbnail: "https://s4.anilist.co/file/anilistcdn/media/anime/ep1-68.jpg", airingAt: new Date("2026-10-05T13:00:00Z") },
+      { number: 2, titleRomaji: "Segundo", airingAt: new Date("2026-10-12T13:00:00Z") },
+      { number: 3, airingAt: ep3At },
+    ]);
     await prisma.episodeImage.upsert({
       where: { anilistId_episode: { anilistId: ANILIST_ID, episode: 2 } },
       create: { anilistId: ANILIST_ID, episode: 2, thumbnail: "https://s4.anilist.co/file/anilistcdn/media/anime/ep2-68.jpg" },

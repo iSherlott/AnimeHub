@@ -5,6 +5,7 @@ import { Box, Typography } from "@mui/material";
 import { prisma } from "@/lib/prisma";
 import { AdminButtonLink } from "@/components/admin/AdminButtonLink";
 import { AdminPageHeader, AdminPanel, AdminTable, JobStateLabel, SmallChip, adminPanelSx } from "@/components/admin/AdminUi";
+import { GenericJobDetail } from "@/components/admin/GenericJobDetail";
 import { RetryJobButton } from "@/components/admin/RetryJobButton";
 import { ErrorNotice } from "@/components/StatePanels";
 import { deriveSteps, STAGE_LABEL, STATE_LABEL, type JobStage, type JobState } from "@/lib/adminImport/jobSteps";
@@ -15,11 +16,13 @@ export const dynamic = "force-dynamic";
 
 /** Admin → Jobs → Detalhe (Figma `8:4919`): progresso, etapas, provenance e a próxima ação — sem sugerir commit antes da revisão. */
 export default async function AdminJobDetailPage({ params }: { params: Promise<{ seq: string }> }) {
-  const { timeZone } = await requireAdminPage();
+  const { timeZone } = await requireAdminPage("catalog");
   const seq = Number((await params).seq);
   if (!Number.isInteger(seq) || seq < 1) notFound();
   const job = await prisma.adminJob.findUnique({ where: { seq } });
   if (!job) notFound();
+  // Fase 8: os demais tipos (AniList, curadoria, tradução, linhas do tempo, atualização seletiva) têm o detalhe genérico.
+  if (job.kind !== "IMPORT") return <GenericJobDetail job={job} timeZone={timeZone} />;
 
   const input = await stepsInputFor(job);
   const alerts = await prisma.catalogConflict.count({ where: { jobSeq: seq, status: "RESOLVED", resolution: { in: ["B", "MANUAL"] } } });

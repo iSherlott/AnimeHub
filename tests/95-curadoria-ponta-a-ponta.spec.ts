@@ -1,4 +1,5 @@
 import { createServer, type Server } from "node:http";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { test, expect } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
@@ -67,7 +68,7 @@ test.describe.serial("Curadoria de ponta a ponta", () => {
     await prisma.anime.deleteMany({ where: { anilistId: { in: IDS } } });
     await prisma.production.deleteMany({ where: { anilistId: { in: IDS } } });
     await prisma.franchise.deleteMany({ where: { rootAnilistId: { in: IDS } } });
-    await prisma.catalogEntry.deleteMany({ where: { anilistId: { in: IDS } } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: { in: IDS } } });
     await prisma.adminJob.deleteMany({ where: { kind: "CURATION", adminName: { not: null } } });
     await prisma.adminJob.deleteMany({ where: { kind: "IMPORT", html: { contains: "a995010" } } });
   }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireStaff } from "@/lib/auth/session";
 import { resolveConflict, type ConflictResolution } from "@/lib/adminImport/pipeline";
 
 /**
@@ -8,7 +8,7 @@ import { resolveConflict, type ConflictResolution } from "@/lib/adminImport/pipe
  * auditável — o valor original nunca é apagado.
  */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { user, response } = await requireAdmin();
+  const { user, response } = await requireStaff("catalog");
   if (!user) return response;
 
   let body: { resolution?: unknown; value?: unknown; reason?: unknown };

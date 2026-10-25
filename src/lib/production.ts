@@ -1,4 +1,5 @@
 import type { Franchise, Production } from "@prisma/client";
+import { catalogEntryIdFor } from "@/lib/catalogLink";
 import { prisma } from "@/lib/prisma";
 import {
   getAnimeById,
@@ -23,7 +24,7 @@ export type ProductionWithFranchise = Production & { franchise: Franchise };
 const REFRESH_AFTER_MS = 7 * 24 * 3600 * 1000;
 
 /** `anidbId` fica de fora: é vinculado pela importação revisada e a atualização via AniList não pode apagá-lo. */
-export type ProductionFields = Omit<Production, "id" | "franchiseId" | "anidbId" | "titleLocked" | "createdAt" | "fetchedAt" | "updatedAt">;
+export type ProductionFields = Omit<Production, "id" | "franchiseId" | "anidbId" | "titleLocked" | "catalogEntryId" | "createdAt" | "fetchedAt" | "updatedAt">;
 
 export function productionFieldsFromMedia(
   media: AniListMedia,
@@ -96,10 +97,11 @@ async function fromAniList(anilistId: number): Promise<ProductionWithFranchise |
   const prior = await prisma.production.findUnique({ where: { anilistId }, select: { streamingLinksJson: true, titleLocked: true, titleRomaji: true } });
   if (prior?.titleLocked) fields.titleRomaji = prior.titleRomaji; // título fixado (o do AniDB): a AniList não troca
   fields.streamingLinksJson = JSON.stringify(mergeStreamingLinks(getStreamingLinks(media), parseStreamingLinks(prior?.streamingLinksJson ?? null)));
+  const catalogEntryId = await catalogEntryIdFor(anilistId);
   const production = await prisma.production.upsert({
     where: { anilistId },
-    create: { ...fields, franchiseId: franchise.id },
-    update: { ...fields, franchiseId: franchise.id, fetchedAt: new Date() },
+    create: { ...fields, franchiseId: franchise.id, catalogEntryId },
+    update: { ...fields, franchiseId: franchise.id, fetchedAt: new Date(), ...(catalogEntryId ? { catalogEntryId } : {}) },
     include: { franchise: true },
   });
   // A AniList refez a franquia pelas relações dela: as continuações que o admin ligou à mão voltam a valer.
@@ -119,6 +121,7 @@ async function fromLocalCache(anilistId: number): Promise<ProductionWithFranchis
     where: { anilistId },
     create: {
       anilistId,
+      catalogEntryId: catalog?.id ?? null,
       franchiseId: franchise.id,
       titleRomaji: src.titleRomaji,
       titleEnglish: src.titleEnglish,

@@ -3,74 +3,48 @@ import { waitEpisodesStreamed } from "./streaming";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { TEST_USER_EMAIL } from "./test-auth";
+import { seedGlobalEpisodes } from "./global-episodes";
 
 // anilistId fora da faixa usada por outras fixtures.
 const ANIME_ANILIST_ID = 901200;
 
-test.describe("Redesenho da lista de episódios — seletor de temporada e busca", () => {
+// Fase 4 (ADR 0009): os episódios são globais, um por número na obra. As "temporadas internas" da Kitsu deixaram de
+// existir (cada temporada da franquia é uma obra própria, com aba na página — spec 100), então a lista não tem mais
+// seletor de temporada: tem a busca e a sinopse atrás do aviso de spoiler.
+test.describe("Lista de episódios — episódios globais e busca", () => {
   let animeId: string;
 
   test.beforeAll(async () => {
     const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
     const user = await prisma.user.findUniqueOrThrow({ where: { email: TEST_USER_EMAIL } });
-
+    const title = "Anime Com Quatro Episodios Pra Testar Lista De Episódios";
     const anime = await prisma.anime.upsert({
       where: { userId_anilistId: { userId: user.id, anilistId: ANIME_ANILIST_ID } },
-      create: {
-        userId: user.id,
-        anilistId: ANIME_ANILIST_ID,
-        titleRomaji: "Anime Com Duas Temporadas Pra Testar Lista De Episódios",
-        genres: "",
-      },
+      create: { userId: user.id, anilistId: ANIME_ANILIST_ID, titleRomaji: title, genres: "" },
       update: {},
     });
     animeId = anime.id;
-
-    // number é a posição absoluta dentro do anime, não reinicia por
-    // temporada (@@unique([animeId, number]) no schema) — mesma observação
-    // já registrada no comentário de EpisodeGrid sobre o cálculo de
-    // ordinal.
-    await prisma.episode.deleteMany({ where: { animeId } });
-    await prisma.episode.createMany({
-      data: [
-        { animeId, number: 1, seasonNumber: 1, titleRomaji: "O Início Da Jornada", synopsis: "Resumo do episódio 1." },
-        { animeId, number: 2, seasonNumber: 1, titleRomaji: "Um Encontro Inesperado" },
-        { animeId, number: 3, seasonNumber: 2, titleRomaji: "Novos Horizontes" },
-        { animeId, number: 4, seasonNumber: 2, titleRomaji: "O Último Confronto" },
-      ],
-    });
-
+    await seedGlobalEpisodes(prisma, ANIME_ANILIST_ID, { titleRomaji: title }, [
+      { number: 1, titleRomaji: "O Início Da Jornada", synopsis: "Resumo do episódio 1." },
+      { number: 2, titleRomaji: "Um Encontro Inesperado" },
+      { number: 3, titleRomaji: "Novos Horizontes" },
+      { number: 4, titleRomaji: "O Último Confronto" },
+    ]);
     await prisma.$disconnect();
   });
 
-  test("mostra a última temporada por padrão, e trocar no seletor filtra a lista certa", async ({ page }) => {
+  test("todos os episódios da obra aparecem em ordem, sem seletor de temporada interna", async ({ page }) => {
     await page.goto(`/anime/${animeId}`);
-    // A lista de episódios vem atrás de um accordion fechado por padrão
-    // desde o lote 1 do Epic 27 — precisa abrir antes de qualquer episódio
-    // ficar visível.
     await waitEpisodesStreamed(page); // a lista chega em streaming: espera o esqueleto sumir e a troca terminar
     await page.getByTestId("episode-toggle").click(); // a lista de episódios vem minimizada
-
-    // Temporada 2 (a mais recente) vem selecionada por padrão.
-    await expect(page.getByTestId("episode-tile-2-3")).toBeVisible();
-    await expect(page.getByTestId("episode-tile-2-4")).toBeVisible();
-    await expect(page.getByTestId("episode-tile-1-1")).toHaveCount(0);
-
-    await page.getByLabel("Temporada").click();
-    await page.getByRole("option", { name: "Temporada 1" }).click();
-
-    await expect(page.getByTestId("episode-tile-1-1")).toBeVisible();
-    await expect(page.getByTestId("episode-tile-1-2")).toBeVisible();
-    await expect(page.getByTestId("episode-tile-2-3")).toHaveCount(0);
+    for (const n of [1, 2, 3, 4]) await expect(page.getByTestId(`episode-tile-1-${n}`)).toBeVisible();
+    await expect(page.getByLabel("Temporada")).toHaveCount(0);
   });
 
-  test("a busca filtra por título dentro da temporada selecionada", async ({ page }) => {
+  test("a busca filtra por título", async ({ page }) => {
     await page.goto(`/anime/${animeId}`);
-    await waitEpisodesStreamed(page); // a lista chega em streaming: espera o esqueleto sumir e a troca terminar
-    await page.getByTestId("episode-toggle").click(); // a lista de episódios vem minimizada
-
-    await page.getByLabel("Temporada").click();
-    await page.getByRole("option", { name: "Temporada 1" }).click();
+    await waitEpisodesStreamed(page);
+    await page.getByTestId("episode-toggle").click();
 
     await page.getByPlaceholder("Buscar episódio...").fill("encontro");
     await expect(page.getByTestId("episode-tile-1-2")).toBeVisible();
@@ -82,10 +56,8 @@ test.describe("Redesenho da lista de episódios — seletor de temporada e busca
 
   test("sinopse do episódio aparece quando existe", async ({ page }) => {
     await page.goto(`/anime/${animeId}`);
-    await waitEpisodesStreamed(page); // a lista chega em streaming: espera o esqueleto sumir e a troca terminar
-    await page.getByTestId("episode-toggle").click(); // a lista de episódios vem minimizada
-    await page.getByLabel("Temporada").click();
-    await page.getByRole("option", { name: "Temporada 1" }).click();
+    await waitEpisodesStreamed(page);
+    await page.getByTestId("episode-toggle").click();
 
     const tile = page.getByTestId("episode-tile-1-1");
     // Sinopse atrás de ação explícita (spoiler, D-09): oculta até pedir.
@@ -95,73 +67,44 @@ test.describe("Redesenho da lista de episódios — seletor de temporada e busca
   });
 });
 
-// Achado real da revisão de código deste redesenho: o seletor de temporada
-// usava um useState inicializado 1 vez só a partir da temporada mais
-// recente — como EpisodeGrid não remonta quando o `episodes` da página
-// muda (ex.: depois de qualquer ação que só chama router.refresh(), sem
-// navegar de verdade), um anime que começa com 1 só temporada e ganha uma
-// 2ª depois ficava com o seletor escondido (ou, pior, visível mas
-// mostrando um valor que não batia com a lista filtrada de verdade).
-test.describe("Redesenho da lista de episódios — seletor reage a episódios novos sem remontar", () => {
-  const SINGLE_SEASON_ANILIST_ID = 901201;
+// Achado real da revisão de código deste redesenho: o EpisodeGrid não remonta quando os `episodes` da página mudam (ex.:
+// depois de uma ação que só chama router.refresh(), sem navegar). Um episódio novo que chega assim já aparece na lista.
+test.describe("Lista de episódios — episódio novo chega sem remontar", () => {
+  const SINGLE_ANILIST_ID = 901201;
   let animeId: string;
+  const title = "Anime Que Ganha Um Episodio Novo Sem Remontar";
 
   test.beforeAll(async () => {
     const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
     const user = await prisma.user.findUniqueOrThrow({ where: { email: TEST_USER_EMAIL } });
-
     const anime = await prisma.anime.upsert({
-      where: { userId_anilistId: { userId: user.id, anilistId: SINGLE_SEASON_ANILIST_ID } },
-      create: {
-        userId: user.id,
-        anilistId: SINGLE_SEASON_ANILIST_ID,
-        titleRomaji: "Anime De 1 Temporada Que Ganha Uma 2ª Sem Remontar",
-        episodes: 10,
-        genres: "",
-      },
+      where: { userId_anilistId: { userId: user.id, anilistId: SINGLE_ANILIST_ID } },
+      create: { userId: user.id, anilistId: SINGLE_ANILIST_ID, titleRomaji: title, episodes: 10, genres: "" },
       update: {},
     });
     animeId = anime.id;
-
-    await prisma.episode.deleteMany({ where: { animeId } });
-    await prisma.episode.createMany({
-      data: [
-        { animeId, number: 1, seasonNumber: 1, titleRomaji: "Primeiro Episódio" },
-        { animeId, number: 2, seasonNumber: 1, titleRomaji: "Segundo Episódio" },
-      ],
-    });
+    await seedGlobalEpisodes(prisma, SINGLE_ANILIST_ID, { titleRomaji: title }, [
+      { number: 1, titleRomaji: "Primeiro Episódio" },
+      { number: 2, titleRomaji: "Segundo Episódio" },
+    ]);
     await prisma.$disconnect();
   });
 
-  test("uma 2ª temporada chegando via router.refresh() (sem navegação) já aparece certa no seletor", async ({ page }) => {
+  test("um episódio novo chegando via router.refresh() (sem navegação) já aparece na lista", async ({ page }) => {
     await page.goto(`/anime/${animeId}`);
-    await waitEpisodesStreamed(page); // a lista chega em streaming: espera o esqueleto sumir e a troca terminar
-    await page.getByTestId("episode-toggle").click(); // a lista de episódios vem minimizada
-
-    // 1 temporada só — seletor nem aparece, e o EpisodeGrid já está
-    // montado nesse estado (é essa mesma instância que não deve remontar
-    // depois).
-    await expect(page.getByLabel("Temporada")).toHaveCount(0);
+    await waitEpisodesStreamed(page);
+    await page.getByTestId("episode-toggle").click();
     await expect(page.getByTestId("episode-tile-1-1")).toBeVisible();
+    await expect(page.getByTestId("episode-tile-1-3")).toHaveCount(0);
 
-    // Insere a 2ª temporada direto no banco, por fora da página — simula
-    // o que "Atualizar dados" faria de verdade, sem depender de uma fonte
-    // externa real neste teste.
+    // Insere o episódio direto no banco, por fora da página — simula o que "Atualizar dados" faria.
     const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
-    await prisma.episode.create({
-      data: { animeId, number: 3, seasonNumber: 2, titleRomaji: "Episódio Da Temporada Nova" },
-    });
+    await seedGlobalEpisodes(prisma, SINGLE_ANILIST_ID, { titleRomaji: title }, [{ number: 3, titleRomaji: "Episódio Novo" }], { replace: false });
     await prisma.$disconnect();
 
-    // Favoritar chama router.refresh() sem navegar — o
-    // mesmo tipo de atualização "in-place" que expôs o bug (EpisodeGrid
-    // continua montado, só os `episodes` que chegam nele mudam).
+    // Favoritar chama router.refresh() sem navegar — o mesmo tipo de atualização "in-place".
     await page.getByRole("button", { name: "Adicionar aos favoritos" }).click();
-
-    const seasonSelect = page.getByLabel("Temporada");
-    await expect(seasonSelect).toBeVisible();
-    await expect(seasonSelect).toHaveText("Temporada 2");
-    await expect(page.getByTestId("episode-tile-2-3")).toBeVisible();
-    await expect(page.getByTestId("episode-tile-1-1")).toHaveCount(0);
+    await expect(page.getByTestId("episode-tile-1-3")).toBeVisible();
+    await expect(page.getByTestId("episode-tile-1-1")).toBeVisible();
   });
 });
