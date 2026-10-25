@@ -58,7 +58,7 @@ export type OwnedAnimeCalendarInfo = {
 };
 
 export function calendarItemFromCache(
-  entry: AiringScheduleEntry & { airingAt: Date },
+  entry: AiringScheduleEntry & { airingAt: Date; anilistId: number },
   myAnimeByAnilistId: Map<number, OwnedAnimeCalendarInfo>,
   delayed = false,
   episodeImage: string | null = null,

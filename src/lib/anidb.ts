@@ -7,7 +7,8 @@ import { XMLParser } from "fast-xml-parser";
 // name/version vêm de variável de ambiente — sem eles, nem tentamos a
 // chamada (evita gastar tentativas contra um client não registrado, o que
 // a documentação deles trata como abuso).
-const ANIDB_HTTP_API_URL = "http://api.anidb.net:9001/httpapi";
+// Sobrescrevível só para testes (um AniDB falso local): nunca bater no AniDB real fora do uso normal.
+const ANIDB_HTTP_API_URL = process.env.ANIDB_HTTP_API_URL || "http://api.anidb.net:9001/httpapi";
 const ANIDB_CLIENT_NAME = process.env.ANIDB_CLIENT_NAME;
 const ANIDB_CLIENT_VERSION = process.env.ANIDB_CLIENT_VERSION;
 

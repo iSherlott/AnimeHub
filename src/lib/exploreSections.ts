@@ -1,4 +1,4 @@
-import { timed } from "@/lib/episodeState";
+import { timed, withAnilist } from "@/lib/episodeState";
 import type { AiringScheduleEntry, CatalogEntry } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { NOT_BLOCKED_GENRE } from "@/lib/contentPolicy";
@@ -107,7 +107,7 @@ export async function loadAiringToday(timeZone: string, userId: string | null, n
   const from = startOfDayInZone(now, timeZone);
   const to = startOfDayInZone(new Date(from.getTime() + 36 * 3600_000), timeZone);
   const [entries, hidden] = await Promise.all([
-    prisma.airingScheduleEntry.findMany({ where: { airingAt: { gte: from, lt: to }, status: "ACTIVE" }, orderBy: { airingAt: "asc" } }).then(timed),
+    prisma.airingScheduleEntry.findMany({ where: { airingAt: { gte: from, lt: to }, status: "ACTIVE", anilistId: { not: null } }, orderBy: { airingAt: "asc" } }).then((rows) => withAnilist(timed(rows))),
     hiddenAnilistIds(),
   ]);
   const visible = entries.filter((e) => !hidden.has(e.anilistId));

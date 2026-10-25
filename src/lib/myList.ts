@@ -1,4 +1,4 @@
-import { timed } from "@/lib/episodeState";
+import { timed, withAnilist } from "@/lib/episodeState";
 import { prisma } from "@/lib/prisma";
 import { applyAiringOverrides, loadActiveOverrides } from "@/lib/airingOverrides";
 import { myListStateOf, type MyListState } from "@/lib/myListState";
@@ -69,13 +69,13 @@ export async function loadMyListEntries(userId: string, now: Date = new Date()):
 
   const anilistIds = animes.map((a) => a.anilistId);
   // Próximo episódio com data confirmada de cada obra (um por obra).
-  const upcomingRaw = timed(
+  const upcomingRaw = withAnilist(timed(
     await prisma.airingScheduleEntry.findMany({
       where: { anilistId: { in: anilistIds }, airingAt: { gte: now }, status: "ACTIVE" },
       orderBy: { airingAt: "asc" },
       select: { anilistId: true, episode: true, airingAt: true },
     })
-  );
+  ));
   // Horário efetivo: overrides manuais (Admin → Overrides) valem sobre o da fonte.
   const upcoming = applyAiringOverrides(upcomingRaw, await loadActiveOverrides(anilistIds)).sort((a, b) => a.airingAt.getTime() - b.airingAt.getTime());
   const nextById = new Map<number, { episode: number; airingAt: Date }>();

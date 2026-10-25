@@ -6,7 +6,7 @@ import type { AiringScheduleEntry } from "@prisma/client";
 import { findStaleEntryIds } from "@/lib/airingRefresh";
 import { isReschedule, recordRescheduleAlerts } from "@/lib/rescheduleAlerts";
 import { recordChanges } from "@/lib/changeLog";
-import { timed } from "@/lib/episodeState";
+import { timed, withAnilist } from "@/lib/episodeState";
 import { applyAiringOverrides, loadActiveOverrides } from "@/lib/airingOverrides";
 
 export async function cacheAiringSchedule(entries: AniListAiringEntry[]): Promise<void> {
@@ -102,11 +102,13 @@ export async function pruneMissingFutureEntries(
   now: Date = new Date()
 ): Promise<number> {
   const from = windowFrom > now ? windowFrom : now;
-  const rows = timed(
-    await prisma.airingScheduleEntry.findMany({
-      where: { airingAt: { gte: from, lt: windowTo } },
-      select: { id: true, anilistId: true, episode: true, airingAt: true },
-    })
+  const rows = withAnilist(
+    timed(
+      await prisma.airingScheduleEntry.findMany({
+        where: { airingAt: { gte: from, lt: windowTo }, anilistId: { not: null } },
+        select: { id: true, anilistId: true, episode: true, airingAt: true },
+      })
+    )
   );
   // A AniList lista pelo horário da TV; com atraso do streaming (Epic 50) o gravado vem depois. Só entra na conferência
   // o que, no horário da TV, também está dentro da janela lida — senão um episódio que já passou na TV, mas ainda vai
@@ -135,10 +137,13 @@ export async function getCachedAiringSchedule(
   // período um episódio que a fonte põe fora dele (ou leva para fora um que a fonte põe dentro).
   // Só entra episódio com dia e hora e sem adiamento/cancelamento informado (Fase 4).
   const moved = await prisma.catalogOverride.findMany({ where: { field: "airingAt", removedAt: null, value: { gte: from, lte: to } }, select: { anilistId: true, episode: true } });
-  const rows = await prisma.airingScheduleEntry.findMany({
-    where: { status: "ACTIVE", OR: [{ airingAt: { gte: from, lte: to } }, ...moved.map((m) => ({ anilistId: m.anilistId, episode: m.episode }))] },
-    orderBy: { airingAt: "asc" },
-  });
+  // Calendário e sino: só obras da AniList (as só do AniDB não têm página nem horário da fonte).
+  const rows = withAnilist(
+    await prisma.airingScheduleEntry.findMany({
+      where: { status: "ACTIVE", anilistId: { not: null }, OR: [{ airingAt: { gte: from, lte: to } }, ...moved.map((m) => ({ anilistId: m.anilistId, episode: m.episode }))] },
+      orderBy: { airingAt: "asc" },
+    })
+  );
   const overrides = await loadActiveOverrides(Array.from(new Set(rows.map((r) => r.anilistId))));
   return timed(applyAiringOverrides(timed(rows), overrides))
     .filter((r) => r.airingAt >= from && r.airingAt <= to)
@@ -146,4 +151,4 @@ export async function getCachedAiringSchedule(
 }
 
 /** Linha da agenda com instante conhecido (a única que vai para o calendário). */
-export type TimedScheduleEntry = AiringScheduleEntry & { airingAt: Date };
+export type TimedScheduleEntry = AiringScheduleEntry & { airingAt: Date; anilistId: number };

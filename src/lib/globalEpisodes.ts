@@ -95,16 +95,19 @@ export function unambiguous<T extends { number: number }>(episodes: ReadonlyArra
  * o dia só entra quando a agenda não tem o instante (a AniList, com hora, vale mais).
  */
 export async function upsertSourceEpisodes(
-  anilistId: number,
-  work: { titleRomaji: string; titleEnglish: string | null; titleNative: string | null },
+  anilistId: number | null,
+  work: { titleRomaji: string; titleEnglish: string | null; titleNative: string | null; catalogEntryId?: string | null },
   incoming: ReadonlyArray<SourceEpisode>,
   source: "kitsu" | "anidb",
   mode: "fill" | "refresh"
 ): Promise<number> {
   const episodes = unambiguous(incoming);
   if (episodes.length === 0) return 0;
-  const existing = new Map((await prisma.airingScheduleEntry.findMany({ where: { anilistId }, select: GLOBAL_EPISODE_SELECT })).map((r) => [r.episode, r]));
-  const catalogEntryId = await catalogEntryIdFor(anilistId);
+  // Obra sem AniList ID (só do AniDB): a identidade do episódio é (obra do catálogo, número).
+  const catalogEntryId = work.catalogEntryId ?? (anilistId !== null ? await catalogEntryIdFor(anilistId) : null);
+  if (anilistId === null && !catalogEntryId) return 0;
+  const byWork = { OR: [...(anilistId !== null ? [{ anilistId }] : []), ...(catalogEntryId ? [{ catalogEntryId }] : [])] };
+  const existing = new Map((await prisma.airingScheduleEntry.findMany({ where: byWork, select: GLOBAL_EPISODE_SELECT })).map((r) => [r.episode, r]));
   let written = 0;
   for (const ep of episodes) {
     const airDate = ep.airDate ? dayOnly(ep.airDate) : null;

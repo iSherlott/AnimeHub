@@ -45,3 +45,20 @@ describe("episódios de fontes externas", () => {
     expect(unambiguous(list).map((e) => e.number)).toEqual([1, 3]);
   });
 });
+
+describe("episódios do AniDB (obras sem AniList ID)", () => {
+  it("só os regulares entram; especiais S/C/T ficam de fora; o dia vira data sem horário", async () => {
+    const { regularEpisodes } = await import("@/lib/anidbEpisodes");
+    const list = regularEpisodes({
+      episodes: [
+        { number: "1", airDate: "2020-01-05", titles: [{ language: "en", title: "First" }, { language: "x-jat", title: "Hajimari" }, { language: "ja", title: "始まり" }] },
+        { number: "S1", airDate: null, titles: [{ language: "en", title: "Special" }] },
+        { number: " 2 ", airDate: null, titles: [] },
+      ],
+    });
+    expect(list).toEqual([
+      { number: 1, titleRomaji: "Hajimari", titleEnglish: "First", titleJapanese: "始まり", airDate: new Date("2020-01-05T00:00:00Z") },
+      { number: 2, titleRomaji: null, titleEnglish: null, titleJapanese: null, airDate: null },
+    ]);
+  });
+});

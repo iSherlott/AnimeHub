@@ -620,7 +620,9 @@ model CurationIssue {
  */
 model AiringScheduleEntry {
   id           String   @id @default(cuid())
-  anilistId    Int
+  /// AniList da obra. Nulo nas obras só do AniDB (episódios vindos do AniDB, sem horário): aí a identidade é
+  /// (catalogEntryId, episode).
+  anilistId    Int?
   /// Obra do catálogo (Fase 2).
   catalogEntryId String?
   catalogEntry   CatalogEntry? @relation(fields: [catalogEntryId], references: [id], onDelete: Restrict)
@@ -659,8 +661,22 @@ model AiringScheduleEntry {
   updatedAt      DateTime  @default(now()) @updatedAt
 
   @@unique([anilistId, episode])
+  @@unique([catalogEntryId, episode])
   @@index([airingAt])
   @@index([catalogEntryId])
+}
+
+/**
+ * Última consulta de episódios de uma obra no AniDB (obras sem AniList ID): o AniDB limita as consultas, então cada obra
+ * é consultada no máximo uma vez por período e o lote retoma de onde parou.
+ */
+model AnidbEpisodeCheck {
+  catalogEntryId String   @id
+  anidbId        Int
+  found          Int      @default(0)
+  /// Erro da última consulta (nulo = deu certo).
+  error          String?
+  checkedAt      DateTime @default(now())
 }
 
 /** Última consulta de episódios de uma obra a uma fonte (Fase 4): evita perguntar de novo a cada visita. */

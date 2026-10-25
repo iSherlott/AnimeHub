@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Box, Typography } from "@mui/material";
 import { AdminButtonLink } from "@/components/admin/AdminButtonLink";
+import { FetchAnidbEpisodesButton } from "@/components/admin/AnidbEpisodesActions";
 import { AdminPageHeader, AdminPanel, AdminTable, SmallChip } from "@/components/admin/AdminUi";
 import { WorkEditForm, type EditableValues } from "@/components/admin/WorkEditForm";
 import { WorkVisibilityControl } from "@/components/admin/WorkVisibilityControl";
@@ -123,6 +124,7 @@ export default async function AdminWorkDetailPage({ params, searchParams }: { pa
           </Box>
           {episodes.divergence && <Typography sx={{ fontSize: 14, color: "warning.main" }} data-testid="episodes-divergence">{episodes.divergence}</Typography>}
           <AdminButtonLink href={`/admin/episodios?obra=${entry.id}`}>Ver episódios</AdminButtonLink>
+          {entry.anidbId !== null && <FetchAnidbEpisodesButton workId={entry.id} />}
         </AdminPanel>
       </Box>
 

@@ -8,11 +8,11 @@ import { prisma } from "@/lib/prisma";
  * e marcado como falha antes de começar outro. Os jobs atualizam o sinal de vida a cada passo (`heartbeat`).
  *
  * Política por tipo (documentada em docs/arquitetura/jobs.md):
- *  - CURATION, TIMELINE, TRANSLATION, ANILIST: um por vez; retomáveis (rodar de novo continua de onde parou).
+ *  - CURATION, TIMELINE, TRANSLATION, ANILIST, ANIDB_EPISODES: um por vez; retomáveis (rodar de novo continua de onde parou).
  *  - IMPORT: vários ao mesmo tempo (cada lote espera revisão humana); o commit é que é único por lote.
  *  - FIELD_UPDATE: vários em revisão; a execução trava o próprio lote (etapa APPLY).
  */
-export const EXCLUSIVE_KINDS = ["CURATION", "TIMELINE", "TRANSLATION", "ANILIST"] as const;
+export const EXCLUSIVE_KINDS = ["CURATION", "TIMELINE", "TRANSLATION", "ANILIST", "ANIDB_EPISODES"] as const;
 export type ExclusiveKind = (typeof EXCLUSIVE_KINDS)[number];
 export const DEFAULT_STALE_MS = 10 * 60_000;
 

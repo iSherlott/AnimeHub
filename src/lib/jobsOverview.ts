@@ -13,6 +13,7 @@ export const JOB_KINDS = {
   CURATION: { label: "Curadoria", where: "/admin/curadoria", rerun: "Rode a curadoria de novo: continua das obras que faltam.", idempotent: "Sim: retomável; campos protegidos não mudam." },
   TIMELINE: { label: "Linhas do tempo e nomes", where: "/admin/curadoria", rerun: "Rode a auditoria de novo.", idempotent: "Sim: recalcula; ordem manual não muda." },
   TRANSLATION: { label: "Tradução das sinopses", where: "/admin/curadoria", rerun: "Rode a tradução de novo: pula o que já está traduzido.", idempotent: "Sim: retomável; revisadas e manuais não mudam." },
+  ANIDB_EPISODES: { label: "Episódios das obras só do AniDB", where: "/admin/episodios", rerun: "Rode o lote de novo: continua das obras ainda não consultadas.", idempotent: "Sim: só completa; cada obra é consultada no máximo uma vez a cada 30 dias." },
   FIELD_UPDATE: { label: "Atualização seletiva", where: "/admin/atualizacoes", rerun: "Abra o lote e use Reprocessar falhas.", idempotent: "Sim: confere o valor da coleta antes de gravar." },
 } as const;
 export type JobKind = keyof typeof JOB_KINDS;

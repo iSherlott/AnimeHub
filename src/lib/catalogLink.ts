@@ -27,12 +27,42 @@ export async function catalogEntryIdsFor(anilistIds: number[], db: Db = prisma):
  * apontava para ela passa a apontar para a que fica. Sem isto o banco recusa a exclusão (chave estrangeira RESTRICT).
  */
 export async function reassignCatalogEntry(fromId: string, toId: string, db: Db = prisma): Promise<{ productions: number; listEntries: number; schedule: number }> {
-  const [productions, listEntries, schedule] = await Promise.all([
+  const target = await db.catalogEntry.findUnique({ where: { id: toId }, select: { anilistId: true } });
+  const [productions, listEntries] = await Promise.all([
     db.production.updateMany({ where: { catalogEntryId: fromId }, data: { catalogEntryId: toId } }),
     db.anime.updateMany({ where: { catalogEntryId: fromId }, data: { catalogEntryId: toId } }),
-    db.airingScheduleEntry.updateMany({ where: { catalogEntryId: fromId }, data: { catalogEntryId: toId } }),
   ]);
-  return { productions: productions.count, listEntries: listEntries.count, schedule: schedule.count };
+  const schedule = await mergeScheduleInto(fromId, toId, target?.anilistId ?? null, db);
+  return { productions: productions.count, listEntries: listEntries.count, schedule };
+}
+
+const EPISODE_CONTENT = ["episodeTitle", "episodeTitleEn", "episodeTitleJa", "synopsis", "thumbnail"] as const;
+
+/**
+ * Leva os episódios de uma obra para outra (ou dá o AniList ID aos da própria obra) sem colidir no número: o episódio que
+ * a obra de destino já tem (ex.: o da AniList, com horário) fica e só recebe o que faltava (título, sinopse, imagem, dia);
+ * o de origem sai. Os demais passam para a obra de destino com o AniList ID dela. Devolve quantos foram levados.
+ */
+export async function mergeScheduleInto(fromId: string, toId: string, toAnilistId: number | null, db: Db = prisma): Promise<number> {
+  const rows = await db.airingScheduleEntry.findMany({ where: { catalogEntryId: fromId } });
+  let moved = 0;
+  for (const row of rows) {
+    const twin = await db.airingScheduleEntry.findFirst({
+      where: { NOT: { id: row.id }, episode: row.episode, OR: [{ catalogEntryId: toId }, ...(toAnilistId !== null ? [{ anilistId: toAnilistId }] : [])] },
+    });
+    if (twin) {
+      const manual = new Set(twin.manualFields);
+      const fill: Record<string, unknown> = {};
+      for (const f of EPISODE_CONTENT) if (!manual.has(f) && twin[f] === null && row[f] !== null) fill[f] = row[f];
+      if (!manual.has("airDate") && twin.airingAt === null && twin.airDate === null && row.airDate !== null) Object.assign(fill, { airDate: row.airDate, dateCertainty: "DATE_ONLY" });
+      await db.airingScheduleEntry.delete({ where: { id: row.id } });
+      await db.airingScheduleEntry.update({ where: { id: twin.id }, data: { ...fill, catalogEntryId: toId, ...(toAnilistId !== null ? { anilistId: toAnilistId } : {}) } });
+    } else {
+      await db.airingScheduleEntry.update({ where: { id: row.id }, data: { catalogEntryId: toId, ...(toAnilistId !== null ? { anilistId: toAnilistId } : {}) } });
+    }
+    moved += 1;
+  }
+  return moved;
 }
 
 /**

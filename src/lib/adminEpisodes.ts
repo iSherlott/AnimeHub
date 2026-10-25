@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { DATE_CERTAINTIES, EPISODE_STATUSES, releaseState, type ReleaseState } from "@/lib/episodeState";
+import { DATE_CERTAINTIES, EPISODE_STATUSES, releaseState, withAnilist, type ReleaseState } from "@/lib/episodeState";
 import { changeHistory, type ChangeRow } from "@/lib/changeLog";
 
 /**
@@ -138,7 +138,8 @@ export async function episodesWhere(f: EpisodesFilters, now: Date = new Date()):
 export type EpisodeRow = {
   id: string;
   catalogEntryId: string | null;
-  anilistId: number;
+  /** Nulo nas obras só do AniDB. */
+  anilistId: number | null;
   workTitle: string;
   workTitleNative: string | null;
   episode: number;
@@ -162,7 +163,7 @@ export async function loadEpisodesPage(f: EpisodesFilters, now: Date = new Date(
     f.ordem === "data" ? [{ airingAt: { sort: "asc", nulls: "last" } }, { airDate: { sort: "asc", nulls: "last" } }, { anilistId: "asc" }, { episode: "asc" }] : f.obra ? [{ episode: "asc" }] : [{ updatedAt: "desc" }, { id: "asc" }];
   const rows = await prisma.airingScheduleEntry.findMany({ where, orderBy, skip: f.pagina * EPISODES_PAGE_SIZE, take: EPISODES_PAGE_SIZE });
   const overrides = rows.length
-    ? await prisma.catalogOverride.findMany({ where: { removedAt: null, field: "airingAt", OR: rows.map((r) => ({ anilistId: r.anilistId, episode: r.episode })) }, select: { anilistId: true, episode: true, value: true }, orderBy: { createdAt: "desc" } })
+    ? await prisma.catalogOverride.findMany({ where: { removedAt: null, field: "airingAt", OR: withAnilist(rows).map((r) => ({ anilistId: r.anilistId, episode: r.episode })) }, select: { anilistId: true, episode: true, value: true }, orderBy: { createdAt: "desc" } })
     : [];
   const overrideBy = new Map<string, Date>();
   for (const o of overrides) if (!overrideBy.has(`${o.anilistId}-${o.episode}`)) overrideBy.set(`${o.anilistId}-${o.episode}`, o.value);
@@ -212,10 +213,11 @@ export async function loadEpisodeDetail(id: string, historyPage = 0, now: Date =
   if (!row) return null;
   const [work, overrides, siblings, history, alertRows] = await Promise.all([
     prisma.catalogEntry.findFirst({ where: row.catalogEntryId ? { id: row.catalogEntryId } : { anilistId: row.anilistId }, select: { id: true, titleRomaji: true, titleNative: true, episodes: true, status: true } }),
-    prisma.catalogOverride.findMany({ where: { anilistId: row.anilistId, episode: row.episode, field: "airingAt" }, orderBy: { createdAt: "desc" } }),
-    prisma.airingScheduleEntry.findMany({ where: { anilistId: row.anilistId, NOT: { id: row.id } }, select: { id: true, episode: true, airingAt: true, episodeTitle: true }, orderBy: { episode: "asc" } }),
+    // Overrides e avisos existem só para obras da AniList (as só do AniDB não têm horário da fonte nem sino).
+    row.anilistId !== null ? prisma.catalogOverride.findMany({ where: { anilistId: row.anilistId, episode: row.episode, field: "airingAt" }, orderBy: { createdAt: "desc" } }) : Promise.resolve([]),
+    prisma.airingScheduleEntry.findMany({ where: { ...(row.catalogEntryId ? { catalogEntryId: row.catalogEntryId } : { anilistId: row.anilistId }), NOT: { id: row.id } }, select: { id: true, episode: true, airingAt: true, episodeTitle: true }, orderBy: { episode: "asc" } }),
     changeHistory({ entity: "AiringScheduleEntry", entityId: row.id }, historyPage, 30),
-    prisma.airingAlert.findMany({ where: { anilistId: row.anilistId, episode: row.episode }, select: { createdAt: true, previousAiringAt: true, seenAt: true }, orderBy: { createdAt: "desc" } }),
+    row.anilistId !== null ? prisma.airingAlert.findMany({ where: { anilistId: row.anilistId, episode: row.episode }, select: { createdAt: true, previousAiringAt: true, seenAt: true }, orderBy: { createdAt: "desc" } }) : Promise.resolve([]),
   ]);
   const active = overrides.find((o) => o.removedAt === null) ?? null;
   const effective = active?.value ?? row.airingAt;

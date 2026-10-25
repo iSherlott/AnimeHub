@@ -2,6 +2,8 @@ import VideoLibraryOutlinedIcon from "@mui/icons-material/VideoLibraryOutlined";
 import { Box, Typography } from "@mui/material";
 import { prisma } from "@/lib/prisma";
 import { AdminFilters } from "@/components/admin/AdminFilters";
+import { AnidbEpisodesBatch } from "@/components/admin/AnidbEpisodesActions";
+import { anidbEpisodesStatus } from "@/lib/anidbEpisodes";
 import { AdminButtonLink } from "@/components/admin/AdminButtonLink";
 import { AdminPager } from "@/components/admin/AdminPager";
 import { AdminPageHeader, AdminPanel, AdminTable, SmallChip } from "@/components/admin/AdminUi";
@@ -22,9 +24,10 @@ const dayLabel = (iso: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "
 export default async function AdminEpisodesPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const { timeZone } = await requireAdminPage("catalog");
   const f = parseEpisodesFilters(await searchParams);
-  const [{ rows, total, page, pages }, work] = await Promise.all([
+  const [{ rows, total, page, pages }, work, anidb] = await Promise.all([
     loadEpisodesPage(f),
     f.obra ? prisma.catalogEntry.findUnique({ where: { id: f.obra }, select: { id: true, titleRomaji: true, titleNative: true, episodes: true } }) : Promise.resolve(null),
+    f.obra ? Promise.resolve(null) : anidbEpisodesStatus(),
   ]);
   const params = Object.fromEntries(Object.entries({ obra: f.obra, q: f.q, numero: f.numero, situacao: f.situacao, fonte: f.fonte, de: f.de, ate: f.ate, pendencia: f.pendencia }).filter(([, v]) => v)) as Record<string, string>;
 
@@ -43,6 +46,19 @@ export default async function AdminEpisodesPage({ searchParams }: { searchParams
           )
         }
       />
+      {anidb && (
+        <AdminPanel title="Obras só do AniDB (sem AniList ID)" testId="anidb-episodes-panel">
+          <Typography sx={{ fontSize: 14 }} data-testid="anidb-episodes-status">
+            {`${anidb.withEpisodes.toLocaleString("pt-BR")} de ${anidb.works.toLocaleString("pt-BR")} obras com episódios · ${anidb.checked.toLocaleString("pt-BR")} consultadas no AniDB${anidb.failed ? ` · ${anidb.failed} com erro` : ""}${anidb.job ? ` · último lote #${anidb.job.seq} (${anidb.job.state})` : ""}`}
+          </Typography>
+          <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
+            {anidb.configured
+              ? "O episódio vem do AniDB com título e dia (sem horário). O AniDB limita as consultas: o lote espera entre uma obra e outra, e cada obra é consultada no máximo uma vez a cada 30 dias."
+              : "AniDB não configurada neste servidor (ANIDB_CLIENT_NAME e ANIDB_CLIENT_VERSION)."}
+          </Typography>
+          <AnidbEpisodesBatch disabled={!anidb.configured || anidb.job?.state === "RUNNING"} />
+        </AdminPanel>
+      )}
       <AdminFilters
         keep={f.obra ? { obra: f.obra } : {}}
         fields={[

@@ -59,3 +59,8 @@ export function certaintyFor(airingAt: Date | null, airDate: Date | null): DateC
 export function timed<T extends { airingAt: Date | null }>(rows: T[]): Array<T & { airingAt: Date }> {
   return rows.filter((r): r is T & { airingAt: Date } => r.airingAt !== null);
 }
+
+/** Só os episódios de obras da AniList (as que têm página e calendário); obras só do AniDB ficam de fora. */
+export function withAnilist<T extends { anilistId: number | null }>(rows: T[]): Array<T & { anilistId: number }> {
+  return rows.filter((r): r is T & { anilistId: number } => r.anilistId !== null);
+}

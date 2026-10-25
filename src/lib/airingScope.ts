@@ -30,9 +30,9 @@ export async function loadAiringScope(): Promise<AiringScope> {
 export async function outOfScopeAiring(scope: AiringScope): Promise<Array<{ anilistId: number; titleRomaji: string; episodes: number }>> {
   const groups = await prisma.airingScheduleEntry.groupBy({
     by: ["anilistId", "titleRomaji"],
-    where: { anilistId: { notIn: Array.from(scope.allowedIds) } },
+    where: { anilistId: { not: null, notIn: Array.from(scope.allowedIds) } },
     _count: { _all: true },
     orderBy: { titleRomaji: "asc" },
   });
-  return groups.map((g) => ({ anilistId: g.anilistId, titleRomaji: g.titleRomaji, episodes: g._count._all }));
+  return groups.map((g) => ({ anilistId: g.anilistId as number, titleRomaji: g.titleRomaji, episodes: g._count._all }));
 }

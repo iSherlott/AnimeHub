@@ -129,9 +129,18 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 
 ## O que fica para depois
 
-- **Episódios de obras sem AniList ID.** A identidade do episódio ainda usa o `anilistId`. A obra precisaria de uma fonte de episódios com data para essas entradas.
 - **Especiais com numeração própria (AniDB `S1`, `C2`).** Ficam fora da sequência regular, e não há tela para criá-los como episódio extra.
 - **Apagar as tabelas descontinuadas.** `Episode` e `WatchProgress` estão sem uso, mas continuam no banco. A remoção só depois de conferir em produção.
 - **Kitsu e AniDB na atualização seletiva.** Hoje a comparação é só com a AniList.
 - **Prioridade das pendências pela tela.** Hoje ela é configurada por variável de ambiente, não pelo painel.
 - **Esqueleto de carregamento por seção** (Suspense dentro das páginas), em vez de por rota, para não afetar o status 404 de quem não tem papel.
+
+## Depois da Fase 10: episódios das obras sem AniList ID
+
+- **O que mudou.** As obras só do AniDB passaram a ter episódios, vindos do AniDB com título e dia, sem horário.
+  - `anilistId` do episódio ficou opcional, com um índice único (obra do catálogo, número).
+  - Admin → Episódios ganhou o lote do AniDB, e o detalhe da obra ganhou "Buscar episódios no AniDB".
+  - Ao ligar a obra à AniList, os episódios se juntam sem colidir no número.
+- **Banco.** `20261031100000_anidb_only_episodes`.
+- **Testes.** Spec 111, com AniDB e AniList falsos.
+- **Limitação.** Essas obras continuam sem página pública, então os episódios aparecem só no admin e passam a valer na página quando a obra é ligada à AniList.

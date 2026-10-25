@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { withAnilist } from "@/lib/episodeState";
 import { getKitsuEpisodeThumbnail, getKitsuIdByAnilistId } from "@/lib/kitsu";
 import { startOfDayInZone, DEFAULT_TIME_ZONE } from "@/lib/timeZone";
 
@@ -149,10 +150,12 @@ export async function runEpisodeImageSync(options: { trigger: "schedule" | "manu
   let note = "";
 
   try {
-    const entries = await prisma.airingScheduleEntry.findMany({
-      where: { airingAt: { gte: new Date(now.getTime() - WINDOW_PAST_DAYS * 86400_000), lte: new Date(now.getTime() + WINDOW_FUTURE_DAYS * 86400_000) } },
-      select: { anilistId: true, episode: true },
-    });
+    const entries = withAnilist(
+      await prisma.airingScheduleEntry.findMany({
+        where: { anilistId: { not: null }, airingAt: { gte: new Date(now.getTime() - WINDOW_PAST_DAYS * 86400_000), lte: new Date(now.getTime() + WINDOW_FUTURE_DAYS * 86400_000) } },
+        select: { anilistId: true, episode: true },
+      })
+    );
     const ids = Array.from(new Set(entries.map((e) => e.anilistId)));
     const existing = ids.length ? await prisma.episodeImage.findMany({ where: { anilistId: { in: ids } }, select: { anilistId: true, episode: true } }) : [];
     const targets = planTargets(entries, new Set(existing.map((e) => `${e.anilistId}-${e.episode}`))).slice(0, MAX_ANIMES);

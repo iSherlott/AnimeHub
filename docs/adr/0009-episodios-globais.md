@@ -43,8 +43,12 @@ acompanhamento é por obra" era violada pelo "Adiar" ("parei no EP02", "2 episó
 
 - Toda leitura de `airingAt` precisa tratar o nulo; calendário, avisos, Explorar e "Minha lista" usam `timed()` e
   `status: "ACTIVE"`.
-- Obras sem AniList ID ainda não recebem episódios (a identidade do episódio usa o `anilistId`). Fica para quando
-  houver fonte de episódios para elas.
+- Obras sem AniList ID (só do AniDB) recebem episódios do AniDB desde 31/10/2026: `anilistId` ficou opcional e a
+  identidade do episódio passou a ser também (obra do catálogo, número) — índice único `(catalogEntryId, episode)`.
+  Vêm com título e dia (sem horário), não entram no calendário nem no sino (não têm página), e quando a obra é ligada à
+  AniList (`mergeScheduleInto`) o episódio da AniList fica e recebe o que faltava; os demais ganham o AniList ID.
+  Busca por obra (detalhe da obra) ou em lote (Admin → Episódios; job ANIDB_EPISODES, uma obra a cada
+  `ANIDB_REQUEST_GAP_MS`, padrão 4 s; cada obra no máximo uma vez a cada 30 dias; para no primeiro sinal de bloqueio).
 - Especiais sem numeração regular não entram na sequência; ficam como obras próprias (OVA/ODA/filme) na linha do tempo.
 - Reverter: as colunas novas podem ser ignoradas; `airingAt` volta a NOT NULL só depois de apagar ou datar as linhas sem
   hora (`DELETE FROM "AiringScheduleEntry" WHERE "airingAt" IS NULL`), o que perde os episódios copiados da tabela antiga.

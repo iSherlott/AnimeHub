@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { hasAired, timed } from "@/lib/episodeState";
+import { hasAired, timed, withAnilist } from "@/lib/episodeState";
 
 /**
  * "Adiar" / Para assistir (D5, Fase 4): a pessoa adia a OBRA — um lembrete pessoal de que quer voltar a ela, sem número
@@ -91,7 +91,7 @@ export async function listPending(userId: string, now: Date = new Date()): Promi
   const ids = rows.map((r) => r.anilistId);
   const [animes, airings] = await Promise.all([
     prisma.anime.findMany({ where: { userId, anilistId: { in: ids } }, include: { platformLinks: true } }),
-    prisma.airingScheduleEntry.findMany({ where: { anilistId: { in: ids } }, select: { anilistId: true, episode: true, airingAt: true, airDate: true, status: true } }),
+    prisma.airingScheduleEntry.findMany({ where: { anilistId: { in: ids } }, select: { anilistId: true, episode: true, airingAt: true, airDate: true, status: true } }).then(withAnilist),
   ]);
   const animeById = new Map(animes.map((a) => [a.anilistId, a]));
   const airingsById = new Map<number, Airing[]>();

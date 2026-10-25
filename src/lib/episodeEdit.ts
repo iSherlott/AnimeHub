@@ -118,28 +118,33 @@ export async function editEpisode(id: string, input: unknown, actor: ChangeActor
     if (row.updatedAt.getTime() !== expected.getTime()) return { ok: false as const, status: 409 as const, error: "O episódio mudou depois que você abriu a página. Revise os valores atuais.", current: row };
 
     // Identidade: obra e número.
-    let target: { id: string; anilistId: number; titleRomaji: string; titleEnglish: string | null; titleNative: string | null } | null = null;
+    // A obra de destino pode não ter AniList ID (obra só do AniDB): aí a identidade é (obra do catálogo, número).
+    let target: { id: string; anilistId: number | null; titleRomaji: string; titleEnglish: string | null; titleNative: string | null } | null = null;
     if (data.workId && data.workId !== row.catalogEntryId) {
       const work = await tx.catalogEntry.findUnique({ where: { id: data.workId }, select: { id: true, anilistId: true, titleRomaji: true, titleEnglish: true, titleNative: true } });
       if (!work) return { ok: false as const, status: 400 as const, error: "Obra de destino não encontrada.", errors: { workId: "obra não encontrada" } };
-      if (work.anilistId === null) return { ok: false as const, status: 400 as const, error: "A obra de destino não tem AniList ID: ainda não pode receber episódios.", errors: { workId: "obra sem AniList ID" } };
-      target = { ...work, anilistId: work.anilistId };
+      target = work;
     }
-    const anilistId = target?.anilistId ?? row.anilistId;
+    const anilistId = target ? target.anilistId : row.anilistId;
+    const catalogEntryId = target ? target.id : row.catalogEntryId;
     const number = data.episode ?? row.episode;
-    if (anilistId !== row.anilistId || number !== row.episode) {
-      const clash = await tx.airingScheduleEntry.findUnique({ where: { anilistId_episode: { anilistId, episode: number } }, select: { id: true } });
+    if (target || number !== row.episode) {
+      const clash = await tx.airingScheduleEntry.findFirst({
+        where: { NOT: { id: row.id }, episode: number, OR: [...(anilistId !== null ? [{ anilistId }] : []), ...(catalogEntryId ? [{ catalogEntryId }] : [])] },
+        select: { id: true },
+      });
       if (clash) return { ok: false as const, status: 409 as const, error: `A obra já tem o episódio ${number}. Corrija ou junte os dois antes.`, errors: { episode: "número já existe nesta obra" } };
     }
 
     // Data: override quando a fonte informou dia e hora (e o admin não tinha assumido a data); senão, no próprio episódio.
     const manual = new Set(row.manualFields);
-    const sourceTimed = row.airingAt !== null && !manual.has("airingAt") && row.source !== "manual";
+    // Override só existe para episódio da AniList (com AniList ID); obra só do AniDB grava a data no próprio episódio.
+    const sourceTimed = row.anilistId !== null && row.airingAt !== null && !manual.has("airingAt") && row.source !== "manual";
     let useOverride = false;
     const patch: Prisma.AiringScheduleEntryUncheckedUpdateInput = {};
     for (const f of EPISODE_TEXT_FIELDS) if (f in data) patch[f] = data[f] ?? null;
     if (data.status) patch.status = data.status;
-    const before = await tx.catalogOverride.findFirst({ where: { anilistId: row.anilistId, episode: row.episode, field: "airingAt", removedAt: null }, orderBy: { createdAt: "desc" } });
+    const before = row.anilistId !== null ? await tx.catalogOverride.findFirst({ where: { anilistId: row.anilistId, episode: row.episode, field: "airingAt", removedAt: null }, orderBy: { createdAt: "desc" } }) : null;
     const effectiveBefore = before?.value ?? row.airingAt;
     let effectiveAfter = effectiveBefore;
     if ("airingAt" in data) {
@@ -180,15 +185,17 @@ export async function editEpisode(id: string, input: unknown, actor: ChangeActor
     if (changedFields.length === 0 && !manualChanged) return { ok: false as const, status: 400 as const, error: "Nada mudou.", errors: { changes: "os valores são os mesmos" } };
     if (manualChanged) patch.manualFields = [...newManual];
 
-    if (useOverride && data.airingAt) {
+    if (useOverride && data.airingAt && row.anilistId !== null) {
       await tx.catalogOverride.updateMany({ where: { anilistId: row.anilistId, episode: row.episode, field: "airingAt", removedAt: null }, data: { removedAt: new Date(), removedByName: actor.name } });
       await tx.catalogOverride.create({
         data: { anilistId: row.anilistId, episode: row.episode, field: "airingAt", titleSnapshot: row.titleNative ?? row.titleRomaji, originalValue: row.airingAt as Date, originalSource: row.source === "anilist" ? "AniList" : row.source, value: data.airingAt, reason: reason ?? "", adminName: actor.name ?? "admin" },
       });
     }
     // Override e imagem do calendário seguem o episódio quando ele muda de obra ou de número.
-    if (anilistId !== row.anilistId || number !== row.episode) {
-      await tx.catalogOverride.updateMany({ where: { anilistId: row.anilistId, episode: row.episode, removedAt: null }, data: { anilistId, episode: number } });
+    // (Para obra sem AniList ID o override não tem chave: ele é desativado, e a data vira a do próprio episódio.)
+    if (row.anilistId !== null && (anilistId !== row.anilistId || number !== row.episode)) {
+      if (anilistId !== null) await tx.catalogOverride.updateMany({ where: { anilistId: row.anilistId, episode: row.episode, removedAt: null }, data: { anilistId, episode: number } });
+      else await tx.catalogOverride.updateMany({ where: { anilistId: row.anilistId, episode: row.episode, removedAt: null }, data: { removedAt: new Date(), removedByName: actor.name } });
     }
     const entry = await tx.airingScheduleEntry.update({ where: { id }, data: patch });
 
@@ -205,13 +212,13 @@ export async function editEpisode(id: string, input: unknown, actor: ChangeActor
       changes: [...diff, ...(manualChanged ? [{ field: "manualFields", before: row.manualFields, after: [...newManual] }] : []), ...(useOverride ? [{ field: "override", before: before?.value ?? null, after: data.airingAt }] : [])],
       reason,
     });
-    return { ok: true as const, entry, changed: changedFields, override: useOverride, before: effectiveBefore, after: effectiveAfter, moved: anilistId !== row.anilistId || number !== row.episode };
+    return { ok: true as const, entry, changed: changedFields, override: useOverride, before: effectiveBefore, after: effectiveAfter, moved: target !== null || number !== row.episode };
   });
 
   if (!outcome.ok) return { ok: false, status: outcome.status, error: outcome.error, errors: "errors" in outcome ? (outcome.errors as Record<string, string> | undefined) : undefined, current: "current" in outcome ? outcome.current : undefined };
   // Aviso "Data alterada" a quem acompanha (fora da transação: o aviso é único por episódio, então repetir não duplica).
   let alerts = false;
-  if (!outcome.moved && outcome.before && outcome.after && isReschedule(outcome.before, outcome.after)) {
+  if (!outcome.moved && outcome.entry.anilistId !== null && outcome.before && outcome.after && isReschedule(outcome.before, outcome.after)) {
     await recordRescheduleAlerts(outcome.entry.anilistId, outcome.entry.episode, outcome.before, outcome.after);
     alerts = true;
   }

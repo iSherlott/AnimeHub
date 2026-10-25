@@ -1,5 +1,5 @@
 import type { CatalogEntry } from "@prisma/client";
-import { reassignCatalogEntry } from "@/lib/catalogLink";
+import { mergeScheduleInto, reassignCatalogEntry } from "@/lib/catalogLink";
 import { prisma } from "@/lib/prisma";
 import { getMediaByIds, searchAnime, type AniListMedia } from "@/lib/anilist";
 import { cacheAniListMedia } from "@/lib/catalogCache";
@@ -113,8 +113,11 @@ export function anidbDisplayTitle(anidbTitle: string, anilistTitle: string): str
 async function linkEntry(entry: CatalogEntry, anilistId: number): Promise<string | null> {
   const target = await prisma.catalogEntry.findUnique({ where: { anilistId } });
   if (!target) {
-    // A obra só existe como produção: a própria entrada do AniDB assume o `anilistId`.
-    await prisma.catalogEntry.update({ where: { id: entry.id }, data: { anilistId, onPlatform: true } });
+    // A obra só existe como produção: a própria entrada do AniDB assume o `anilistId`; os episódios dela também.
+    await prisma.$transaction(async (tx) => {
+      await tx.catalogEntry.update({ where: { id: entry.id }, data: { anilistId, onPlatform: true } });
+      await mergeScheduleInto(entry.id, entry.id, anilistId, tx);
+    });
     return null;
   }
   const fill: Record<string, unknown> = {};

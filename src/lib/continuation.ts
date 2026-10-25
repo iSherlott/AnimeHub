@@ -1,4 +1,4 @@
-import { timed } from "@/lib/episodeState";
+import { timed, withAnilist } from "@/lib/episodeState";
 import { Prisma } from "@prisma/client";
 import { catalogEntryIdFor } from "@/lib/catalogLink";
 import { prisma } from "@/lib/prisma";
@@ -273,13 +273,13 @@ export async function backfillEarlierSeasons(): Promise<number> {
 export async function syncContinuations(now: Date = new Date()): Promise<ContinuationSummary> {
   const summary: ContinuationSummary = { returned: 0, followed: 0, alerts: 0, backfilled: 0 };
   try {
-    const upcoming = timed(
+    const upcoming = withAnilist(timed(
       await prisma.airingScheduleEntry.findMany({
-        where: { airingAt: { gte: now }, status: "ACTIVE" },
+        where: { airingAt: { gte: now }, status: "ACTIVE", anilistId: { not: null } },
         orderBy: { airingAt: "asc" },
         select: { anilistId: true, airingAt: true },
       })
-    );
+    ));
     if (upcoming.length === 0) return summary;
     const firstAt = new Map<number, Date>();
     for (const u of upcoming) if (!firstAt.has(u.anilistId)) firstAt.set(u.anilistId, u.airingAt);

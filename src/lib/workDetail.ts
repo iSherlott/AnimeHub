@@ -37,7 +37,7 @@ export async function episodeSummary(entry: Pick<CatalogEntry, "id" | "anilistId
     entry.anilistId !== null ? loadActiveOverrides([entry.anilistId]) : Promise.resolve(new Map<string, Date>()),
   ]);
   // Horário efetivo: o override do admin vale sobre o da fonte.
-  const rows = raw.map((r) => ({ ...r, airingAt: overrides.get(overrideKey(r.anilistId, r.episode)) ?? r.airingAt }));
+  const rows = raw.map((r) => ({ ...r, airingAt: (r.anilistId !== null ? overrides.get(overrideKey(r.anilistId, r.episode)) : undefined) ?? r.airingAt }));
   const states = rows.map((r) => ({ r, state: releaseState(r, now), at: r.airingAt ?? r.airDate }));
   const aired = states.filter((s) => s.state === "AIRED");
   const upcoming = states.filter((s) => s.state === "SCHEDULED" || s.state === "EXPECTED").sort((a, b) => (a.at as Date).getTime() - (b.at as Date).getTime());

@@ -1,4 +1,4 @@
-import { timed } from "@/lib/episodeState";
+import { timed, withAnilist } from "@/lib/episodeState";
 import { Box, Typography } from "@mui/material";
 import { prisma } from "@/lib/prisma";
 import { getQuizState } from "@/lib/quiz";
@@ -120,7 +120,7 @@ export async function WorkRelated({ anilistId, franchiseId, relationsJson, seaso
 
   const ids = siblings.map((s) => s.anilistId);
   const airings = ids.length
-    ? timed(await prisma.airingScheduleEntry.findMany({ where: { anilistId: { in: ids }, airingAt: { gte: new Date() }, status: "ACTIVE" }, orderBy: { airingAt: "asc" }, select: { anilistId: true, airingAt: true } }))
+    ? withAnilist(timed(await prisma.airingScheduleEntry.findMany({ where: { anilistId: { in: ids }, airingAt: { gte: new Date() }, status: "ACTIVE" }, orderBy: { airingAt: "asc" }, select: { anilistId: true, airingAt: true } })))
     : [];
   const nextBy = new Map<number, Date>();
   for (const a of airings) if (!nextBy.has(a.anilistId)) nextBy.set(a.anilistId, a.airingAt);
