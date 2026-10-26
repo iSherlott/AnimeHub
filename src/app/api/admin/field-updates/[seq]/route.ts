@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireStaff } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { applyFieldUpdate, parseDiff, parseSelected, previewFieldUpdate, retryFieldUpdate, selectFields } from "@/lib/fieldUpdate";
+import { applyFieldUpdate, FIELD_UPDATE_SOURCES, parseDiff, parseSelected, previewFieldUpdate, retryFieldUpdate, selectFields, sourceOfJob } from "@/lib/fieldUpdate";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ seq
   const items = await prisma.fieldUpdateItem.findMany({ where: { jobSeq: seq }, orderBy: { title: "asc" } });
   return NextResponse.json(
     {
-      job: { seq: job.seq, state: job.state, stage: job.stage, label: job.season, createdAt: job.createdAt, adminName: job.adminName, result: job.resultJson ? JSON.parse(job.resultJson) : null },
+      job: { seq: job.seq, state: job.state, stage: job.stage, label: job.season, source: FIELD_UPDATE_SOURCES[sourceOfJob(job.source)].label, processed: job.processed, total: job.total, progressNote: job.progressNote, createdAt: job.createdAt, adminName: job.adminName, result: job.resultJson ? JSON.parse(job.resultJson) : null },
       items: items.map((i) => ({ id: i.id, catalogEntryId: i.catalogEntryId, anilistId: i.anilistId, title: i.title, state: i.state, message: i.message, diff: parseDiff(i), selected: parseSelected(i), collectedAt: i.collectedAt })),
       preview: await previewFieldUpdate(seq),
     },

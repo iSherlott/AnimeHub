@@ -35,6 +35,7 @@ A regra geral vale para todas as fontes:
 | Campos | Episódios: número, temporada interna, títulos, sinopse, miniatura e data (só o dia). |
 | Limite | Sem limite publicado. O código pagina com 20 itens por página e consulta cada obra no máximo uma vez por semana (`EpisodeSourceCheck`). |
 | Não traz | Horário de exibição. Números que reiniciam por temporada interna são ambíguos e ficam de fora do episódio global (ADR 0009). |
+| Atualização seletiva | Lote "pela Kitsu": títulos, sinopse, formato, situação, nº de episódios, datas, capa e banner, de 20 em 20 obras. Gêneros não (as categorias da Kitsu são etiquetas); temporada e ano não são deduzidos da data. |
 | Atribuição | Origem `kitsu` no episódio global. O dia gravado tem certeza `DATE_ONLY`. |
 
 ## AniDB (HTTP API + HTML da temporada)
@@ -45,6 +46,7 @@ A regra geral vale para todas as fontes:
 | Campos | Títulos em vários idiomas (pt, ja, x-jat, en), sinopse, imagem, episódios (número, títulos, dia), nota, prêmios e recursos. O HTML da temporada é colado pelo admin. |
 | Limite | API com cliente registrado (uma requisição a cada 2 s; quem abusa é bloqueado). Uso em "Atualizar dados" de uma obra e nos episódios das obras só do AniDB (`src/lib/anidbEpisodes.ts`): lote com intervalo de `ANIDB_REQUEST_GAP_MS` (padrão 4 s), cada obra no máximo uma vez a cada 30 dias, e o lote para no primeiro sinal de bloqueio. O HTML colado não faz requisição. |
 | Não traz | Sinopse e miniatura por episódio, horário. Especiais, aberturas/encerramentos, trailers e paródias têm numeração própria (`S1`, `C2`, `T1`, `P1`, `O1`): não entram na sequência regular e viram extras da obra (`EpisodeExtra`, `src/lib/episodeExtras.ts`), só com o dia. |
+| Atualização seletiva | Lote "pelo AniDB" (Admin → Catálogo de obras): títulos (romaji principal, inglês e japonês oficiais), sinopse sem a marcação de links, tipo, nº de episódios, datas e capa. Situação, gêneros, temporada e banner o AniDB não informa. |
 | Atribuição | Origem `anidb`. Nas obras sem AniList ID, o AniDB é a fonte dos episódios (`DATE_ONLY`). As correspondências AniDB ↔ AniList são revisadas em Admin → Correspondências. |
 
 ## Jikan, MyMemory/LibreTranslate, notícias

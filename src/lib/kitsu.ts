@@ -87,6 +87,69 @@ async function kitsuFetch<T>(path: string, baseUrl: string = KITSU_API_BASE_URL)
   return res.json();
 }
 
+/** Os dados de uma obra na Kitsu, como a API devolve (para a atualização seletiva comparar com o catálogo). */
+export type KitsuAnimeDetails = {
+  kitsuId: number;
+  canonicalTitle: string | null;
+  titles: KitsuTitles;
+  synopsis: string | null;
+  episodeCount: number | null;
+  startDate: string | null;
+  endDate: string | null;
+  /** current | finished | tba | unreleased | upcoming */
+  status: string | null;
+  /** TV | movie | OVA | ONA | special | music */
+  subtype: string | null;
+  posterImage: string | null;
+  coverImage: string | null;
+};
+
+type KitsuAnimeByIdResponse = {
+  data?: Array<{
+    id: string;
+    attributes: {
+      canonicalTitle?: string | null;
+      titles?: KitsuTitles;
+      synopsis?: string | null;
+      episodeCount?: number | null;
+      startDate?: string | null;
+      endDate?: string | null;
+      status?: string | null;
+      subtype?: string | null;
+      posterImage?: KitsuImage | null;
+      coverImage?: KitsuImage | null;
+    };
+  }>;
+};
+
+/** Várias obras pelo ID da Kitsu, de 20 em 20 (o limite da página da API). A que a Kitsu não devolver fica de fora. */
+export async function getKitsuAnimeByIds(ids: number[], baseUrl: string = KITSU_API_BASE_URL): Promise<KitsuAnimeDetails[]> {
+  const out: KitsuAnimeDetails[] = [];
+  for (let i = 0; i < ids.length; i += 20) {
+    const chunk = ids.slice(i, i + 20);
+    const json = await kitsuFetch<KitsuAnimeByIdResponse>(`/anime?filter[id]=${chunk.join(",")}&page[limit]=20`, baseUrl);
+    for (const entry of json.data ?? []) {
+      const a = entry.attributes;
+      const poster = a.posterImage ?? {};
+      const cover = a.coverImage ?? {};
+      out.push({
+        kitsuId: Number(entry.id),
+        canonicalTitle: a.canonicalTitle ?? null,
+        titles: a.titles ?? {},
+        synopsis: a.synopsis ?? null,
+        episodeCount: a.episodeCount ?? null,
+        startDate: a.startDate ?? null,
+        endDate: a.endDate ?? null,
+        status: a.status ?? null,
+        subtype: a.subtype ?? null,
+        posterImage: poster.original ?? poster.large ?? poster.medium ?? null,
+        coverImage: cover.original ?? cover.large ?? cover.medium ?? null,
+      });
+    }
+  }
+  return out;
+}
+
 export async function getKitsuGenres(kitsuId: number): Promise<string[]> {
   const json = await kitsuFetch<KitsuCategoriesResponse>(
     `/anime/${kitsuId}/categories?page[limit]=20`

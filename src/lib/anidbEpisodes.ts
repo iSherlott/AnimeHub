@@ -83,6 +83,9 @@ export async function anidbEpisodesStatus() {
 
 /** Inicia o lote (um por vez). Roda em segundo plano; devolve o job ou o que já está rodando. */
 export async function startAnidbEpisodesJob(actor: { id: string; name: string }, limit: number): Promise<{ seq: number } | { running: number }> {
+  // Uma coleta de campos no AniDB (atualização seletiva) usa o mesmo limite de consultas: espera ela terminar.
+  const fieldUpdate = await prisma.adminJob.findFirst({ where: { kind: "FIELD_UPDATE", source: "AniDB", state: "RUNNING", stage: "COLLECT" }, select: { seq: true } });
+  if (fieldUpdate) return { running: fieldUpdate.seq };
   const started = await startExclusiveJob("ANIDB_EPISODES", { source: "AniDB", season: `Episódios das obras só do AniDB (até ${limit})`, stage: "COMMIT", progressNote: "Iniciando…", adminId: actor.id, adminName: actor.name });
   if (!started.ok) return { running: started.running.seq };
   const seq = started.job.seq;

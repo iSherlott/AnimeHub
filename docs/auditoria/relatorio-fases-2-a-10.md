@@ -129,7 +129,6 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 
 ## O que fica para depois
 
-- **Kitsu e AniDB na atualização seletiva.** Hoje a comparação é só com a AniList.
 - **Prioridade das pendências pela tela.** Hoje ela é configurada por variável de ambiente, não pelo painel.
 - **Esqueleto de carregamento por seção** (Suspense dentro das páginas), em vez de por rota, para não afetar o status 404 de quem não tem papel.
 
@@ -182,3 +181,13 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
   - Ao ligar a obra à AniList, o item ganha o AniList ID. Se a pessoa já tinha a obra da AniList, fica um item só, com o que ela tinha marcado.
 - **Banco.** `20261103100000_follow_catalog_only_works`: `Anime.anilistId` opcional e índice único (pessoa, obra do catálogo). A migração para, com a lista, se encontrar itens repetidos.
 - **Testes.** Spec 114.
+
+## Depois: Kitsu e AniDB na atualização seletiva
+
+- **O que mudou.** A atualização seletiva compara também com a Kitsu e com o AniDB. Cada lote usa uma fonte, e Admin → Catálogo de obras tem um botão por fonte, com quantas obras do filtro têm aquele identificador.
+  - **Kitsu:** consulta de 20 em 20 obras. Traz títulos, sinopse, formato, situação, episódios, datas, capa e banner.
+  - **AniDB:** uma obra por vez, com o intervalo do AniDB, em segundo plano; a revisão mostra o andamento. Traz títulos, sinopse (sem a marcação de links), tipo, episódios, datas e capa. No primeiro sinal de bloqueio para, e o resto fica como falha para reprocessar.
+  - O que a fonte não informa não apaga nada. Temporada e ano não são deduzidos da data, e categorias da Kitsu não viram gêneros.
+  - Coleta no AniDB e lote de episódios do AniDB não rodam ao mesmo tempo, porque o limite do AniDB é do servidor inteiro.
+- **Banco.** `20261104100000_field_update_sources` (só acrescenta `FieldUpdateItem.sourceId`; lotes antigos continuam pelo `anilistId`).
+- **Testes.** Spec 115 (Kitsu e AniDB falsos) e `src/lib/fieldUpdate.test.ts`. O setup do Playwright passou a apontar a Kitsu para um servidor local (antes alguns fluxos iam à kitsu.io de verdade).

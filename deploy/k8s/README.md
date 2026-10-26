@@ -176,6 +176,9 @@ conferir que nada ali faz falta, apagar de vez é `DROP SCHEMA "animehub_archive
 
 A migração `20261103100000_follow_catalog_only_works` permite acompanhar obras sem AniList ID. Ela confere antes se
 alguém tem dois itens de lista na mesma obra do catálogo; se tiver, para com a lista (junte os itens e rode de novo).
+
+A migração `20261104100000_field_update_sources` só acrescenta uma coluna (atualização seletiva pela Kitsu e pelo AniDB).
+O lote pela Kitsu usa `KITSU_API_BASE_URL`; o lote pelo AniDB usa as mesmas variáveis do lote de episódios do AniDB.
 Para o lote do AniDB funcionar, o servidor precisa de `ANIDB_CLIENT_NAME` e `ANIDB_CLIENT_VERSION` (o client registrado no
 AniDB). Opcional: `ANIDB_REQUEST_GAP_MS` (intervalo entre obras, padrão 4000 ms; não baixe de 2000).
 

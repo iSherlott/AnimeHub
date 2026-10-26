@@ -5,6 +5,9 @@ import { recordChanges, normalizeValue, type ChangeActor } from "@/lib/changeLog
 import { defaultImportDeps, MAX_SELECTION, type ImportDeps } from "@/lib/anilistImport";
 import { ADULT_MARKER, genresFromAniList, visibleGenres } from "@/lib/genreTaxonomy";
 import { propagateWork } from "@/lib/workPropagation";
+import { getKitsuAnimeByIds, type KitsuAnimeDetails } from "@/lib/kitsu";
+import { getAnidbAnimeById, isAnidbConfigured, type AnidbAnime } from "@/lib/anidb";
+import { aliveExclusiveJob } from "@/lib/jobLock";
 
 /**
  * Atualização seletiva de campos (Fase 6, §11 e Cenário F). Etapas:
@@ -14,7 +17,21 @@ import { propagateWork } from "@/lib/workPropagation";
  *  isolada → 8. resultado e reprocessamento das falhas.
  * Regras: campo ausente na resposta não vira vazio; valor protegido só muda se o admin escolher de propósito; a
  * execução confere se o valor atual ainda é o da coleta (senão, conflito); tudo vai para o ChangeLog com o lote.
+ *
+ * Fontes: AniList (padrão), Kitsu e AniDB — cada lote compara com UMA fonte. A Kitsu é consultada de 20 em 20 obras; o
+ * AniDB uma obra por vez, com `ANIDB_REQUEST_GAP_MS` entre elas (padrão 4 s), em segundo plano, parando no primeiro sinal
+ * de bloqueio. O que a fonte não informa fica "a fonte não informa" — nunca vira vazio nem é deduzido (temporada e ano
+ * não saem da data de estreia; categorias da Kitsu não são gêneros).
  */
+export const FIELD_UPDATE_SOURCES = {
+  anilist: { label: "AniList", idField: "anilistId", max: MAX_SELECTION },
+  kitsu: { label: "Kitsu", idField: "kitsuId", max: MAX_SELECTION },
+  anidb: { label: "AniDB", idField: "anidbId", max: 50 },
+} as const;
+export type FieldUpdateSource = keyof typeof FIELD_UPDATE_SOURCES;
+export const isFieldUpdateSource = (v: unknown): v is FieldUpdateSource => typeof v === "string" && v in FIELD_UPDATE_SOURCES;
+/** A fonte de um lote (guardada no job pelo rótulo; lotes antigos são da AniList). */
+export const sourceOfJob = (label: string | null | undefined): FieldUpdateSource => (Object.entries(FIELD_UPDATE_SOURCES).find(([, s]) => s.label === label)?.[0] as FieldUpdateSource | undefined) ?? "anilist";
 export const FIELD_GROUPS = {
   titulos: { label: "Títulos", fields: ["titleRomaji", "titleEnglish", "titleNative"] },
   sinopse: { label: "Sinopse", fields: ["description"] },
@@ -83,6 +100,50 @@ export function incomingFromAniList(media: AniListMedia): Partial<Record<Updatab
   return out;
 }
 
+const KITSU_STATUS: Record<string, string> = { current: "RELEASING", finished: "FINISHED", tba: "NOT_YET_RELEASED", unreleased: "NOT_YET_RELEASED", upcoming: "NOT_YET_RELEASED" };
+const KITSU_FORMAT: Record<string, string> = { TV: "TV", movie: "MOVIE", OVA: "OVA", ONA: "ONA", special: "SPECIAL", music: "MUSIC" };
+const day = (v: string | null | undefined) => (v && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : undefined);
+
+/** O que a Kitsu informa. Gêneros ficam de fora: as categorias da Kitsu são etiquetas, não o vocabulário do catálogo. */
+export function incomingFromKitsu(k: KitsuAnimeDetails): Partial<Record<UpdatableField, string | null>> {
+  return {
+    titleRomaji: k.titles.en_jp || k.canonicalTitle || undefined,
+    titleEnglish: k.titles.en || undefined,
+    titleNative: k.titles.ja_jp || undefined,
+    description: k.synopsis || undefined,
+    format: (k.subtype && KITSU_FORMAT[k.subtype]) || undefined,
+    status: (k.status && KITSU_STATUS[k.status]) || undefined,
+    episodes: k.episodeCount ? String(k.episodeCount) : undefined,
+    startDate: day(k.startDate),
+    endDate: day(k.endDate),
+    coverImage: k.posterImage || undefined,
+    bannerImage: k.coverImage || undefined,
+  };
+}
+
+const ANIDB_FORMAT: Record<string, string> = { "TV Series": "TV", Movie: "MOVIE", OVA: "OVA", Web: "ONA", "TV Special": "SPECIAL", "Music Video": "MUSIC" };
+
+/** Texto da AniDB sem a marcação de links (`http://anidb.net/ch123 [Nome]` vira `Nome`). */
+export function cleanAnidbText(text: string): string {
+  return text.replace(/https?:\/\/anidb\.net\/\S+ \[([^\]]+)\]/g, "$1").trim();
+}
+
+/** O que o AniDB informa. Situação, gêneros, temporada e banner o AniDB não tem: ficam "a fonte não informa". */
+export function incomingFromAnidb(a: AnidbAnime): Partial<Record<UpdatableField, string | null>> {
+  const title = (lang: string, official: boolean) => a.titles.find((t) => t.language === lang && (!official || t.isOfficial))?.title;
+  return {
+    titleRomaji: title("x-jat", false) || undefined,
+    titleEnglish: title("en", true) || undefined,
+    titleNative: title("ja", true) || undefined,
+    description: a.description ? cleanAnidbText(a.description) || undefined : undefined,
+    format: (a.type && ANIDB_FORMAT[a.type]) || undefined,
+    episodes: a.episodeCount ? String(a.episodeCount) : undefined,
+    startDate: day(a.startDate),
+    endDate: day(a.endDate),
+    coverImage: a.picture || undefined,
+  };
+}
+
 export function diffEntry(entry: CatalogEntry, incoming: Partial<Record<UpdatableField, string | null>>): FieldDiff[] {
   const manual = new Set(entry.manualFields);
   return UPDATABLE_FIELDS.map((field) => {
@@ -108,51 +169,105 @@ export { parseDiff, parseSelected };
 
 // ---------- 1. Seleção + 2. Coleta ----------
 
-export async function createFieldUpdate(catalogEntryIds: string[], actor: ChangeActor & { id: string; name: string }, label: string, deps: ImportDeps = defaultImportDeps): Promise<{ ok: true; seq: number } | { ok: false; status: number; error: string }> {
+export type FieldUpdateDeps = ImportDeps & { fetchKitsu: (ids: number[]) => Promise<KitsuAnimeDetails[]>; fetchAnidb: (aid: number) => Promise<AnidbAnime> };
+export const defaultFieldUpdateDeps: FieldUpdateDeps = { ...defaultImportDeps, fetchKitsu: (ids) => getKitsuAnimeByIds(ids), fetchAnidb: (aid) => getAnidbAnimeById(aid) };
+const anidbGapMs = () => Math.max(0, Number(process.env.ANIDB_REQUEST_GAP_MS ?? 4000));
+
+export async function createFieldUpdate(
+  catalogEntryIds: string[],
+  actor: ChangeActor & { id: string; name: string },
+  label: string,
+  source: FieldUpdateSource = "anilist",
+  deps: FieldUpdateDeps = defaultFieldUpdateDeps
+): Promise<{ ok: true; seq: number } | { ok: false; status: number; error: string }> {
+  const src = FIELD_UPDATE_SOURCES[source];
   const unique = [...new Set(catalogEntryIds)];
   if (unique.length === 0) return { ok: false, status: 400, error: "Escolha ao menos uma obra." };
-  if (unique.length > MAX_SELECTION) return { ok: false, status: 400, error: `No máximo ${MAX_SELECTION} obras por lote (a AniList limita as consultas). Refine o filtro.` };
+  if (unique.length > src.max) return { ok: false, status: 400, error: `No máximo ${src.max} obras por lote (${src.label} limita as consultas). Refine o filtro.` };
+  if (source === "anidb") {
+    if (!isAnidbConfigured()) return { ok: false, status: 503, error: "AniDB não configurada no servidor." };
+    // O limite do AniDB vale para o servidor inteiro: não junta com o lote de episódios.
+    if (await aliveExclusiveJob("ANIDB_EPISODES")) return { ok: false, status: 409, error: "O lote de episódios do AniDB está rodando. Espere terminar." };
+  }
   const running = await prisma.adminJob.count({ where: { kind: "FIELD_UPDATE", state: "RUNNING", stage: "COLLECT" } });
   if (running > 0) return { ok: false, status: 409, error: "Já há uma coleta em andamento. Espere terminar." };
-  const entries = await prisma.catalogEntry.findMany({ where: { id: { in: unique } }, select: { id: true, anilistId: true, titleRomaji: true, titleNative: true } });
-  const job = await prisma.adminJob.create({ data: { kind: "FIELD_UPDATE", source: "AniList", season: label.slice(0, 120), state: "RUNNING", stage: "COLLECT", total: entries.length, progressNote: "Coletando na AniList…", adminId: actor.id, adminName: actor.name } });
-  await prisma.fieldUpdateItem.createMany({ data: entries.map((e) => ({ jobSeq: job.seq, catalogEntryId: e.id, anilistId: e.anilistId, title: e.titleNative ?? e.titleRomaji, state: e.anilistId === null ? "SKIPPED" : "PENDING", message: e.anilistId === null ? "Sem AniList ID: a AniList não tem esta obra." : null })) });
-  await collect(job.seq, deps);
+  const entries = await prisma.catalogEntry.findMany({ where: { id: { in: unique } }, select: { id: true, anilistId: true, kitsuId: true, anidbId: true, titleRomaji: true, titleNative: true } });
+  const job = await prisma.adminJob.create({ data: { kind: "FIELD_UPDATE", source: src.label, season: label.slice(0, 120), state: "RUNNING", stage: "COLLECT", total: entries.length, processed: 0, progressNote: `Coletando ${source === "anidb" ? "no" : "na"} ${src.label}…`, adminId: actor.id, adminName: actor.name } });
+  const missing = source === "anidb" ? "o AniDB não tem esta obra." : `a ${src.label} não tem esta obra.`;
+  await prisma.fieldUpdateItem.createMany({
+    data: entries.map((e) => {
+      const sourceId = e[src.idField];
+      return { jobSeq: job.seq, catalogEntryId: e.id, anilistId: e.anilistId, sourceId, title: e.titleNative ?? e.titleRomaji, state: sourceId === null ? "SKIPPED" : "PENDING", message: sourceId === null ? `Sem ${src.label} ID: ${missing}` : null };
+    }),
+  });
+  if (source === "anidb") {
+    // Uma obra a cada poucos segundos: roda em segundo plano e a revisão acompanha o andamento.
+    void collect(job.seq, deps).catch(async (error) => {
+      await prisma.adminJob.update({ where: { seq: job.seq }, data: { stage: "REVIEW", progressNote: null, error: (error instanceof Error ? error.message : String(error)).slice(0, 300) } }).catch(() => undefined);
+    });
+  } else {
+    await collect(job.seq, deps);
+  }
   return { ok: true, seq: job.seq };
 }
 
-/** Coleta (ou recoleta) os itens PENDING do lote. Uma falha de rede marca os itens como FAILED, sem perder o resto. */
-export async function collect(seq: number, deps: ImportDeps = defaultImportDeps): Promise<void> {
-  const items = await prisma.fieldUpdateItem.findMany({ where: { jobSeq: seq, state: "PENDING" } });
-  const ids = items.map((i) => i.anilistId).filter((x): x is number => x !== null);
-  let media: AniListMedia[] = [];
-  let failure: string | null = null;
-  try {
-    media = ids.length ? await deps.fetchByIds(ids) : [];
-  } catch (error) {
-    failure = error instanceof Error ? error.message : String(error);
-  }
-  const byId = new Map(media.map((m) => [m.id, m]));
+type Incoming = Partial<Record<UpdatableField, string | null>>;
+
+/** Coleta (ou recoleta) os itens PENDING do lote na fonte dele. Uma falha marca o item como FAILED, sem perder o resto. */
+export async function collect(seq: number, deps: FieldUpdateDeps = defaultFieldUpdateDeps): Promise<void> {
+  const job = await prisma.adminJob.findUnique({ where: { seq }, select: { source: true } });
+  const source = sourceOfJob(job?.source);
+  const label = FIELD_UPDATE_SOURCES[source].label;
+  const items = await prisma.fieldUpdateItem.findMany({ where: { jobSeq: seq, state: "PENDING" }, orderBy: { title: "asc" } });
   const entries = await prisma.catalogEntry.findMany({ where: { id: { in: items.map((i) => i.catalogEntryId) } } });
   const entryById = new Map(entries.map((e) => [e.id, e]));
+  const idOf = (item: FieldUpdateItem) => item.sourceId ?? (source === "anilist" ? item.anilistId : null);
   const now = new Date();
-  for (const item of items) {
+  let processed = 0;
+
+  async function settle(item: FieldUpdateItem, outcome: { incoming: Incoming } | { state: "FAILED" | "NOT_FOUND"; message: string }) {
     const entry = entryById.get(item.catalogEntryId);
-    if (!entry) {
-      await prisma.fieldUpdateItem.update({ where: { id: item.id }, data: { state: "FAILED", message: "A obra não existe mais no catálogo." } });
-      continue;
+    if (!entry) await prisma.fieldUpdateItem.update({ where: { id: item.id }, data: { state: "FAILED", message: "A obra não existe mais no catálogo." } });
+    else if ("state" in outcome) await prisma.fieldUpdateItem.update({ where: { id: item.id }, data: { state: outcome.state, message: outcome.message } });
+    else await prisma.fieldUpdateItem.update({ where: { id: item.id }, data: { state: "COLLECTED", diffJson: JSON.stringify(diffEntry(entry, outcome.incoming)), selectedJson: JSON.stringify([]), collectedAt: now, message: null } });
+    processed += 1;
+  }
+
+  if (source === "anidb") {
+    let refused: string | null = null;
+    for (const [index, item] of items.entries()) {
+      if (refused) {
+        await settle(item, { state: "FAILED", message: `Não consultada: o AniDB recusou as consultas (${refused.slice(0, 120)}). Espere algumas horas e reprocesse.` });
+        continue;
+      }
+      if (index > 0 && anidbGapMs() > 0) await deps.sleep(anidbGapMs());
+      try {
+        await settle(item, { incoming: incomingFromAnidb(await deps.fetchAnidb(idOf(item) as number)) });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        // "Banned" / limite estourado: insistir só piora o bloqueio — o resto do lote fica para depois.
+        if (/banned|555|flood|too many/i.test(message)) refused = message;
+        await settle(item, /no such anime|not found|404/i.test(message) ? { state: "NOT_FOUND", message: "O AniDB não tem esta obra." } : { state: "FAILED", message: `O AniDB não respondeu: ${message.slice(0, 200)}` });
+      }
+      await prisma.adminJob.update({ where: { seq }, data: { processed, progressNote: `Coletando no AniDB: ${processed} de ${items.length}`, heartbeatAt: new Date() } }).catch(() => undefined);
     }
-    if (failure) {
-      await prisma.fieldUpdateItem.update({ where: { id: item.id }, data: { state: "FAILED", message: `A AniList não respondeu: ${failure.slice(0, 200)}` } });
-      continue;
+  } else {
+    const ids = items.map(idOf).filter((x): x is number => x !== null);
+    let failure: string | null = null;
+    const found = new Map<number, Incoming>();
+    try {
+      if (source === "kitsu") for (const k of ids.length ? await deps.fetchKitsu(ids) : []) found.set(k.kitsuId, incomingFromKitsu(k));
+      else for (const m of ids.length ? await deps.fetchByIds(ids) : []) found.set(m.id, incomingFromAniList(m));
+    } catch (error) {
+      failure = error instanceof Error ? error.message : String(error);
     }
-    const m = item.anilistId !== null ? byId.get(item.anilistId) : undefined;
-    if (!m) {
-      await prisma.fieldUpdateItem.update({ where: { id: item.id }, data: { state: "NOT_FOUND", message: "A AniList não devolveu esta obra." } });
-      continue;
+    for (const item of items) {
+      const id = idOf(item);
+      const incoming = id !== null ? found.get(id) : undefined;
+      if (failure) await settle(item, { state: "FAILED", message: `A ${label} não respondeu: ${failure.slice(0, 200)}` });
+      else if (!incoming) await settle(item, { state: "NOT_FOUND", message: `A ${label} não devolveu esta obra.` });
+      else await settle(item, { incoming });
     }
-    const diff = diffEntry(entry, incomingFromAniList(m));
-    await prisma.fieldUpdateItem.update({ where: { id: item.id }, data: { state: "COLLECTED", diffJson: JSON.stringify(diff), selectedJson: JSON.stringify([]), collectedAt: now, message: null } });
   }
   await prisma.adminJob.update({ where: { seq }, data: { stage: "REVIEW", progressNote: null, processed: items.length } });
 }
@@ -277,18 +392,23 @@ export async function applyFieldUpdate(seq: number, confirm: boolean, actor: Cha
     await prisma.adminJob.update({ where: { seq }, data: { processed: result.processed } }).catch(() => undefined);
   }
   await prisma.adminJob.update({ where: { seq }, data: { state: "SUCCESS", stage: "DONE", progressNote: null, finishedAt: new Date(), resultJson: JSON.stringify(result) } });
-  await prisma.adminLog.create({ data: { jobSeq: seq, source: "AniList", event: "Field update applied", message: `Lote #${seq}: ${result.applied} atualizada(s), ${result.unchanged} sem mudança, ${result.skipped} ignorada(s), ${result.conflicts} conflito(s), ${result.failed} falha(s).`, context: "Atualização seletiva", adminName: actor.name } });
+  await prisma.adminLog.create({ data: { jobSeq: seq, source: FIELD_UPDATE_SOURCES[sourceOfJob(job.source)].label, event: "Field update applied", message: `Lote #${seq}: ${result.applied} atualizada(s), ${result.unchanged} sem mudança, ${result.skipped} ignorada(s), ${result.conflicts} conflito(s), ${result.failed} falha(s).`, context: "Atualização seletiva", adminName: actor.name } });
   return { ok: true, result };
 }
 
 /** Reprocessa os itens elegíveis (falha, não encontrado, conflito): voltam para a coleta e o lote volta à revisão. */
-export async function retryFieldUpdate(seq: number, deps: ImportDeps = defaultImportDeps): Promise<{ ok: true; retried: number } | { ok: false; status: number; error: string }> {
+export async function retryFieldUpdate(seq: number, deps: FieldUpdateDeps = defaultFieldUpdateDeps): Promise<{ ok: true; retried: number } | { ok: false; status: number; error: string }> {
   const job = await prisma.adminJob.findUnique({ where: { seq } });
   if (!job || job.kind !== "FIELD_UPDATE") return { ok: false, status: 404, error: "Lote não encontrado." };
   if (job.stage === "APPLY" || job.stage === "COLLECT") return { ok: false, status: 409, error: "O lote está em andamento." };
-  const { count } = await prisma.fieldUpdateItem.updateMany({ where: { jobSeq: seq, state: { in: ["FAILED", "NOT_FOUND", "CONFLICT"] }, anilistId: { not: null } }, data: { state: "PENDING", message: null } });
+  const source = sourceOfJob(job.source);
+  if (source === "anidb" && (await aliveExclusiveJob("ANIDB_EPISODES"))) return { ok: false, status: 409, error: "O lote de episódios do AniDB está rodando. Espere terminar." };
+  // Lotes antigos (só AniList) guardavam o identificador em `anilistId`.
+  const hasId = source === "anilist" ? { OR: [{ sourceId: { not: null } }, { anilistId: { not: null } }] } : { sourceId: { not: null } };
+  const { count } = await prisma.fieldUpdateItem.updateMany({ where: { jobSeq: seq, state: { in: ["FAILED", "NOT_FOUND", "CONFLICT"] }, ...hasId }, data: { state: "PENDING", message: null } });
   if (count === 0) return { ok: false, status: 400, error: "Não há itens para reprocessar." };
-  await prisma.adminJob.update({ where: { seq }, data: { state: "RUNNING", stage: "COLLECT", finishedAt: null, progressNote: "Recoletando…" } });
-  await collect(seq, deps);
+  await prisma.adminJob.update({ where: { seq }, data: { state: "RUNNING", stage: "COLLECT", finishedAt: null, processed: 0, progressNote: "Recoletando…" } });
+  if (source === "anidb") void collect(seq, deps).catch(() => prisma.adminJob.update({ where: { seq }, data: { stage: "REVIEW", progressNote: null } }).catch(() => undefined));
+  else await collect(seq, deps);
   return { ok: true, retried: count };
 }

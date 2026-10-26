@@ -7,7 +7,8 @@ import { StartFieldUpdate } from "@/components/admin/StartFieldUpdate";
 import { AdminPageHeader, AdminPanel, AdminTable, SmallChip } from "@/components/admin/AdminUi";
 import { EmptyState } from "@/components/StatePanels";
 import { fmtDate, requireAdminPage } from "@/lib/adminPage";
-import { loadWorksPage, parseWorksFilters, QUALITY_FILTERS, WORKS_PAGE_SIZE, type WorkRow } from "@/lib/adminWorks";
+import { loadWorksPage, parseWorksFilters, QUALITY_FILTERS, WORKS_PAGE_SIZE, worksWhereFull, type WorkRow } from "@/lib/adminWorks";
+import { prisma } from "@/lib/prisma";
 import { FORMATS, STATUSES } from "@/lib/catalogEdit";
 import { KIND_LABELS, type Kind } from "@/lib/curation/kind";
 import { SEASON_LABEL, STATUS_LABEL } from "@/lib/workLabels";
@@ -23,6 +24,13 @@ export default async function AdminWorksPage({ searchParams }: { searchParams: P
   const sp = await searchParams;
   const f = parseWorksFilters(sp);
   const { rows, total, page, pages } = await loadWorksPage(f);
+  // Quantas obras do filtro cada fonte consegue comparar (as que têm o identificador dela).
+  const where = await worksWhereFull(f);
+  const [withAnilist, withKitsu, withAnidb] = await Promise.all([
+    prisma.catalogEntry.count({ where: { AND: [where, { anilistId: { not: null } }] } }),
+    prisma.catalogEntry.count({ where: { AND: [where, { kitsuId: { not: null } }] } }),
+    prisma.catalogEntry.count({ where: { AND: [where, { anidbId: { not: null } }] } }),
+  ]);
   const params = Object.fromEntries(Object.entries({ q: f.q, formato: f.formato, situacao: f.situacao, ano: f.ano, temporada: f.temporada, fonte: f.fonte, visibilidade: f.visibilidade, pendencias: f.pendencias, qualidade: f.qualidade }).filter(([, v]) => v)) as Record<string, string>;
 
   return (
@@ -30,7 +38,13 @@ export default async function AdminWorksPage({ searchParams }: { searchParams: P
       <AdminPageHeader
         title="Catálogo de obras"
         subtitle="A obra canônica: o que vale para a plataforma. Cópias (página pública, listas, agenda) seguem daqui."
-        action={<StartFieldUpdate filter={new URLSearchParams(params).toString()} total={total} />}
+        action={
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <StartFieldUpdate filter={new URLSearchParams(params).toString()} total={withAnilist} />
+            <StartFieldUpdate filter={new URLSearchParams(params).toString()} total={withKitsu} source="kitsu" />
+            <StartFieldUpdate filter={new URLSearchParams(params).toString()} total={withAnidb} source="anidb" />
+          </Box>
+        }
       />
       <AdminFilters
         fields={[

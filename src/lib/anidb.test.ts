@@ -17,6 +17,7 @@ async function loadAnidbModule() {
 
 const VALID_ANIME_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <anime id="15617">
+  <type>TV Series</type>
   <picture>274199.jpg</picture>
   <titles>
     <title xml:lang="ja" type="official">呪術廻戦</title>
@@ -110,6 +111,7 @@ describe("getAnidbAnimeById", () => {
 
     expect(result).toEqual({
       anidbId: 15617,
+      type: "TV Series",
       titles: [
         { language: "ja", title: "呪術廻戦", isOfficial: true },
         { language: "en", title: "Jujutsu Kaisen", isOfficial: false },
@@ -307,6 +309,7 @@ describe("getAnidbAnimeById", () => {
 
     expect(result).toEqual({
       anidbId: 1,
+      type: null,
       titles: [],
       picture: null,
       description: null,

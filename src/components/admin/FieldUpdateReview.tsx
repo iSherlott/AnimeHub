@@ -6,7 +6,7 @@ import { ELEVATED_BUTTON_SX } from "@/components/ExploreCard";
 import type { FieldDiff, FieldUpdatePreview, FieldUpdateResult } from "@/lib/fieldUpdate";
 
 type Item = { id: string; catalogEntryId: string; anilistId: number | null; title: string; state: string; message: string | null; diff: FieldDiff[]; selected: string[] };
-type Data = { job: { seq: number; state: string; stage: string; label: string | null; result: FieldUpdateResult | null }; items: Item[]; preview: FieldUpdatePreview };
+type Data = { job: { seq: number; state: string; stage: string; label: string | null; source: string; processed: number; total: number; progressNote: string | null; result: FieldUpdateResult | null }; items: Item[]; preview: FieldUpdatePreview };
 
 const STATE_LABEL: Record<string, string> = { PENDING: "aguardando coleta", COLLECTED: "coletada", NOT_FOUND: "não encontrada", FAILED: "falha", APPLIED: "atualizada", UNCHANGED: "sem mudança", SKIPPED: "ignorada", CONFLICT: "conflito" };
 const short = (v: string | null) => (v === null ? "—" : v.length > 120 ? `${v.replace(/<[^>]+>/g, "").slice(0, 120)}…` : v);
@@ -34,6 +34,13 @@ export function FieldUpdateReview({ seq, groups, labels }: { seq: number; groups
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
+  // Coleta em segundo plano (AniDB, uma obra a cada poucos segundos): acompanha até chegar à revisão.
+  const collecting = data?.job.stage === "COLLECT";
+  useEffect(() => {
+    if (!collecting) return;
+    const timer = setInterval(() => void load(), 2000);
+    return () => clearInterval(timer);
+  }, [collecting, load]);
 
   const changedFields = useMemo(() => new Set<string>((data?.items ?? []).flatMap((i) => i.diff.filter((d) => d.changed).map((d) => d.field))), [data]);
 
@@ -53,6 +60,7 @@ export function FieldUpdateReview({ seq, groups, labels }: { seq: number; groups
   if (!data) return <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Carregando o lote…</Typography>;
   const { job, items, preview } = data;
   const reviewing = job.stage === "REVIEW";
+  const sourceLabel = job.source;
   const toggleGroup = (list: string[], on: boolean) => setFields((cur) => { const next = new Set(cur); for (const f of list) if (on) next.add(f); else next.delete(f); return next; });
   const toggleItemField = (item: Item, field: string, on: boolean) =>
     setPerItem((cur) => {
@@ -63,9 +71,14 @@ export function FieldUpdateReview({ seq, groups, labels }: { seq: number; groups
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }} data-testid="field-update-review">
+      {collecting && (
+        <Typography role="status" data-testid="fu-collecting" sx={{ fontSize: 14, color: "text.secondary" }}>
+          {job.progressNote ?? `Coletando ${sourceLabel === "AniDB" ? "no" : "na"} ${sourceLabel}…`} ({job.processed} de {job.total}). A revisão abre sozinha quando terminar.
+        </Typography>
+      )}
       {reviewing && (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          <Typography sx={{ fontSize: 14, fontWeight: 700 }}>Campos a atualizar (em todas as obras onde a AniList trouxe valor diferente)</Typography>
+          <Typography sx={{ fontSize: 14, fontWeight: 700 }}>Campos a atualizar (em todas as obras onde {sourceLabel === "AniDB" ? "o" : "a"} {sourceLabel} trouxe valor diferente)</Typography>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             {Object.entries(groups).map(([key, g]) => {
               const relevant = g.fields.filter((f) => changedFields.has(f));
@@ -135,7 +148,7 @@ export function FieldUpdateReview({ seq, groups, labels }: { seq: number; groups
                       <th />
                       <th>Campo</th>
                       <th>Atual</th>
-                      <th>Recebido (AniList)</th>
+                      <th>Recebido ({sourceLabel})</th>
                       <th>Sinais</th>
                     </tr>
                   </thead>

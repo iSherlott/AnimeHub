@@ -980,6 +980,8 @@ model FieldUpdateItem {
   job            AdminJob  @relation(fields: [jobSeq], references: [seq], onDelete: Cascade)
   catalogEntryId String
   anilistId      Int?
+  /// Identificador da obra na fonte do lote (AniList, Kitsu ou AniDB — ver AdminJob.source). Nulo nos lotes antigos.
+  sourceId       Int?
   title          String
   /// JSON [{ field, group, current, incoming, changed, protected, missing }]
   diffJson       String?

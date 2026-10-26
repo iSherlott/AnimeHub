@@ -100,6 +100,7 @@ function makeAnime(overrides: Partial<Anime> = {}): Anime {
 function makeAnidbAnime(overrides: Partial<AnidbAnime> = {}): AnidbAnime {
   return {
     anidbId: 999,
+    type: null,
     titles: [],
     picture: null,
     description: null,

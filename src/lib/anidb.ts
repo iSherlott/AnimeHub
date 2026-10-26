@@ -18,6 +18,8 @@ export function isAnidbConfigured(): boolean {
 
 export type AnidbAnime = {
   anidbId: number;
+  /** "TV Series", "Movie", "OVA", "Web", "TV Special", "Music Video", "Other"… (nulo = a AniDB não informa) */
+  type: string | null;
   titles: { language: string; title: string; isOfficial: boolean }[];
   picture: string | null;
   description: string | null;
@@ -60,6 +62,7 @@ type AnidbEpisodeNode = {
 };
 
 type AnidbAnimeNode = {
+  type?: string;
   picture?: string;
   description?: string;
   startdate?: string;
@@ -161,6 +164,7 @@ export async function getAnidbAnimeById(aid: number): Promise<AnidbAnime> {
 
   return {
     anidbId: aid,
+    type: anime.type ? String(anime.type) : null,
     titles,
     picture: anime.picture ? `https://cdn.anidb.net/images/main/${anime.picture}` : null,
     description: anime.description ?? null,

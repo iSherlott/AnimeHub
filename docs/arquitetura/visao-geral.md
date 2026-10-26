@@ -42,7 +42,7 @@ O papel define o que cada pessoa vê (Fase 9): **C** = curador, **M** = moderado
 | Episódios | episódios globais: situação, data (com a certeza), edição, mover de obra, histórico | C |
 | Calendário | período no horário efetivo; adiados e sem data; "por que não apareceu?"; releitura da agenda | C |
 | Correspondências | importação do AniDB e AniDB→AniList lado a lado; risco exige motivo; revisar depois; CSV | C |
-| Atualização seletiva | AniList campo a campo: coleta → diferenças → escolha → prévia → execução → resultado | C |
+| Atualização seletiva | AniList, Kitsu ou AniDB (uma fonte por lote), campo a campo: coleta → diferenças → escolha → prévia → execução → resultado | C |
 | Franquias | ordem, papel e temporada das obras; protegida; desfazer | C |
 | Produções e franquias | páginas públicas e agrupamentos (já existia) | C |
 | Taxonomia | gêneros: criar, variações, renomear, mesclar, excluir com transferência | C |

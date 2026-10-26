@@ -26,7 +26,7 @@ Este documento cobre a Fase 8 (§15): a política de cada processo automatizado 
   - A importação cancela pela revisão do lote (antes do commit nada é gravado).
 - **Limites.**
   - AniList: lotes de 50 IDs, 40 na agenda, com pausa de 1,5 s; respeita 429 / `Retry-After`.
-  - Atualização seletiva: até 150 obras por lote.
+  - Atualização seletiva: até 150 obras por lote (AniList e Kitsu) e 50 pelo AniDB. A Kitsu é consultada de 20 em 20; o AniDB uma obra por vez, com `ANIDB_REQUEST_GAP_MS` entre elas, em segundo plano, e para no primeiro sinal de bloqueio (o resto do lote fica como falha, para reprocessar). Coleta no AniDB e lote de episódios do AniDB não rodam juntos.
   - Releitura da agenda de uma obra: no máximo uma a cada 2 minutos.
   - Tradução: cota do serviço, com parada limpa quando ela acaba.
 - **Timeout e retries.**
