@@ -32,6 +32,7 @@ export async function PATCH(request: Request, { params }: Params) {
   const original = await prisma.post.findUnique({
     where: { id: originalId },
     select: {
+      catalogEntryId: true,
       userId: true,
       deletedAt: true,
       anilistId: true,
@@ -66,6 +67,7 @@ export async function PATCH(request: Request, { params }: Params) {
         userId: user.id,
         repostOfId: originalId,
         anilistId: original.anilistId,
+        catalogEntryId: original.catalogEntryId,
         animeTitleRomaji: original.animeTitleRomaji,
         animeTitleEnglish: original.animeTitleEnglish,
         animeCoverImage: original.animeCoverImage,

@@ -91,7 +91,8 @@ export async function GET(request: NextRequest) {
   const [recentGroups, todayGroups] = await Promise.all([
     prisma.comment.groupBy({
       by: ["anilistId"],
-      where: { deletedAt: null },
+      // Os tópicos em alta são das obras da AniList (o resumo vem dela); obra só do AniDB/Kitsu fica de fora.
+      where: { deletedAt: null, anilistId: { not: null } },
       _count: { id: true },
       _max: { createdAt: true },
       orderBy: { _max: { createdAt: "desc" } },
@@ -99,16 +100,17 @@ export async function GET(request: NextRequest) {
     }),
     prisma.comment.groupBy({
       by: ["anilistId"],
-      where: { deletedAt: null, createdAt: { gte: todayStart } },
+      where: { deletedAt: null, anilistId: { not: null }, createdAt: { gte: todayStart } },
       _count: { id: true },
       orderBy: { _count: { id: "desc" } },
       take: LIMIT,
     }),
   ]);
 
+  const withAnilist = <T extends { anilistId: number | null }>(groups: T[]) => groups.filter((g): g is T & { anilistId: number } => g.anilistId !== null);
   const [recent, mostCommentedToday] = await Promise.all([
-    toSummaries(recentGroups),
-    toSummaries(todayGroups),
+    toSummaries(withAnilist(recentGroups)),
+    toSummaries(withAnilist(todayGroups)),
   ]);
 
   return NextResponse.json({ recent, mostCommentedToday });

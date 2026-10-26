@@ -160,7 +160,7 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
   - Quando a obra é ligada à AniList, o endereço redireciona para a página da AniList. Obra fora da plataforma: 404.
 - **Banco.** Nenhuma migração.
 - **Testes.** Spec 113.
-- **Limitação.** Comunidade, quiz e relacionadas continuam dependendo do AniList ID (acompanhar foi resolvido depois).
+- **Limitação.** Relacionadas continuam dependendo do AniList ID (acompanhar e comunidade foram resolvidos depois).
 
 ## Depois: tabelas descontinuadas arquivadas
 
@@ -191,3 +191,14 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
   - Coleta no AniDB e lote de episódios do AniDB não rodam ao mesmo tempo, porque o limite do AniDB é do servidor inteiro.
 - **Banco.** `20261104100000_field_update_sources` (só acrescenta `FieldUpdateItem.sourceId`; lotes antigos continuam pelo `anilistId`).
 - **Testes.** Spec 115 (Kitsu e AniDB falsos) e `src/lib/fieldUpdate.test.ts`. O setup do Playwright passou a apontar a Kitsu para um servidor local (antes alguns fluxos iam à kitsu.io de verdade).
+
+## Depois: comunidade das obras sem AniList ID
+
+- **O que mudou.** Publicações, discussões, comentários de quem acompanha e quiz passaram a valer também para as obras só do AniDB (ou só da Kitsu), pela obra do catálogo.
+  - A página da obra mostra "Discussões sobre esta obra" e "Publicar sobre este anime" (`/publicar?obra=anidb-<id>`). O seletor de obra do editor também acha essas obras, e o post leva à página delas.
+  - A página de quem acompanha mostra os comentários. Denunciar um comentário exige acompanhar aquela mesma obra (antes, uma comparação com "AniList ID nulo" casaria com qualquer obra sem ele).
+  - Quiz em `/obra/anidb-<id>/quiz`. Na carga do admin, `"anidbId": <id>` ou `"work": "anidb-<id>"` (no CSV, o campo "ID da obra" aceita `anidb-<id>`).
+  - Ao ligar a obra à AniList, publicações, comentários e quiz vão junto. Se a obra da AniList já tem quiz, o do AniDB é arquivado, sem perder perguntas, tentativas nem títulos.
+  - Os tópicos em alta do feed continuam só com obras da AniList.
+- **Banco.** `20261105100000_catalog_only_community` (só acrescenta colunas e índices e relaxa o AniList ID de `Comment` e `Quiz`).
+- **Testes.** Spec 116.

@@ -16,20 +16,24 @@ export default async function AdminQuizReviewPage({ params }: { params: Promise<
   await requireAdminPage("catalog");
   const quiz = await prisma.quiz.findUnique({
     where: { id: (await params).id },
-    include: { questions: { orderBy: { position: "asc" } }, _count: { select: { attempts: true, titles: true } } },
+    include: { questions: { orderBy: { position: "asc" } }, _count: { select: { attempts: true, titles: true } }, catalogEntry: { select: { titleRomaji: true, titleNative: true, anidbId: true, kitsuId: true } } },
   });
   if (!quiz) notFound();
-  const work = await prisma.production.findUnique({ where: { anilistId: quiz.anilistId }, select: { titleRomaji: true, titleNative: true } }).then(
-    (p) => p ?? prisma.catalogEntry.findUnique({ where: { anilistId: quiz.anilistId }, select: { titleRomaji: true, titleNative: true } })
-  );
+  // Obra da AniList (produção ou catálogo) ou, sem AniList ID, a obra do catálogo do quiz.
+  const work =
+    quiz.anilistId !== null
+      ? ((await prisma.production.findUnique({ where: { anilistId: quiz.anilistId }, select: { titleRomaji: true, titleNative: true } })) ??
+        (await prisma.catalogEntry.findUnique({ where: { anilistId: quiz.anilistId }, select: { titleRomaji: true, titleNative: true } })))
+      : quiz.catalogEntry;
+  const source = quiz.anilistId !== null ? `AniList #${quiz.anilistId}` : quiz.catalogEntry?.anidbId ? `AniDB #${quiz.catalogEntry.anidbId}` : quiz.catalogEntry?.kitsuId ? `Kitsu #${quiz.catalogEntry.kitsuId}` : "obra fora do catálogo";
   const approved = quiz.questions.filter((q) => q.approved).length;
   const available = approved === QUIZ_LENGTH && quiz.questions.length === QUIZ_LENGTH;
 
   return (
     <>
       <AdminPageHeader
-        title={`Quiz · ${work?.titleNative ?? work?.titleRomaji ?? `Obra #${quiz.anilistId}`}`}
-        subtitle={`${quiz.scope} · título "${quiz.titleReward}" · AniList #${quiz.anilistId}`}
+        title={`Quiz · ${work?.titleNative ?? work?.titleRomaji ?? source}`}
+        subtitle={`${quiz.scope} · título "${quiz.titleReward}" · ${source}`}
         action={available ? <SmallChip tone="success">Disponível para as pessoas</SmallChip> : <SmallChip tone="warning">{approved}/{QUIZ_LENGTH} aprovadas · indisponível</SmallChip>}
       />
       <NextLink href="/admin/quizzes" style={{ color: "inherit", fontSize: 14 }}>

@@ -175,7 +175,7 @@ export function PostComposer({
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: full, anilistId: anime?.anilistId, isSpoiler: spoiler, quotedPostId: quoted?.id }),
+        body: JSON.stringify({ body: full, anilistId: anime?.anilistId ?? undefined, work: anime && anime.anilistId === null ? anime.work : undefined, isSpoiler: spoiler, quotedPostId: quoted?.id }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {

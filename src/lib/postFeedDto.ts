@@ -18,6 +18,8 @@ export type PostRow = Post & {
   user: Author;
   quotedPost: QuotedPostRow | null;
   _count: { likes: number; comments: number };
+  /** Obra sem AniList ID: para o link do post ir a /anime/anidb-<id>. */
+  catalogEntry: { anidbId: number | null; kitsuId: number | null } | null;
 };
 
 export const POST_ROW_INCLUDE = {
@@ -28,6 +30,8 @@ export const POST_ROW_INCLUDE = {
   // (achado real de verificação ao vivo: um comentário apagado
   // continuava contando depois de recarregar a página).
   _count: { select: { likes: true, comments: { where: { deletedAt: null } } } },
+  // Obra sem AniList ID: o link do post leva a /anime/anidb-<id>.
+  catalogEntry: { select: { anidbId: true, kitsuId: true } },
 } as const;
 
 /**

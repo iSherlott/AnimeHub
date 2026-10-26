@@ -179,6 +179,9 @@ alguém tem dois itens de lista na mesma obra do catálogo; se tiver, para com a
 
 A migração `20261104100000_field_update_sources` só acrescenta uma coluna (atualização seletiva pela Kitsu e pelo AniDB).
 O lote pela Kitsu usa `KITSU_API_BASE_URL`; o lote pelo AniDB usa as mesmas variáveis do lote de episódios do AniDB.
+
+A migração `20261105100000_catalog_only_community` (comunidade das obras sem AniList ID) só acrescenta colunas e índices
+e relaxa o AniList ID de comentários e quizzes.
 Para o lote do AniDB funcionar, o servidor precisa de `ANIDB_CLIENT_NAME` e `ANIDB_CLIENT_VERSION` (o client registrado no
 AniDB). Opcional: `ANIDB_REQUEST_GAP_MS` (intervalo entre obras, padrão 4000 ms; não baixe de 2000).
 

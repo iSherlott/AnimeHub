@@ -27,6 +27,8 @@ export type PostDTO = {
   createdAt: string;
   /** null = publicação sem obra associada (Figma 13:41840: contexto opcional). */
   anilistId: number | null;
+  /** Chave da página da obra (`/anime/<workKey>`): o AniList ID ou, sem ele, `anidb-<id>`/`kitsu-<id>`. */
+  workKey: string | null;
   animeTitleRomaji: string | null;
   animeTitleEnglish: string | null;
   /** Título original e formato (TV, filme…) da produção canônica, quando conhecida. */
@@ -57,7 +59,15 @@ export type PostDTO = {
   favoritedByMe: boolean;
 };
 
-type PostWithAuthor = Post & { user: { id: string; displayName: string; handle?: string | null; avatarUrl: string | null } };
+type PostWithAuthor = Post & { user: { id: string; displayName: string; handle?: string | null; avatarUrl: string | null }; catalogEntry?: { anidbId: number | null; kitsuId: number | null } | null };
+
+/** Chave da página da obra do post (AniList ID ou, para obra sem ele, a do catálogo). */
+function postWorkKey(post: PostWithAuthor): string | null {
+  if (post.anilistId !== null) return String(post.anilistId);
+  const entry = post.catalogEntry;
+  if (!entry) return null;
+  return entry.kitsuId ? `kitsu-${entry.kitsuId}` : entry.anidbId ? `anidb-${entry.anidbId}` : null;
+}
 
 export function toPostSummaryDto(post: PostWithAuthor): PostSummaryDTO {
   return {
@@ -103,6 +113,7 @@ export function toPostDto(
     imageUrls: post.isSpoiler ? [] : post.imageUrls,
     createdAt: post.createdAt.toISOString(),
     anilistId: post.anilistId,
+    workKey: postWorkKey(post),
     animeTitleRomaji: post.animeTitleRomaji,
     animeTitleEnglish: post.animeTitleEnglish,
     animeTitleNative: opts.production?.titleNative ?? null,

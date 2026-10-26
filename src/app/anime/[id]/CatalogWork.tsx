@@ -8,6 +8,8 @@ import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { PlatformLinksManager } from "@/components/PlatformLinksManager";
 import { SeasonControls } from "@/components/SeasonControls";
 import { UnfollowButton } from "@/components/UnfollowButton";
+import { CommentSection } from "@/components/CommentSection";
+import { WorkDiscussions, WorkQuizEntry } from "@/components/WorkSections";
 import { catalogSlug } from "@/lib/workHref";
 import { Header } from "@/components/Header";
 import { AnimeTitle } from "@/components/AnimeTitle";
@@ -40,20 +42,22 @@ export async function PublicCatalogWork({ source, sourceId }: { source: "anidb" 
   const user = await getCurrentUser();
   const owned = user ? await prisma.anime.findUnique({ where: { userId_catalogEntryId: { userId: user.id, catalogEntryId: entry.id } }, select: { id: true } }) : null;
   if (owned) redirect(`/anime/${owned.id}`);
-  return <CatalogWork entry={entry} signedIn={Boolean(user)} />;
+  return <CatalogWork entry={entry} signedIn={Boolean(user)} userId={user?.id ?? null} />;
 }
 
 /** O item da lista de quem abre a página (só na página da própria pessoa). */
-export type OwnedCatalogItem = { id: string; isFavorite: boolean; watchState: string | null; waiting: boolean; userScore: number | null; titleRomaji: string; titleEnglish: string | null; platformLinks: PlatformLink[] };
+export type OwnedCatalogItem = { id: string; accentColor?: string | null; isFavorite: boolean; watchState: string | null; waiting: boolean; userScore: number | null; titleRomaji: string; titleEnglish: string | null; platformLinks: PlatformLink[] };
 
 /**
  * Página de uma obra sem AniList ID (só do AniDB ou da Kitsu): ficha, sinopse, episódios (só o dia — o AniDB não informa
- * horário) e extras. Dá para acompanhar, marcar o andamento e dar nota; comunidade, quiz e relacionadas dependem do AniList
- * ID e não aparecem. Sem horário, a obra não entra no calendário nem nos avisos. Quando é ligada à AniList, o endereço
- * público passa a levar à página dela.
+ * horário) e extras. Dá para acompanhar, marcar o andamento e dar nota, e a comunidade (discussões, comentários de quem
+ * acompanha e quiz) vai pela obra do catálogo. Relacionadas dependem da AniList e não aparecem. Sem horário, a obra não
+ * entra no calendário nem nos avisos. Quando é ligada à AniList, o endereço público passa a levar à página dela — e a
+ * comunidade vai junto.
  */
-export async function CatalogWork({ entry, signedIn, owned = null }: { entry: CatalogEntry; signedIn: boolean; owned?: OwnedCatalogItem | null }) {
+export async function CatalogWork({ entry, signedIn, userId, owned = null }: { entry: CatalogEntry; signedIn: boolean; userId: string | null; owned?: OwnedCatalogItem | null }) {
   const work = catalogSlug(entry) ?? "";
+  const ref = { anilistId: null, catalogEntryId: entry.id } as const;
 
   const [schedule, extras] = await Promise.all([loadCatalogEpisodes(entry.id), loadExtras({ catalogEntryId: entry.id })]);
   const genres = entry.genres ? entry.genres.split(",").filter(Boolean) : [];
@@ -111,7 +115,7 @@ export async function CatalogWork({ entry, signedIn, owned = null }: { entry: Ca
             </Box>
           )}
           <Typography data-testid="catalog-work-follow-note" sx={{ fontSize: 14, color: "text.secondary", borderLeft: 3, borderColor: "secondary.main", pl: 1.5, maxWidth: 560 }}>
-            Esta obra só tem o dia de cada episódio, sem horário: ela não entra no calendário nem nos avisos. Comentários, publicações e quiz chegam quando ela for ligada ao catálogo principal.
+            Esta obra só tem o dia de cada episódio, sem horário: ela não entra no calendário nem nos avisos.
           </Typography>
         </Box>
       </WorkHero>
@@ -120,6 +124,7 @@ export async function CatalogWork({ entry, signedIn, owned = null }: { entry: Ca
         sections={[
           { id: "visao-geral", label: "Visão geral" },
           { id: "episodios", label: "Episódios" },
+          { id: "comunidade", label: "Comunidade" },
         ]}
       />
 
@@ -171,12 +176,25 @@ export async function CatalogWork({ entry, signedIn, owned = null }: { entry: Ca
               <PlatformLinksManager animeId={owned.id} initialLinks={owned.platformLinks} />
             </WorkCard>
           )}
+          <WorkQuizEntry work={ref} workKey={work} userId={userId} />
           {owned && (
             <Box>
               <UnfollowButton animeId={owned.id} title={owned.titleEnglish ?? owned.titleRomaji} />
             </Box>
           )}
         </Box>
+      </Box>
+
+      <Box id="comunidade" sx={{ mt: 6, px: { xs: 3, sm: 5 }, display: "flex", flexDirection: "column", gap: 5, scrollMarginTop: 150 }}>
+        {owned && (
+          <Box component="section" aria-labelledby="comentarios-heading" sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <Typography id="comentarios-heading" component="h2" sx={headingSx}>
+              Comentários
+            </Typography>
+            <CommentSection animeId={owned.id} accentColor={owned.accentColor ?? null} />
+          </Box>
+        )}
+        <WorkDiscussions work={ref} workKey={work} titleNative={entry.titleNative} titleRomaji={entry.titleRomaji} titleEnglish={entry.titleEnglish} seasonNumber={null} loggedIn={signedIn} />
       </Box>
     </div>
   );

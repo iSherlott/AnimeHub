@@ -94,7 +94,7 @@ export default async function AnimeDetailPage({
   if (loaded.anilistId === null) {
     const entry = loaded.catalogEntryId ? await prisma.catalogEntry.findUnique({ where: { id: loaded.catalogEntryId } }) : null;
     if (!entry) notFound();
-    return <CatalogWork entry={entry} signedIn owned={loaded} />;
+    return <CatalogWork entry={entry} signedIn userId={user.id} owned={loaded} />;
   }
   const anime = loaded as typeof loaded & { anilistId: number };
 

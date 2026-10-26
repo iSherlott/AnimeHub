@@ -15,7 +15,3 @@ export function quizErrorResponse(error: unknown): NextResponse {
   if (error instanceof QuizError) return NextResponse.json({ error: error.message, code: error.code }, { status: STATUS[error.code] });
   throw error;
 }
-
-export function parseAnilistId(raw: string): number | null {
-  return /^\d{1,9}$/.test(raw) && Number(raw) > 0 ? Number(raw) : null;
-}

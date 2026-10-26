@@ -34,7 +34,30 @@ export async function reassignCatalogEntry(fromId: string, toId: string, db: Db 
   const listEntries = await mergeListEntriesInto(fromId, toId, target?.anilistId ?? null, db);
   const schedule = await mergeScheduleInto(fromId, toId, target?.anilistId ?? null, db);
   await moveExtras(fromId, toId, db);
+  await moveCommunity(fromId, toId, target?.anilistId ?? null, db);
   return { productions: productions.count, listEntries, schedule };
+}
+
+/**
+ * Leva a comunidade de uma obra para outra (junção AniDB → AniList): publicações e comentários passam a ser da obra de
+ * destino (com o AniList ID dela). O quiz também — mas, se a obra de destino já tem o dela, o de origem é arquivado (sai
+ * do ar sem perder perguntas, tentativas nem títulos já concedidos), porque cada obra tem um quiz só.
+ */
+export async function moveCommunity(fromId: string, toId: string, toAnilistId: number | null, db: Db = prisma): Promise<{ posts: number; comments: number; quiz: "moved" | "archived" | "none" }> {
+  const data = { catalogEntryId: toId, ...(toAnilistId !== null ? { anilistId: toAnilistId } : {}) };
+  const [posts, comments] = await Promise.all([
+    db.post.updateMany({ where: { catalogEntryId: fromId }, data }),
+    db.comment.updateMany({ where: { catalogEntryId: fromId }, data }),
+  ]);
+  const quiz = await db.quiz.findUnique({ where: { catalogEntryId: fromId }, select: { id: true } });
+  if (!quiz) return { posts: posts.count, comments: comments.count, quiz: "none" };
+  const taken = await db.quiz.findFirst({ where: { NOT: { id: quiz.id }, OR: [{ catalogEntryId: toId }, ...(toAnilistId !== null ? [{ anilistId: toAnilistId }] : [])] }, select: { id: true } });
+  if (taken) {
+    await db.quiz.update({ where: { id: quiz.id }, data: { catalogEntryId: null, archivedAt: new Date() } });
+    return { posts: posts.count, comments: comments.count, quiz: "archived" };
+  }
+  await db.quiz.update({ where: { id: quiz.id }, data });
+  return { posts: posts.count, comments: comments.count, quiz: "moved" };
 }
 
 /**

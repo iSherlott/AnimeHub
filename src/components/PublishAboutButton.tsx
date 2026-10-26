@@ -7,9 +7,9 @@ import { publishHref } from "@/lib/publishLinks";
  * nem post automático). Visitante é levado ao login pelo próprio editor, que
  * volta com destino e rascunho preservados.
  */
-export function PublishAboutButton({ anilistId }: { anilistId: number; loggedIn?: boolean }) {
+export function PublishAboutButton({ anilistId, work }: { anilistId: number | null; /** Obra sem AniList ID: `anidb-<id>`. */ work?: string; loggedIn?: boolean }) {
   return (
-    <LinkButton href={publishHref({ anilistId })} variant="contained" data-testid="publish-about">
+    <LinkButton href={publishHref(anilistId !== null ? { anilistId } : { work })} variant="contained" data-testid="publish-about">
       + Publicar sobre este anime
     </LinkButton>
   );

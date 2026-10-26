@@ -12,9 +12,13 @@ import { equippedTitleNames } from "@/lib/quiz";
 export const MAX_POST_BODY_LENGTH = 500;
 export const MAX_POST_IMAGES = 6;
 
-/** Contexto de obra congelado no post (opcional: publicar sem anime é válido — D-27/Figma 13:41840). */
+/**
+ * Contexto de obra congelado no post (opcional: publicar sem anime é válido — D-27/Figma 13:41840). A obra é a da AniList
+ * ou, sem AniList ID (só do AniDB/Kitsu), a do catálogo (`catalogEntryId`).
+ */
 export type PostAnimeContext = {
-  anilistId: number;
+  anilistId: number | null;
+  catalogEntryId?: string | null;
   titleRomaji: string;
   titleEnglish: string | null;
   coverImage: string | null;
@@ -106,6 +110,7 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
     data: {
       userId: user.id,
       anilistId: anime?.anilistId ?? null,
+      catalogEntryId: anime?.anilistId === null ? (anime.catalogEntryId ?? null) : null,
       animeTitleRomaji: anime?.titleRomaji ?? null,
       animeTitleEnglish: anime?.titleEnglish ?? null,
       animeCoverImage: anime?.coverImage ?? null,
@@ -117,6 +122,7 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
     include: {
       user: { select: { id: true, displayName: true, handle: true, avatarUrl: true } },
       quotedPost: { include: { user: { select: { id: true, displayName: true, handle: true, avatarUrl: true } } } },
+      catalogEntry: { select: { anidbId: true, kitsuId: true } },
     },
   });
 

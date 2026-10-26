@@ -12,6 +12,7 @@ import { VersionsCallout } from "@/components/StoryMarkers";
 import { WorkCard } from "@/components/WorkInfoCard";
 import type { StoryRelation } from "@/lib/story/context";
 import { UserPostList } from "@/components/UserPostList";
+import { anilistRef, workWhere, type WorkRef } from "@/lib/workRef";
 
 /** Seções que toda obra tem, esteja ou não na lista de quem olha: quiz, discussões e histórias relacionadas. */
 
@@ -26,8 +27,11 @@ const RELATION_LABEL: Record<string, string> = {
   SUMMARY: "Resumo",
 };
 
-export async function WorkQuizEntry({ anilistId, userId }: { anilistId: number; userId: string | null }) {
-  const quizState = await getQuizState(anilistId, userId);
+/** Quiz da obra: `work` é a obra da AniList ou, sem AniList ID, a do catálogo (`workKey` = `anidb-<id>`). */
+export async function WorkQuizEntry({ anilistId, work, workKey, userId }: { anilistId?: number; work?: WorkRef; workKey?: string; userId: string | null }) {
+  const ref = work ?? anilistRef(anilistId as number);
+  const key = workKey ?? String(anilistId);
+  const quizState = await getQuizState(ref, userId);
   if (!quizState.quiz) return null;
   return (
     <WorkCard title="Quiz do anime" testId="quiz-entry">
@@ -38,7 +42,7 @@ export async function WorkQuizEntry({ anilistId, userId }: { anilistId: number; 
       </Typography>
       <Box>
         <AppLink
-          href={`/obra/${anilistId}/quiz`}
+          href={`/obra/${key}/quiz`}
           underline="none"
           data-testid="quiz-link"
           sx={{ display: "inline-flex", alignItems: "center", minHeight: 44, px: 2, py: 1.5, borderRadius: "10px", bgcolor: "#171820", color: "text.primary", fontSize: 14, fontWeight: 700, "&:hover": { bgcolor: "#1d1e28" } }}
@@ -52,23 +56,30 @@ export async function WorkQuizEntry({ anilistId, userId }: { anilistId: number; 
 
 export async function WorkDiscussions({
   anilistId,
+  work,
+  workKey,
   titleNative,
   titleRomaji,
   titleEnglish,
   seasonNumber,
   loggedIn,
 }: {
-  anilistId: number;
+  anilistId?: number;
+  /** Obra sem AniList ID (só do AniDB/Kitsu): a obra do catálogo e a chave dela (`anidb-<id>`). */
+  work?: WorkRef;
+  workKey?: string;
   titleNative: string | null;
   titleRomaji: string;
   titleEnglish: string | null;
-  seasonNumber: number;
+  seasonNumber: number | null;
   loggedIn: boolean;
 }) {
+  const ref = work ?? anilistRef(anilistId as number);
+  const key = workKey ?? String(anilistId);
   // Hashtags mais usadas nas discussões desta obra (Figma 13:42469).
   const topTags = await prisma.postHashtag.groupBy({
     by: ["hashtagId"],
-    where: { post: { anilistId, deletedAt: null } },
+    where: { post: { ...workWhere(ref), deletedAt: null } },
     _count: { _all: true },
     orderBy: { _count: { hashtagId: "desc" } },
     take: 3,
@@ -83,12 +94,12 @@ export async function WorkDiscussions({
         <Typography id="discussoes-heading" component="h2" sx={{ fontSize: 26, lineHeight: 1.5 }}>
           Discussões sobre esta obra
         </Typography>
-        <PublishAboutButton anilistId={anilistId} loggedIn={loggedIn} />
+        <PublishAboutButton anilistId={ref.anilistId} work={key} loggedIn={loggedIn} />
       </Box>
-      <Typography sx={{ fontSize: 16, color: "text.secondary" }}>Impressões da comunidade · Temporada {seasonNumber}. Contexto explícito, spoilers protegidos.</Typography>
+      <Typography sx={{ fontSize: 16, color: "text.secondary" }}>Impressões da comunidade{seasonNumber !== null ? ` · Temporada ${seasonNumber}` : ""}. Contexto explícito, spoilers protegidos.</Typography>
       <HashtagRow tags={orderedTags.map((t) => ({ key: t.key, display: t.display }))} />
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", lg: "minmax(0,1fr) 320px" }, columnGap: 5, rowGap: 3, alignItems: "start" }}>
-        <UserPostList endpoint="/api/posts" params={{ tab: "recent", anilistId: String(anilistId) }} timeStyle="relative" emptyText="Esta obra ainda não tem discussões. Seja a primeira pessoa a compartilhar uma impressão." />
+        <UserPostList endpoint="/api/posts" params={{ tab: "recent", work: key }} timeStyle="relative" emptyText="Esta obra ainda não tem discussões. Seja a primeira pessoa a compartilhar uma impressão." />
         <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
             <Typography lang={titleNative ? "ja" : undefined} sx={{ fontSize: 20, fontWeight: 700 }}>

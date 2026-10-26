@@ -16,8 +16,8 @@ const EXAMPLE = `{
   ]
 }`;
 
-type Outcome = { anilistId: number; action: "created" | "replaced"; approved: boolean };
-type Preview = { anilistId: number; scope: string; titleReward: string; questions: number };
+type Outcome = { anilistId: number | null; work: string; action: "created" | "replaced"; approved: boolean };
+type Preview = { anilistId: number | null; work: string; scope: string; titleReward: string; questions: number };
 
 const fieldSx = { p: 1.5, bgcolor: "background.paper", color: "text.primary", border: 1, borderColor: "divider", borderRadius: "10px", fontSize: 14, fontFamily: "inherit", "&:focus": { outline: "none", borderColor: "text.secondary" } };
 
@@ -50,7 +50,7 @@ export function QuizImportForm() {
       const res = await fetch("/api/admin/quizzes/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, anilistId: anilistId.trim() || undefined, scope: scope.trim() || undefined, titleReward: titleReward.trim() || undefined, approve, dryRun }),
+        body: JSON.stringify({ text, work: anilistId.trim() || undefined, scope: scope.trim() || undefined, titleReward: titleReward.trim() || undefined, approve, dryRun }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -78,7 +78,7 @@ export function QuizImportForm() {
           <Typography component="label" htmlFor={`${textId}-id`} sx={{ fontSize: 12, fontWeight: 600, color: "text.secondary" }}>
             AniList id (CSV)
           </Typography>
-          <Box component="input" id={`${textId}-id`} value={anilistId} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAnilistId(e.target.value)} inputMode="numeric" placeholder="só para CSV" sx={{ ...fieldSx, width: 160 }} />
+          <Box component="input" id={`${textId}-id`} value={anilistId} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAnilistId(e.target.value)} placeholder="só para CSV: 154587 ou anidb-18290" sx={{ ...fieldSx, width: 230 }} />
         </Box>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, flex: "1 1 260px" }}>
           <Typography component="label" htmlFor={`${textId}-scope`} sx={{ fontSize: 12, fontWeight: 600, color: "text.secondary" }}>
@@ -136,12 +136,12 @@ export function QuizImportForm() {
       {failure && <ErrorNotice title="Falha na carga" testId="quiz-import-failure">{failure}</ErrorNotice>}
       {preview && (
         <Notice tone="info" title="Validação concluída — nada foi gravado ainda" testId="quiz-import-preview">
-          {preview.map((q) => `Obra #${q.anilistId} · ${q.titleReward} · ${q.questions} perguntas · ${q.scope}`).join(" | ")}
+          {preview.map((q) => `Obra #${q.work} · ${q.titleReward} · ${q.questions} perguntas · ${q.scope}`).join(" | ")}
         </Notice>
       )}
       {outcomes && (
         <Notice tone="success" title="Carga gravada" testId="quiz-import-done">
-          {outcomes.map((o) => `Obra #${o.anilistId}: ${o.action === "created" ? "quiz criado" : "perguntas substituídas"} (${o.approved ? "aprovadas" : "aguardando revisão"})`).join(" | ")}
+          {outcomes.map((o) => `Obra #${o.work}: ${o.action === "created" ? "quiz criado" : "perguntas substituídas"} (${o.approved ? "aprovadas" : "aguardando revisão"})`).join(" | ")}
         </Notice>
       )}
     </Box>

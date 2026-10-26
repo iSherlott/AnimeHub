@@ -5,7 +5,7 @@ import type { PostDTO } from "@/lib/postDto";
  * editor aceita, via URL, uma citação (post de origem) e/ou uma obra já
  * escolhida ("Publicar sobre este anime").
  */
-export function publishHref(opts: { quote?: { id: string; author: string; snippet: string }; anilistId?: number } = {}): string {
+export function publishHref(opts: { quote?: { id: string; author: string; snippet: string }; anilistId?: number; /** Obra sem AniList ID: `anidb-<id>`/`kitsu-<id>`. */ work?: string } = {}): string {
   const params = new URLSearchParams();
   if (opts.quote) {
     params.set("quotePostId", opts.quote.id);
@@ -13,6 +13,7 @@ export function publishHref(opts: { quote?: { id: string; author: string; snippe
     params.set("quoteSnippet", opts.quote.snippet);
   }
   if (opts.anilistId) params.set("anilistId", String(opts.anilistId));
+  else if (opts.work) params.set("obra", opts.work);
   const qs = params.toString();
   return qs ? `/publicar?${qs}` : "/publicar";
 }

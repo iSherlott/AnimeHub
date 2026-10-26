@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
 import { abandonAttempt, currentQuestion, startAttempt } from "@/lib/quiz";
-import { parseAnilistId, quizErrorResponse } from "@/lib/quizHttp";
+import { quizErrorResponse } from "@/lib/quizHttp";
+import { resolveWorkKey } from "@/lib/workRef";
 import { rateLimitedResponse } from "@/lib/rateLimit";
 
 type Params = { params: Promise<{ anilistId: string }> };
@@ -10,12 +11,13 @@ type Params = { params: Promise<{ anilistId: string }> };
 export async function POST(_request: Request, { params }: Params) {
   const { user, response } = await requireUser();
   if (!user) return response;
-  const anilistId = parseAnilistId((await params).anilistId);
-  if (!anilistId) return NextResponse.json({ error: "Obra inválida" }, { status: 400 });
+  // A chave é o AniList ID ou, para obra sem ele, `anidb-<id>`/`kitsu-<id>`.
+  const work = await resolveWorkKey((await params).anilistId);
+  if (!work) return NextResponse.json({ error: "Obra inválida" }, { status: 400 });
   const limited = rateLimitedResponse(`quiz-start:${user.id}`, 30, 10 * 60_000);
   if (limited) return limited;
   try {
-    return NextResponse.json(await startAttempt(anilistId, user.id), { status: 201 });
+    return NextResponse.json(await startAttempt(work, user.id), { status: 201 });
   } catch (error) {
     return quizErrorResponse(error);
   }
@@ -25,10 +27,11 @@ export async function POST(_request: Request, { params }: Params) {
 export async function GET(_request: Request, { params }: Params) {
   const { user, response } = await requireUser();
   if (!user) return response;
-  const anilistId = parseAnilistId((await params).anilistId);
-  if (!anilistId) return NextResponse.json({ error: "Obra inválida" }, { status: 400 });
+  // A chave é o AniList ID ou, para obra sem ele, `anidb-<id>`/`kitsu-<id>`.
+  const work = await resolveWorkKey((await params).anilistId);
+  if (!work) return NextResponse.json({ error: "Obra inválida" }, { status: 400 });
   try {
-    return NextResponse.json({ question: await currentQuestion(anilistId, user.id) });
+    return NextResponse.json({ question: await currentQuestion(work, user.id) });
   } catch (error) {
     return quizErrorResponse(error);
   }
@@ -38,8 +41,9 @@ export async function GET(_request: Request, { params }: Params) {
 export async function DELETE(_request: Request, { params }: Params) {
   const { user, response } = await requireUser();
   if (!user) return response;
-  const anilistId = parseAnilistId((await params).anilistId);
-  if (!anilistId) return NextResponse.json({ error: "Obra inválida" }, { status: 400 });
-  await abandonAttempt(anilistId, user.id);
+  // A chave é o AniList ID ou, para obra sem ele, `anidb-<id>`/`kitsu-<id>`.
+  const work = await resolveWorkKey((await params).anilistId);
+  if (!work) return NextResponse.json({ error: "Obra inválida" }, { status: 400 });
+  await abandonAttempt(work, user.id);
   return NextResponse.json({ ok: true });
 }

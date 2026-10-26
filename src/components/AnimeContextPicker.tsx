@@ -5,7 +5,10 @@ import SearchIcon from "@mui/icons-material/Search";
 import { Autocomplete, Box, ButtonBase, CircularProgress, TextField, Typography } from "@mui/material";
 
 export type RelatedAnime = {
-  anilistId: number;
+  /** Nulo = obra sem AniList ID (só do AniDB/Kitsu): vai pela chave `work`. */
+  anilistId: number | null;
+  /** Chave da obra: o AniList ID ou `anidb-<id>`/`kitsu-<id>`. */
+  work: string;
   title: string;
   /** Detalhes mostrados quando a obra veio do detalhe público (Figma 13:41925). */
   native?: string | null;
@@ -15,6 +18,7 @@ export type RelatedAnime = {
 };
 
 type SearchResult = {
+  key?: string;
   anilistId: number | null;
   titleRomaji: string;
   titleEnglish: string | null;
@@ -57,9 +61,10 @@ export function AnimeContextPicker({
           if (cancelled) return;
           setOptions(
             (data.results ?? [])
-              .filter((r): r is SearchResult & { anilistId: number } => typeof r.anilistId === "number")
+              // Obra da AniList ou, sem AniList ID, a do catálogo (`anidb-<id>`); a que não tem nenhum dos dois fica de fora.
+              .filter((r) => typeof r.anilistId === "number" || /^(anidb|kitsu)-\d+$/.test(r.key ?? ""))
               .slice(0, 8)
-              .map((r) => ({ anilistId: r.anilistId, title: r.titleEnglish || r.titleRomaji }))
+              .map((r) => ({ anilistId: r.anilistId, work: r.anilistId !== null ? String(r.anilistId) : (r.key as string), title: r.titleEnglish || r.titleRomaji }))
           );
         })
         .catch(() => {
@@ -128,7 +133,7 @@ export function AnimeContextPicker({
         }}
         filterOptions={(opts) => opts}
         getOptionLabel={(o) => o.title}
-        isOptionEqualToValue={(a, b) => a.anilistId === b.anilistId}
+        isOptionEqualToValue={(a, b) => a.work === b.work}
         noOptionsText={input.trim().length < 2 ? "Digite ao menos 2 letras" : "Nenhum anime encontrado"}
         popupIcon={null}
         renderInput={(params) => (

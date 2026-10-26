@@ -373,7 +373,10 @@ model PlatformLink {
  */
 model Comment {
   id        String    @id @default(cuid())
-  anilistId Int
+  /// Nulo = comentário de obra sem AniList ID (só do AniDB/Kitsu): a obra é `catalogEntryId`.
+  anilistId Int?
+  catalogEntryId String?
+  catalogEntry   CatalogEntry? @relation(fields: [catalogEntryId], references: [id], onDelete: SetNull)
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   body      String
@@ -386,6 +389,7 @@ model Comment {
   reports CommentReport[]
 
   @@index([anilistId])
+  @@index([catalogEntryId])
   @@index([userId])
 }
 
@@ -513,6 +517,10 @@ model CatalogEntry {
   genreLinks        CatalogGenre[]
   /// Extras do AniDB (especiais, aberturas/encerramentos, trailers…), fora da sequência regular.
   extras            EpisodeExtra[]
+  /// Comunidade das obras sem AniList ID (publicações, comentários e quiz vão pela obra do catálogo).
+  posts             Post[]
+  comments          Comment[]
+  quiz              Quiz?
 }
 
 /**
@@ -748,6 +756,9 @@ model Post {
   userId            String
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   anilistId         Int?
+  /// Obra sem AniList ID (só do AniDB/Kitsu) escolhida como contexto da publicação.
+  catalogEntryId    String?
+  catalogEntry      CatalogEntry? @relation(fields: [catalogEntryId], references: [id], onDelete: SetNull)
   animeTitleRomaji  String?
   animeTitleEnglish String?
   animeCoverImage   String?
@@ -794,6 +805,7 @@ model Post {
 
   @@unique([userId, repostOfId])
   @@index([anilistId])
+  @@index([catalogEntryId])
   @@index([userId])
   @@index([deletedAt, createdAt])
 }
@@ -1247,7 +1259,10 @@ model NewsRun {
 /// Quiz de uma obra (Figma "20 — Quiz"): 10 perguntas aprovadas liberam a tentativa; 10/10 desbloqueia `titleReward`.
 model Quiz {
   id          String         @id @default(cuid())
-  anilistId   Int            @unique
+  /// Nulo = quiz de obra sem AniList ID (só do AniDB/Kitsu): a obra é `catalogEntryId`.
+  anilistId   Int?           @unique
+  catalogEntryId String?     @unique
+  catalogEntry   CatalogEntry? @relation(fields: [catalogEntryId], references: [id], onDelete: SetNull)
   /// Recorte do quiz, ex.: "Season 1 — personagens e ambientação".
   scope       String
   /// Título cosmético desbloqueado com 10/10, ex.: "Olhar de boticária".

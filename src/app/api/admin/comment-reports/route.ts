@@ -15,7 +15,7 @@ export async function GET() {
   const reports = await prisma.commentReport.findMany({
     where: { resolvedAt: null },
     include: {
-      comment: { include: { user: { select: { displayName: true, email: true } } } },
+      comment: { include: { user: { select: { displayName: true, email: true } }, catalogEntry: { select: { titleRomaji: true } } } },
       reporter: { select: { displayName: true, email: true } },
     },
     orderBy: { createdAt: "asc" },
@@ -25,7 +25,8 @@ export async function GET() {
     string,
     {
       commentId: string;
-      anilistId: number;
+      anilistId: number | null;
+      catalogTitle: string | null;
       body: string;
       commentCreatedAt: Date;
       commentDeleted: boolean;
@@ -43,6 +44,7 @@ export async function GET() {
     byComment.set(report.commentId, {
       commentId: report.commentId,
       anilistId: report.comment.anilistId,
+      catalogTitle: report.comment.catalogEntry?.titleRomaji ?? null,
       body: report.comment.body,
       commentCreatedAt: report.comment.createdAt,
       commentDeleted: Boolean(report.comment.deletedAt),
@@ -52,7 +54,7 @@ export async function GET() {
   }
 
   const grouped = [...byComment.values()];
-  const anilistIds = [...new Set(grouped.map((g) => g.anilistId))];
+  const anilistIds = [...new Set(grouped.flatMap((g) => (g.anilistId !== null ? [g.anilistId] : [])))];
   const titleByAnilistId = new Map(
     (
       await prisma.catalogEntry.findMany({
@@ -66,7 +68,7 @@ export async function GET() {
     reports: grouped.map((g) => ({
       commentId: g.commentId,
       anilistId: g.anilistId,
-      animeTitle: titleByAnilistId.get(g.anilistId) ?? `AniList #${g.anilistId}`,
+      animeTitle: g.anilistId !== null ? (titleByAnilistId.get(g.anilistId) ?? `AniList #${g.anilistId}`) : (g.catalogTitle ?? "Obra do catálogo"),
       body: g.body,
       commentCreatedAt: g.commentCreatedAt.toISOString(),
       commentDeleted: g.commentDeleted,

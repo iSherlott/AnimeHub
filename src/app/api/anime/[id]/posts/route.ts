@@ -18,13 +18,11 @@ export async function POST(request: Request, { params }: Params) {
   const { id } = await params;
   const anime = await prisma.anime.findUnique({
     where: { id },
-    select: { userId: true, anilistId: true, titleRomaji: true, titleEnglish: true, coverImage: true },
+    select: { userId: true, anilistId: true, catalogEntryId: true, titleRomaji: true, titleEnglish: true, coverImage: true },
   });
   if (!anime || anime.userId !== user.id) {
     return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
   }
-  // Publicação é sobre uma obra da AniList: obra só do AniDB/Kitsu ainda não tem comunidade.
-  if (anime.anilistId === null) return NextResponse.json({ error: "Esta obra ainda não tem comunidade: publicações chegam quando ela for ligada ao catálogo principal." }, { status: 409 });
 
   let body;
   try {
@@ -35,6 +33,8 @@ export async function POST(request: Request, { params }: Params) {
 
   return createPostResponse(user, body, {
     anilistId: anime.anilistId,
+    // Obra sem AniList ID (só do AniDB/Kitsu): a publicação vai pela obra do catálogo.
+    catalogEntryId: anime.catalogEntryId,
     titleRomaji: anime.titleRomaji,
     titleEnglish: anime.titleEnglish,
     coverImage: anime.coverImage,

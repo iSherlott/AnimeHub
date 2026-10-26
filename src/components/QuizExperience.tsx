@@ -159,9 +159,9 @@ function EquipButton({ titleId }: { titleId: string }) {
  * uma pergunta por vez com "Confirmar resposta" (sem voltar e sem gabarito); resultado 10/10 (título)
  * ou qualquer outra nota (nada concedido, nova tentativa desabilitada).
  */
-export function QuizExperience({ anilistId, work, state, loggedIn }: { anilistId: number; work: Work; state: QuizState; loggedIn: boolean }) {
+export function QuizExperience({ workKey, work, state, loggedIn }: { /** AniList ID ou `anidb-<id>`/`kitsu-<id>`. */ workKey: string; work: Work; state: QuizState; loggedIn: boolean }) {
   const quiz = state.quiz;
-  const workHref = `/anime/${anilistId}`;
+  const workHref = `/anime/${workKey}`;
   const completed = state.attempt.status === "COMPLETED";
   const [phase, setPhase] = useState<Phase>(completed ? "result" : "intro");
   const [result, setResult] = useState<Result | null>(
@@ -179,7 +179,7 @@ export function QuizExperience({ anilistId, work, state, loggedIn }: { anilistId
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/quiz/${anilistId}/attempt`);
+      const res = await fetch(`/api/quiz/${workKey}/attempt`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Não foi possível carregar a pergunta.");
       setQuestion(data.question as QuestionDTO);
@@ -188,13 +188,13 @@ export function QuizExperience({ anilistId, work, state, loggedIn }: { anilistId
     } finally {
       setLoading(false);
     }
-  }, [anilistId]);
+  }, [workKey]);
 
   async function start() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/quiz/${anilistId}/attempt`, { method: "POST" });
+      const res = await fetch(`/api/quiz/${workKey}/attempt`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Não foi possível iniciar o quiz.");
       setPhase("question");
@@ -211,7 +211,7 @@ export function QuizExperience({ anilistId, work, state, loggedIn }: { anilistId
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`/api/quiz/${anilistId}/answer`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ position: question.position, choice }) });
+      const res = await fetch(`/api/quiz/${workKey}/answer`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ position: question.position, choice }) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Não foi possível registrar a resposta.");
       if (data.finished) {
@@ -234,7 +234,7 @@ export function QuizExperience({ anilistId, work, state, loggedIn }: { anilistId
   async function leave() {
     setLeaving(true);
     try {
-      await fetch(`/api/quiz/${anilistId}/attempt`, { method: "DELETE" });
+      await fetch(`/api/quiz/${workKey}/attempt`, { method: "DELETE" });
       setLeaveOpen(false);
       setPhase("intro");
       setQuestion(null);
@@ -279,7 +279,7 @@ export function QuizExperience({ anilistId, work, state, loggedIn }: { anilistId
     <Panel title="Entre para fazer o quiz" testId="quiz-login">
       <Typography sx={{ fontSize: 14 }}>O quiz exige uma conta e a obra em Acompanhando.</Typography>
       <Box>
-        <Button component={NextLink} href={loginHref(`/obra/${anilistId}/quiz`)} variant="contained">
+        <Button component={NextLink} href={loginHref(`/obra/${workKey}/quiz`)} variant="contained">
           Entrar
         </Button>
       </Box>

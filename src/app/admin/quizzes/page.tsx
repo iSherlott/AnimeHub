@@ -15,12 +15,12 @@ export default async function AdminQuizzesPage() {
   await requireAdminPage("catalog");
   const quizzes = await prisma.quiz.findMany({
     orderBy: { updatedAt: "desc" },
-    include: { questions: { select: { approved: true, position: true, text: true, optionA: true, optionB: true, optionC: true, optionD: true, correct: true } }, _count: { select: { attempts: true, titles: true } } },
+    include: { questions: { select: { approved: true, position: true, text: true, optionA: true, optionB: true, optionC: true, optionD: true, correct: true } }, _count: { select: { attempts: true, titles: true } }, catalogEntry: { select: { titleRomaji: true, titleNative: true, anidbId: true, kitsuId: true } } },
   });
   // Resultados (Fase 9): concluídas e nota média, por quiz — só agregados, sem dados de quem respondeu.
   const results = quizzes.length ? await prisma.quizAttempt.groupBy({ by: ["quizId"], where: { quizId: { in: quizzes.map((q) => q.id) }, status: "COMPLETED" }, _count: { _all: true }, _avg: { score: true } }) : [];
   const resultBy = new Map(results.map((r) => [r.quizId, { completed: r._count._all, avg: r._avg.score }]));
-  const ids = quizzes.map((q) => q.anilistId);
+  const ids = quizzes.flatMap((q) => (q.anilistId !== null ? [q.anilistId] : []));
   const [productions, catalog] = ids.length
     ? await Promise.all([
         prisma.production.findMany({ where: { anilistId: { in: ids } }, select: { anilistId: true, titleRomaji: true, titleNative: true } }),
@@ -32,7 +32,10 @@ export default async function AdminQuizzesPage() {
 
   const rows = quizzes.map((q) => {
     const approved = q.questions.filter((x) => x.approved).length;
-    return { quiz: q, approved, total: q.questions.length, name: names.get(q.anilistId) ?? `Obra #${q.anilistId}`, errors: quizConfigErrors(q, q.questions), result: resultBy.get(q.id) ?? null };
+    // Quiz de obra sem AniList ID: o nome e a origem vêm da obra do catálogo.
+    const name = q.anilistId !== null ? (names.get(q.anilistId) ?? `Obra #${q.anilistId}`) : (q.catalogEntry ? (q.catalogEntry.titleNative ?? q.catalogEntry.titleRomaji) : "Obra fora do catálogo");
+    const source = q.anilistId !== null ? `AniList #${q.anilistId}` : q.catalogEntry?.anidbId ? `AniDB #${q.catalogEntry.anidbId}` : q.catalogEntry?.kitsuId ? `Kitsu #${q.catalogEntry.kitsuId}` : "—";
+    return { quiz: q, approved, total: q.questions.length, name, source, errors: quizConfigErrors(q, q.questions), result: resultBy.get(q.id) ?? null };
   });
 
   return (
@@ -45,7 +48,8 @@ export default async function AdminQuizzesPage() {
           JSON: um objeto <code>{`{ anilistId, scope, titleReward, questions: [{ category, text, options: [A,B,C,D], correct: "A" }] }`}</code> ou uma lista deles
           (vários animes de uma vez). CSV de um anime, uma pergunta por linha:{" "}
           <code>categoria;pergunta;A;B;C;D;correta</code>. Sempre {QUIZ_LENGTH} perguntas, 4 alternativas distintas e a correta de A a D. Recarregar um quiz
-          sem tentativas substitui as perguntas.
+          sem tentativas substitui as perguntas. Obra sem AniList ID (só do AniDB): use <code>anidbId</code> (ou <code>{`"work": "anidb-<id>"`}</code>) no lugar de{" "}
+          <code>anilistId</code>; no CSV, informe <code>anidb-&lt;id&gt;</code> no ID da obra.
         </Typography>
       </AdminPanel>
 
@@ -68,7 +72,7 @@ export default async function AdminQuizzesPage() {
             rows={rows}
             rowKey={(r) => r.quiz.id}
             columns={[
-              { key: "work", label: "Obra", render: (r) => (<><div lang="ja">{r.name}</div><div>AniList #{r.quiz.anilistId}</div></>) },
+              { key: "work", label: "Obra", render: (r) => (<><div lang="ja">{r.name}</div><div>{r.source}</div></>) },
               { key: "scope", label: "Escopo / Título", render: (r) => (<><div>{r.quiz.scope}</div><div>称号 · {r.quiz.titleReward}</div></>) },
               { key: "q", label: "Perguntas", render: (r) => `${r.approved}/${QUIZ_LENGTH} aprovadas` },
               {

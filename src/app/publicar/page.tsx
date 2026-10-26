@@ -7,8 +7,9 @@ import { PageContainer, PageIntro, TwoColumn, SectionTitle } from "@/components/
 import { getCurrentUser } from "@/lib/auth/session";
 import { loginHref } from "@/lib/safeRedirect";
 import { prisma } from "@/lib/prisma";
+import { resolveWorkKey } from "@/lib/workRef";
 
-type Props = { searchParams: Promise<{ quotePostId?: string; quoteAuthor?: string; quoteSnippet?: string; anilistId?: string }> };
+type Props = { searchParams: Promise<{ quotePostId?: string; quoteAuthor?: string; quoteSnippet?: string; anilistId?: string; obra?: string }> };
 
 /**
  * Nova publicação (Figma "14 — Criar publicação" `13:41840` e "Criar via
@@ -27,9 +28,12 @@ export default async function PublishPage({ searchParams }: Props) {
   // Obra pré-selecionada ("Publicar sobre este anime"): só se a produção existir.
   const anilistId = q.anilistId && /^\d+$/.test(q.anilistId) ? Number(q.anilistId) : null;
   const production = anilistId ? await prisma.production.findUnique({ where: { anilistId }, include: { franchise: { select: { name: true } } } }) : null;
+  // Obra sem AniList ID (só do AniDB/Kitsu): `obra=anidb-<id>`.
+  const catalogWork = !production && q.obra ? await resolveWorkKey(q.obra) : null;
   const initialAnime = production
     ? {
         anilistId: production.anilistId,
+        work: String(production.anilistId),
         title: production.titleEnglish || production.titleRomaji,
         native: production.titleNative,
         english: production.titleEnglish,
@@ -43,6 +47,8 @@ export default async function PublishPage({ searchParams }: Props) {
           .filter(Boolean)
           .join(" · "),
       }
+    : catalogWork
+      ? { anilistId: catalogWork.anilistId, work: catalogWork.key, title: catalogWork.titleEnglish || catalogWork.titleRomaji, native: catalogWork.titleNative, english: catalogWork.titleEnglish, fromDetail: true, meta: null }
     : null;
 
   const quote = q.quotePostId
@@ -63,7 +69,7 @@ export default async function PublishPage({ searchParams }: Props) {
           }
         />
         <AppLink
-          href={initialAnime ? `/anime/${initialAnime.anilistId}#discussoes` : "/"}
+          href={initialAnime ? `/anime/${initialAnime.work}#discussoes` : "/"}
           underline="hover"
           sx={{ fontSize: 14, color: "text.secondary", alignSelf: "flex-start" }}
         >

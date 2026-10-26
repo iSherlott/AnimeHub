@@ -1,4 +1,5 @@
 import { OPTION_COUNT, QUIZ_LENGTH } from "@/lib/quiz";
+import { CATALOG_ONLY_SLUG } from "@/lib/workHref";
 
 /**
  * Carga de perguntas do quiz, anime a anime (Admin → Quizzes). Aceita JSON (um quiz ou uma lista) ou
@@ -7,12 +8,32 @@ import { OPTION_COUNT, QUIZ_LENGTH } from "@/lib/quiz";
  * JSON:  { "anilistId": 154587, "scope": "Season 1 — …", "titleReward": "Olhar de boticária",
  *          "questions": [ { "category": "PERSONAGENS", "text": "…?", "options": ["A","B","C","D"], "correct": "A" } ] }
  * CSV:   categoria;pergunta;alternativa A;alternativa B;alternativa C;alternativa D;correta(A–D)
+ *
+ * Obra sem AniList ID (só do AniDB/Kitsu): no lugar de "anilistId", "anidbId": 18290 (ou "kitsuId") ou
+ * "work": "anidb-18290". No CSV, o campo "ID da obra" do formulário aceita o número da AniList ou "anidb-<id>".
  */
 export const LIMITS = { category: 30, text: 300, option: 120, scope: 120, title: 60 } as const;
 
 export type ParsedQuestion = { category: string; text: string; options: [string, string, string, string]; correct: number };
-export type ParsedQuiz = { anilistId: number; scope: string; titleReward: string; questions: ParsedQuestion[] };
-export type QuizDefaults = { anilistId?: number | null; scope?: string | null; titleReward?: string | null };
+/** `work` é a chave da obra (o AniList ID ou `anidb-<id>`/`kitsu-<id>`); `anilistId` só quando a chave é da AniList. */
+export type ParsedQuiz = { anilistId: number | null; work: string; scope: string; titleReward: string; questions: ParsedQuestion[] };
+export type QuizDefaults = { anilistId?: number | null; work?: string | null; scope?: string | null; titleReward?: string | null };
+
+const positive = (v: unknown) => {
+  const n = Number(v);
+  return Number.isInteger(n) && n > 0 ? n : null;
+};
+
+/** A chave da obra do quiz: `work`, `anidbId`, `kitsuId` ou `anilistId` (nessa ordem), ou o padrão do formulário. */
+function workKeyOf(raw: { work?: unknown; anidbId?: unknown; kitsuId?: unknown; anilistId?: unknown }, defaults: QuizDefaults): string | null {
+  const text = typeof raw.work === "string" ? raw.work.trim() : "";
+  if (text) return CATALOG_ONLY_SLUG.test(text) || positive(text) ? text : null;
+  if (raw.anidbId !== undefined) return positive(raw.anidbId) ? `anidb-${positive(raw.anidbId)}` : null;
+  if (raw.kitsuId !== undefined) return positive(raw.kitsuId) ? `kitsu-${positive(raw.kitsuId)}` : null;
+  if (raw.anilistId !== undefined) return positive(raw.anilistId) ? String(positive(raw.anilistId)) : null;
+  const fallback = defaults.work?.trim() || (defaults.anilistId ? String(defaults.anilistId) : "");
+  return fallback && (CATALOG_ONLY_SLUG.test(fallback) || positive(fallback)) ? fallback : null;
+}
 export type ParseResult = { ok: true; quizzes: ParsedQuiz[] } | { ok: false; errors: string[] };
 
 const LETTERS = ["A", "B", "C", "D"];
@@ -54,11 +75,11 @@ export function validateQuestion(raw: { category?: unknown; text?: unknown; opti
   return { category, text, options: options as ParsedQuestion["options"], correct };
 }
 
-function validateQuiz(raw: { anilistId?: unknown; scope?: unknown; titleReward?: unknown; questions?: unknown }, defaults: QuizDefaults, errors: string[]): ParsedQuiz | null {
+function validateQuiz(raw: { anilistId?: unknown; work?: unknown; anidbId?: unknown; kitsuId?: unknown; scope?: unknown; titleReward?: unknown; questions?: unknown }, defaults: QuizDefaults, errors: string[]): ParsedQuiz | null {
   const before = errors.length;
-  const anilistId = Number(raw.anilistId ?? defaults.anilistId);
-  const label = Number.isInteger(anilistId) && anilistId > 0 ? `Obra ${anilistId}` : "Quiz";
-  if (!Number.isInteger(anilistId) || anilistId <= 0) errors.push("Quiz: falta o id da AniList (número positivo).");
+  const work = workKeyOf(raw, defaults);
+  const label = work ? `Obra ${work}` : "Quiz";
+  if (!work) errors.push('Quiz: falta o id da AniList (número positivo) ou da obra no catálogo ("anidbId", ou "work": "anidb-<id>").');
   const scope = clean(raw.scope ?? defaults.scope);
   const titleReward = clean(raw.titleReward ?? defaults.titleReward);
   if (!scope) errors.push(`${label}: falta o escopo (ex.: "Season 1 — personagens e ambientação").`);
@@ -77,7 +98,7 @@ function validateQuiz(raw: { anilistId?: unknown; scope?: unknown; titleReward?:
   if (new Set(texts).size !== texts.length) errors.push(`${label}: há perguntas com enunciado repetido.`);
 
   if (errors.length > before) return null;
-  return { anilistId, scope, titleReward, questions };
+  return { anilistId: positive(work) ? Number(work) : null, work: work as string, scope, titleReward, questions };
 }
 
 /** CSV/TSV com `;` (ou tab): uma linha por pergunta, sem cabeçalho obrigatório (a linha que começa com "categoria" é ignorada). */
@@ -119,7 +140,7 @@ export function parseQuizImport(text: string, defaults: QuizDefaults = {}): Pars
     quizzes = parseDelimited(body, defaults, errors);
   }
 
-  const ids = quizzes.map((q) => q.anilistId);
+  const ids = quizzes.map((q) => q.work);
   if (new Set(ids).size !== ids.length) errors.push("Há duas cargas para a mesma obra no mesmo envio.");
   if (errors.length > 0) return { ok: false, errors };
   return { ok: true, quizzes };

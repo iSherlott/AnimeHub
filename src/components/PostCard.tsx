@@ -303,9 +303,9 @@ export function PostCard({
       )}
 
       {/* Obra (contexto explícito) — link para o detalhe público */}
-      {animeTitle !== null && post.anilistId !== null && (
+      {animeTitle !== null && post.workKey !== null && (
         <Typography component="div" className="font-jp" sx={{ fontSize: 12, color: "text.secondary" }}>
-          <MuiLink component={NextLink} href={`/anime/${post.anilistId}`} underline="hover" color="inherit" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
+          <MuiLink component={NextLink} href={`/anime/${post.workKey}`} underline="hover" color="inherit" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
             {post.favoritedByMe && <StarIcon role="img" aria-label="Anime favoritado" sx={{ fontSize: 14, color: "secondary.main" }} />}
             <span lang={post.animeTitleNative && animeTitle === post.animeTitleNative ? "ja" : undefined}>
               {animeTitle}

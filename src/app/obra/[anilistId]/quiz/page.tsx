@@ -6,8 +6,8 @@ import { Header } from "@/components/Header";
 import { PageContainer, PageIntro } from "@/components/PageShell";
 import { QuizExperience } from "@/components/QuizExperience";
 import { getCurrentUser } from "@/lib/auth/session";
-import { prisma } from "@/lib/prisma";
 import { getQuizState } from "@/lib/quiz";
+import { resolveWorkKey } from "@/lib/workRef";
 
 type Params = { params: Promise<{ anilistId: string }> };
 
@@ -20,19 +20,12 @@ export const metadata: Metadata = { title: "Quiz · Anime Hub" };
  * Pública para ver o estado; fazer o quiz exige conta e a obra em Acompanhando.
  */
 export default async function QuizPage({ params }: Params) {
-  const raw = (await params).anilistId;
-  if (!/^\d{1,9}$/.test(raw) || Number(raw) <= 0) notFound();
-  const anilistId = Number(raw);
-
-  const [production, catalog] = await Promise.all([
-    prisma.production.findUnique({ where: { anilistId }, select: { titleRomaji: true, titleEnglish: true, titleNative: true, coverImage: true } }),
-    prisma.catalogEntry.findUnique({ where: { anilistId }, select: { titleRomaji: true, titleEnglish: true, titleNative: true, coverImage: true } }),
-  ]);
-  const work = production ?? catalog;
+  // A chave é o AniList ID ou, para obra sem ele (só do AniDB/Kitsu), `anidb-<id>`/`kitsu-<id>`.
+  const work = await resolveWorkKey((await params).anilistId);
   if (!work) notFound();
 
   const user = await getCurrentUser();
-  const state = await getQuizState(anilistId, user?.id ?? null);
+  const state = await getQuizState(work, user?.id ?? null);
 
   return (
     <Box sx={{ minHeight: "100%", bgcolor: "background.default" }}>
@@ -43,10 +36,10 @@ export default async function QuizPage({ params }: Params) {
           title={state.quiz?.titleReward ? `Quiz: ${state.quiz.titleReward}` : "Quiz do anime"}
           subtitle={`${work.titleNative ?? work.titleRomaji} · 10 perguntas · recompensa apenas com 10/10.`}
         />
-        <AppLink href={`/anime/${anilistId}`} underline="hover" sx={{ fontSize: 14, color: "text.secondary", alignSelf: "flex-start" }}>
+        <AppLink href={`/anime/${work.key}`} underline="hover" sx={{ fontSize: 14, color: "text.secondary", alignSelf: "flex-start" }}>
           ← Voltar ao anime / {work.titleNative ?? work.titleRomaji}
         </AppLink>
-        <QuizExperience anilistId={anilistId} work={work} state={state} loggedIn={Boolean(user)} />
+        <QuizExperience workKey={work.key} work={work} state={state} loggedIn={Boolean(user)} />
       </PageContainer>
     </Box>
   );

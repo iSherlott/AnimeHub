@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { catalogKeys, type WorkRef } from "@/lib/workRef";
 
 /**
  * Quiz por obra (Figma "20 — Quiz"): 10 perguntas, 4 alternativas, uma por vez, confirmar antes de
@@ -53,10 +54,21 @@ export function isComplete(positions: number[]): boolean {
   return positions.length === QUIZ_LENGTH && positions.every((p, i) => p === i + 1);
 }
 
-export async function getQuizState(anilistId: number, userId: string | null): Promise<QuizState> {
-  const quiz = await prisma.quiz.findUnique({ where: { anilistId } });
+/** O quiz da obra: pelo AniList ID ou, na obra sem ele (só do AniDB/Kitsu), pela obra do catálogo. */
+function findQuiz(work: WorkRef) {
+  return work.anilistId !== null ? prisma.quiz.findUnique({ where: { anilistId: work.anilistId } }) : prisma.quiz.findUnique({ where: { catalogEntryId: work.catalogEntryId } });
+}
+
+/** A pessoa acompanha a obra (condição para fazer o quiz). */
+async function isFollowing(work: WorkRef, userId: string): Promise<boolean> {
+  const where = work.anilistId !== null ? { userId_anilistId: { userId, anilistId: work.anilistId } } : { userId_catalogEntryId: { userId, catalogEntryId: work.catalogEntryId } };
+  return Boolean(await prisma.anime.findUnique({ where, select: { id: true } }));
+}
+
+export async function getQuizState(work: WorkRef, userId: string | null): Promise<QuizState> {
+  const quiz = await findQuiz(work);
   const [following, attempt, owned, user] = await Promise.all([
-    userId ? prisma.anime.findUnique({ where: { userId_anilistId: { userId, anilistId } }, select: { id: true } }).then(Boolean) : Promise.resolve(false),
+    userId ? isFollowing(work, userId) : Promise.resolve(false),
     userId && quiz
       ? prisma.quizAttempt.findFirst({ where: { userId, quizId: quiz.id, status: { in: ["IN_PROGRESS", "COMPLETED"] } }, orderBy: { startedAt: "desc" } })
       : Promise.resolve(null),
@@ -78,20 +90,19 @@ export async function getQuizState(anilistId: number, userId: string | null): Pr
   };
 }
 
-async function requireAccess(anilistId: number, userId: string) {
-  const quiz = await prisma.quiz.findUnique({ where: { anilistId } });
+async function requireAccess(work: WorkRef, userId: string) {
+  const quiz = await findQuiz(work);
   if (!quiz) throw new QuizError("NOT_FOUND", "Esta obra ainda não tem quiz.");
   if (quiz.archivedAt) throw new QuizError("UNAVAILABLE", "Este quiz foi arquivado.");
   const questions = await approvedQuestions(quiz.id);
   if (!isComplete(questions.map((q) => q.position))) throw new QuizError("UNAVAILABLE", "Este quiz ainda não tem 10 perguntas aprovadas.");
-  const following = await prisma.anime.findUnique({ where: { userId_anilistId: { userId, anilistId } }, select: { id: true } });
-  if (!following) throw new QuizError("NOT_FOLLOWING", "Acompanhe a obra para fazer o quiz.");
+  if (!(await isFollowing(work, userId))) throw new QuizError("NOT_FOLLOWING", "Acompanhe a obra para fazer o quiz.");
   return { quiz, questions };
 }
 
 /** Inicia (ou retoma) a tentativa. Iniciar é o consentimento de spoiler: só aqui as perguntas passam a ser liberadas. */
-export async function startAttempt(anilistId: number, userId: string): Promise<{ attemptId: string; answered: number }> {
-  const { quiz } = await requireAccess(anilistId, userId);
+export async function startAttempt(work: WorkRef, userId: string): Promise<{ attemptId: string; answered: number }> {
+  const { quiz } = await requireAccess(work, userId);
   const completed = await prisma.quizAttempt.findFirst({ where: { userId, quizId: quiz.id, status: "COMPLETED" } });
   if (completed) throw new QuizError("ALREADY_COMPLETED", "Você já concluiu este quiz. Nova tentativa ainda não está habilitada.");
   const open = await prisma.quizAttempt.findFirst({ where: { userId, quizId: quiz.id, status: "IN_PROGRESS" } });
@@ -103,8 +114,8 @@ export async function startAttempt(anilistId: number, userId: string): Promise<{
 export type QuestionDTO = { position: number; total: number; category: string; text: string; options: [string, string, string, string] };
 
 /** Pergunta atual da tentativa em andamento — sem o gabarito. */
-export async function currentQuestion(anilistId: number, userId: string): Promise<QuestionDTO> {
-  const { quiz, questions } = await requireAccess(anilistId, userId);
+export async function currentQuestion(work: WorkRef, userId: string): Promise<QuestionDTO> {
+  const { quiz, questions } = await requireAccess(work, userId);
   const attempt = await prisma.quizAttempt.findFirst({ where: { userId, quizId: quiz.id, status: "IN_PROGRESS" } });
   if (!attempt) throw new QuizError("NO_ATTEMPT", "Inicie o quiz para ver as perguntas.");
   const q = questions[attempt.answers.length];
@@ -119,9 +130,9 @@ export type AnswerResult = { finished: false; answered: number } | { finished: t
  * não conta duas vezes; sem gabarito na resposta. Na 10ª resposta fecha a tentativa e, com 10/10,
  * concede o título (uma vez).
  */
-export async function submitAnswer(anilistId: number, userId: string, position: number, choice: unknown): Promise<AnswerResult> {
+export async function submitAnswer(work: WorkRef, userId: string, position: number, choice: unknown): Promise<AnswerResult> {
   if (!isValidChoice(choice) || !Number.isInteger(position)) throw new QuizError("BAD_ANSWER", "Escolha uma alternativa de A a D.");
-  const { quiz, questions } = await requireAccess(anilistId, userId);
+  const { quiz, questions } = await requireAccess(work, userId);
   const attempt = await prisma.quizAttempt.findFirst({ where: { userId, quizId: quiz.id, status: "IN_PROGRESS" } });
   if (!attempt) throw new QuizError("NO_ATTEMPT", "Inicie o quiz para responder.");
 
@@ -150,8 +161,8 @@ export async function submitAnswer(anilistId: number, userId: string, position: 
 }
 
 /** Abandona a tentativa em andamento: sem recompensa e sem registro de nota; a coleção e o título atual não mudam. */
-export async function abandonAttempt(anilistId: number, userId: string): Promise<void> {
-  const quiz = await prisma.quiz.findUnique({ where: { anilistId } });
+export async function abandonAttempt(work: WorkRef, userId: string): Promise<void> {
+  const quiz = await findQuiz(work);
   if (!quiz) return;
   await prisma.quizAttempt.updateMany({ where: { userId, quizId: quiz.id, status: "IN_PROGRESS" }, data: { status: "ABANDONED", finishedAt: new Date() } });
 }
@@ -159,7 +170,10 @@ export async function abandonAttempt(anilistId: number, userId: string): Promise
 export type TitleDTO = {
   id: string;
   name: string;
-  anilistId: number;
+  /** Nulo = quiz de obra sem AniList ID; o link usa `workKey`. */
+  anilistId: number | null;
+  /** Chave de endereço da obra (AniList ID ou `anidb-<id>`); nula se a obra saiu do catálogo. */
+  workKey: string | null;
   scope: string;
   equipped: boolean;
   awardedAt: string;
@@ -172,24 +186,34 @@ export async function listTitles(userId: string): Promise<TitleDTO[]> {
     prisma.userTitle.findMany({ where: { userId }, include: { quiz: true }, orderBy: { awardedAt: "desc" } }),
     prisma.user.findUnique({ where: { id: userId }, select: { equippedTitleId: true } }),
   ]);
-  const ids = titles.map((t) => t.quiz.anilistId);
-  const [productions, catalog] = ids.length
-    ? await Promise.all([
-        prisma.production.findMany({ where: { anilistId: { in: ids } }, select: { anilistId: true, titleRomaji: true, titleEnglish: true, titleNative: true, coverImage: true } }),
-        prisma.catalogEntry.findMany({ where: { anilistId: { in: ids } }, select: { anilistId: true, titleRomaji: true, titleEnglish: true, titleNative: true, coverImage: true } }),
-      ])
-    : [[], []];
-  const work = new Map<number, TitleDTO["work"]>();
-  for (const w of [...catalog, ...productions]) if (w.anilistId !== null) work.set(w.anilistId, { titleRomaji: w.titleRomaji, titleEnglish: w.titleEnglish, titleNative: w.titleNative, coverImage: w.coverImage });
-  return titles.map((t) => ({
-    id: t.id,
-    name: t.quiz.titleReward,
-    anilistId: t.quiz.anilistId,
-    scope: t.quiz.scope,
-    equipped: user?.equippedTitleId === t.id,
-    awardedAt: t.awardedAt.toISOString(),
-    work: work.get(t.quiz.anilistId) ?? { titleRomaji: `Obra #${t.quiz.anilistId}`, titleEnglish: null, titleNative: null, coverImage: null },
-  }));
+  const ids = titles.flatMap((t) => (t.quiz.anilistId !== null ? [t.quiz.anilistId] : []));
+  const entryIds = titles.flatMap((t) => (t.quiz.anilistId === null && t.quiz.catalogEntryId ? [t.quiz.catalogEntryId] : []));
+  const select = { id: true, anilistId: true, titleRomaji: true, titleEnglish: true, titleNative: true, coverImage: true } as const;
+  const [productions, catalog, keys] = await Promise.all([
+    ids.length ? prisma.production.findMany({ where: { anilistId: { in: ids } }, select: { anilistId: true, titleRomaji: true, titleEnglish: true, titleNative: true, coverImage: true } }) : Promise.resolve([]),
+    ids.length || entryIds.length ? prisma.catalogEntry.findMany({ where: { OR: [{ anilistId: { in: ids } }, { id: { in: entryIds } }] }, select }) : Promise.resolve([]),
+    catalogKeys(entryIds),
+  ]);
+  const work = new Map<string, TitleDTO["work"]>();
+  const view = (w: { titleRomaji: string; titleEnglish: string | null; titleNative: string | null; coverImage: string | null }) => ({ titleRomaji: w.titleRomaji, titleEnglish: w.titleEnglish, titleNative: w.titleNative, coverImage: w.coverImage });
+  for (const w of catalog) {
+    work.set(`c:${w.id}`, view(w));
+    if (w.anilistId !== null) work.set(`a:${w.anilistId}`, view(w));
+  }
+  for (const w of productions) work.set(`a:${w.anilistId}`, view(w));
+  return titles.map((t) => {
+    const ref = t.quiz.anilistId !== null ? `a:${t.quiz.anilistId}` : `c:${t.quiz.catalogEntryId}`;
+    return {
+      id: t.id,
+      name: t.quiz.titleReward,
+      anilistId: t.quiz.anilistId,
+      workKey: t.quiz.anilistId !== null ? String(t.quiz.anilistId) : (keys.get(t.quiz.catalogEntryId ?? "") ?? null),
+      scope: t.quiz.scope,
+      equipped: user?.equippedTitleId === t.id,
+      awardedAt: t.awardedAt.toISOString(),
+      work: work.get(ref) ?? { titleRomaji: t.quiz.anilistId !== null ? `Obra #${t.quiz.anilistId}` : "Obra do catálogo", titleEnglish: null, titleNative: null, coverImage: null },
+    };
+  });
 }
 
 /** Equipa um título que a pessoa possui (ou nenhum, com `null`). Equipar não altera a coleção. */

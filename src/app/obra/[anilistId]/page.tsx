@@ -6,6 +6,6 @@ import { notFound, permanentRedirect } from "next/navigation";
  */
 export default async function ObraRedirect({ params }: { params: Promise<{ anilistId: string }> }) {
   const { anilistId } = await params;
-  if (!/^\d{1,9}$/.test(anilistId) || Number(anilistId) <= 0) notFound();
+  if (!(/^\d{1,9}$/.test(anilistId) && Number(anilistId) > 0) && !/^(anidb|kitsu)-\d{1,9}$/.test(anilistId)) notFound();
   permanentRedirect(`/anime/${anilistId}`);
 }

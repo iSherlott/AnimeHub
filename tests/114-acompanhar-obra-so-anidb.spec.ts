@@ -7,7 +7,7 @@ import { SESSION_COOKIE_NAME, TEST_ADMIN_EMAIL, TEST_ADMIN_SESSION_TOKEN, TEST_U
 
 // Obras sem AniList ID (só do AniDB) também se acompanham: o item de lista não tem AniList ID e a identidade é a obra do
 // catálogo. Dá para marcar o andamento e dar nota (entra na nota do site), aparece em Minha Lista e no perfil, o Explorar
-// reconhece e acompanha; comunidade fica de fora (409). Ao ligar a obra à AniList, o item ganha o AniList ID — e, se a
+// reconhece e acompanha; a comunidade vai pela obra do catálogo (spec 116). Ao ligar a obra à AniList, o item ganha o AniList ID — e, se a
 // pessoa já tinha a obra da AniList, fica um item só, com o que ela tinha marcado.
 const AID = 114901;
 const AID_CARD = 114902;
@@ -118,13 +118,13 @@ test.describe.serial("Acompanhar obras só do AniDB", () => {
     await expect(tile.getByRole("link").first()).toHaveAttribute("href", `/anime/anidb-${AID}`);
   });
 
-  test("API: duplicado, fora da plataforma, chave inválida; comunidade não existe para a obra", async ({ request }) => {
+  test("API: duplicado, fora da plataforma, chave inválida; comentários da obra abertos a quem acompanha", async ({ request }) => {
     expect((await request.post("/api/anime", { data: { work: `anidb-${AID}` } })).status()).toBe(409);
     expect((await request.post("/api/anime", { data: { work: `anidb-${AID_OFF}` } })).status()).toBe(403);
     expect((await request.post("/api/anime", { data: { work: "mal-1" } })).status()).toBe(400);
     expect((await request.post("/api/anime", { data: { work: "anidb-999999999" } })).status()).toBe(404);
-    expect((await request.get(`/api/anime/${animeId}/comments`)).status()).toBe(409);
-    expect((await request.post(`/api/anime/${animeId}/comments`, { data: { body: "oi" } })).status()).toBe(409);
+    // A comunidade vai pela obra do catálogo (spec 116).
+    expect((await request.get(`/api/anime/${animeId}/comments`)).status()).toBe(200);
   });
 
   test("o Explorar reconhece a obra acompanhada e acompanha outra direto do cartão", async ({ page }) => {

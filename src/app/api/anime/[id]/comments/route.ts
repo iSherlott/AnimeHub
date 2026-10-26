@@ -2,13 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { isBlank } from "@/lib/text";
+import { refOf, workWhere } from "@/lib/workRef";
 
 type Params = { params: Promise<{ id: string }> };
 
 const MAX_BODY_LENGTH = 2000;
 const PAGE_SIZE = 10;
-/** Comentários são da obra da AniList: obra só do AniDB/Kitsu ainda não tem comunidade. */
-const NO_COMMUNITY = "Esta obra ainda não tem comunidade: os comentários chegam quando ela for ligada ao catálogo principal.";
 
 /**
  * Comentários (Epic 15) são chaveados por anilistId, não pelo id da linha de
@@ -21,7 +20,7 @@ const NO_COMMUNITY = "Esta obra ainda não tem comunidade: os comentários chega
 async function loadOwnedAnime(id: string, userId: string) {
   const anime = await prisma.anime.findUnique({
     where: { id },
-    select: { anilistId: true, userId: true },
+    select: { anilistId: true, catalogEntryId: true, userId: true },
   });
   if (!anime || anime.userId !== userId) return null;
   return anime;
@@ -36,19 +35,21 @@ export async function GET(request: Request, { params }: Params) {
   if (!anime) {
     return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
   }
-  if (anime.anilistId === null) return NextResponse.json({ error: NO_COMMUNITY }, { status: 409 });
+  // Obra sem AniList ID (só do AniDB/Kitsu): os comentários são da obra do catálogo.
+  const work = refOf(anime);
+  if (!work) return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
 
   const url = new URL(request.url);
   const requestedPage = Number(url.searchParams.get("page"));
   const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
 
   const totalCount = await prisma.comment.count({
-    where: { anilistId: anime.anilistId, deletedAt: null },
+    where: { ...workWhere(work), deletedAt: null },
   });
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const comments = await prisma.comment.findMany({
-    where: { anilistId: anime.anilistId, deletedAt: null },
+    where: { ...workWhere(work), deletedAt: null },
     orderBy: { createdAt: "asc" },
     skip: (page - 1) * PAGE_SIZE,
     take: PAGE_SIZE,
@@ -92,7 +93,9 @@ export async function POST(request: Request, { params }: Params) {
   if (!anime) {
     return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
   }
-  if (anime.anilistId === null) return NextResponse.json({ error: NO_COMMUNITY }, { status: 409 });
+  // Obra sem AniList ID (só do AniDB/Kitsu): os comentários são da obra do catálogo.
+  const work = refOf(anime);
+  if (!work) return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
 
   let body;
   try {
@@ -116,12 +119,12 @@ export async function POST(request: Request, { params }: Params) {
   }
 
   const comment = await prisma.comment.create({
-    data: { anilistId: anime.anilistId, userId: user.id, body: text },
+    data: { anilistId: work.anilistId, catalogEntryId: work.catalogEntryId, userId: user.id, body: text },
     include: { user: { select: { id: true, displayName: true } } },
   });
 
   const totalCount = await prisma.comment.count({
-    where: { anilistId: anime.anilistId, deletedAt: null },
+    where: { ...workWhere(work), deletedAt: null },
   });
 
   return NextResponse.json(

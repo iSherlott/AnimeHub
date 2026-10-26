@@ -67,6 +67,14 @@ acompanhamento é por obra" era violada pelo "Adiar" ("parei no EP02", "2 episó
   nos avisos, e comentários/publicações respondem 409 até ela ser ligada à AniList. Ao ligar (`mergeListEntriesInto`), o
   item ganha o AniList ID; se a pessoa já tinha a obra da AniList, fica um item só, que herda favorito, andamento, nota e
   links que lhe faltavam. A migração para (não escolhe sozinha) se houver dois itens da mesma pessoa na mesma obra.
+- Comunidade da obra sem AniList ID (migração `20261105100000_catalog_only_community`): publicações (`Post`), comentários
+  (`Comment`) e quiz (`Quiz`) ganharam `catalogEntryId` (SET NULL se a obra sair do catálogo); `Comment.anilistId` e
+  `Quiz.anilistId` ficaram opcionais. A obra é referenciada pela chave de endereço (`src/lib/workRef.ts`): o AniList ID
+  ou `anidb-<id>`/`kitsu-<id>` — em `/obra/<chave>/quiz`, `/api/quiz/<chave>`, `/api/posts?work=<chave>`,
+  `/publicar?obra=<chave>` e na carga de quiz (`"anidbId"` ou `"work"`). Com AniList ID, vale ele; sem, a obra do catálogo
+  (nunca "anilistId nulo" sozinho, que casaria com qualquer obra sem AniList ID). Ao ligar a obra à AniList
+  (`moveCommunity`), tudo vai junto; se a obra da AniList já tem quiz, o do AniDB é arquivado e desligado (perguntas,
+  tentativas e títulos ficam). Os tópicos em alta do feed continuam só com obras da AniList.
 - Extras do AniDB (desde 01/11/2026): os códigos `S` (especial), `C` (abertura/encerramento), `T` (trailer/promocional),
   `P` (paródia) e `O` (outro) viram linhas de `EpisodeExtra`, identidade (obra do catálogo, código). Ficam numa seção
   própria da página da obra e do detalhe no admin: não contam como lançados, não entram no calendário nem no sino e não

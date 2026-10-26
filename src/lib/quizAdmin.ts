@@ -2,18 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { logEvent, type AdminActor } from "@/lib/adminImport/pipeline";
 import type { ParsedQuiz } from "@/lib/quizImport";
 import { QUIZ_LENGTH } from "@/lib/quiz";
+import { resolveWorkKey, type ResolvedWork } from "@/lib/workRef";
 
-export type ImportOutcome = { anilistId: number; action: "created" | "replaced"; approved: boolean };
+/** `work` é a chave da obra (AniList ID ou `anidb-<id>`); `anilistId` só quando ela é da AniList. */
+export type ImportOutcome = { anilistId: number | null; work: string; action: "created" | "replaced"; approved: boolean };
 export type ImportResult = { ok: true; outcomes: ImportOutcome[] } | { ok: false; errors: string[] };
 
-/** A obra precisa existir no catálogo (produção ou catálogo da temporada): evita quiz para um id digitado errado. */
-async function knownWork(anilistId: number): Promise<boolean> {
-  const [production, catalog] = await Promise.all([
-    prisma.production.findUnique({ where: { anilistId }, select: { id: true } }),
-    prisma.catalogEntry.findUnique({ where: { anilistId }, select: { id: true } }),
-  ]);
-  return Boolean(production || catalog);
-}
 
 /**
  * Grava a carga já validada. Tudo ou nada: se qualquer obra falhar (id desconhecido, quiz com tentativas),
@@ -23,13 +17,20 @@ async function knownWork(anilistId: number): Promise<boolean> {
  */
 export async function importQuizzes(quizzes: ParsedQuiz[], options: { approve: boolean; actor: AdminActor }): Promise<ImportResult> {
   const errors: string[] = [];
-  const existing = new Map<number, { id: string; attempts: number }>();
+  const existing = new Map<string, { id: string; attempts: number }>();
+  // A obra precisa existir no catálogo (produção ou catálogo; sem AniList ID, na plataforma): evita quiz para um id digitado errado.
+  const works = new Map<string, ResolvedWork>();
   for (const q of quizzes) {
-    if (!(await knownWork(q.anilistId))) errors.push(`Obra ${q.anilistId}: não está no catálogo. Abra a obra (ou carregue a temporada) antes de criar o quiz.`);
-    const found = await prisma.quiz.findUnique({ where: { anilistId: q.anilistId }, select: { id: true, _count: { select: { attempts: true } } } });
+    const work = await resolveWorkKey(q.work);
+    if (!work) {
+      errors.push(`Obra ${q.work}: não está no catálogo. Abra a obra (ou carregue a temporada) antes de criar o quiz.`);
+      continue;
+    }
+    works.set(q.work, work);
+    const found = await prisma.quiz.findUnique({ where: work.anilistId !== null ? { anilistId: work.anilistId } : { catalogEntryId: work.catalogEntryId }, select: { id: true, _count: { select: { attempts: true } } } });
     if (found) {
-      existing.set(q.anilistId, { id: found.id, attempts: found._count.attempts });
-      if (found._count.attempts > 0) errors.push(`Obra ${q.anilistId}: o quiz já tem ${found._count.attempts} tentativa(s); as perguntas não podem ser substituídas.`);
+      existing.set(q.work, { id: found.id, attempts: found._count.attempts });
+      if (found._count.attempts > 0) errors.push(`Obra ${q.work}: o quiz já tem ${found._count.attempts} tentativa(s); as perguntas não podem ser substituídas.`);
     }
   }
   if (errors.length > 0) return { ok: false, errors };
@@ -37,10 +38,11 @@ export async function importQuizzes(quizzes: ParsedQuiz[], options: { approve: b
   const outcomes: ImportOutcome[] = [];
   await prisma.$transaction(async (tx) => {
     for (const q of quizzes) {
-      const found = existing.get(q.anilistId);
+      const found = existing.get(q.work);
+      const work = works.get(q.work) as ResolvedWork;
       const quiz = found
         ? await tx.quiz.update({ where: { id: found.id }, data: { scope: q.scope, titleReward: q.titleReward } })
-        : await tx.quiz.create({ data: { anilistId: q.anilistId, scope: q.scope, titleReward: q.titleReward } });
+        : await tx.quiz.create({ data: { anilistId: work.anilistId, catalogEntryId: work.catalogEntryId, scope: q.scope, titleReward: q.titleReward } });
       if (found) await tx.quizQuestion.deleteMany({ where: { quizId: quiz.id } });
       await tx.quizQuestion.createMany({
         data: q.questions.map((question, i) => ({
@@ -56,31 +58,34 @@ export async function importQuizzes(quizzes: ParsedQuiz[], options: { approve: b
           approved: options.approve,
         })),
       });
-      outcomes.push({ anilistId: q.anilistId, action: found ? "replaced" : "created", approved: options.approve });
+      outcomes.push({ anilistId: work.anilistId, work: work.key, action: found ? "replaced" : "created", approved: options.approve });
     }
   });
   for (const o of outcomes) {
     await logEvent({
       source: "Quiz",
       event: o.action === "created" ? "Quiz created" : "Quiz replaced",
-      message: `Quiz da obra #${o.anilistId} ${o.action === "created" ? "criado" : "recarregado"} com ${QUIZ_LENGTH} perguntas (${o.approved ? "aprovadas" : "aguardando revisão"}).`,
-      context: `Obra AniList #${o.anilistId}`,
+      message: `Quiz da obra #${o.work} ${o.action === "created" ? "criado" : "recarregado"} com ${QUIZ_LENGTH} perguntas (${o.approved ? "aprovadas" : "aguardando revisão"}).`,
+      context: o.anilistId !== null ? `Obra AniList #${o.anilistId}` : `Obra ${o.work}`,
       actor: options.actor,
     });
   }
   return { ok: true, outcomes };
 }
 
+/** Como a obra do quiz aparece no registro: "AniList #154587" ou, sem AniList ID, a obra do catálogo. */
+const workLabel = (quiz: { anilistId: number | null; catalogEntryId: string | null }) => (quiz.anilistId !== null ? `AniList #${quiz.anilistId}` : `do catálogo ${quiz.catalogEntryId ?? "(removida)"}`);
+
 /** Aprova/desaprova uma pergunta (ou todas, sem `questionId`). Devolve quantas perguntas mudaram. */
 export async function setApproval(quizId: string, approved: boolean, actor: AdminActor, questionId?: string): Promise<number | null> {
-  const quiz = await prisma.quiz.findUnique({ where: { id: quizId }, select: { anilistId: true } });
+  const quiz = await prisma.quiz.findUnique({ where: { id: quizId }, select: { anilistId: true, catalogEntryId: true } });
   if (!quiz) return null;
   const { count } = await prisma.quizQuestion.updateMany({ where: { quizId, ...(questionId ? { id: questionId } : {}) }, data: { approved } });
   await logEvent({
     source: "Quiz",
     event: approved ? "Quiz approved" : "Quiz approval removed",
-    message: `${questionId ? "1 pergunta" : `${count} perguntas`} do quiz da obra #${quiz.anilistId} ${approved ? "aprovada(s)" : "voltaram para revisão"}.`,
-    context: `Obra AniList #${quiz.anilistId}`,
+    message: `${questionId ? "1 pergunta" : `${count} perguntas`} do quiz da obra ${workLabel(quiz)} ${approved ? "aprovada(s)" : "voltaram para revisão"}.`,
+    context: `Obra ${workLabel(quiz)}`,
     actor,
   });
   return count;
@@ -88,11 +93,11 @@ export async function setApproval(quizId: string, approved: boolean, actor: Admi
 
 /** Remove o quiz — só se ninguém respondeu (senão o histórico e os títulos perdem a origem). */
 export async function deleteQuiz(quizId: string, actor: AdminActor): Promise<"ok" | "not-found" | "has-attempts"> {
-  const quiz = await prisma.quiz.findUnique({ where: { id: quizId }, select: { anilistId: true, _count: { select: { attempts: true, titles: true } } } });
+  const quiz = await prisma.quiz.findUnique({ where: { id: quizId }, select: { anilistId: true, catalogEntryId: true, _count: { select: { attempts: true, titles: true } } } });
   if (!quiz) return "not-found";
   if (quiz._count.attempts > 0 || quiz._count.titles > 0) return "has-attempts";
   await prisma.quiz.delete({ where: { id: quizId } });
-  await logEvent({ source: "Quiz", event: "Quiz deleted", message: `Quiz da obra #${quiz.anilistId} removido.`, context: `Obra AniList #${quiz.anilistId}`, actor });
+  await logEvent({ source: "Quiz", event: "Quiz deleted", message: `Quiz da obra ${workLabel(quiz)} removido.`, context: `Obra ${workLabel(quiz)}`, actor });
   return "ok";
 }
 
@@ -101,7 +106,7 @@ export async function setArchived(quizId: string, archived: boolean, actor: Admi
   const quiz = await prisma.quiz.findUnique({ where: { id: quizId } });
   if (!quiz) return false;
   await prisma.quiz.update({ where: { id: quizId }, data: { archivedAt: archived ? new Date() : null } });
-  await prisma.adminLog.create({ data: { source: "Quiz", event: archived ? "Quiz archived" : "Quiz unarchived", message: `Quiz da obra #${quiz.anilistId} ${archived ? "arquivado (fora do ar)" : "desarquivado"}.`, context: `quiz:${quizId}`, adminName: actor.name } });
+  await prisma.adminLog.create({ data: { source: "Quiz", event: archived ? "Quiz archived" : "Quiz unarchived", message: `Quiz da obra ${workLabel(quiz)} ${archived ? "arquivado (fora do ar)" : "desarquivado"}.`, context: `quiz:${quizId}`, adminName: actor.name } });
   return true;
 }
 

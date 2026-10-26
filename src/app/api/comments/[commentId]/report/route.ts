@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { refOf } from "@/lib/workRef";
 import { requireUser } from "@/lib/auth/session";
 
 type Params = { params: Promise<{ commentId: string }> };
@@ -17,16 +18,20 @@ export async function POST(request: Request, { params }: Params) {
   const { commentId } = await params;
   const comment = await prisma.comment.findUnique({
     where: { id: commentId },
-    select: { anilistId: true, deletedAt: true },
+    select: { anilistId: true, catalogEntryId: true, deletedAt: true },
   });
   if (!comment || comment.deletedAt) {
     return NextResponse.json({ error: "Comentário não encontrado" }, { status: 404 });
   }
 
-  const ownsAnime = await prisma.anime.findFirst({
-    where: { userId: user.id, anilistId: comment.anilistId },
-    select: { id: true },
-  });
+  // A obra do comentário: a da AniList ou, sem AniList ID, a do catálogo (nunca "qualquer obra sem AniList ID").
+  const work = refOf(comment);
+  const ownsAnime = work
+    ? await prisma.anime.findFirst({
+        where: { userId: user.id, ...(work.anilistId !== null ? { anilistId: work.anilistId } : { catalogEntryId: work.catalogEntryId }) },
+        select: { id: true },
+      })
+    : null;
   if (!ownsAnime) {
     return NextResponse.json({ error: "Comentário não encontrado" }, { status: 404 });
   }

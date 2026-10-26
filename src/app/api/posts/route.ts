@@ -6,6 +6,7 @@ import { loadRecommendedPage } from "@/lib/feedRecommended";
 import { createPostResponse } from "@/lib/createPost";
 import { ensureProduction } from "@/lib/production";
 import { rateLimitedResponse } from "@/lib/rateLimit";
+import { resolveWorkKey, type WorkRef } from "@/lib/workRef";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
@@ -40,9 +41,9 @@ async function loadFollowingPage(userId: string, cursor: string | null, limit: n
  * mais antiga, com cursor. `anilistId` restringe às discussões de uma obra
  * (seção "Discussões" do detalhe público).
  */
-async function loadRecentPage(cursor: string | null, limit: number, anilistId: number | null) {
+async function loadRecentPage(cursor: string | null, limit: number, work: WorkRef | null) {
   const rows = await prisma.post.findMany({
-    where: { deletedAt: null, ...(anilistId ? { anilistId } : {}) },
+    where: { deletedAt: null, ...(work ? (work.anilistId !== null ? { anilistId: work.anilistId } : { anilistId: null, catalogEntryId: work.catalogEntryId }) : {}) },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: limit + 1,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -73,12 +74,13 @@ export async function GET(request: Request) {
 
   if (tab === "recent") {
     const user = await getCurrentUser();
+    // `anilistId` (obra da AniList) ou `work` (a chave da obra: AniList ID ou `anidb-<id>`/`kitsu-<id>`).
     const anilistParam = Number(searchParams.get("anilistId"));
-    const { page, nextCursor } = await loadRecentPage(
-      searchParams.get("cursor"),
-      limit,
-      Number.isInteger(anilistParam) && anilistParam > 0 ? anilistParam : null
-    );
+    const workParam = searchParams.get("work");
+    const work = workParam ? await resolveWorkKey(workParam) : Number.isInteger(anilistParam) && anilistParam > 0 ? ({ anilistId: anilistParam, catalogEntryId: null } as const) : null;
+    // Obra pedida e não encontrada: nenhuma publicação (e não o feed inteiro).
+    if (workParam && !work) return NextResponse.json({ posts: [], nextCursor: null });
+    const { page, nextCursor } = await loadRecentPage(searchParams.get("cursor"), limit, work);
     return NextResponse.json({ posts: await toDtoPage(page, user?.id ?? null), nextCursor });
   }
 
@@ -132,6 +134,15 @@ export async function POST(request: Request) {
   }
 
   let anime = null;
+  // Obra sem AniList ID (só do AniDB/Kitsu): `work` = "anidb-<id>" — o contexto é a obra do catálogo.
+  if ((body.anilistId === undefined || body.anilistId === null) && typeof body.work === "string" && body.work.trim()) {
+    const work = await resolveWorkKey(body.work);
+    if (!work) return NextResponse.json({ error: "Obra não encontrada" }, { status: 404 });
+    if (work.anilistId === null) {
+      return createPostResponse(user, body, { anilistId: null, catalogEntryId: work.catalogEntryId, titleRomaji: work.titleRomaji, titleEnglish: work.titleEnglish, coverImage: work.coverImage });
+    }
+    body.anilistId = work.anilistId;
+  }
   if (body.anilistId !== undefined && body.anilistId !== null) {
     const anilistId = Number(body.anilistId);
     if (!Number.isInteger(anilistId) || anilistId <= 0) {
