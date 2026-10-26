@@ -7,7 +7,7 @@ import { AppLink } from "@/components/AppLink";
 import { LinkButton } from "@/components/LinkButton";
 import { PageContainer, PageIntro } from "@/components/PageShell";
 import { SideBox } from "@/components/SideBox";
-import { FanButton, FriendButton, RatingBox, ScrapForm, TestimonialDecision, TestimonialForm, DeleteButton } from "@/components/profile/ProfileOrkut";
+import { FanButton, FriendButton, ProfileReportButton, RatingBox, ScrapForm, TestimonialDecision, TestimonialForm, DeleteButton } from "@/components/profile/ProfileOrkut";
 import { CommunityGrid, NoteItem, PeopleGrid, ProfileSection, ScrapList } from "@/components/profile/ProfileSections";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -238,7 +238,14 @@ export default async function UserProfilePage({ params }: Params) {
                       when={t.decidedAt ?? t.updatedAt}
                       body={t.body}
                       testId={`testimonial-${t.id}`}
-                      actions={viewerId && (viewerId === id || viewerId === t.authorId) ? <DeleteButton url={`/api/testimonials/${t.id}`} testId={`testimonial-delete-${t.id}`} /> : undefined}
+                      actions={
+                        viewerId ? (
+                          <>
+                            {viewerId !== t.authorId && <ProfileReportButton kind="testimonial" id={t.id} />}
+                            {(viewerId === id || viewerId === t.authorId) && <DeleteButton url={`/api/testimonials/${t.id}`} testId={`testimonial-delete-${t.id}`} />}
+                          </>
+                        ) : undefined
+                      }
                     />
                   ))}
                 </Box>

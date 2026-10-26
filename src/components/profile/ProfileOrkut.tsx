@@ -6,7 +6,9 @@ import { Box, Button, TextField, Typography } from "@mui/material";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
+import NextLink from "next/link";
 import { ELEVATED_BUTTON_SX } from "@/components/ExploreCard";
+import { ReportDialog } from "@/components/ReportDialog";
 
 type RatingKey = "otaku" | "gentil" | "semSpoiler";
 type Ratings = Record<RatingKey, number>;
@@ -352,5 +354,73 @@ export function DeleteButton({ url, testId, label = "Apagar" }: { url: string; t
     <Button size="small" color="inherit" disabled={busy} onClick={remove} sx={{ fontSize: 12, color: "text.secondary", minWidth: 0 }} data-testid={testId}>
       {label}
     </Button>
+  );
+}
+
+/** "Denunciar" um recado ou um depoimento (motivo fixo e confirmação, como nas publicações). */
+export function ProfileReportButton({ kind, id }: { kind: "scrap" | "testimonial"; id: string }) {
+  const [open, setOpen] = useState(false);
+  const [done, setDone] = useState(false);
+  if (done)
+    return (
+      <Typography sx={{ fontSize: 12, color: "text.secondary" }} data-testid={`reported-${kind}-${id}`}>
+        Denunciado
+      </Typography>
+    );
+  return (
+    <>
+      <Button size="small" color="inherit" onClick={() => setOpen(true)} sx={{ fontSize: 12, color: "text.secondary", minWidth: 0 }} data-testid={`report-${kind}-${id}`}>
+        Denunciar
+      </Button>
+      <ReportDialog open={open} onClose={() => setOpen(false)} target={{ kind, id }} targetLabel={kind === "scrap" ? "recado" : "depoimento"} onReported={() => setDone(true)} />
+    </>
+  );
+}
+
+export type ProfileReportView = { id: string; kind: "scrap" | "testimonial"; reason: string; reporter: string; author: string; profile: string; body: string; removed: boolean; href: string };
+
+/** Fila de denúncias de recados e depoimentos (Admin → Acesso e moderação): remover o conteúdo ou mantê-lo. */
+export function ProfileReportsQueue({ reports }: { reports: ProfileReportView[] }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+  async function resolve(id: string, action: "remove" | "keep") {
+    setBusy(id);
+    try {
+      const r = await send(`/api/admin/profile-reports/${id}`, "POST", { action });
+      if (r.ok) router.refresh();
+    } finally {
+      setBusy(null);
+    }
+  }
+  if (reports.length === 0)
+    return (
+      <Typography sx={{ fontSize: 14, color: "text.secondary" }} data-testid="profile-reports-empty">
+        Nenhuma denúncia aberta nos perfis.
+      </Typography>
+    );
+  return (
+    <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 1.5 }} data-testid="profile-reports">
+      {reports.map((r) => (
+        <Box component="li" key={r.id} data-testid={`profile-report-${r.id}`} sx={{ p: 1.5, border: 1, borderColor: "divider", borderRadius: "10px", display: "flex", flexDirection: "column", gap: 0.75 }}>
+          <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
+            {r.kind === "scrap" ? "Recado" : "Depoimento"} de {r.author} no perfil de{" "}
+            <NextLink href={r.href} style={{ color: "inherit" }}>
+              {r.profile}
+            </NextLink>{" "}
+            · denunciado por {r.reporter}
+          </Typography>
+          <Typography sx={{ fontSize: 14, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{r.body.slice(0, 400)}</Typography>
+          <Typography sx={{ fontSize: 13 }}>Motivo: {r.reason}</Typography>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button size="small" color="error" variant="outlined" disabled={busy === r.id || r.removed} onClick={() => void resolve(r.id, "remove")} data-testid={`profile-report-remove-${r.id}`}>
+              {r.removed ? "Já removido" : "Remover"}
+            </Button>
+            <Button size="small" disabled={busy === r.id} onClick={() => void resolve(r.id, "keep")} data-testid={`profile-report-keep-${r.id}`}>
+              Manter
+            </Button>
+          </Box>
+        </Box>
+      ))}
+    </Box>
   );
 }

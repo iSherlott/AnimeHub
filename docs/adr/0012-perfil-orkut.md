@@ -83,3 +83,22 @@ A pessoa usuária escolheu trocar o "amigo = seguir mútuo" por **pedido de amiz
   depoimentos ou avaliações. Ela só acrescenta.
 - **Código e testes:** as regras ficam em `src/lib/friends.ts`. Testes: spec 123, que inclui a carga da migração; o spec
   121 foi ajustado.
+
+## Revisão de 26/10/2026 — moderação dos perfis
+
+- **Denunciar.** Recados e depoimentos aprovados têm o botão "Denunciar", com o mesmo fluxo das publicações:
+  - um dos motivos fixos (spam, assédio, spoiler sem aviso, outro);
+  - uma confirmação;
+  - o retorno discreto "Denunciado".
+- **Regras.**
+  - Quem escreveu não denuncia o próprio conteúdo.
+  - Depoimento pendente não é denunciável: quem recebe recusa.
+  - Cada pessoa tem no máximo uma denúncia aberta por conteúdo.
+  - Até 20 denúncias por minuto por conta.
+- **Fila.** Admin → Acesso e moderação ganhou "Denúncias dos perfis" (permissão `moderation`).
+  - **Remover** esconde o recado (marcado como apagado) ou o depoimento (status `REMOVED`) e fecha todas as denúncias
+    abertas do mesmo conteúdo.
+  - **Manter** fecha as denúncias sem mexer no conteúdo.
+  - Quem resolveu e a ação (`REMOVED`/`KEPT`) ficam registrados.
+- **Banco.** `20261111100000_profile_reports` cria `ProfileReport` e só acrescenta.
+- **Testes.** Spec 124.

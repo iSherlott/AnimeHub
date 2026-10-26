@@ -102,6 +102,8 @@ model User {
   friendshipsB         Friendship[]     @relation("FriendshipB")
   friendRequestsSent     FriendRequest[] @relation("FriendRequestFrom")
   friendRequestsReceived FriendRequest[] @relation("FriendRequestTo")
+  profileReports         ProfileReport[] @relation("ProfileReporter")
+  profileReportsResolved ProfileReport[] @relation("ProfileReportResolver")
 
   @@index([email])
 }
@@ -1646,6 +1648,7 @@ model Scrap {
   body      String
   createdAt DateTime  @default(now())
   deletedAt DateTime?
+  reports   ProfileReport[]
 
   @@index([profileId, deletedAt, createdAt])
 }
@@ -1659,11 +1662,12 @@ model Testimonial {
   authorId   String
   author     User      @relation("TestimonialAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   body       String
-  /// PENDING | APPROVED | REJECTED
+  /// PENDING | APPROVED | REJECTED | REMOVED (removido pela moderação)
   status     String    @default("PENDING")
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @default(now()) @updatedAt
   decidedAt  DateTime?
+  reports    ProfileReport[]
 
   @@unique([profileId, authorId])
   @@index([profileId, status])
@@ -1720,4 +1724,28 @@ model FriendRequest {
 
   @@id([fromId, toId])
   @@index([toId])
+}
+
+/// Denúncia de um recado ou de um depoimento (perfil estilo Orkut), com um dos motivos fixos (`REPORT_REASONS`). Vai para
+/// Admin → Acesso e moderação; remover esconde o conteúdo e fecha todas as denúncias dele.
+model ProfileReport {
+  id            String       @id @default(cuid())
+  reporterId    String
+  reporter      User         @relation("ProfileReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  scrapId       String?
+  scrap         Scrap?       @relation(fields: [scrapId], references: [id], onDelete: Cascade)
+  testimonialId String?
+  testimonial   Testimonial? @relation(fields: [testimonialId], references: [id], onDelete: Cascade)
+  /// SPAM | HARASSMENT | UNMARKED_SPOILER | OTHER
+  reason        String
+  createdAt     DateTime     @default(now())
+  resolvedAt    DateTime?
+  resolvedById  String?
+  resolvedBy    User?        @relation("ProfileReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  /// REMOVED (conteúdo removido) | KEPT (mantido)
+  action        String?
+
+  @@index([resolvedAt])
+  @@index([scrapId])
+  @@index([testimonialId])
 }

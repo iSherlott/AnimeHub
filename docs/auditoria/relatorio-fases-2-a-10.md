@@ -271,3 +271,19 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 - **Bloqueio:** desfaz a amizade.
 - **Banco.** `20261110100000_friendships`: quem já se seguia mutuamente vira amigo.
 - **Testes.** Spec 123; spec 121 ajustado.
+
+## Depois: revisão de interface e moderação dos perfis (26/10)
+
+- **Revisão de interface** (desktop e celular):
+  - o sino fica na barra também no celular;
+  - "Adicionar como amigo" fica ao lado de "Seguir perfil";
+  - no celular, o perfil abre pelo cabeçalho;
+  - no celular, a comunidade tem um cabeçalho compacto;
+  - o próprio tópico deixou de contar como novidade;
+  - o rótulo da busca virou "Busca no Feed".
+- **Moderação dos perfis.**
+  - Recados e depoimentos podem ser denunciados, com motivo e confirmação.
+  - A fila "Denúncias dos perfis" fica em Acesso e moderação: remover ou manter, e uma decisão fecha todas as
+    denúncias do mesmo conteúdo.
+- **Banco.** `20261111100000_profile_reports` (só acrescenta).
+- **Testes.** Spec 124.

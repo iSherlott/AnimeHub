@@ -3,6 +3,7 @@ import { blockedUserIdSet, blockRelation } from "@/lib/blocks";
 import { isBlank } from "@/lib/text";
 import { notifySocial } from "@/lib/socialNotifications";
 import { areFriends } from "@/lib/friends";
+import { isReportReason, REPORT_REASON_LABELS } from "@/lib/reportReasons";
 
 /**
  * Perfil estilo Orkut, com o tema do Anime Hub: recados (qualquer conta), depoimentos (só amigos, com aprovação), fãs e
@@ -147,4 +148,76 @@ export async function ratingSummary(targetId: string, viewerId: string | null) {
   ]);
   const avg = (k: RatingKey) => Math.round((agg._avg[k] ?? 0) * 10) / 10;
   return { votes: agg._count._all, average: { otaku: avg("otaku"), gentil: avg("gentil"), semSpoiler: avg("semSpoiler") }, mine };
+}
+
+// ---------- Moderação (denúncias de recados e depoimentos) ----------
+
+export type ProfileContentKind = "scrap" | "testimonial";
+
+/**
+ * Denunciar um recado ou um depoimento aprovado, com um dos motivos fixos. Quem escreveu não denuncia o próprio. Uma
+ * denúncia aberta por pessoa e conteúdo (repetir não duplica). Vai para Admin → Acesso e moderação.
+ */
+export async function reportProfileContent(reporterId: string, kind: ProfileContentKind, contentId: string, reason: unknown): Promise<{ ok: true } | ProfileError> {
+  if (!isReportReason(reason)) return { ok: false, status: 400, error: "Escolha o motivo da denúncia." };
+  const content =
+    kind === "scrap"
+      ? await prisma.scrap.findFirst({ where: { id: contentId, deletedAt: null }, select: { authorId: true } })
+      : await prisma.testimonial.findFirst({ where: { id: contentId, status: "APPROVED" }, select: { authorId: true } });
+  if (!content) return { ok: false, status: 404, error: kind === "scrap" ? "Recado não encontrado." : "Depoimento não encontrado." };
+  if (content.authorId === reporterId) return { ok: false, status: 400, error: "Não dá para denunciar o que você mesmo escreveu." };
+  const ref = kind === "scrap" ? { scrapId: contentId } : { testimonialId: contentId };
+  const open = await prisma.profileReport.findFirst({ where: { reporterId, ...ref, resolvedAt: null }, select: { id: true } });
+  if (!open) await prisma.profileReport.create({ data: { reporterId, ...ref, reason } });
+  return { ok: true };
+}
+
+/** Fila das denúncias abertas (as mais antigas primeiro), com o conteúdo, quem escreveu, em que perfil e o motivo. */
+export async function openProfileReports() {
+  const person = { select: { id: true, displayName: true } } as const;
+  const rows = await prisma.profileReport.findMany({
+    where: { resolvedAt: null },
+    orderBy: { createdAt: "asc" },
+    take: 100,
+    include: {
+      reporter: person,
+      scrap: { select: { id: true, body: true, deletedAt: true, author: person, profile: person } },
+      testimonial: { select: { id: true, body: true, status: true, author: person, profile: person } },
+    },
+  });
+  return rows.flatMap((r) => {
+    const c = r.scrap ?? r.testimonial;
+    if (!c) return [];
+    const kind: ProfileContentKind = r.scrap ? "scrap" : "testimonial";
+    return [
+      {
+        id: r.id,
+        kind,
+        reason: isReportReason(r.reason) ? REPORT_REASON_LABELS[r.reason] : r.reason,
+        reporter: r.reporter.displayName,
+        author: c.author.displayName,
+        profile: c.profile.displayName,
+        body: c.body,
+        removed: r.scrap ? r.scrap.deletedAt !== null : r.testimonial?.status === "REMOVED",
+        href: `/users/${c.profile.id}#${kind === "scrap" ? "recados" : "depoimentos"}`,
+      },
+    ];
+  });
+}
+
+/** Resolver (moderação): remover esconde o recado/depoimento; as denúncias abertas do mesmo conteúdo fecham juntas. */
+export async function resolveProfileReport(reportId: string, action: "remove" | "keep", moderatorId: string): Promise<{ ok: true } | ProfileError> {
+  const r = await prisma.profileReport.findUnique({ where: { id: reportId }, select: { scrapId: true, testimonialId: true, resolvedAt: true } });
+  if (!r) return { ok: false, status: 404, error: "Denúncia não encontrada." };
+  if (r.resolvedAt) return { ok: false, status: 409, error: "Denúncia já resolvida." };
+  const now = new Date();
+  if (action === "remove") {
+    if (r.scrapId) await prisma.scrap.updateMany({ where: { id: r.scrapId, deletedAt: null }, data: { deletedAt: now } });
+    if (r.testimonialId) await prisma.testimonial.update({ where: { id: r.testimonialId }, data: { status: "REMOVED", decidedAt: now } });
+  }
+  await prisma.profileReport.updateMany({
+    where: { resolvedAt: null, ...(r.scrapId ? { scrapId: r.scrapId } : { testimonialId: r.testimonialId }) },
+    data: { resolvedAt: now, resolvedById: moderatorId, action: action === "remove" ? "REMOVED" : "KEPT" },
+  });
+  return { ok: true };
 }

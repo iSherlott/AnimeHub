@@ -21,11 +21,15 @@ import { REPORT_REASONS, REPORT_REASON_LABELS, type ReportReason, type ReportTar
 export type ReportTarget =
   | { kind: "post"; id: string }
   | { kind: "comment"; id: string; postId: string }
-  | { kind: "profile"; id: string };
+  | { kind: "profile"; id: string }
+  | { kind: "scrap"; id: string }
+  | { kind: "testimonial"; id: string };
 
 function endpointFor(target: ReportTarget): string {
   if (target.kind === "post") return `/api/posts/${target.id}/report`;
   if (target.kind === "comment") return `/api/posts/${target.postId}/comments/${target.id}/report`;
+  if (target.kind === "scrap") return `/api/scraps/${target.id}/report`;
+  if (target.kind === "testimonial") return `/api/testimonials/${target.id}/report`;
   return `/api/users/${target.id}/report`;
 }
 
@@ -33,6 +37,8 @@ const KIND_NOUN: Record<ReportTargetKind, string> = {
   post: "desta publicação",
   comment: "deste comentário",
   profile: "deste perfil",
+  scrap: "deste recado",
+  testimonial: "deste depoimento",
 };
 
 /**

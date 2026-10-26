@@ -4,7 +4,7 @@ import { AppLink } from "@/components/AppLink";
 import { AnimeTitle } from "@/components/AnimeTitle";
 import { CoverImage } from "@/components/CoverImage";
 import { UserAvatar } from "@/components/UserAvatar";
-import { DeleteButton } from "@/components/profile/ProfileOrkut";
+import { DeleteButton, ProfileReportButton } from "@/components/profile/ProfileOrkut";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import type { CommunityLink } from "@/lib/community";
 
@@ -58,7 +58,7 @@ export function NoteItem({ author, when, body, actions, testId }: { author: Pers
   );
 }
 
-/** Lista de recados; quem recebeu, quem escreveu ou a moderação podem apagar. */
+/** Lista de recados; quem recebeu, quem escreveu ou a moderação podem apagar; quem não escreveu pode denunciar. */
 export function ScrapList({ scraps, viewerId, canModerate, empty }: { scraps: ScrapView[]; viewerId: string | null; canModerate: boolean; empty: string }) {
   if (scraps.length === 0) return <Typography sx={{ fontSize: 14, color: "text.secondary" }}>{empty}</Typography>;
   return (
@@ -70,7 +70,14 @@ export function ScrapList({ scraps, viewerId, canModerate, empty }: { scraps: Sc
           when={s.createdAt}
           body={s.body}
           testId={`scrap-${s.id}`}
-          actions={viewerId && (viewerId === s.profileId || viewerId === s.authorId || canModerate) ? <DeleteButton url={`/api/scraps/${s.id}`} testId={`scrap-delete-${s.id}`} /> : undefined}
+          actions={
+            viewerId ? (
+              <>
+                {viewerId !== s.authorId && <ProfileReportButton kind="scrap" id={s.id} />}
+                {(viewerId === s.profileId || viewerId === s.authorId || canModerate) && <DeleteButton url={`/api/scraps/${s.id}`} testId={`scrap-delete-${s.id}`} />}
+              </>
+            ) : undefined
+          }
         />
       ))}
     </Box>
