@@ -173,6 +173,9 @@ As migrações `20261031100000_anidb_only_episodes` (episódios das obras só do
 A migração `20261102100000_archive_episode_watchprogress` tira `Episode` e `WatchProgress` do schema do app e as guarda no
 schema `animehub_archive` (nada é apagado). O usuário do banco precisa poder criar schema (`CREATE` no banco). Depois de
 conferir que nada ali faz falta, apagar de vez é `DROP SCHEMA "animehub_archive" CASCADE;`.
+
+A migração `20261103100000_follow_catalog_only_works` permite acompanhar obras sem AniList ID. Ela confere antes se
+alguém tem dois itens de lista na mesma obra do catálogo; se tiver, para com a lista (junte os itens e rode de novo).
 Para o lote do AniDB funcionar, o servidor precisa de `ANIDB_CLIENT_NAME` e `ANIDB_CLIENT_VERSION` (o client registrado no
 AniDB). Opcional: `ANIDB_REQUEST_GAP_MS` (intervalo entre obras, padrão 4000 ms; não baixe de 2000).
 

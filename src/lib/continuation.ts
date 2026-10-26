@@ -141,7 +141,7 @@ export async function earlierSeasonIds(work: Pick<WorkSnapshot, "anilistId" | "t
       select: { anilistId: true },
       distinct: ["anilistId"],
     });
-    for (const a of byTitle) ids.add(a.anilistId);
+    for (const a of byTitle) if (a.anilistId !== null) ids.add(a.anilistId);
     // Sem franquia da AniList nem lista de ninguém: o catálogo da plataforma com o mesmo título-base e temporada menor.
     const catalog = await prisma.catalogEntry.findMany({
       where: { anilistId: { not: null }, onPlatform: true, titleRomaji: { contains: info.seriesKey, mode: "insensitive" } },
@@ -256,10 +256,10 @@ export async function backfillEarlierSeasons(): Promise<number> {
   try {
     const later = await prisma.production.findMany({ where: { seasonNumber: { gt: 1 } }, select: { anilistId: true } });
     const rows = await prisma.anime.findMany({
-      where: { userId: { not: null }, OR: [{ seasonNumber: { gt: 1 } }, { anilistId: { in: later.map((p) => p.anilistId) } }] },
+      where: { userId: { not: null }, anilistId: { not: null }, OR: [{ seasonNumber: { gt: 1 } }, { anilistId: { in: later.map((p) => p.anilistId) } }] },
       select: { userId: true, anilistId: true },
     });
-    for (const row of rows) added += await ensureEarlierSeasons(row.userId as string, row.anilistId);
+    for (const row of rows) added += await ensureEarlierSeasons(row.userId as string, row.anilistId as number);
   } catch (error) {
     console.error("[continuation] backfill falhou:", error);
   }
@@ -291,7 +291,8 @@ export async function syncContinuations(now: Date = new Date()): Promise<Continu
       where: { anilistId: { in: airingIds }, userId: { not: null }, status: { in: [...RETURNING_STATUSES] } },
       select: { id: true, userId: true, anilistId: true, watchState: true, user: { select: { notifyReleases: true } } },
     });
-    for (const row of comeback) {
+    for (const raw of comeback) {
+      const row = { ...raw, anilistId: raw.anilistId as number }; // filtrado por `in: airingIds`
       // "Dropei" é uma decisão da pessoa: a obra pode voltar, mas ela não volta sozinha para a agenda nem avisa.
       if (row.watchState === "DROPPED") continue;
       const work = await loadWork(row.anilistId);

@@ -130,7 +130,7 @@ function FinishedChoice({ entry }: { entry: MyListEntry }) {
           startIcon={<CheckCircleIcon />}
           aria-pressed={finished}
           title="Já vi tudo"
-          data-testid={`finished-done-${entry.anilistId}`}
+          data-testid={`finished-done-${entry.anilistId ?? entry.id}`}
           sx={{ ...ELEVATED_BUTTON_SX, ...(finished ? { color: "success.main", border: 1, borderColor: "success.main" } : {}) }}
         >
           Finalizei
@@ -141,7 +141,7 @@ function FinishedChoice({ entry }: { entry: MyListEntry }) {
           startIcon={pending ? <PauseCircleIcon /> : <PauseCircleOutlineIcon />}
           aria-pressed={pending}
           title="Ainda não terminei: fica em espera"
-          data-testid={`finished-pending-${entry.anilistId}`}
+          data-testid={`finished-pending-${entry.anilistId ?? entry.id}`}
           sx={{ ...ELEVATED_BUTTON_SX, ...(pending ? { color: "warning.main", border: 1, borderColor: "warning.main" } : {}) }}
         >
           Pendente
@@ -161,7 +161,7 @@ function EntryAction({ entry }: { entry: MyListEntry }) {
   return (
     <Box sx={{ display: "inline-flex", flexDirection: "column", gap: 0.75, alignItems: "flex-start" }}>
       {entry.seasonsCount > 1 && (
-        <Typography data-testid={`seasons-count-${entry.anilistId}`} sx={{ fontSize: 12, color: "text.secondary" }}>
+        <Typography data-testid={`seasons-count-${entry.anilistId ?? entry.id}`} sx={{ fontSize: 12, color: "text.secondary" }}>
           {entry.seasonsCount} temporadas
         </Typography>
       )}

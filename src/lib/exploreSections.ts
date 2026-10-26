@@ -166,7 +166,7 @@ async function relatedToRecent(recentIds: number[], rng: () => number): Promise<
  */
 export async function loadStories({ userId, recentIds, limit = STORIES_LIMIT, rng = Math.random }: StoriesInput): Promise<DiscoverItem[]> {
   const owned = userId ? await prisma.anime.findMany({ where: { userId }, select: { anilistId: true, genres: true } }) : [];
-  const exclude = new Set<number>([...owned.map((o) => o.anilistId), ...recentIds]);
+  const exclude = new Set<number>([...owned.flatMap((o) => (o.anilistId !== null ? [o.anilistId] : [])), ...recentIds]);
   let lists: DiscoverItem[][];
 
   if (owned.length > 0) {

@@ -35,7 +35,7 @@ export async function PATCH(request: Request, { params }: Params) {
   const clearDropped = !waiting && current?.watchState === "DROPPED";
   const anime = await prisma.anime.update({ where: { id }, data: { waiting, waitingSince: waiting ? new Date() : null, ...(clearDropped ? { watchState: null } : {}) } });
   // Quem entra em espera não tem mais episódio "adiado" para ver.
-  if (waiting) await prisma.pendingEpisode.deleteMany({ where: { userId: user.id, anilistId: existing.anilistId } });
+  if (waiting && existing.anilistId !== null) await prisma.pendingEpisode.deleteMany({ where: { userId: user.id, anilistId: existing.anilistId } });
 
   return NextResponse.json({ anime: { id: anime.id, waiting: anime.waiting, waitingSince: anime.waitingSince } });
 }

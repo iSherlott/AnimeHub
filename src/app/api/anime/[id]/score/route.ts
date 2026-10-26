@@ -16,7 +16,7 @@ export async function PATCH(request: Request, { params }: Params) {
   if (!user) return response;
 
   const { id } = await params;
-  const existing = await prisma.anime.findUnique({ where: { id }, select: { userId: true, anilistId: true } });
+  const existing = await prisma.anime.findUnique({ where: { id }, select: { userId: true, anilistId: true, catalogEntryId: true } });
   if (!existing || existing.userId !== user.id) return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
 
   let body: { score?: unknown };
@@ -29,6 +29,6 @@ export async function PATCH(request: Request, { params }: Params) {
   if (score !== null && !isValidUserScore(score)) return NextResponse.json({ error: "score deve ser um inteiro de 0 a 10, ou null" }, { status: 400 });
 
   await prisma.anime.update({ where: { id }, data: { userScore: score, scoredAt: score === null ? null : new Date() } });
-  const site = await recomputeSiteScore(existing.anilistId);
+  const site = await recomputeSiteScore(existing);
   return NextResponse.json({ userScore: score, siteScore: site.score, siteScoreVotes: site.votes });
 }

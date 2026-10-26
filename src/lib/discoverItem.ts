@@ -120,7 +120,12 @@ export async function annotateOwnership(
   const kitsuIds = items
     .map((item) => item.kitsuId)
     .filter((id): id is number => id != null);
-  if (anilistIds.length === 0 && kitsuIds.length === 0) return items;
+  // Obra só do AniDB (sem AniList ID nem Kitsu): a chave do cartão é `anidb-<id>`, e o item da lista guarda o anidbId.
+  const anidbIds = items.flatMap((item) => {
+    const m = item.anilistId == null && item.kitsuId == null ? /^anidb-(\d+)$/.exec(item.key) : null;
+    return m ? [Number(m[1])] : [];
+  });
+  if (anilistIds.length === 0 && kitsuIds.length === 0 && anidbIds.length === 0) return items;
 
   const owned = await prisma.anime.findMany({
     where: {
@@ -128,9 +133,10 @@ export async function annotateOwnership(
       OR: [
         ...(anilistIds.length ? [{ anilistId: { in: anilistIds } }] : []),
         ...(kitsuIds.length ? [{ kitsuId: { in: kitsuIds } }] : []),
+        ...(anidbIds.length ? [{ anilistId: null, anidbId: { in: anidbIds } }] : []),
       ],
     },
-    select: { id: true, anilistId: true, kitsuId: true },
+    select: { id: true, anilistId: true, kitsuId: true, anidbId: true },
   });
   const ownedByAnilistId = new Map(
     owned.filter((a) => a.anilistId != null).map((a) => [a.anilistId, a.id])
@@ -138,11 +144,13 @@ export async function annotateOwnership(
   const ownedByKitsuId = new Map(
     owned.filter((a) => a.kitsuId != null).map((a) => [a.kitsuId, a.id])
   );
+  const ownedByAnidbKey = new Map(owned.filter((a) => a.anilistId == null && a.anidbId != null).map((a) => [`anidb-${a.anidbId}`, a.id]));
 
   return items.map((item) => {
     const animeId =
       (item.anilistId != null ? ownedByAnilistId.get(item.anilistId) : undefined) ??
-      (item.kitsuId != null ? ownedByKitsuId.get(item.kitsuId) : undefined);
+      (item.kitsuId != null ? ownedByKitsuId.get(item.kitsuId) : undefined) ??
+      ownedByAnidbKey.get(item.key);
     return animeId ? { ...item, inMyList: true, animeId } : item;
   });
 }

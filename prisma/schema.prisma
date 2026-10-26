@@ -116,7 +116,8 @@ model Anime {
   /// Não são @unique globalmente — cada usuário tem sua própria lista, então
   /// dois usuários diferentes podem (e vão) acompanhar o mesmo anime, cada
   /// um com sua própria linha. A unicidade é por usuário (@@unique abaixo).
-  anilistId       Int
+  /// Nulo = obra sem AniList ID (só do AniDB ou da Kitsu): aí a identidade é a obra do catálogo (`catalogEntryId`).
+  anilistId       Int?
   /// Obra do catálogo (Fase 2): a identidade interna da obra que a pessoa acompanha.
   catalogEntryId  String?
   catalogEntry    CatalogEntry? @relation(fields: [catalogEntryId], references: [id], onDelete: Restrict)
@@ -219,6 +220,8 @@ model Anime {
 
   @@unique([userId, anilistId])
   @@unique([userId, kitsuId])
+  /// Uma vez por pessoa cada obra do catálogo — vale também para as obras sem AniList ID.
+  @@unique([userId, catalogEntryId])
   @@index([seriesKey])
   @@index([userId])
   @@index([catalogEntryId])

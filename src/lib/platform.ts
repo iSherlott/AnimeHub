@@ -11,11 +11,11 @@ import { ADULT_CONTENT_BLOCKED, hasBlockedGenre, NOT_BLOCKED_GENRE } from "@/lib
 export async function platformAnilistIds(): Promise<Set<number>> {
   const [catalog, followed] = await Promise.all([
     prisma.catalogEntry.findMany({ where: { onPlatform: true, anilistId: { not: null }, ...NOT_BLOCKED_GENRE }, select: { anilistId: true } }),
-    prisma.anime.findMany({ select: { anilistId: true }, distinct: ["anilistId"] }),
+    prisma.anime.findMany({ where: { anilistId: { not: null } }, select: { anilistId: true }, distinct: ["anilistId"] }),
   ]);
   const ids = new Set<number>();
   for (const row of catalog) ids.add(row.anilistId as number);
-  for (const row of followed) ids.add(row.anilistId);
+  for (const row of followed) if (row.anilistId !== null) ids.add(row.anilistId);
   return ids;
 }
 

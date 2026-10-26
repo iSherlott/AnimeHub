@@ -9,7 +9,7 @@ import { Box, Rating, Typography } from "@mui/material";
  * a 10). Dá para avaliar enquanto acompanha; a nota só entra na nota do site quando a pessoa termina a temporada. Clicar de
  * novo na mesma nota tira a avaliação.
  */
-export function SeasonRating({ animeId, anilistId, seasonNumber, score, finished }: { animeId: string; anilistId: number; seasonNumber: number; score: number | null; finished: boolean }) {
+export function SeasonRating({ animeId, anilistId, seasonNumber, score, finished }: { animeId: string; /** Chave dos testids e do grupo de estrelas: o AniList ID ou `anidb-<id>`. */ anilistId: number | string; seasonNumber: number; score: number | null; finished: boolean }) {
   const router = useRouter();
   const [value, setValue] = useState<number | null>(score === null ? null : score / 2);
   const [busy, setBusy] = useState(false);

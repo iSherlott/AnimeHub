@@ -15,11 +15,11 @@ test.describe("Notificações — favoritos no ar agora (Epic 10)", () => {
     // esse serviço, só verificam que o BFF lê/atualiza a tabela certo.
     const alert = await prisma.airingAlert.upsert({
       where: {
-        userId_anilistId_episode: { userId: user.id, anilistId: anime.anilistId, episode: 1 },
+        userId_anilistId_episode: { userId: user.id, anilistId: anime.anilistId as number, episode: 1 },
       },
       create: {
         userId: user.id,
-        anilistId: anime.anilistId,
+        anilistId: anime.anilistId as number,
         episode: 1,
         airingAt: new Date(),
       },

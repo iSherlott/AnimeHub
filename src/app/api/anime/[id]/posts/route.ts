@@ -23,6 +23,8 @@ export async function POST(request: Request, { params }: Params) {
   if (!anime || anime.userId !== user.id) {
     return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
   }
+  // Publicação é sobre uma obra da AniList: obra só do AniDB/Kitsu ainda não tem comunidade.
+  if (anime.anilistId === null) return NextResponse.json({ error: "Esta obra ainda não tem comunidade: publicações chegam quando ela for ligada ao catálogo principal." }, { status: 409 });
 
   let body;
   try {

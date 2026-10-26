@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getKitsuEpisodes, searchKitsuAnime } from "@/lib/kitsu";
-import { asEpisodes, hasEpisodeContent, loadGlobalEpisodes, markEpisodesChecked, recentlyChecked, upsertSourceEpisodes, type EpisodeView } from "@/lib/globalEpisodes";
+import { asEpisodes, hasEpisodeContent, loadCatalogEpisodes, loadGlobalEpisodes, markEpisodesChecked, recentlyChecked, upsertSourceEpisodes, type EpisodeView } from "@/lib/globalEpisodes";
 import type { Anime } from "@prisma/client";
 
 export type EpisodesResult = {
@@ -38,7 +38,7 @@ async function kitsuIdAvailable(
  * Busca os episódios na Kitsu e grava no episódio GLOBAL da obra (Fase 4): o mesmo para todo mundo, nunca uma cópia
  * por usuário. `refresh` troca o que mudou (botão "Atualizar dados"); senão só completa o que falta.
  */
-async function fetchAndStoreEpisodes(anime: Anime, kitsuId: number, mode: "fill" | "refresh" = "fill"): Promise<EpisodeView[]> {
+async function fetchAndStoreEpisodes(anime: Anime & { anilistId: number }, kitsuId: number, mode: "fill" | "refresh" = "fill"): Promise<EpisodeView[]> {
   // A mesma (temporada, número) repetida é o mesmo episódio; números iguais em temporadas internas diferentes são
   // ambíguos e ficam de fora no upsert (a contagem reinicia e não dá para saber qual é o desta obra).
   const seen = new Set<string>();
@@ -65,7 +65,10 @@ async function fetchAndStoreEpisodes(anime: Anime, kitsuId: number, mode: "fill"
  * (resiliente a a Kitsu cair). Senão, busca na Kitsu, salva no banco e
  * aproveita pra completar título JP / capa que estiverem faltando.
  */
-export async function ensureEpisodes(anime: Anime): Promise<EpisodesResult> {
+export async function ensureEpisodes(input: Anime): Promise<EpisodesResult> {
+  // Obra sem AniList ID (só do AniDB/Kitsu): os episódios são os da obra do catálogo, gravados pelo admin a partir do AniDB.
+  if (input.anilistId === null) return { episodes: input.catalogEntryId ? asEpisodes(await loadCatalogEpisodes(input.catalogEntryId)) : [], source: "cache" };
+  const anime = input as Anime & { anilistId: number };
   // Episódios globais da obra. Com título/sinopse/imagem já gravados, ou consultada há pouco, não pergunta à Kitsu de novo.
   const rows = await loadGlobalEpisodes(anime.anilistId);
   if (hasEpisodeContent(rows) || (await recentlyChecked(anime.anilistId))) {
@@ -126,7 +129,9 @@ export async function ensureEpisodes(anime: Anime): Promise<EpisodesResult> {
  * sem isso, um anime com esses campos zerados (ex.: depois de "limpar
  * cache") continuava sem imagem mesmo com "kitsu: ok".
  */
-export async function refetchEpisodes(anime: Anime): Promise<EpisodesResult> {
+export async function refetchEpisodes(input: Anime): Promise<EpisodesResult> {
+  if (input.anilistId === null) return ensureEpisodes(input);
+  const anime = input as Anime & { anilistId: number };
   try {
     const match = await searchKitsuAnime(anime.titleRomaji);
     const kitsuId = match?.kitsuId ?? anime.kitsuId;

@@ -20,7 +20,7 @@ import { sanitizeFuriganaHtml } from "@/lib/plainText";
 import { useReading } from "@/lib/useReadings";
 import { formatTimeInZone, weekdayName } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
-import { workHref } from "@/lib/workHref";
+import { CATALOG_ONLY_SLUG, workHref } from "@/lib/workHref";
 
 export const ELEVATED_BUTTON_SX = {
   bgcolor: "#171820",
@@ -142,15 +142,16 @@ export function ExploreCard({ item }: { item: DiscoverItem }) {
   const owned = Boolean(ownedId);
   // Quem já acompanha abre o detalhe pessoal; os demais, o detalhe público.
   const detailHref = ownedId ? `/anime/${ownedId}` : workHref(item);
-  // Acompanhar depende do AniList ID: obra só do AniDB/Kitsu tem página, mas ainda não entra na lista.
-  const followable = item.anilistId !== null;
+  // Obra sem AniList ID (só do AniDB/Kitsu) também se acompanha, pela chave do catálogo (`anidb-<id>`).
+  const catalogWork = item.anilistId === null && CATALOG_ONLY_SLUG.test(item.key) ? item.key : null;
+  const followable = item.anilistId !== null || catalogWork !== null;
 
   async function follow() {
-    if (item.anilistId === null) return;
+    if (!followable) return;
     setFollowing(true);
     setFollowError(null);
     try {
-      const res = await fetch("/api/anime", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ anilistId: item.anilistId }) });
+      const res = await fetch("/api/anime", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(catalogWork ? { work: catalogWork } : { anilistId: item.anilistId }) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setFollowError(data.error ?? "Não foi possível acompanhar. Tente novamente.");

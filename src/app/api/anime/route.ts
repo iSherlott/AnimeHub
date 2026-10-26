@@ -11,6 +11,7 @@ import { isValidHttpUrl } from "@/lib/url";
 import { BLOCKED_CONTENT_MESSAGE, hasBlockedGenre } from "@/lib/contentPolicy";
 import { isOnPlatform } from "@/lib/platform";
 import { ensureEarlierSeasons } from "@/lib/continuation";
+import { followCatalogWork } from "@/lib/followCatalogWork";
 
 export async function GET() {
   const { user, response } = await requireUser();
@@ -34,7 +35,16 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
   }
-  const anilistId = Number(body.anilistId);
+  // Obra sem AniList ID (só do AniDB/Kitsu): `{ work: "anidb-<id>" }`. Se ela já foi ligada à AniList, segue o fluxo normal.
+  let anilistId = Number(body.anilistId);
+  if (!anilistId && typeof body.work === "string") {
+    if (body.url && !isValidHttpUrl(body.url)) return NextResponse.json({ error: "URL inválida" }, { status: 400 });
+    const link = typeof body.platform === "string" && typeof body.url === "string" && body.platform && body.url ? { platform: body.platform, url: body.url } : undefined;
+    const result = await followCatalogWork(user.id, body.work, link);
+    if (result.ok) return NextResponse.json({ anime: result.anime }, { status: 201 });
+    if (!result.anilistId) return NextResponse.json({ error: result.error }, { status: result.status });
+    anilistId = result.anilistId;
+  }
 
   if (!anilistId) {
     return NextResponse.json({ error: "anilistId é obrigatório" }, { status: 400 });

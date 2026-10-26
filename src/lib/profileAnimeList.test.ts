@@ -3,6 +3,8 @@ import { categoryCounts, filterEntries, genreFacets, normalizeSearch, type Profi
 
 const entry = (anilistId: number, titleRomaji: string, genres: string[], extra: Partial<ProfileAnimeEntry> = {}): ProfileAnimeEntry => ({
   anilistId,
+  key: String(anilistId),
+  href: `/anime/${anilistId}`,
   titleRomaji,
   titleEnglish: null,
   titleNative: null,

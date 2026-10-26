@@ -31,7 +31,7 @@ test.describe("Bloqueio e denúncias", () => {
     const aAnime = await prisma.anime.findFirstOrThrow({ where: { userId: aId } });
     aAnimeId = aAnime.id;
     const bAnime = await prisma.anime.upsert({
-      where: { userId_anilistId: { userId: bId, anilistId: aAnime.anilistId } },
+      where: { userId_anilistId: { userId: bId, anilistId: aAnime.anilistId as number } },
       create: { userId: bId, anilistId: aAnime.anilistId, titleRomaji: aAnime.titleRomaji },
       update: {},
     });

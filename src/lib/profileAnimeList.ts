@@ -3,6 +3,7 @@ import { blockRelation } from "@/lib/blocks";
 import { currentSeasonRef } from "@/lib/exploreGroups";
 import { countAnimeGroups, groupAnimes } from "@/lib/animeGroups";
 import { deriveCategory, isWatchState, type WatchCategory, type WatchState } from "@/lib/watchCategory";
+import { catalogSlug, workHref } from "@/lib/workHref";
 
 /**
  * "Animes" do perfil (estilo My Anime List): as obras que a pessoa acompanha, com busca por título e filtro
@@ -12,7 +13,12 @@ import { deriveCategory, isWatchState, type WatchCategory, type WatchState } fro
  * o id interno e a marcação manual só vão para a própria pessoa, que é quem pode alterá-las.
  */
 export type ProfileAnimeEntry = {
-  anilistId: number;
+  /** Nulo = obra sem AniList ID (só do AniDB/Kitsu). */
+  anilistId: number | null;
+  /** Identificador estável do cartão: o AniList ID ou, sem ele, `anidb-<id>`/`kitsu-<id>`. */
+  key: string;
+  /** Página da obra (nula só se a obra não tem nenhum identificador de fonte). */
+  href: string | null;
   titleRomaji: string;
   titleEnglish: string | null;
   titleNative: string | null;
@@ -24,7 +30,7 @@ export type ProfileAnimeEntry = {
   /** Temporadas da obra que a pessoa tem na lista (1 quando é uma só). */
   seasonsCount: number;
   /** Cada temporada com a categoria dela, da primeira à última. */
-  seasons?: Array<{ anilistId: number; seasonNumber: number; category: WatchCategory }>;
+  seasons?: Array<{ anilistId: number | null; seasonNumber: number; category: WatchCategory }>;
   /** Só no próprio perfil: para marcar o andamento na mão (vale para a temporada mais recente). */
   animeId?: string;
   watchState?: WatchState | null;
@@ -103,13 +109,13 @@ export async function loadProfileAnimeList(targetId: string, viewerId: string | 
     where: { userId: targetId },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: MAX_ENTRIES,
-    select: { id: true, anilistId: true, seriesKey: true, seasonNumber: true, titleRomaji: true, titleEnglish: true, titleNative: true, titlePortuguese: true, coverImage: true, genres: true, status: true, watchState: true, waiting: true, season: true, seasonYear: true },
+    select: { id: true, anilistId: true, anidbId: true, kitsuId: true, seriesKey: true, seasonNumber: true, titleRomaji: true, titleEnglish: true, titleNative: true, titlePortuguese: true, coverImage: true, genres: true, status: true, watchState: true, waiting: true, season: true, seasonYear: true },
   });
   const pending = new Set((await prisma.pendingEpisode.findMany({ where: { userId: targetId }, select: { anilistId: true } })).map((p) => p.anilistId));
   const current = currentSeasonRef();
   const seasonRows = rows.map((r) => ({
     ...r,
-    category: deriveCategory({ watchState: r.watchState, hasPending: pending.has(r.anilistId), waiting: r.waiting, status: r.status, season: r.season, seasonYear: r.seasonYear }, current),
+    category: deriveCategory({ watchState: r.watchState, hasPending: r.anilistId !== null && pending.has(r.anilistId), waiting: r.waiting, status: r.status, season: r.season, seasonYear: r.seasonYear }, current),
   }));
   // Várias temporadas da mesma obra viram UM anime: o cartão é o da temporada em andamento (ou a mais recente).
   const all: ProfileAnimeEntry[] = (await groupAnimes(seasonRows)).map(({ members }) => {
@@ -117,6 +123,8 @@ export async function loadProfileAnimeList(targetId: string, viewerId: string | 
     const genreSet = new Set(members.flatMap((m) => (m.genres ? m.genres.split(",").filter(Boolean) : [])));
     return {
       anilistId: rep.anilistId,
+      key: rep.anilistId !== null ? String(rep.anilistId) : (catalogSlug(rep) ?? rep.id),
+      href: workHref(rep),
       titleRomaji: rep.titleRomaji,
       titleEnglish: rep.titleEnglish,
       titleNative: rep.titleNative,

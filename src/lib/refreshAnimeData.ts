@@ -42,7 +42,10 @@ async function resolveIdentity(
  * pelo cache-updater (caminho principal) quanto pelo fallback local da
  * rota. Recebe o anime já carregado (dono já verificado pelo chamador).
  */
-export async function refreshAnimeData(initialAnime: Anime): Promise<RefreshResult> {
+export async function refreshAnimeData(input: Anime): Promise<RefreshResult> {
+  // Obra sem AniList ID (só do AniDB/Kitsu): os dados vêm do catálogo, que o admin atualiza; nada a buscar daqui.
+  if (input.anilistId === null) return { status: { anilist: "skipped", kitsu: "skipped", jikan: "skipped", shikimori: "skipped", anidb: "skipped" }, episodeCount: 0 };
+  const initialAnime = input as Anime & { anilistId: number };
   const { id } = initialAnime;
   let anime = initialAnime;
 
@@ -83,7 +86,7 @@ export async function refreshAnimeData(initialAnime: Anime): Promise<RefreshResu
         },
       });
       status.anilist = "ok";
-      anime = await prisma.anime.findUniqueOrThrow({ where: { id } });
+      anime = (await prisma.anime.findUniqueOrThrow({ where: { id } })) as typeof anime;
     } catch (error) {
       console.error("Refresh AniList falhou:", error);
       status.anilist = "failed";
@@ -152,7 +155,7 @@ export async function refreshAnimeData(initialAnime: Anime): Promise<RefreshResu
       status.shikimori = "failed";
     }
 
-    anime = await prisma.anime.findUniqueOrThrow({ where: { id } });
+    anime = (await prisma.anime.findUniqueOrThrow({ where: { id } })) as typeof anime;
   }
 
   if (!anime.anidbId) {

@@ -24,7 +24,7 @@ test.describe("Feed com posts, curtidas e seguir (Epic 22)", () => {
     userId = user.id;
     const anime = await prisma.anime.findFirstOrThrow({ where: { userId: user.id } });
     animeId = anime.id;
-    const anilistId = anime.anilistId;
+    const anilistId = anime.anilistId as number;
 
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@test.local" } });
     adminUserId = admin.id;

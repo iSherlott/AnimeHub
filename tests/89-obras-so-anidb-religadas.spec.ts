@@ -129,7 +129,8 @@ test.describe.serial("Obras só do AniDB religadas à AniList", () => {
       const lonely = page.getByTestId(`explore-card-anidb-${ALONE_ANIDB}`);
       await expect(lonely).toContainText("Finalizado"); // ainda não dá para acompanhar, mas também sem "Data não definida"
       await expect(lonely).not.toContainText("Data não definida");
-      await expect(lonely.getByRole("button", { name: "+ Acompanhar" })).toBeDisabled();
+      // Sem AniList ID também se acompanha, pela chave do catálogo (spec 114).
+      await expect(lonely.getByRole("button", { name: "+ Acompanhar" })).toBeEnabled();
 
       const open = await page.goto(`/anime/${ANILIST}`);
       expect(open?.status()).toBe(200);

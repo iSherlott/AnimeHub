@@ -57,9 +57,16 @@ acompanhamento é por obra" era violada pelo "Adiar" ("parei no EP02", "2 episó
   `ANIDB_REQUEST_GAP_MS`, padrão 4 s; cada obra no máximo uma vez a cada 30 dias; para no primeiro sinal de bloqueio).
 - Especiais sem numeração regular não entram na sequência; ficam como obras próprias (OVA/ODA/filme) na linha do tempo.
 - Página pública das obras sem AniList ID: `/anime/anidb-<id>` e `/anime/kitsu-<id>` (o mesmo identificador da chave do
-  cartão no Explorar; `src/lib/workHref.ts`). Mostra ficha, sinopse, episódios e extras; acompanhar, comentar, quiz e
-  relacionadas dependem do AniList ID e não aparecem. Só abre o que está na plataforma; ligada à AniList, redireciona
+  cartão no Explorar; `src/lib/workHref.ts`). Mostra ficha, sinopse, episódios e extras; comentar, quiz e relacionadas
+  dependem do AniList ID e não aparecem (acompanhar passou a valer depois, ver abaixo). Só abre o que está na plataforma; ligada à AniList, redireciona
   (308) para `/anime/<anilistId>`, porque o `anidbId` passa para a obra da AniList.
+- Acompanhar obra sem AniList ID (migração `20261103100000_follow_catalog_only_works`): `Anime.anilistId` ficou opcional e
+  o item de lista ganhou unicidade `(userId, catalogEntryId)`. Segue-se pela chave do catálogo (`POST /api/anime` com
+  `{ work: "anidb-<id>" }`); os dados vêm do catálogo. Andamento, nota (entra na nota do site pela obra do catálogo),
+  favorito, "onde eu assisto", Minha Lista, perfil e Explorar funcionam; sem horário, a obra não entra no calendário nem
+  nos avisos, e comentários/publicações respondem 409 até ela ser ligada à AniList. Ao ligar (`mergeListEntriesInto`), o
+  item ganha o AniList ID; se a pessoa já tinha a obra da AniList, fica um item só, que herda favorito, andamento, nota e
+  links que lhe faltavam. A migração para (não escolhe sozinha) se houver dois itens da mesma pessoa na mesma obra.
 - Extras do AniDB (desde 01/11/2026): os códigos `S` (especial), `C` (abertura/encerramento), `T` (trailer/promocional),
   `P` (paródia) e `O` (outro) viram linhas de `EpisodeExtra`, identidade (obra do catálogo, código). Ficam numa seção
   própria da página da obra e do detalhe no admin: não contam como lançados, não entram no calendário nem no sino e não

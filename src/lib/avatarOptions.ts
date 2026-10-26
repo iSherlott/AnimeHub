@@ -8,7 +8,9 @@ import { prisma } from "@/lib/prisma";
  */
 export type AvatarItem = { url: string; label: string };
 export type AvatarGroup = {
-  anilistId: number;
+  /** Chave do grupo: o AniList ID ou, para obra sem ele, o id do item da lista. */
+  key: string;
+  anilistId: number | null;
   titleRomaji: string;
   titleEnglish: string | null;
   titleNative: string | null;
@@ -46,7 +48,7 @@ export async function buildAvatarOptions(userId: string): Promise<AvatarGroup[]>
   const animes = await prisma.anime.findMany({
     where: { userId },
     orderBy: { titleRomaji: "asc" },
-    select: { anilistId: true, titleRomaji: true, titleEnglish: true, titleNative: true, coverImage: true, bannerImage: true, castJson: true },
+    select: { id: true, anilistId: true, titleRomaji: true, titleEnglish: true, titleNative: true, coverImage: true, bannerImage: true, castJson: true },
   });
   const groups: AvatarGroup[] = [];
   for (const a of animes) {
@@ -57,7 +59,7 @@ export async function buildAvatarOptions(userId: string): Promise<AvatarGroup[]>
     if (isHttps(a.bannerImage)) banners.push({ url: a.bannerImage, label: "Banner" });
     if (isHttps(a.coverImage)) banners.push({ url: a.coverImage, label: "Capa" });
     if (avatars.length === 0 && banners.length === 0) continue;
-    groups.push({ anilistId: a.anilistId, titleRomaji: a.titleRomaji, titleEnglish: a.titleEnglish, titleNative: a.titleNative, avatars, banners });
+    groups.push({ key: a.anilistId !== null ? String(a.anilistId) : a.id, anilistId: a.anilistId, titleRomaji: a.titleRomaji, titleEnglish: a.titleEnglish, titleNative: a.titleNative, avatars, banners });
   }
   return groups;
 }

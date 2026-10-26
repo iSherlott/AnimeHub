@@ -185,15 +185,21 @@ export async function runCuration(
     const translationRows = anilistIds.length ? await prisma.synopsisTranslation.findMany({ where: { anilistId: { in: anilistIds } }, select: { anilistId: true, lang: true, text: true } }) : [];
     const translations = new Map<number, { pt?: string; ja?: string }>();
     for (const row of translationRows) translations.set(row.anilistId, { ...translations.get(row.anilistId), [row.lang]: row.text });
-    const votes = anilistIds.length
-      ? await prisma.anime.findMany({ where: { anilistId: { in: anilistIds }, userScore: { not: null }, watchState: "FINISHED" }, select: { anilistId: true, userScore: true } })
-      : [];
-    const scoresByWork = new Map<number, number[]>();
-    for (const v of votes) scoresByWork.set(v.anilistId, [...(scoresByWork.get(v.anilistId) ?? []), v.userScore as number]);
+    // Notas de quem terminou, por obra do catálogo (vale também para as obras sem AniList ID, acompanhadas pela obra).
+    const entryIdByAnilist = new Map(entries.flatMap((e) => (e.anilistId !== null ? [[e.anilistId, e.id] as const] : [])));
+    const votes = await prisma.anime.findMany({
+      where: { OR: [{ anilistId: { in: anilistIds } }, { catalogEntryId: { in: entries.map((e) => e.id) } }], userScore: { not: null }, watchState: "FINISHED" },
+      select: { id: true, anilistId: true, catalogEntryId: true, userScore: true },
+    });
+    const scoresByWork = new Map<string, number[]>();
+    for (const v of votes) {
+      const entryId = v.catalogEntryId ?? (v.anilistId !== null ? entryIdByAnilist.get(v.anilistId) : undefined);
+      if (entryId) scoresByWork.set(entryId, [...(scoresByWork.get(entryId) ?? []), v.userScore as number]);
+    }
 
     for (const entry of entries) {
       const found = entry.anilistId !== null ? media.get(entry.anilistId) ?? null : null;
-      const score = siteScoreOf(entry.anilistId !== null ? scoresByWork.get(entry.anilistId) ?? [] : []);
+      const score = siteScoreOf(scoresByWork.get(entry.id) ?? []);
       await curateOne(entry, found, entry.anilistId !== null ? translations.get(entry.anilistId) ?? {} : {}, score, entry.anidbId !== null ? anidbGenres.get(entry.anidbId) ?? [] : [], progress);
       progress.done += 1;
     }

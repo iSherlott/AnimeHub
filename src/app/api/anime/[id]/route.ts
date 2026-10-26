@@ -29,7 +29,7 @@ export async function DELETE(_request: Request, { params }: Params) {
   const { id } = await params;
   const existing = await prisma.anime.findUnique({
     where: { id },
-    select: { id: true, userId: true, anilistId: true },
+    select: { id: true, userId: true, anilistId: true, catalogEntryId: true },
   });
   if (!existing || existing.userId !== user.id) {
     return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
@@ -45,11 +45,12 @@ export async function DELETE(_request: Request, { params }: Params) {
     // que não leva a lugar nenhum (achado real da 15ª rodada de auditoria,
     // Epic 18).
     await prisma.$transaction([
-      prisma.airingAlert.deleteMany({ where: { userId: user.id, anilistId: existing.anilistId } }),
+      // Obra sem AniList ID (só do AniDB/Kitsu) não gera alerta: nada a limpar.
+      ...(existing.anilistId !== null ? [prisma.airingAlert.deleteMany({ where: { userId: user.id, anilistId: existing.anilistId } })] : []),
       prisma.anime.delete({ where: { id } }),
     ]);
     // A nota de quem sai da lista deixa de contar na nota do site.
-    await recomputeSiteScore(existing.anilistId).catch(() => undefined);
+    await recomputeSiteScore(existing).catch(() => undefined);
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Falha ao remover o anime" }, { status: 500 });

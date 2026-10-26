@@ -161,7 +161,7 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
   - Quando a obra é ligada à AniList, o endereço redireciona para a página da AniList. Obra fora da plataforma: 404.
 - **Banco.** Nenhuma migração.
 - **Testes.** Spec 113.
-- **Limitação.** Acompanhar, comunidade, quiz e relacionadas continuam dependendo do AniList ID.
+- **Limitação.** Comunidade, quiz e relacionadas continuam dependendo do AniList ID (acompanhar foi resolvido depois).
 
 ## Depois: tabelas descontinuadas arquivadas
 
@@ -171,3 +171,14 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
   - A migração não falha se o arquivo já existir: tabela vazia só sai, e tabela com linhas vai para `animehub_archive_<data_hora>`.
 - **Banco.** `20261102100000_archive_episode_watchprogress`. Apagar de vez é `DROP SCHEMA "animehub_archive" CASCADE`, depois de conferir em produção.
 - **Testes.** O setup do Playwright também limpa `animehub_archive`. A migração foi conferida com dados: arquivar, arquivar de novo sobre um arquivo existente e apagar o item de lista depois.
+
+## Depois: acompanhar obras sem AniList ID
+
+- **O que mudou.** Dá para acompanhar as obras só do AniDB (ou só da Kitsu), pela página delas ou pelo cartão do Explorar.
+  - O item de lista fica sem AniList ID; a identidade é a obra do catálogo, uma vez por pessoa.
+  - A página da pessoa é a do catálogo com os controles dela: andamento, nota, favorito, "onde eu assisto" e deixar de acompanhar.
+  - A nota entra na nota do site da obra do catálogo. A obra aparece em Minha Lista e no perfil.
+  - Sem horário, a obra não entra no calendário nem nos avisos. Comentários e publicações respondem 409 até a obra ser ligada à AniList.
+  - Ao ligar a obra à AniList, o item ganha o AniList ID. Se a pessoa já tinha a obra da AniList, fica um item só, com o que ela tinha marcado.
+- **Banco.** `20261103100000_follow_catalog_only_works`: `Anime.anilistId` opcional e índice único (pessoa, obra do catálogo). A migração para, com a lista, se encontrar itens repetidos.
+- **Testes.** Spec 114.

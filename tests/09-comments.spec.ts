@@ -42,7 +42,7 @@ test.describe("Comentários por anime (Epic 15)", () => {
     const user = await prisma.user.findUniqueOrThrow({ where: { email: TEST_USER_EMAIL } });
     const anime = await prisma.anime.findFirstOrThrow({ where: { userId: user.id } });
     animeId = anime.id;
-    anilistId = anime.anilistId;
+    anilistId = anime.anilistId as number;
 
     // O admin também precisa ter esse mesmo anime na própria lista pra
     // poder ver/denunciar o comentário — comentário é visível por

@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { moveExtras } from "@/lib/episodeExtras";
+import { siteScoreOf } from "@/lib/siteScore";
 
 /**
  * Identidade interna da obra (Fase 2, ADR 0008). O catálogo (`CatalogEntry.id`) é a chave; o `anilistId` é só um
@@ -29,13 +30,48 @@ export async function catalogEntryIdsFor(anilistIds: number[], db: Db = prisma):
  */
 export async function reassignCatalogEntry(fromId: string, toId: string, db: Db = prisma): Promise<{ productions: number; listEntries: number; schedule: number }> {
   const target = await db.catalogEntry.findUnique({ where: { id: toId }, select: { anilistId: true } });
-  const [productions, listEntries] = await Promise.all([
-    db.production.updateMany({ where: { catalogEntryId: fromId }, data: { catalogEntryId: toId } }),
-    db.anime.updateMany({ where: { catalogEntryId: fromId }, data: { catalogEntryId: toId } }),
-  ]);
+  const productions = await db.production.updateMany({ where: { catalogEntryId: fromId }, data: { catalogEntryId: toId } });
+  const listEntries = await mergeListEntriesInto(fromId, toId, target?.anilistId ?? null, db);
   const schedule = await mergeScheduleInto(fromId, toId, target?.anilistId ?? null, db);
   await moveExtras(fromId, toId, db);
-  return { productions: productions.count, listEntries: listEntries.count, schedule };
+  return { productions: productions.count, listEntries, schedule };
+}
+
+/**
+ * Leva os itens de lista de uma obra para outra. Quem acompanhava a obra só do AniDB passa a acompanhar a da AniList (o
+ * item ganha o AniList ID). Se a pessoa já tinha a de destino, fica um item só: o de destino, que herda o que lhe faltava
+ * (favorito, andamento, nota, "onde eu assisto") — nada do que a pessoa marcou se perde. A nota do site é refeita.
+ */
+export async function mergeListEntriesInto(fromId: string, toId: string, toAnilistId: number | null, db: Db = prisma): Promise<number> {
+  const rows = await db.anime.findMany({ where: { catalogEntryId: fromId }, include: { platformLinks: true } });
+  for (const row of rows) {
+    const twin = await db.anime.findFirst({
+      where: { NOT: { id: row.id }, userId: row.userId, OR: [{ catalogEntryId: toId }, ...(toAnilistId !== null ? [{ anilistId: toAnilistId }] : [])] },
+      include: { platformLinks: true },
+    });
+    if (!twin) {
+      await db.anime.update({ where: { id: row.id }, data: { catalogEntryId: toId, ...(toAnilistId !== null ? { anilistId: toAnilistId } : {}) } });
+      continue;
+    }
+    const platforms = new Set(twin.platformLinks.map((l) => l.platform));
+    for (const link of row.platformLinks) if (!platforms.has(link.platform)) await db.platformLink.update({ where: { id: link.id }, data: { animeId: twin.id } });
+    await db.anime.update({
+      where: { id: twin.id },
+      data: {
+        catalogEntryId: toId,
+        ...(row.isFavorite && !twin.isFavorite ? { isFavorite: true, favoritedAt: row.favoritedAt } : {}),
+        ...(twin.watchState === null && row.watchState !== null ? { watchState: row.watchState } : {}),
+        ...(twin.userScore === null && row.userScore !== null ? { userScore: row.userScore, scoredAt: row.scoredAt } : {}),
+      },
+    });
+    await db.anime.delete({ where: { id: row.id } });
+  }
+  if (rows.length > 0) {
+    const votes = await db.anime.findMany({ where: { catalogEntryId: toId, userScore: { not: null }, watchState: "FINISHED" }, select: { userScore: true } });
+    const score = siteScoreOf(votes.map((v) => v.userScore as number));
+    await db.catalogEntry.update({ where: { id: toId }, data: { siteScore: score.score, siteScoreVotes: score.votes } });
+  }
+  return rows.length;
 }
 
 const EPISODE_CONTENT = ["episodeTitle", "episodeTitleEn", "episodeTitleJa", "synopsis", "thumbnail"] as const;

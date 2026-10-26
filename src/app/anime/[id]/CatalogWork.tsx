@@ -1,6 +1,14 @@
-import { notFound, permanentRedirect } from "next/navigation";
-import { Box, Chip, Stack, Typography } from "@mui/material";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
+import NextLink from "next/link";
+import type { CatalogEntry, PlatformLink } from "@prisma/client";
+import { Box, Button, Chip, Stack, Typography } from "@mui/material";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth/session";
+import { FavoriteToggle } from "@/components/FavoriteToggle";
+import { PlatformLinksManager } from "@/components/PlatformLinksManager";
+import { SeasonControls } from "@/components/SeasonControls";
+import { UnfollowButton } from "@/components/UnfollowButton";
+import { catalogSlug } from "@/lib/workHref";
 import { Header } from "@/components/Header";
 import { AnimeTitle } from "@/components/AnimeTitle";
 import { AppLink } from "@/components/AppLink";
@@ -24,15 +32,28 @@ export async function findCatalogWork(source: "anidb" | "kitsu", sourceId: numbe
   return entry?.onPlatform ? entry : null;
 }
 
-/**
- * Página pública de uma obra sem AniList ID (só do AniDB ou da Kitsu): ficha, sinopse, episódios (só o dia — o AniDB não
- * informa horário) e extras. Acompanhar, comunidade, quiz e relacionadas dependem do AniList ID e não aparecem; quando a
- * obra é ligada à AniList, o endereço passa a levar à página dela.
- */
-export async function CatalogWork({ source, sourceId }: { source: "anidb" | "kitsu"; sourceId: number }) {
+/** `/anime/anidb-<id>` e `/anime/kitsu-<id>`: quem já acompanha a obra vai para a própria página dela (como na AniList). */
+export async function PublicCatalogWork({ source, sourceId }: { source: "anidb" | "kitsu"; sourceId: number }) {
   const entry = await findCatalogWork(source, sourceId);
   if (!entry) notFound();
   if (entry.anilistId !== null) permanentRedirect(`/anime/${entry.anilistId}`);
+  const user = await getCurrentUser();
+  const owned = user ? await prisma.anime.findUnique({ where: { userId_catalogEntryId: { userId: user.id, catalogEntryId: entry.id } }, select: { id: true } }) : null;
+  if (owned) redirect(`/anime/${owned.id}`);
+  return <CatalogWork entry={entry} signedIn={Boolean(user)} />;
+}
+
+/** O item da lista de quem abre a página (só na página da própria pessoa). */
+export type OwnedCatalogItem = { id: string; isFavorite: boolean; watchState: string | null; waiting: boolean; userScore: number | null; titleRomaji: string; titleEnglish: string | null; platformLinks: PlatformLink[] };
+
+/**
+ * Página de uma obra sem AniList ID (só do AniDB ou da Kitsu): ficha, sinopse, episódios (só o dia — o AniDB não informa
+ * horário) e extras. Dá para acompanhar, marcar o andamento e dar nota; comunidade, quiz e relacionadas dependem do AniList
+ * ID e não aparecem. Sem horário, a obra não entra no calendário nem nos avisos. Quando é ligada à AniList, o endereço
+ * público passa a levar à página dela.
+ */
+export async function CatalogWork({ entry, signedIn, owned = null }: { entry: CatalogEntry; signedIn: boolean; owned?: OwnedCatalogItem | null }) {
+  const work = catalogSlug(entry) ?? "";
 
   const [schedule, extras] = await Promise.all([loadCatalogEpisodes(entry.id), loadExtras({ catalogEntryId: entry.id })]);
   const genres = entry.genres ? entry.genres.split(",").filter(Boolean) : [];
@@ -58,6 +79,7 @@ export async function CatalogWork({ source, sourceId }: { source: "anidb" | "kit
                 <AnimeTitle titles={{ titleRomaji: entry.titleRomaji, titleEnglish: entry.titleEnglish, titleNative: entry.titleNative }} />
               </Typography>
               <SiteScoreChip score={entry.siteScore ?? 5} votes={entry.siteScoreVotes ?? 0} />
+              {owned && <FavoriteToggle animeId={owned.id} initialFavorite={owned.isFavorite} />}
             </Stack>
             {entry.titleNative && (
               <Typography className="font-jp" variant="h6" sx={{ mt: 0.5, color: "text.secondary" }}>
@@ -79,8 +101,17 @@ export async function CatalogWork({ source, sourceId }: { source: "anidb" | "kit
               ))}
             </Stack>
           )}
+          {signedIn ? (
+            <SeasonControls anilistId={null} work={work} seasonNumber={1} mine={owned ? { animeId: owned.id, watchState: owned.watchState, waiting: owned.waiting, userScore: owned.userScore } : null} />
+          ) : (
+            <Box>
+              <Button component={NextLink} href={`/login?next=${encodeURIComponent(`/anime/${work}`)}`} variant="contained" data-testid="follow-login-button">
+                Entre para acompanhar
+              </Button>
+            </Box>
+          )}
           <Typography data-testid="catalog-work-follow-note" sx={{ fontSize: 14, color: "text.secondary", borderLeft: 3, borderColor: "secondary.main", pl: 1.5, maxWidth: 560 }}>
-            Ainda não dá para acompanhar esta obra nem comentar nela: isso chega quando ela for ligada ao catálogo principal. Episódios e extras já aparecem abaixo.
+            Esta obra só tem o dia de cada episódio, sem horário: ela não entra no calendário nem nos avisos. Comentários, publicações e quiz chegam quando ela for ligada ao catálogo principal.
           </Typography>
         </Box>
       </WorkHero>
@@ -135,6 +166,16 @@ export async function CatalogWork({ source, sourceId }: { source: "anidb" | "kit
               ]}
             />
           </WorkCard>
+          {owned && (
+            <WorkCard title="Onde eu assisto" testId="my-watch-source">
+              <PlatformLinksManager animeId={owned.id} initialLinks={owned.platformLinks} />
+            </WorkCard>
+          )}
+          {owned && (
+            <Box>
+              <UnfollowButton animeId={owned.id} title={owned.titleEnglish ?? owned.titleRomaji} />
+            </Box>
+          )}
         </Box>
       </Box>
     </div>

@@ -17,7 +17,7 @@ export async function PATCH(request: Request, { params }: Params) {
   if (!user) return response;
 
   const { id } = await params;
-  const existing = await prisma.anime.findUnique({ where: { id }, select: { userId: true, anilistId: true, watchState: true } });
+  const existing = await prisma.anime.findUnique({ where: { id }, select: { userId: true, anilistId: true, catalogEntryId: true, watchState: true } });
   if (!existing || existing.userId !== user.id) {
     return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
   }
@@ -43,10 +43,10 @@ export async function PATCH(request: Request, { params }: Params) {
     data: { watchState: state, ...(waiting === undefined ? {} : { waiting, waitingSince: waiting ? new Date() : null }) },
   });
   // A nota do site só conta a de quem terminou: sair de "Terminei" a tira da conta (a nota fica guardada, caso volte).
-  if (existing.watchState === "FINISHED" && state !== "FINISHED") await recomputeSiteScore(existing.anilistId).catch(() => undefined);
-  if (existing.watchState !== "FINISHED" && state === "FINISHED") await recomputeSiteScore(existing.anilistId).catch(() => undefined);
+  if (existing.watchState === "FINISHED" && state !== "FINISHED") await recomputeSiteScore(existing).catch(() => undefined);
+  if (existing.watchState !== "FINISHED" && state === "FINISHED") await recomputeSiteScore(existing).catch(() => undefined);
   // Terminada ou em espera, a obra não tem mais episódio "adiado" para ver.
-  if (state === "FINISHED" || waiting === true) await prisma.pendingEpisode.deleteMany({ where: { userId: user.id, anilistId: existing.anilistId } });
+  if ((state === "FINISHED" || waiting === true) && existing.anilistId !== null) await prisma.pendingEpisode.deleteMany({ where: { userId: user.id, anilistId: existing.anilistId } });
   // Quem sai de "Dropei" pode ter continuações que ficaram sem chegar: recupera na hora.
   if (existing.watchState === "DROPPED" && state !== "DROPPED") void syncContinuations();
 

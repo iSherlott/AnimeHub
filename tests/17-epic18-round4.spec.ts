@@ -95,7 +95,7 @@ test.describe("Epic 18 — 4ª rodada — seguir a partir das sugestões do Feed
     // tenha ao menos 1 post já publicado antes do teste.
     await prisma.follow.deleteMany({ where: { followerId: follower.id, followingId: followed.id } });
     await prisma.anime.upsert({
-      where: { userId_anilistId: { userId: followed.id, anilistId: baseAnime.anilistId } },
+      where: { userId_anilistId: { userId: followed.id, anilistId: baseAnime.anilistId as number } },
       create: { userId: followed.id, anilistId: baseAnime.anilistId, titleRomaji: baseAnime.titleRomaji },
       update: {},
     });

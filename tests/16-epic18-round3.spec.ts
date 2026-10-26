@@ -42,7 +42,7 @@ test.describe("Epic 18 — 3ª rodada de auditoria de UX/UI", () => {
       update: {},
     });
     const thirdAnime = await prisma.anime.upsert({
-      where: { userId_anilistId: { userId: third.id, anilistId: anime.anilistId } },
+      where: { userId_anilistId: { userId: third.id, anilistId: anime.anilistId as number } },
       create: { userId: third.id, anilistId: anime.anilistId, titleRomaji: anime.titleRomaji },
       update: {},
     });

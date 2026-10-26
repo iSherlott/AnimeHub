@@ -5,7 +5,7 @@ import { myListStateOf, type MyListState } from "@/lib/myListState";
 import { groupAnimes } from "@/lib/animeGroups";
 
 /** Uma temporada da obra, como a pessoa a tem na lista. */
-export type MyListSeason = { id: string; anilistId: number; seasonNumber: number; watchState: string | null; waiting: boolean; status: string | null };
+export type MyListSeason = { id: string; anilistId: number | null; seasonNumber: number; watchState: string | null; waiting: boolean; status: string | null };
 
 /**
  * Uma obra acompanhada, com a situação de agenda já resolvida (Figma `8:2608`). Uma obra com várias temporadas é UMA
@@ -13,7 +13,8 @@ export type MyListSeason = { id: string; anilistId: number; seasonNumber: number
  */
 export type MyListEntry = {
   id: string;
-  anilistId: number;
+  /** Nulo = obra sem AniList ID (só do AniDB/Kitsu): sem horário nem alertas, só a situação do catálogo. */
+  anilistId: number | null;
   titleRomaji: string;
   titleEnglish: string | null;
   titleNative: string | null;
@@ -51,6 +52,7 @@ export async function loadMyListEntries(userId: string, now: Date = new Date()):
     select: {
       id: true,
       anilistId: true,
+      catalogEntryId: true,
       titleRomaji: true,
       titleEnglish: true,
       titleNative: true,
@@ -67,7 +69,7 @@ export async function loadMyListEntries(userId: string, now: Date = new Date()):
   });
   if (animes.length === 0) return [];
 
-  const anilistIds = animes.map((a) => a.anilistId);
+  const anilistIds = animes.flatMap((a) => (a.anilistId !== null ? [a.anilistId] : []));
   // Próximo episódio com data confirmada de cada obra (um por obra).
   const upcomingRaw = withAnilist(timed(
     await prisma.airingScheduleEntry.findMany({
@@ -81,15 +83,18 @@ export async function loadMyListEntries(userId: string, now: Date = new Date()):
   const nextById = new Map<number, { episode: number; airingAt: Date }>();
   for (const entry of upcoming) if (!nextById.has(entry.anilistId)) nextById.set(entry.anilistId, entry);
 
+  // Situação no catálogo: pela obra do catálogo (vale também para as obras sem AniList ID) ou, sem ela, pelo AniList ID.
+  const catalogIds = animes.flatMap((a) => (a.catalogEntryId ? [a.catalogEntryId] : []));
   const catalog = await prisma.catalogEntry.findMany({
-    where: { anilistId: { in: anilistIds } },
-    select: { anilistId: true, status: true, startDate: true, nextEpisodeNumber: true, nextEpisodeAt: true },
+    where: { OR: [{ anilistId: { in: anilistIds } }, { id: { in: catalogIds } }] },
+    select: { id: true, anilistId: true, status: true, startDate: true, nextEpisodeNumber: true, nextEpisodeAt: true },
   });
-  const catalogById = new Map(catalog.map((c) => [c.anilistId as number, c]));
+  const catalogById = new Map(catalog.map((c) => [c.id, c]));
+  const catalogByAnilist = new Map(catalog.flatMap((c) => (c.anilistId !== null ? [[c.anilistId, c] as const] : [])));
 
   const perSeason = animes.map((a) => {
-    const next = nextById.get(a.anilistId) ?? null;
-    const row = catalogById.get(a.anilistId) ?? null;
+    const next = (a.anilistId !== null ? nextById.get(a.anilistId) : null) ?? null;
+    const row = (a.catalogEntryId ? catalogById.get(a.catalogEntryId) : undefined) ?? (a.anilistId !== null ? catalogByAnilist.get(a.anilistId) : undefined) ?? null;
     return {
       id: a.id,
       anilistId: a.anilistId,

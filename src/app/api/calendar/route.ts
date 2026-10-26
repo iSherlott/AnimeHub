@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
       : [];
   const myAnimeByAnilistId = new Map(
     myAnime.map((a) => [
-      a.anilistId,
+      a.anilistId as number, // filtrado por `in: weekAnilistIds`
       { id: a.id, titlePortuguese: a.titlePortuguese, description: a.description, descriptionPortuguese: a.descriptionPortuguese, isFavorite: a.isFavorite, waiting: a.waiting },
     ])
   );
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
   const storedByAnilistId = new Map(storedRows.map((r) => [r.anilistId as number, { pt: r.descriptionPt, ja: r.descriptionJa }]));
 
   // "Adiado": em que episódio a pessoa parou, por obra da semana (só quem está logado).
-  const postponedIds = user && myAnime.length ? await postponedSet(user.id, myAnime.map((a) => a.anilistId)) : new Set<number>();
+  const postponedIds = user && myAnime.length ? await postponedSet(user.id, myAnime.flatMap((a) => (a.anilistId !== null ? [a.anilistId] : []))) : new Set<number>();
 
   // Miniatura do episódio: a do episódio global (Fase 4) primeiro; depois a do job diário de imagens.
   const weekEpisodes = Array.from(new Set(entries.map((e) => e.episode)));

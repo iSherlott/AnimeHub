@@ -90,7 +90,8 @@ export async function getAggregatedRecommendations(userId: string, limit: number
     prisma.anime.findMany({ where: { userId }, select: { anilistId: true, titleRomaji: true, genres: true, recommendationsJson: true } }),
     loadedTitles(),
   ]);
-  const followed: FollowedForRecs[] = animes.map((a) => ({ anilistId: a.anilistId, titleRomaji: a.titleRomaji, genres: splitGenres(a.genres), recommendations: parseRecommendations(a.recommendationsJson) }));
+  // Recomendações vêm da AniList: obra sem AniList ID (só do AniDB/Kitsu) não tem de onde puxar.
+  const followed: FollowedForRecs[] = animes.flatMap((a) => (a.anilistId === null ? [] : [{ anilistId: a.anilistId, titleRomaji: a.titleRomaji, genres: splitGenres(a.genres), recommendations: parseRecommendations(a.recommendationsJson) }]));
   return rankRecommendations(followed, loaded, limit);
 }
 

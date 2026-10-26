@@ -58,7 +58,7 @@ function StateSelect({ entry, onChange }: { entry: ProfileAnimeEntry; onChange: 
     <Box
       component="select"
       aria-label={`Andamento de ${entry.titleRomaji}`}
-      data-testid={`watch-state-${entry.anilistId}`}
+      data-testid={`watch-state-${entry.key}`}
       value={entry.watchState ?? ""}
       onChange={(event: React.ChangeEvent<HTMLSelectElement>) => onChange(entry.animeId as string, (event.target.value || null) as WatchState | null)}
       sx={{ width: "100%", mt: 0.5, px: 0.75, py: 0.5, borderRadius: "6px", border: 1, borderColor: "divider", bgcolor: "#171820", color: "text.primary", fontSize: 12, "&:focus-visible": { outline: "2px solid #ffd400", outlineOffset: 2 } }}
@@ -77,8 +77,8 @@ function AnimeTile({ entry, onChangeState }: { entry: ProfileAnimeEntry; onChang
   const { preference } = useTitlePreference();
   const title = resolveTitleText(preference, entry) || entry.titleRomaji;
   return (
-    <Box component="li" sx={{ listStyle: "none", minWidth: 0 }} data-testid={`profile-anime-${entry.anilistId}`}>
-      <Box component={NextLink} href={`/anime/${entry.anilistId}`} sx={{ display: "flex", flexDirection: "column", gap: 1, color: "text.primary", textDecoration: "none", "&:hover .title": { textDecoration: "underline" } }}>
+    <Box component="li" sx={{ listStyle: "none", minWidth: 0 }} data-testid={`profile-anime-${entry.key}`}>
+      <Box component={NextLink} href={entry.href ?? `/anime/${entry.key}`} sx={{ display: "flex", flexDirection: "column", gap: 1, color: "text.primary", textDecoration: "none", "&:hover .title": { textDecoration: "underline" } }}>
         <Box sx={{ position: "relative", aspectRatio: "2 / 3", borderRadius: "8px", overflow: "hidden", bgcolor: "#171820" }}>
           {entry.coverImage && <CoverImage src={entry.coverImage} sizes="(max-width: 600px) 40vw, 160px" />}
         </Box>
@@ -86,11 +86,11 @@ function AnimeTile({ entry, onChangeState }: { entry: ProfileAnimeEntry; onChang
           {title}
         </Typography>
         {entry.seasonsCount > 1 && (
-          <Typography data-testid={`profile-anime-seasons-${entry.anilistId}`} sx={{ fontSize: 11, color: "text.secondary" }}>
+          <Typography data-testid={`profile-anime-seasons-${entry.key}`} sx={{ fontSize: 11, color: "text.secondary" }}>
             {entry.seasonsCount} temporadas
           </Typography>
         )}
-        <Typography data-testid={`profile-anime-category-${entry.anilistId}`} sx={{ fontSize: 11, color: entry.category === "other" ? "text.secondary" : "primary.light", fontWeight: entry.category === "other" ? 400 : 700 }}>
+        <Typography data-testid={`profile-anime-category-${entry.key}`} sx={{ fontSize: 11, color: entry.category === "other" ? "text.secondary" : "primary.light", fontWeight: entry.category === "other" ? 400 : 700 }}>
           {entry.category !== "other" ? CATEGORY_LABELS[entry.category] : entry.waiting ? "Em espera" : entry.status && STATUS_LABELS[entry.status] ? STATUS_LABELS[entry.status] : "—"}
         </Typography>
       </Box>
@@ -125,7 +125,7 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
   // Rolagem infinita: as obras chegam 48 por vez, conforme a pessoa desce a lista.
   const pager = usePagedList<ProfileAnimeEntry>({
     resetKey: `${userId}|${debounced}|${genre}|${category}|${reloads}`,
-    keyOf: (entry) => String(entry.anilistId),
+    keyOf: (entry) => entry.key,
     fetchPage: async (cursor) => {
       const params = new URLSearchParams();
       if (debounced) params.set("q", debounced);
@@ -228,7 +228,7 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
               </Typography>
               <Box component="ul" sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 2, p: 0, m: 0 }}>
                 {pager.items.map((entry) => (
-                  <AnimeTile key={entry.anilistId} entry={entry} onChangeState={(animeId, next) => void changeState(animeId, next)} />
+                  <AnimeTile key={entry.key} entry={entry} onChangeState={(animeId, next) => void changeState(animeId, next)} />
                 ))}
               </Box>
               <InfiniteFooter

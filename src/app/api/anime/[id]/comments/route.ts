@@ -7,6 +7,8 @@ type Params = { params: Promise<{ id: string }> };
 
 const MAX_BODY_LENGTH = 2000;
 const PAGE_SIZE = 10;
+/** Comentários são da obra da AniList: obra só do AniDB/Kitsu ainda não tem comunidade. */
+const NO_COMMUNITY = "Esta obra ainda não tem comunidade: os comentários chegam quando ela for ligada ao catálogo principal.";
 
 /**
  * Comentários (Epic 15) são chaveados por anilistId, não pelo id da linha de
@@ -34,6 +36,7 @@ export async function GET(request: Request, { params }: Params) {
   if (!anime) {
     return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
   }
+  if (anime.anilistId === null) return NextResponse.json({ error: NO_COMMUNITY }, { status: 409 });
 
   const url = new URL(request.url);
   const requestedPage = Number(url.searchParams.get("page"));
@@ -89,6 +92,7 @@ export async function POST(request: Request, { params }: Params) {
   if (!anime) {
     return NextResponse.json({ error: "Anime não encontrado" }, { status: 404 });
   }
+  if (anime.anilistId === null) return NextResponse.json({ error: NO_COMMUNITY }, { status: 409 });
 
   let body;
   try {

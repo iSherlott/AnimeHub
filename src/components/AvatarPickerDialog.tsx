@@ -191,7 +191,7 @@ export function AvatarPickerDialog({
             if (items.length === 0) return null;
             const title = resolveTitleText(preference, group);
             return (
-              <Box key={group.anilistId} component="section" aria-label={title} data-testid={`avatar-group-${group.anilistId}`}>
+              <Box key={group.key} component="section" aria-label={title} data-testid={`avatar-group-${group.key}`}>
                 <Typography lang={preference.language === "ja" && group.titleNative ? "ja" : undefined} sx={{ fontSize: 18, mb: 2 }}>
                   {title}
                 </Typography>

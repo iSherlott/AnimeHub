@@ -5,7 +5,7 @@ import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN } from "./test-auth";
 
 // Obras sem AniList ID (só do AniDB ou da Kitsu) ganham página pública em /anime/anidb-<id> e /anime/kitsu-<id>: ficha,
-// sinopse, episódios (só o dia) e extras. Acompanhar ainda não dá (depende do AniList ID). Fora da plataforma não abre;
+// sinopse, episódios (só o dia) e extras, e dá para acompanhar (spec 114). Fora da plataforma não abre;
 // ligada à AniList, o endereço leva à página da AniList.
 const AID = 113901;
 const AID_OFF = 113902;
@@ -61,8 +61,9 @@ test.describe.serial("Página das obras só do AniDB", () => {
     await expect(page.getByTestId("schedule-episode-1-title")).toContainText("Primeiro Round113");
     await expect(page.getByTestId("schedule-episode-2-title")).toContainText("Segundo Round113");
     await expect(page.getByTestId("work-extras")).toContainText("Especiais: 1");
-    await expect(page.getByTestId("catalog-work-follow-note")).toContainText("Ainda não dá para acompanhar");
-    await expect(page.getByRole("button", { name: /Acompanhar/ })).toHaveCount(0);
+    // Sem horário: fora do calendário e dos avisos; comunidade só depois de ligada à AniList.
+    await expect(page.getByTestId("catalog-work-follow-note")).toContainText("não entra no calendário nem nos avisos");
+    await expect(page.getByTestId(`season-follow-anidb-${AID}`)).toBeVisible();
     await page.screenshot({ path: test.info().outputPath("pagina-obra-so-anidb.png"), fullPage: true });
   });
 
@@ -82,13 +83,13 @@ test.describe.serial("Página das obras só do AniDB", () => {
     expect(linked.headers().location).toMatch(new RegExp(`/anime/${LINKED_ANILIST}$`));
   });
 
-  test("o cartão do Explorar leva à página; a estrela de acompanhar continua desligada", async ({ page }) => {
+  test("o cartão do Explorar leva à página e deixa acompanhar", async ({ page }) => {
     await page.goto("/discover");
     await page.getByLabel("Gênero").selectOption(GENRE);
     const card = page.getByTestId(`explore-card-anidb-${AID}`);
     // Padrão do produto: o título em japonês é o principal do cartão.
     await expect(card.getByRole("link", { name: "アニDBだけ" })).toHaveAttribute("href", `/anime/anidb-${AID}`);
-    await expect(card.getByRole("button", { name: "+ Acompanhar" })).toBeDisabled();
+    await expect(card.getByRole("button", { name: "+ Acompanhar" })).toBeEnabled();
   });
 
   test.describe("como administrador", () => {

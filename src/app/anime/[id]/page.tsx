@@ -52,7 +52,7 @@ import { WorkExtras } from "@/components/WorkExtras";
 import { loadExtras } from "@/lib/episodeExtras";
 import { WorkDiscussions, WorkQuizEntry, WorkRelated } from "@/components/WorkSections";
 import { PublicWork } from "@/app/anime/[id]/PublicWork";
-import { CatalogWork, findCatalogWork } from "@/app/anime/[id]/CatalogWork";
+import { CatalogWork, PublicCatalogWork, findCatalogWork } from "@/app/anime/[id]/CatalogWork";
 import { CATALOG_ONLY_SLUG } from "@/lib/workHref";
 
 /** Um id só de dígitos é o da AniList (obra de quem ainda não a acompanha); o resto é o id da sua própria lista. */
@@ -79,17 +79,24 @@ export default async function AnimeDetailPage({
   if (ANILIST_ID.test(id) && Number(id) > 0) return <PublicWork anilistId={Number(id)} />;
   // Obra sem AniList ID (só do AniDB ou da Kitsu): página pelo catálogo.
   const slug = CATALOG_ONLY_SLUG.exec(id);
-  if (slug && Number(slug[2]) > 0) return <CatalogWork source={slug[1] as "anidb" | "kitsu"} sourceId={Number(slug[2])} />;
+  if (slug && Number(slug[2]) > 0) return <PublicCatalogWork source={slug[1] as "anidb" | "kitsu"} sourceId={Number(slug[2])} />;
 
   const user = await getCurrentUser();
   if (!user) notFound();
 
-  const anime = await prisma.anime.findUnique({
+  const loaded = await prisma.anime.findUnique({
     where: { id },
     include: { platformLinks: true },
   });
 
-  if (!anime || anime.userId !== user.id) notFound();
+  if (!loaded || loaded.userId !== user.id) notFound();
+  // Obra sem AniList ID (só do AniDB/Kitsu): a página é a do catálogo, com os controles de quem acompanha.
+  if (loaded.anilistId === null) {
+    const entry = loaded.catalogEntryId ? await prisma.catalogEntry.findUnique({ where: { id: loaded.catalogEntryId } }) : null;
+    if (!entry) notFound();
+    return <CatalogWork entry={entry} signedIn owned={loaded} />;
+  }
+  const anime = loaded as typeof loaded & { anilistId: number };
 
   const genres = anime.genres ? anime.genres.split(",").filter(Boolean) : [];
   // Sites de streaming do catálogo (AniList) — a produção é criada/atualizada sob demanda, mas a página NUNCA

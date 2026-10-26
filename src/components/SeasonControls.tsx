@@ -14,7 +14,8 @@ export type MySeason = { animeId: string; watchState: string | null; waiting: bo
  * terminei ou dropei (vi as anteriores e desisti daqui: sem avisos, fora do calendário, e as próximas temporadas não
  * entram sozinhas). Quem não tem pode marcá-la como já vista ou passar a acompanhá-la.
  */
-export function SeasonControls({ anilistId, seasonNumber, mine }: { anilistId: number; seasonNumber: number; mine: MySeason | null }) {
+export function SeasonControls({ anilistId, work, seasonNumber, mine }: { anilistId: number | null; /** Obra sem AniList ID: `anidb-<id>` ou `kitsu-<id>`. */ work?: string; seasonNumber: number; mine: MySeason | null }) {
+  const key = anilistId ?? work ?? "";
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +46,7 @@ export function SeasonControls({ anilistId, seasonNumber, mine }: { anilistId: n
 
   const follow = (state: string | null) =>
     run(async () => {
-      const created = await request("/api/anime", { method: "POST", body: JSON.stringify({ anilistId }) });
+      const created = await request("/api/anime", { method: "POST", body: JSON.stringify(anilistId !== null ? { anilistId } : { work }) });
       if (!created) return false;
       if (!state) return true;
       const body = (await created.json()) as { anime?: { id?: string } };
@@ -53,12 +54,12 @@ export function SeasonControls({ anilistId, seasonNumber, mine }: { anilistId: n
     });
 
   return (
-    <Box data-testid={`season-controls-${anilistId}`} sx={{ display: "flex", flexDirection: "column", gap: 0.75, alignItems: "flex-start" }}>
+    <Box data-testid={`season-controls-${key}`} sx={{ display: "flex", flexDirection: "column", gap: 0.75, alignItems: "flex-start" }}>
       {mine ? (
         <Box
           component="select"
           aria-label={`Andamento da Temporada ${seasonNumber}`}
-          data-testid={`season-state-${anilistId}`}
+          data-testid={`season-state-${key}`}
           value={mine.watchState ?? ""}
           disabled={busy}
           onChange={(event: React.ChangeEvent<HTMLSelectElement>) => void setState(mine.animeId, event.target.value || null)}
@@ -73,17 +74,17 @@ export function SeasonControls({ anilistId, seasonNumber, mine }: { anilistId: n
         </Box>
       ) : (
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-          <Button size="small" disabled={busy} onClick={() => void follow("FINISHED")} sx={ELEVATED_BUTTON_SX} data-testid={`season-seen-${anilistId}`}>
+          <Button size="small" disabled={busy} onClick={() => void follow("FINISHED")} sx={ELEVATED_BUTTON_SX} data-testid={`season-seen-${key}`}>
             Já vi esta temporada
           </Button>
-          <Button size="small" disabled={busy} onClick={() => void follow(null)} sx={ELEVATED_BUTTON_SX} data-testid={`season-follow-${anilistId}`}>
+          <Button size="small" disabled={busy} onClick={() => void follow(null)} sx={ELEVATED_BUTTON_SX} data-testid={`season-follow-${key}`}>
             + Acompanhar
           </Button>
         </Box>
       )}
-      {mine && <SeasonRating animeId={mine.animeId} anilistId={anilistId} seasonNumber={seasonNumber} score={mine.userScore ?? null} finished={mine.watchState === "FINISHED"} />}
+      {mine && <SeasonRating animeId={mine.animeId} anilistId={key} seasonNumber={seasonNumber} score={mine.userScore ?? null} finished={mine.watchState === "FINISHED"} />}
       {mine?.watchState === "DROPPED" && (
-        <Typography data-testid={`season-dropped-note-${anilistId}`} sx={{ fontSize: 12, color: "text.secondary" }}>
+        <Typography data-testid={`season-dropped-note-${key}`} sx={{ fontSize: 12, color: "text.secondary" }}>
           Fora do calendário e sem avisos. As próximas temporadas não entram na sua lista sozinhas.
         </Typography>
       )}
