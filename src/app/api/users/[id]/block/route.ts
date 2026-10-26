@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
+import { endFriendshipOps } from "@/lib/friends";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -37,6 +38,8 @@ export async function PUT(_request: Request, { params }: Params) {
         ],
       },
     }),
+    // A amizade e os pedidos também acabam.
+    ...endFriendshipOps(user.id, id),
   ]);
 
   return NextResponse.json({ blocked: true });

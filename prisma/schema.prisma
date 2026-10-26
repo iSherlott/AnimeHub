@@ -98,6 +98,10 @@ model User {
   fans                 Fan[]            @relation("FanTarget")
   ratingsGiven         ProfileRating[]  @relation("RatingRater")
   ratingsReceived      ProfileRating[]  @relation("RatingTarget")
+  friendshipsA         Friendship[]     @relation("FriendshipA")
+  friendshipsB         Friendship[]     @relation("FriendshipB")
+  friendRequestsSent     FriendRequest[] @relation("FriendRequestFrom")
+  friendRequestsReceived FriendRequest[] @relation("FriendRequestTo")
 
   @@index([email])
 }
@@ -759,7 +763,7 @@ model SocialNotification {
   actorId   String
   actor     User      @relation("SocialSent", fields: [actorId], references: [id], onDelete: Cascade)
   /// "POST_REPLY" | "COMMENT_REPLY" | "NEW_FOLLOWER" | "POST_LIKE" | "PROFILE_SCRAP" | "PROFILE_TESTIMONIAL" | "PROFILE_FAN"
-  /// | "COMMUNITY_REPLY" | "COMMUNITY_EVENT"
+  /// | "COMMUNITY_REPLY" | "COMMUNITY_EVENT" | "FRIEND_REQUEST" | "FRIEND_ACCEPTED"
   type      String
   postId    String?
   commentId String?
@@ -1691,4 +1695,29 @@ model ProfileRating {
 
   @@id([raterId, targetId])
   @@index([targetId])
+}
+
+/// Amizade (como no Orkut), separada do seguir: nasce de um pedido aceito. Um registro por par, com `userAId` < `userBId`
+/// (ordem dos ids), para não haver duplicata. Depoimentos e avaliações exigem amizade.
+model Friendship {
+  userAId   String
+  userA     User     @relation("FriendshipA", fields: [userAId], references: [id], onDelete: Cascade)
+  userBId   String
+  userB     User     @relation("FriendshipB", fields: [userBId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userAId, userBId])
+  @@index([userBId])
+}
+
+/// Pedido de amizade pendente. Aceitar cria a `Friendship` e apaga o pedido; recusar ou cancelar só apaga.
+model FriendRequest {
+  fromId    String
+  from      User     @relation("FriendRequestFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toId      String
+  to        User     @relation("FriendRequestTo", fields: [toId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([fromId, toId])
+  @@index([toId])
 }

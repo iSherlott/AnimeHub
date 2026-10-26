@@ -58,3 +58,28 @@ pediu o perfil no formato do antigo Orkut, com o tema do Anime Hub, e escolheu:
   - Pedido de amizade separado do seguir.
   - Lista de quem é fã.
   - Responder recado no perfil de quem escreveu, num clique.
+
+## Revisão de 26/10/2026 — amizade separada do seguir
+
+A pessoa usuária escolheu trocar o "amigo = seguir mútuo" por **pedido de amizade**, como no Orkut.
+
+- **Pedir e responder:**
+  - "Adicionar como amigo" fica no perfil, na coluna da esquerda.
+  - Quem recebe aceita ou recusa no próprio perfil de quem pediu ou na página **Amigos** (`/amigos`, também no menu da
+    conta). A página lista os pedidos recebidos, os enviados e os amigos.
+  - Quem pediu pode cancelar. Qualquer um dos dois pode desfazer a amizade.
+  - Se as duas pessoas pedirem, vira amizade direto.
+- **Seguir continua independente:** monta o "Seguindo" do Feed e não cria nem desfaz amizade.
+- **O que exige amizade:** depoimentos e avaliações, como antes, agora pela amizade.
+- **Grade de amigos:** mostra as amizades. No próprio perfil, a caixa de amigos avisa dos pedidos esperando e leva a
+  `/amigos`.
+- **Sino:**
+  - "quer ser seu amigo" leva a `/amigos`;
+  - "aceitou seu pedido de amizade" leva ao perfil de quem aceitou;
+  - os dois seguem a preferência de seguidores e não se repetem.
+- **Bloqueio:** desfaz a amizade e apaga os pedidos entre as duas pessoas; com bloqueio, não há pedido novo.
+- **Banco** (`20261110100000_friendships`): cria `Friendship` e `FriendRequest`. A `Friendship` guarda um registro por
+  par, com o menor id em `userAId`. A migração transforma em amizade quem já se seguia mutuamente, para ninguém perder
+  depoimentos ou avaliações. Ela só acrescenta.
+- **Código e testes:** as regras ficam em `src/lib/friends.ts`. Testes: spec 123, que inclui a carga da migração; o spec
+  121 foi ajustado.

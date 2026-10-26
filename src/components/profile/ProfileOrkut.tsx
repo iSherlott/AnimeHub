@@ -23,6 +23,75 @@ async function send(url: string, method: string, body?: unknown): Promise<{ ok: 
 
 const errorOf = (data: Record<string, unknown>) => (typeof data.error === "string" ? data.error : "Não foi possível salvar. Tente de novo.");
 
+type FriendState = "none" | "friends" | "sent" | "received";
+
+/**
+ * Amizade (como no Orkut): adicionar, cancelar o pedido, aceitar ou recusar o recebido, desfazer. Depois da mudança a
+ * página é recarregada (depoimentos e avaliações dependem da amizade).
+ */
+export function FriendButton({ userId, initial, compact = false }: { userId: string; initial: FriendState; compact?: boolean }) {
+  const router = useRouter();
+  const [state, setState] = useState<FriendState>(initial);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function act(method: "PUT" | "DELETE", confirmText?: string) {
+    if (confirmText && !window.confirm(confirmText)) return;
+    setBusy(true);
+    setError(null);
+    const r = await send(`/api/users/${userId}/friend`, method);
+    setBusy(false);
+    if (!r.ok) return setError(errorOf(r.data));
+    setState(r.data.state as FriendState);
+    router.refresh();
+  }
+  const size = compact ? "small" : "medium";
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }} data-testid="friend-box" data-state={state}>
+      {state === "none" && (
+        <Button variant="contained" size={size} disabled={busy} onClick={() => act("PUT")} data-testid="friend-add">
+          Adicionar como amigo
+        </Button>
+      )}
+      {state === "sent" && (
+        <>
+          <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Pedido de amizade enviado.</Typography>
+          <Button size={size} disabled={busy} onClick={() => act("DELETE")} sx={ELEVATED_BUTTON_SX} data-testid="friend-cancel">
+            Cancelar pedido
+          </Button>
+        </>
+      )}
+      {state === "received" && (
+        <>
+          {!compact && <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Quer ser seu amigo.</Typography>}
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            <Button variant="contained" size={size} disabled={busy} onClick={() => act("PUT")} data-testid="friend-accept">
+              Aceitar
+            </Button>
+            <Button size={size} disabled={busy} onClick={() => act("DELETE")} sx={ELEVATED_BUTTON_SX} data-testid="friend-decline">
+              Recusar
+            </Button>
+          </Box>
+        </>
+      )}
+      {state === "friends" && (
+        <>
+          <Typography sx={{ fontSize: 13, fontWeight: 700 }} data-testid="friend-state">
+            ✓ Vocês são amigos
+          </Typography>
+          <Button size="small" color="inherit" disabled={busy} onClick={() => act("DELETE", "Desfazer a amizade?")} sx={{ alignSelf: "flex-start", fontSize: 12, color: "text.secondary", px: 0, minWidth: 0 }} data-testid="friend-remove">
+            Desfazer amizade
+          </Button>
+        </>
+      )}
+      {error && (
+        <Typography role="alert" sx={{ fontSize: 12, color: "error.main" }}>
+          {error}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
 /** "Ser fã" (como no Orkut) e a contagem de fãs. */
 export function FanButton({ userId, initialFan, initialFans, canFan }: { userId: string; initialFan: boolean; initialFans: number; canFan: boolean }) {
   const [fan, setFan] = useState(initialFan);

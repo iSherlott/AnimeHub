@@ -5,6 +5,7 @@ import NextLink from "next/link";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import LogoutIcon from "@mui/icons-material/Logout";
+import PeopleIcon from "@mui/icons-material/People";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { Divider, IconButton, ListItemIcon, Menu, MenuItem, Tooltip, Typography } from "@mui/material";
 import { LanguageMenuItems } from "@/components/TitleLanguageMenu";
@@ -72,6 +73,12 @@ export function AccountMenu({ user, onLogout }: { user: PublicUser; onLogout: ()
             <AccountCircleIcon fontSize="small" />
           </ListItemIcon>
           Meu perfil
+        </MenuItem>
+        <MenuItem component={NextLink} href="/amigos" onClick={handleClose}>
+          <ListItemIcon>
+            <PeopleIcon fontSize="small" />
+          </ListItemIcon>
+          Amigos
         </MenuItem>
         <MenuItem component={NextLink} href="/configuracoes" onClick={handleClose}>
           <ListItemIcon>

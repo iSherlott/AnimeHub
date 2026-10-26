@@ -10,7 +10,9 @@ export type SocialNotificationType =
   | "PROFILE_TESTIMONIAL"
   | "PROFILE_FAN"
   | "COMMUNITY_REPLY"
-  | "COMMUNITY_EVENT";
+  | "COMMUNITY_EVENT"
+  | "FRIEND_REQUEST"
+  | "FRIEND_ACCEPTED";
 
 /** Qual preferência da conta controla cada tipo (Configurações, S-12). */
 const PREFERENCE_BY_TYPE = {
@@ -25,10 +27,13 @@ const PREFERENCE_BY_TYPE = {
   // Comunidades: resposta num tópico em que a pessoa participa e evento novo numa comunidade dela.
   COMMUNITY_REPLY: "notifyCommunity",
   COMMUNITY_EVENT: "notifyCommunity",
+  // Amizade: como um seguidor novo.
+  FRIEND_REQUEST: "notifyFollowers",
+  FRIEND_ACCEPTED: "notifyFollowers",
 } as const;
 
 /** Tipos que não se repetem: a mesma pessoa curtindo/seguindo de novo não gera outro aviso. */
-const DEDUPED: ReadonlySet<SocialNotificationType> = new Set(["NEW_FOLLOWER", "POST_LIKE", "PROFILE_FAN"]);
+const DEDUPED: ReadonlySet<SocialNotificationType> = new Set(["NEW_FOLLOWER", "POST_LIKE", "PROFILE_FAN", "FRIEND_REQUEST", "FRIEND_ACCEPTED"]);
 
 /**
  * Registra uma notificação social para `recipientId`. Nunca lança: o aviso

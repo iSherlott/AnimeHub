@@ -2,11 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { blockedUserIdSet, blockRelation } from "@/lib/blocks";
 import { isBlank } from "@/lib/text";
 import { notifySocial } from "@/lib/socialNotifications";
+import { areFriends } from "@/lib/friends";
 
 /**
  * Perfil estilo Orkut, com o tema do Anime Hub: recados (qualquer conta), depoimentos (só amigos, com aprovação), fãs e
- * avaliações (só amigos). "Amigo" é quem se segue mutuamente (o seguir que já existe). Bloqueio entre as duas pessoas
- * impede tudo isso e esconde o que uma escreveu para a outra.
+ * avaliações (só amigos). Amizade: pedido aceito (`src/lib/friends.ts`). Bloqueio entre as duas pessoas impede tudo isso
+ * e esconde o que uma escreveu para a outra.
  */
 export const SCRAP_MAX = 1000;
 export const TESTIMONIAL_MAX = 2000;
@@ -19,24 +20,6 @@ export type ProfileError = { ok: false; status: 400 | 403 | 404 | 409; error: st
 
 const AUTHOR = { select: { id: true, displayName: true, handle: true, avatarUrl: true } } as const;
 const clean = (v: unknown) => (typeof v === "string" ? v.trim() : "");
-
-/** Amigos = seguem um ao outro. */
-export async function areFriends(a: string, b: string): Promise<boolean> {
-  if (a === b) return false;
-  const n = await prisma.follow.count({ where: { OR: [{ followerId: a, followingId: b }, { followerId: b, followingId: a }] } });
-  return n === 2;
-}
-
-/** Amigos da pessoa (seguir mútuo), dos mais recentes aos mais antigos; sem quem o visitante bloqueou (ou que o bloqueou). */
-export async function listFriends(userId: string, viewerId: string | null, take = 9) {
-  const blocked = [...(await blockedUserIdSet(viewerId))];
-  const where = { followerId: userId, following: { following: { some: { followingId: userId } }, ...(blocked.length ? { id: { notIn: blocked } } : {}) } };
-  const [total, rows] = await Promise.all([
-    prisma.follow.count({ where }),
-    prisma.follow.findMany({ where, orderBy: { createdAt: "desc" }, take, include: { following: AUTHOR } }),
-  ]);
-  return { total, rows: rows.map((r) => r.following) };
-}
 
 /** Pode interagir (recado, fã…) com o perfil: há conta, não é bloqueio entre as duas pessoas. */
 async function canInteract(viewerId: string, profileId: string): Promise<ProfileError | null> {
@@ -93,7 +76,7 @@ export async function writeTestimonial(profileId: string, authorId: string, inpu
   if (isBlank(body) || body.length > TESTIMONIAL_MAX) return { ok: false, status: 400, error: `Depoimento de 1 a ${TESTIMONIAL_MAX.toLocaleString("pt-BR")} caracteres.` };
   const denied = await canInteract(authorId, profileId);
   if (denied) return denied;
-  if (!(await areFriends(authorId, profileId))) return { ok: false, status: 403, error: "Só amigos (quem se segue mutuamente) escrevem depoimentos." };
+  if (!(await areFriends(authorId, profileId))) return { ok: false, status: 403, error: "Só amigos escrevem depoimentos." };
   await prisma.testimonial.upsert({
     where: { profileId_authorId: { profileId, authorId } },
     create: { profileId, authorId, body },
@@ -151,7 +134,7 @@ export async function rate(raterId: string, targetId: string, input: unknown): P
   if (Object.keys(values).length === 0) return { ok: false, status: 400, error: "Nada para avaliar." };
   const denied = await canInteract(raterId, targetId);
   if (denied) return denied;
-  if (!(await areFriends(raterId, targetId))) return { ok: false, status: 403, error: "Só amigos (quem se segue mutuamente) avaliam." };
+  if (!(await areFriends(raterId, targetId))) return { ok: false, status: 403, error: "Só amigos avaliam." };
   await prisma.profileRating.upsert({ where: { raterId_targetId: { raterId, targetId } }, create: { raterId, targetId, ...values }, update: values });
   return { ok: true };
 }

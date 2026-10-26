@@ -7,13 +7,13 @@ import { PeopleGrid, ProfileSection } from "@/components/profile/ProfileSections
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { blockRelation } from "@/lib/blocks";
-import { listFriends } from "@/lib/profileOrkut";
+import { listFriends } from "@/lib/friends";
 
 type Props = { params: Promise<{ id: string }> };
 
 const FRIENDS_MAX = 300;
 
-/** Todos os amigos do perfil (quem se segue mutuamente). */
+/** Todos os amigos do perfil (pedidos de amizade aceitos). */
 export default async function FriendsPage({ params }: Props) {
   const { id } = await params;
   const target = await prisma.user.findUnique({ where: { id }, select: { displayName: true } });
@@ -27,7 +27,7 @@ export default async function FriendsPage({ params }: Props) {
     <Box sx={{ minHeight: "100%", bgcolor: "background.default" }}>
       <Header />
       <PageContainer>
-        <PageIntro kicker="プロフィール / PERFIL" title={own ? "Meus amigos" : `Amigos de ${target.displayName}`} subtitle="Amigos são quem se segue mutuamente." />
+        <PageIntro kicker="プロフィール / PERFIL" title={own ? "Meus amigos" : `Amigos de ${target.displayName}`} subtitle="Amizade é um pedido aceito pelas duas pessoas." />
         <AppLink href={`/users/${id}`} underline="hover" sx={{ fontSize: 14, color: "text.secondary", alignSelf: "flex-start" }}>
           ← {own ? "Meu perfil" : `Perfil de ${target.displayName}`}
         </AppLink>

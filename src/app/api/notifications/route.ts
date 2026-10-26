@@ -97,7 +97,8 @@ export async function GET() {
     const label = labels.get(topic?.communityId ?? event?.communityId ?? "");
     const unavailable = n.postId ? !livePosts.has(n.postId) : n.topicId ? !topic || !label : n.eventId ? !event || !label : false;
     let href: string | null = null;
-    if (n.type === "NEW_FOLLOWER" || n.type === "PROFILE_FAN") href = `/users/${n.actor.id}`;
+    if (n.type === "NEW_FOLLOWER" || n.type === "PROFILE_FAN" || n.type === "FRIEND_ACCEPTED") href = `/users/${n.actor.id}`;
+    else if (n.type === "FRIEND_REQUEST") href = "/amigos";
     // Recado e depoimento ficam no perfil de quem recebe (quem está vendo o sino).
     else if (n.type === "PROFILE_SCRAP") href = `/users/${user.id}#recados`;
     else if (n.type === "PROFILE_TESTIMONIAL") href = `/users/${user.id}#depoimentos`;

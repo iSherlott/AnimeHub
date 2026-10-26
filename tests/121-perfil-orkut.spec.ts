@@ -5,7 +5,7 @@ import { SESSION_COOKIE_NAME, TEST_ADMIN_EMAIL, TEST_ADMIN_SESSION_TOKEN, TEST_U
 import { FORTUNES } from "../src/lib/dailyFortune";
 
 // Perfil no formato do Orkut: menu, fãs e avaliações à esquerda; sorte do dia (só a dona), quem sou eu, recados e
-// depoimentos no centro; amigos (seguir mútuo), comunidades e conquistas à direita. Recado: qualquer conta. Depoimento
+// depoimentos no centro; amigos (pedido aceito), comunidades e conquistas à direita. Recado: qualquer conta. Depoimento
 // e avaliação: só amigos; o depoimento só aparece depois de aprovado. Bloqueio impede tudo isso.
 const adminState = {
   cookies: [{ name: SESSION_COOKIE_NAME, value: TEST_ADMIN_SESSION_TOKEN, domain: "localhost", path: "/", expires: Math.floor(Date.now() / 1000) + 365 * 24 * 3600, httpOnly: true, secure: false, sameSite: "Lax" as const }],
@@ -28,12 +28,18 @@ test.describe.serial("Perfil no formato do Orkut", () => {
     await prisma.socialNotification.deleteMany({ where: { userId: { in: pair }, type: { in: PROFILE_TYPES } } });
     await prisma.block.deleteMany({ where: { blockerId: { in: pair }, blockedId: { in: pair } } });
     await prisma.follow.deleteMany({ where: { followerId: { in: pair }, followingId: { in: pair } } });
+    await prisma.friendship.deleteMany({ where: { userAId: { in: pair }, userBId: { in: pair } } });
+    await prisma.friendRequest.deleteMany({ where: { fromId: { in: pair }, toId: { in: pair } } });
   }
 
+  // Amizade = pedido aceito (ADR 0012, revisão "amizade separada do seguir").
   async function befriend() {
-    for (const [a, b] of [[userId, adminId], [adminId, userId]]) {
-      await prisma.follow.upsert({ where: { followerId_followingId: { followerId: a, followingId: b } }, create: { followerId: a, followingId: b }, update: {} });
-    }
+    const pair = userId < adminId ? { userAId: userId, userBId: adminId } : { userAId: adminId, userBId: userId };
+    await prisma.friendship.upsert({ where: { userAId_userBId: pair }, create: pair, update: {} });
+  }
+
+  async function unfriend() {
+    await prisma.friendship.deleteMany({ where: { userAId: { in: [userId, adminId] }, userBId: { in: [userId, adminId] } } });
   }
 
   test.beforeAll(async () => {
@@ -70,7 +76,8 @@ test.describe.serial("Perfil no formato do Orkut", () => {
     await expect(about).toContainText("Fantasia");
     await expect(about).toContainText("No Anime Hub desde");
     await expect(page.getByTestId("profile-friends")).toContainText("amigos (1)");
-    await expect(page.getByTestId("profile-friends").getByRole("link").first()).toHaveAttribute("href", `/users/${adminId}`);
+    await expect(page.getByTestId("profile-friends").getByRole("link", { name: /E2E Admin/ })).toHaveAttribute("href", `/users/${adminId}`);
+    await expect(page.getByTestId("profile-friends").getByRole("link", { name: "gerenciar" })).toHaveAttribute("href", "/amigos");
     await expect(page.getByTestId("profile-achievements").getByRole("link", { name: "ver conquistas" })).toHaveAttribute("href", "/conquistas");
     await expect(page.getByRole("link", { name: /Minha Lista privada/ })).toHaveAttribute("href", "/minha-lista");
     await page.screenshot({ path: test.info().outputPath("perfil-orkut.png"), fullPage: true });
@@ -117,7 +124,7 @@ test.describe.serial("Perfil no formato do Orkut", () => {
   test("depoimentos: só amigos escrevem; aparece depois da aprovação; reescrever volta para a aprovação", async ({ browser, page }) => {
     const admin = await browser.newContext({ storageState: adminState });
     const adminPage = await admin.newPage();
-    await prisma.follow.deleteMany({ where: { followerId: userId, followingId: adminId } });
+    await unfriend();
     expect((await adminPage.request.put(`/api/users/${userId}/testimonials`, { data: { body: "Companhia ótima." } })).status()).toBe(403);
     await befriend();
 
@@ -164,7 +171,7 @@ test.describe.serial("Perfil no formato do Orkut", () => {
     await expect(adminPage.getByTestId("profile-rating-otaku")).toHaveAttribute("data-value", "3");
     await expect(adminPage.getByTestId("profile-rating-votes")).toHaveText("Média de 1 amigo.");
 
-    await prisma.follow.deleteMany({ where: { followerId: userId, followingId: adminId } });
+    await unfriend();
     expect((await adminPage.request.put(`/api/users/${userId}/rating`, { data: { gentil: 2 } })).status()).toBe(403);
     await befriend();
     await admin.close();

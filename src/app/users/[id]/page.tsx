@@ -7,7 +7,7 @@ import { AppLink } from "@/components/AppLink";
 import { LinkButton } from "@/components/LinkButton";
 import { PageContainer, PageIntro } from "@/components/PageShell";
 import { SideBox } from "@/components/SideBox";
-import { FanButton, RatingBox, ScrapForm, TestimonialDecision, TestimonialForm, DeleteButton } from "@/components/profile/ProfileOrkut";
+import { FanButton, FriendButton, RatingBox, ScrapForm, TestimonialDecision, TestimonialForm, DeleteButton } from "@/components/profile/ProfileOrkut";
 import { CommunityGrid, NoteItem, PeopleGrid, ProfileSection, ScrapList } from "@/components/profile/ProfileSections";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -16,7 +16,8 @@ import { blockRelation } from "@/lib/blocks";
 import { BlockedProfileNotice } from "@/components/BlockedProfileNotice";
 import { equippedTitleNames } from "@/lib/quiz";
 import { visibleAnimeCount } from "@/lib/profileAnimeList";
-import { areFriends, listFriends, listScraps, listTestimonials, ratingSummary } from "@/lib/profileOrkut";
+import { listScraps, listTestimonials, ratingSummary } from "@/lib/profileOrkut";
+import { friendState, listFriends, pendingReceivedCount } from "@/lib/friends";
 import { memberCommunities } from "@/lib/community";
 import { dailyFortune } from "@/lib/dailyFortune";
 import { resolveTimeZone } from "@/lib/timeZone";
@@ -43,7 +44,7 @@ function AboutRow({ label, children }: { label: string; children: React.ReactNod
 /**
  * Perfil no formato do Orkut, com o tema do Anime Hub: à esquerda o menu, os fãs e as avaliações; no centro o cabeçalho,
  * a sorte do dia (só para a dona do perfil), o "quem sou eu", os recados, os depoimentos e as publicações; à direita os
- * amigos (quem se segue mutuamente), as comunidades e as conquistas.
+ * amigos (pedido de amizade aceito), as comunidades e as conquistas.
  */
 export default async function UserProfilePage({ params }: Params) {
   const { id } = await params;
@@ -73,7 +74,7 @@ export default async function UserProfilePage({ params }: Params) {
 
   const viewerId = viewer?.id ?? null;
   const isOwnProfile = viewerId === id;
-  const [followerCount, followingCount, postCount, isFollowedByMe, titles, equippedTitles, animeCount, friends, communities, fans, isFan, ratings, scraps, testimonials, friendOfViewer, myTestimonial] =
+  const [followerCount, followingCount, postCount, isFollowedByMe, titles, equippedTitles, animeCount, friends, communities, fans, isFan, ratings, scraps, testimonials, friendRel, myTestimonial, pendingRequests] =
     await Promise.all([
       prisma.follow.count({ where: { followingId: id } }),
       prisma.follow.count({ where: { followerId: id } }),
@@ -89,9 +90,11 @@ export default async function UserProfilePage({ params }: Params) {
       ratingSummary(id, viewerId),
       listScraps(id, 0, viewerId, SCRAPS_ON_PROFILE),
       listTestimonials(id, viewerId),
-      viewerId && !isOwnProfile ? areFriends(viewerId, id) : Promise.resolve(false),
+      viewerId ? friendState(viewerId, id) : Promise.resolve(null),
       viewerId && !isOwnProfile ? prisma.testimonial.findUnique({ where: { profileId_authorId: { profileId: id, authorId: viewerId } }, select: { body: true, status: true } }) : Promise.resolve(null),
+      isOwnProfile ? pendingReceivedCount(id) : Promise.resolve(0),
     ]);
+  const friendOfViewer = friendRel === "friends";
 
   const pending = testimonials.filter((t) => t.status === "PENDING");
   const approved = testimonials.filter((t) => t.status === "APPROVED");
@@ -124,6 +127,7 @@ export default async function UserProfilePage({ params }: Params) {
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", md: "220px minmax(0,1fr)", lg: "220px minmax(0,1fr) 280px" }, gap: 3, alignItems: "start" }}>
           {/* Esquerda: menu, fãs e avaliações */}
           <Box component="aside" aria-label="Menu do perfil" sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {friendRel && friendRel !== "self" && <FriendButton userId={id} initial={friendRel} />}
             <Box component="nav" aria-label="Seções do perfil" data-testid="profile-menu" sx={{ display: "flex", flexDirection: { xs: "row", md: "column" }, flexWrap: "wrap", gap: 0.5 }}>
               {menu.map((m) => (
                 <Box
@@ -143,7 +147,7 @@ export default async function UserProfilePage({ params }: Params) {
             <SideBox title="avaliações">
               <RatingBox userId={id} initialAverage={ratings.average} initialVotes={ratings.votes} initialMine={ratings.mine} canRate={friendOfViewer} />
               {viewer && !isOwnProfile && !friendOfViewer && (
-                <Typography sx={{ fontSize: 12, color: "text.secondary" }}>Só amigos (quem se segue mutuamente) avaliam.</Typography>
+                <Typography sx={{ fontSize: 12, color: "text.secondary" }}>Só amigos avaliam.</Typography>
               )}
             </SideBox>
           </Box>
@@ -219,7 +223,7 @@ export default async function UserProfilePage({ params }: Params) {
               )}
               {friendOfViewer && <TestimonialForm userId={id} displayName={firstName} initial={myTestimonial?.body ?? ""} status={myTestimonial?.status ?? null} />}
               {viewer && !isOwnProfile && !friendOfViewer && (
-                <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Só amigos (quem se segue mutuamente) escrevem depoimentos.</Typography>
+                <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Só amigos escrevem depoimentos.</Typography>
               )}
               {approved.length === 0 ? (
                 <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Nenhum depoimento ainda.</Typography>
@@ -256,9 +260,14 @@ export default async function UserProfilePage({ params }: Params) {
                 </Box>
               </SideBox>
             )}
-            <SideBox id="amigos" title="amigos" count={friends.total} testId="profile-friends" more={friends.total > friends.rows.length ? { href: `/users/${id}/amigos`, label: "ver todos" } : undefined}>
+            <SideBox id="amigos" title="amigos" count={friends.total} testId="profile-friends" more={isOwnProfile ? { href: "/amigos", label: "gerenciar" } : friends.total > friends.rows.length ? { href: `/users/${id}/amigos`, label: "ver todos" } : undefined}>
+              {isOwnProfile && pendingRequests > 0 && (
+                <AppLink href="/amigos" underline="hover" sx={{ fontSize: 13, fontWeight: 700 }} data-testid="profile-friend-requests">
+                  {pendingRequests} {pendingRequests === 1 ? "pedido de amizade esperando" : "pedidos de amizade esperando"} →
+                </AppLink>
+              )}
               {friends.rows.length === 0 ? (
-                <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Amigos são quem se segue mutuamente. Ainda nenhum.</Typography>
+                <Typography sx={{ fontSize: 13, color: "text.secondary" }}>{isOwnProfile ? "Ainda nenhum. Abra um perfil e use “Adicionar como amigo”." : "Ainda nenhum amigo."}</Typography>
               ) : (
                 <PeopleGrid people={friends.rows} />
               )}

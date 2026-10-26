@@ -258,3 +258,16 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 - **Busca no fórum.** Procura no título, no texto e nas respostas; todas as palavras precisam aparecer.
 - **Banco.** `20261109100000_community_notifications` (só acrescenta).
 - **Testes.** Spec 122; spec 52 e `community.test.ts` ajustados.
+
+## Depois: amizade separada do seguir (26/10)
+
+- **Pedido de amizade como no Orkut:**
+  - "Adicionar como amigo" fica no perfil.
+  - A página Amigos (`/amigos`, também no menu da conta) tem os pedidos recebidos e os enviados.
+  - Dá para aceitar, recusar, cancelar e desfazer.
+  - Se as duas pessoas pedirem, vira amizade direto.
+- **O que mudou:** depoimentos, avaliações e a grade de amigos passam a usar a amizade. Seguir continua separado.
+- **Sino:** avisa do pedido recebido e do pedido aceito.
+- **Bloqueio:** desfaz a amizade.
+- **Banco.** `20261110100000_friendships`: quem já se seguia mutuamente vira amigo.
+- **Testes.** Spec 123; spec 121 ajustado.
