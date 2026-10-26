@@ -287,3 +287,11 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
     denúncias do mesmo conteúdo.
 - **Banco.** `20261111100000_profile_reports` (só acrescenta).
 - **Testes.** Spec 124.
+
+## Depois: encontrar pessoas para amizade (26/10)
+
+- **Busca na página Amigos.** Por nome ou @identificador, com o botão de amizade em cada resultado.
+- **Sugestões.** Quem participa das mesmas comunidades ou acompanha os mesmos animes. Anime em comum só conta para quem
+  deixa a lista pública.
+- **Banco.** Sem migração.
+- **Testes.** Spec 125.

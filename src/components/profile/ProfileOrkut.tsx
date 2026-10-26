@@ -93,7 +93,7 @@ export function FriendButton({ userId, initial, compact = false, inline = false 
       )}
       {state === "sent" && (
         <>
-          <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Pedido de amizade enviado.</Typography>
+          {!compact && <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Pedido de amizade enviado.</Typography>}
           <Button size={size} disabled={busy} onClick={() => act("DELETE")} sx={ELEVATED_BUTTON_SX} data-testid="friend-cancel">
             Cancelar pedido
           </Button>

@@ -102,3 +102,16 @@ A pessoa usuária escolheu trocar o "amigo = seguir mútuo" por **pedido de amiz
   - Quem resolveu e a ação (`REMOVED`/`KEPT`) ficam registrados.
 - **Banco.** `20261111100000_profile_reports` cria `ProfileReport` e só acrescenta.
 - **Testes.** Spec 124.
+
+## Revisão de 26/10/2026 — encontrar pessoas
+
+- **Busca na página Amigos** (`/amigos?q=`): por nome ou @identificador, com pelo menos 2 letras e até 20 resultados.
+  - Cada pessoa vem com o botão de amizade no estado certo: adicionar, cancelar, aceitar ou já amigos.
+  - Ficam de fora a própria pessoa, quem tem bloqueio com ela e a conta do sistema (NewsHub).
+- **Sugestões** (até 8): quem participa das mesmas comunidades e quem acompanha os mesmos animes.
+  - Comunidade em comum vale 2; anime em comum vale 1.
+  - Anime em comum só conta para quem deixa a aba Animes pública, para não revelar listas ocultas.
+  - Cada sugestão diz o que há em comum, como "2 comunidades em comum · 3 animes em comum".
+  - Ficam de fora amigos, pedidos pendentes nos dois sentidos e bloqueios.
+- **Código.** `searchPeople` e `friendSuggestions` em `src/lib/friends.ts`. Sem migração.
+- **Testes.** Spec 125.
