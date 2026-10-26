@@ -39,8 +39,11 @@ type AiringAlertItem = {
 
 type SocialItem = {
   id: string;
-  type: "POST_REPLY" | "COMMENT_REPLY" | "NEW_FOLLOWER" | "POST_LIKE" | "PROFILE_SCRAP" | "PROFILE_TESTIMONIAL" | "PROFILE_FAN";
+  type: "POST_REPLY" | "COMMENT_REPLY" | "NEW_FOLLOWER" | "POST_LIKE" | "PROFILE_SCRAP" | "PROFILE_TESTIMONIAL" | "PROFILE_FAN" | "COMMUNITY_REPLY" | "COMMUNITY_EVENT";
   actor: { id: string; displayName: string };
+  /** Comunidades: a comunidade e o título do tópico ou do evento (públicos, como na lista do fórum). */
+  community?: string | null;
+  subject?: string | null;
   readAt: string | null;
   createdAt: string;
   unavailable: boolean;
@@ -66,7 +69,10 @@ function resolveAlertTitle(
   );
 }
 
-/** Texto só pelo TIPO do evento — o conteúdo (possível spoiler) nunca entra na notificação. */
+/**
+ * Texto só pelo TIPO do evento — o conteúdo (possível spoiler) nunca entra na notificação. Das comunidades entra só o
+ * título do tópico ou do evento, que já aparece para todos na lista do fórum.
+ */
 function socialText(n: SocialItem): string {
   switch (n.type) {
     case "POST_REPLY":
@@ -83,6 +89,10 @@ function socialText(n: SocialItem): string {
       return `${n.actor.displayName} escreveu um depoimento para você aprovar`;
     case "PROFILE_FAN":
       return `${n.actor.displayName} virou seu fã`;
+    case "COMMUNITY_REPLY":
+      return `${n.actor.displayName} respondeu no tópico "${n.subject ?? "…"}"${n.community ? ` da comunidade ${n.community}` : ""}`;
+    case "COMMUNITY_EVENT":
+      return `${n.actor.displayName} marcou o evento "${n.subject ?? "…"}"${n.community ? ` na comunidade ${n.community}` : ""}`;
   }
 }
 
@@ -294,7 +304,7 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
               );
             })
           )
-        ) : !user.preferences.notifyReplies && !user.preferences.notifyComments && !user.preferences.notifyFollowers && !user.preferences.notifyLikes ? (
+        ) : !user.preferences.notifyReplies && !user.preferences.notifyComments && !user.preferences.notifyFollowers && !user.preferences.notifyLikes && !user.preferences.notifyCommunity ? (
           <Box sx={{ py: 2, display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start" }}>
             <Typography sx={{ fontSize: 20 }}>Notificações sociais desativadas</Typography>
             <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Seus alertas de lançamentos continuam ativos.</Typography>
@@ -327,7 +337,7 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
                     {n.readAt ? "Lida" : "Não lida"} · {formatRelativeTime(n.createdAt)}
                   </Typography>
                   {n.unavailable ? (
-                    <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.5 }}>Publicação removida</Typography>
+                    <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.5 }}>{n.type === "COMMUNITY_EVENT" ? "Evento removido" : n.type === "COMMUNITY_REPLY" ? "Tópico removido" : "Publicação removida"}</Typography>
                   ) : (
                     <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.5 }}>Abrir contexto →</Typography>
                   )}

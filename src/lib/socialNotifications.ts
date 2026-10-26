@@ -1,7 +1,16 @@
 import { prisma } from "@/lib/prisma";
-import { blockRelation } from "@/lib/blocks";
+import { blockedUserIdSet, blockRelation } from "@/lib/blocks";
 
-export type SocialNotificationType = "POST_REPLY" | "COMMENT_REPLY" | "NEW_FOLLOWER" | "POST_LIKE" | "PROFILE_SCRAP" | "PROFILE_TESTIMONIAL" | "PROFILE_FAN";
+export type SocialNotificationType =
+  | "POST_REPLY"
+  | "COMMENT_REPLY"
+  | "NEW_FOLLOWER"
+  | "POST_LIKE"
+  | "PROFILE_SCRAP"
+  | "PROFILE_TESTIMONIAL"
+  | "PROFILE_FAN"
+  | "COMMUNITY_REPLY"
+  | "COMMUNITY_EVENT";
 
 /** Qual preferência da conta controla cada tipo (Configurações, S-12). */
 const PREFERENCE_BY_TYPE = {
@@ -13,6 +22,9 @@ const PREFERENCE_BY_TYPE = {
   PROFILE_SCRAP: "notifyComments",
   PROFILE_TESTIMONIAL: "notifyComments",
   PROFILE_FAN: "notifyFollowers",
+  // Comunidades: resposta num tópico em que a pessoa participa e evento novo numa comunidade dela.
+  COMMUNITY_REPLY: "notifyCommunity",
+  COMMUNITY_EVENT: "notifyCommunity",
 } as const;
 
 /** Tipos que não se repetem: a mesma pessoa curtindo/seguindo de novo não gera outro aviso. */
@@ -39,7 +51,7 @@ export async function notifySocial(input: {
 
     const recipient = await prisma.user.findUnique({
       where: { id: recipientId },
-      select: { notifyReplies: true, notifyComments: true, notifyFollowers: true, notifyLikes: true },
+      select: { notifyReplies: true, notifyComments: true, notifyFollowers: true, notifyLikes: true, notifyCommunity: true },
     });
     if (!recipient || !recipient[PREFERENCE_BY_TYPE[type]]) return;
 
@@ -56,5 +68,37 @@ export async function notifySocial(input: {
     });
   } catch (error) {
     console.error("[notifySocial] falhou:", error);
+  }
+}
+
+/** Máximo de destinatários de um aviso em grupo (evento numa comunidade grande, tópico muito movimentado). */
+const MAX_RECIPIENTS = 1000;
+
+/**
+ * Aviso das comunidades para várias pessoas de uma vez. Mesmas regras do `notifySocial` (nem para si, nem com bloqueio,
+ * respeita a preferência). Respostas num tópico não se acumulam: enquanto o aviso daquele tópico não foi lido, ele só
+ * é atualizado (quem respondeu por último, a resposta e a hora), em vez de criar outro.
+ */
+export async function notifyCommunity(input: { type: "COMMUNITY_REPLY"; topicId: string; replyId: string; actorId: string; recipientIds: string[] } | { type: "COMMUNITY_EVENT"; eventId: string; actorId: string; recipientIds: string[] }): Promise<void> {
+  try {
+    const { type, actorId } = input;
+    const blocked = await blockedUserIdSet(actorId);
+    const candidates = [...new Set(input.recipientIds)].filter((id) => id !== actorId && !blocked.has(id)).slice(0, MAX_RECIPIENTS);
+    if (candidates.length === 0) return;
+    const recipients = (await prisma.user.findMany({ where: { id: { in: candidates }, notifyCommunity: true }, select: { id: true } })).map((u) => u.id);
+    if (recipients.length === 0) return;
+    const now = new Date();
+
+    if (input.type === "COMMUNITY_REPLY") {
+      const unread = await prisma.socialNotification.findMany({ where: { userId: { in: recipients }, type, topicId: input.topicId, readAt: null }, select: { id: true, userId: true } });
+      if (unread.length) await prisma.socialNotification.updateMany({ where: { id: { in: unread.map((n) => n.id) } }, data: { actorId, replyId: input.replyId, createdAt: now } });
+      const already = new Set(unread.map((n) => n.userId));
+      const fresh = recipients.filter((id) => !already.has(id));
+      if (fresh.length) await prisma.socialNotification.createMany({ data: fresh.map((userId) => ({ userId, actorId, type, topicId: input.topicId, replyId: input.replyId, createdAt: now })) });
+    } else {
+      await prisma.socialNotification.createMany({ data: recipients.map((userId) => ({ userId, actorId, type, eventId: input.eventId, createdAt: now })) });
+    }
+  } catch (error) {
+    console.error("[notifyCommunity] falhou:", error);
   }
 }

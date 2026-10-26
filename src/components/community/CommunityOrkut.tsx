@@ -253,7 +253,7 @@ export function EventCard({ event, canRsvp, canDelete }: { event: EventView; can
     }
   }
   return (
-    <Box component="li" data-testid={`event-${event.id}`} sx={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 0.75, p: 1.5, border: 1, borderColor: "divider", borderRadius: "10px", bgcolor: "background.paper" }}>
+    <Box component="li" id={`evento-${event.id}`} data-testid={`event-${event.id}`} sx={{ scrollMarginTop: 120, listStyle: "none", display: "flex", flexDirection: "column", gap: 0.75, p: 1.5, border: 1, borderColor: "divider", borderRadius: "10px", bgcolor: "background.paper" }}>
       <Typography sx={{ fontSize: 16, fontWeight: 700, overflowWrap: "anywhere" }}>{event.title}</Typography>
       <Typography suppressHydrationWarning sx={{ fontSize: 13, color: "primary.light" }}>
         {day(event.startsAt)}

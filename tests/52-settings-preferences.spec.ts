@@ -13,6 +13,7 @@ async function resetPreferences(request: import("@playwright/test").APIRequestCo
       notifyComments: true,
       notifyFollowers: true,
       notifyLikes: false,
+      notifyCommunity: true,
     },
   });
 }
@@ -77,6 +78,7 @@ test.describe("Configurações (Figma 8:3333 / 13:42966)", () => {
       notifyComments: false,
       notifyFollowers: false,
       notifyLikes: false,
+      notifyCommunity: false,
     });
   });
 

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 
-const { validateTopic } = await import("@/lib/community");
+const { forumSearchWords, validateTopic } = await import("@/lib/community");
 
 const works = [
   { id: "s1", anilistId: 1, titleRomaji: "Obra", titleNative: null, titleEnglish: null, kind: "EPISODE", format: "TV", seasonYear: 2020 },
@@ -25,5 +25,13 @@ describe("tópico da comunidade", () => {
     expect(validateTopic({ title: "T", body: "M", poll: ["A", "a"] }, works)).toMatchObject({ ok: false, errors: { poll: "há opções repetidas" } });
     expect(validateTopic({ title: "T", body: "M", poll: Array.from({ length: 11 }, (_, i) => `O${i}`) }, works)).toMatchObject({ ok: false });
     expect(validateTopic({ title: "x".repeat(121), body: "M" }, works)).toMatchObject({ ok: false, errors: { title: "até 120 caracteres" } });
+  });
+});
+
+describe("busca no fórum", () => {
+  it("separa as palavras, ignora as de uma letra e repetidas, e limita a 6", () => {
+    expect(forumSearchWords("  Abertura  a  ABERTURA final ")).toEqual(["abertura", "final"]);
+    expect(forumSearchWords("um dois tres quatro cinco seis sete")).toHaveLength(6);
+    expect(forumSearchWords(" a ")).toEqual([]);
   });
 });

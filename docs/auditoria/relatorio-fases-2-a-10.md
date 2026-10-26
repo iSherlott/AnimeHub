@@ -247,3 +247,14 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 - **Notificações.** O sino avisa de recado, depoimento e fã.
 - **Banco.** `20261108100000_profile_orkut` (só acrescenta).
 - **Testes.** Spec 121 e `dailyFortune.test.ts`; spec 70 ajustado.
+
+## Depois: avisos das comunidades e busca no fórum (26/10)
+
+- **Sino.**
+  - Avisa de respostas nos tópicos em que a pessoa participa (criou ou respondeu). Um aviso por tópico até ser lido.
+  - Avisa de eventos novos nas comunidades dela.
+  - O aviso leva à resposta ou ao evento.
+- **Configurações.** Nova preferência "Comunidades", ativada por padrão.
+- **Busca no fórum.** Procura no título, no texto e nas respostas; todas as palavras precisam aparecer.
+- **Banco.** `20261109100000_community_notifications` (só acrescenta).
+- **Testes.** Spec 122; spec 52 e `community.test.ts` ajustados.

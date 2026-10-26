@@ -1,6 +1,7 @@
 import type { CatalogEntry, Community, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { blockedUserIdSet } from "@/lib/blocks";
+import { notifyCommunity } from "@/lib/socialNotifications";
 import { isBlank } from "@/lib/text";
 import { resolveWorkKey } from "@/lib/workRef";
 import { catalogSlug } from "@/lib/workHref";
@@ -215,6 +216,12 @@ export async function createReply(topicId: string, userId: string, input: unknow
     prisma.communityReply.create({ data: { topicId, authorId: userId, body: text, isSpoiler: body.isSpoiler === true, createdAt: now }, select: { id: true } }),
     prisma.communityTopic.update({ where: { id: topicId }, data: { replyCount: { increment: 1 }, lastActivityAt: now } }),
   ]);
+  // Avisa quem participa do tópico: quem o criou e quem já respondeu.
+  const [repliers, author] = await Promise.all([
+    prisma.communityReply.findMany({ where: { topicId, deletedAt: null }, distinct: ["authorId"], select: { authorId: true } }),
+    prisma.communityTopic.findUniqueOrThrow({ where: { id: topicId }, select: { authorId: true } }),
+  ]);
+  await notifyCommunity({ type: "COMMUNITY_REPLY", topicId, replyId: reply.id, actorId: userId, recipientIds: [author.authorId, ...repliers.map((r) => r.authorId)] });
   return { ok: true, replyId: reply.id };
 }
 
@@ -280,14 +287,42 @@ export async function vote(topicId: string, userId: string, optionId: unknown): 
 const AUTHOR = { select: { id: true, displayName: true, handle: true, avatarUrl: true } } as const;
 
 /** Tópicos da comunidade, do de atividade mais recente ao mais antigo, sem os de quem a pessoa bloqueou (ou a bloqueou). */
-export async function listTopics(communityId: string, page: number, viewerId: string | null, options: { pollsOnly?: boolean; take?: number } = {}) {
+export async function listTopics(communityId: string, page: number, viewerId: string | null, options: { pollsOnly?: boolean; take?: number; query?: string } = {}) {
   const blocked = [...(await blockedUserIdSet(viewerId))];
-  const where = { communityId, deletedAt: null, ...(blocked.length ? { authorId: { notIn: blocked } } : {}), ...(options.pollsOnly ? { poll: { isNot: null } } : {}) };
+  const where: Prisma.CommunityTopicWhereInput = {
+    communityId,
+    deletedAt: null,
+    ...(blocked.length ? { authorId: { notIn: blocked } } : {}),
+    ...(options.pollsOnly ? { poll: { isNot: null } } : {}),
+    ...(options.query ? { AND: forumSearchWords(options.query).map((w) => topicMatches(w, blocked)) } : {}),
+  };
   const [total, rows] = await Promise.all([
     prisma.communityTopic.count({ where }),
     prisma.communityTopic.findMany({ where, orderBy: [{ pinnedAt: { sort: "desc", nulls: "last" } }, { lastActivityAt: "desc" }, { id: "desc" }], skip: page * TOPICS_PAGE, take: options.take ?? TOPICS_PAGE, include: { author: AUTHOR, catalogEntry: { select: { titleRomaji: true, titleNative: true } }, poll: { select: { id: true } } } }),
   ]);
   return { total, rows };
+}
+
+/** Palavras da busca no fórum (sem as curtas demais), no máximo 6. */
+export function forumSearchWords(query: string): string[] {
+  return [...new Set(query.toLowerCase().split(/\s+/).map((w) => w.trim()).filter((w) => w.length >= 2))].slice(0, 6);
+}
+
+/** O tópico tem a palavra no título, no texto ou numa resposta visível. */
+function topicMatches(word: string, blocked: string[]): Prisma.CommunityTopicWhereInput {
+  const contains = { contains: word, mode: "insensitive" as const };
+  return { OR: [{ title: contains }, { body: contains }, { replies: { some: { deletedAt: null, body: contains, ...(blocked.length ? { authorId: { notIn: blocked } } : {}) } } }] };
+}
+
+/** Chave e nome de cada comunidade (para os avisos do sino). */
+export async function communityLabels(communityIds: string[]): Promise<Map<string, { key: string; title: string }>> {
+  const rows = await prisma.community.findMany({ where: { id: { in: [...new Set(communityIds)] } }, select: { id: true, franchiseKey: true, catalogEntryId: true } });
+  const out = new Map<string, { key: string; title: string }>();
+  for (const c of rows) {
+    const scope = await scopeOfCommunity(c);
+    if (scope) out.set(c.id, { key: scope.key, title: scope.root.titleRomaji });
+  }
+  return out;
 }
 
 export async function listReplies(topicId: string, page: number, viewerId: string | null) {
@@ -451,6 +486,9 @@ export async function createEvent(scope: CommunityScope, userId: string, input: 
   const event = await prisma.communityEvent.create({ data: { ...parsed.value, communityId: community.id, authorId: userId }, select: { id: true } });
   // Quem cria vai ao evento.
   await prisma.communityEventRsvp.create({ data: { eventId: event.id, userId, status: "GOING" } });
+  // Avisa os membros da comunidade.
+  const members = await prisma.communityMember.findMany({ where: { communityId: community.id }, select: { userId: true } });
+  await notifyCommunity({ type: "COMMUNITY_EVENT", eventId: event.id, actorId: userId, recipientIds: members.map((m) => m.userId) });
   return { ok: true, eventId: event.id };
 }
 

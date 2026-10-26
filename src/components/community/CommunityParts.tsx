@@ -47,9 +47,12 @@ export function TopicRow({ topic, href, now }: { topic: TopicRowData; href: stri
 }
 
 /** Paginação simples (Anterior · página x de y · Próxima), `pagina` começando em 1. */
-export function Pager({ basePath, page, pages }: { basePath: string; page: number; pages: number }) {
+export function Pager({ basePath, page, pages, params = {} }: { basePath: string; page: number; pages: number; params?: Record<string, string> }) {
   if (pages <= 1) return null;
-  const href = (p: number) => (p <= 1 ? basePath : `${basePath}?pagina=${p}`);
+  const href = (p: number) => {
+    const qs = new URLSearchParams({ ...params, ...(p > 1 ? { pagina: String(p) } : {}) }).toString();
+    return qs ? `${basePath}?${qs}` : basePath;
+  };
   return (
     <Box component="nav" aria-label="Páginas" sx={{ display: "flex", gap: 2, alignItems: "center", fontSize: 14 }} data-testid="community-pager">
       {page > 1 && <AppLink href={href(page - 1)}>← Anterior</AppLink>}

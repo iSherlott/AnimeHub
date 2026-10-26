@@ -19,13 +19,15 @@ export type UserPreferences = {
   notifyComments: boolean;
   notifyFollowers: boolean;
   notifyLikes: boolean;
+  /** Avisos das comunidades: respostas nos tópicos em que a pessoa participa e eventos novos. */
+  notifyCommunity: boolean;
   /** A aba Animes do perfil (obras acompanhadas) aparece para quem visita. */
   animeListPublic: boolean;
 };
 
 export type UserPreferencesPatch = Partial<UserPreferences>;
 
-const BOOLEAN_KEYS = ["notifyReleases", "notifyReplies", "notifyComments", "notifyFollowers", "notifyLikes", "animeListPublic"] as const;
+const BOOLEAN_KEYS = ["notifyReleases", "notifyReplies", "notifyComments", "notifyFollowers", "notifyLikes", "notifyCommunity", "animeListPublic"] as const;
 
 export type ValidationResult = { ok: true; patch: UserPreferencesPatch } | { ok: false; error: string };
 
@@ -69,12 +71,13 @@ export function validateSettingsPatch(body: unknown): ValidationResult {
 }
 
 /**
- * "Desativar todo o Social" (Figma `13:42966`): desliga as 4 preferências
- * sociais SEM tocar em `notifyReleases` — os canais são independentes.
+ * "Desativar todo o Social" (Figma `13:42966`): desliga as preferências
+ * sociais (e a das comunidades) SEM tocar em `notifyReleases` — os canais são independentes.
  */
 export const SOCIAL_OFF_PATCH: UserPreferencesPatch = {
   notifyReplies: false,
   notifyComments: false,
   notifyFollowers: false,
   notifyLikes: false,
+  notifyCommunity: false,
 };

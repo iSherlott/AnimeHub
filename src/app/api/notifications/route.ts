@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth/session";
 import { blockedUserIdSet } from "@/lib/blocks";
 import { isTodaysRelease } from "@/lib/airingWindow";
 import { resolveTimeZone } from "@/lib/timeZone";
+import { communityLabels } from "@/lib/community";
 
 /**
  * Lista os alertas de "favorito no ar agora" (Epic 10) — só leitura, quem
@@ -80,13 +81,29 @@ export async function GET() {
       ? (await prisma.post.findMany({ where: { id: { in: postIds }, deletedAt: null }, select: { id: true } })).map((p) => p.id)
       : []
   );
+  // Comunidades: o tópico (título, comunidade) e o evento; apagado vira "removido".
+  const topicIds = [...new Set(socialRows.map((n) => n.topicId).filter((t): t is string => Boolean(t)))];
+  const eventIds = [...new Set(socialRows.map((n) => n.eventId).filter((e): e is string => Boolean(e)))];
+  const [topics, events] = await Promise.all([
+    topicIds.length ? prisma.communityTopic.findMany({ where: { id: { in: topicIds }, deletedAt: null }, select: { id: true, title: true, communityId: true } }) : [],
+    eventIds.length ? prisma.communityEvent.findMany({ where: { id: { in: eventIds }, deletedAt: null }, select: { id: true, title: true, communityId: true } }) : [],
+  ]);
+  const topicById = new Map(topics.map((t) => [t.id, t]));
+  const eventById = new Map(events.map((e) => [e.id, e]));
+  const labels = await communityLabels([...topics, ...events].map((x) => x.communityId));
   const social = socialRows.map((n) => {
-    const unavailable = n.postId ? !livePosts.has(n.postId) : false;
+    const topic = n.topicId ? topicById.get(n.topicId) : undefined;
+    const event = n.eventId ? eventById.get(n.eventId) : undefined;
+    const label = labels.get(topic?.communityId ?? event?.communityId ?? "");
+    const unavailable = n.postId ? !livePosts.has(n.postId) : n.topicId ? !topic || !label : n.eventId ? !event || !label : false;
     let href: string | null = null;
     if (n.type === "NEW_FOLLOWER" || n.type === "PROFILE_FAN") href = `/users/${n.actor.id}`;
     // Recado e depoimento ficam no perfil de quem recebe (quem está vendo o sino).
     else if (n.type === "PROFILE_SCRAP") href = `/users/${user.id}#recados`;
     else if (n.type === "PROFILE_TESTIMONIAL") href = `/users/${user.id}#depoimentos`;
+    // A resposta mais recente está na última página do tópico.
+    else if (topic && label) href = `/comunidades/${label.key}/topicos/${topic.id}?pagina=ultima${n.replyId ? `#resposta-${n.replyId}` : ""}`;
+    else if (event && label) href = `/comunidades/${label.key}/eventos#evento-${event.id}`;
     else if (n.postId && !unavailable) href = `/publicacao/${n.postId}${n.commentId ? `#comentario-${n.commentId}` : ""}`;
     return {
       id: n.id,
@@ -96,6 +113,8 @@ export async function GET() {
       createdAt: n.createdAt.toISOString(),
       unavailable,
       href,
+      community: label?.title ?? null,
+      subject: topic?.title ?? event?.title ?? null,
     };
   });
 

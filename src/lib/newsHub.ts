@@ -38,6 +38,7 @@ export async function ensureNewsHub(): Promise<User> {
       notifyComments: false,
       notifyFollowers: false,
       notifyLikes: false,
+      notifyCommunity: false,
     },
   });
 }

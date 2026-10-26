@@ -49,6 +49,8 @@ model User {
   notifyComments  Boolean  @default(true)
   notifyFollowers Boolean  @default(true)
   notifyLikes     Boolean  @default(false)
+  /// Avisos das comunidades: respostas nos tópicos em que a pessoa participa e eventos novos nas comunidades dela.
+  notifyCommunity Boolean  @default(true)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -757,9 +759,14 @@ model SocialNotification {
   actorId   String
   actor     User      @relation("SocialSent", fields: [actorId], references: [id], onDelete: Cascade)
   /// "POST_REPLY" | "COMMENT_REPLY" | "NEW_FOLLOWER" | "POST_LIKE" | "PROFILE_SCRAP" | "PROFILE_TESTIMONIAL" | "PROFILE_FAN"
+  /// | "COMMUNITY_REPLY" | "COMMUNITY_EVENT"
   type      String
   postId    String?
   commentId String?
+  /// Comunidades: o tópico (e a resposta mais recente) ou o evento do aviso.
+  topicId   String?
+  replyId   String?
+  eventId   String?
   readAt    DateTime?
   createdAt DateTime  @default(now())
 

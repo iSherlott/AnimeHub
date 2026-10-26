@@ -37,6 +37,7 @@ export function toPublicUser(user: User): PublicUser {
       notifyComments: user.notifyComments,
       notifyFollowers: user.notifyFollowers,
       notifyLikes: user.notifyLikes,
+      notifyCommunity: user.notifyCommunity,
       animeListPublic: user.animeListPublic,
     },
   };

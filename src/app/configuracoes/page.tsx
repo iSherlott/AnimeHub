@@ -20,7 +20,7 @@ import { SOCIAL_OFF_PATCH, type UserPreferences } from "@/lib/userSettings";
  */
 type Draft = Pick<
   UserPreferences,
-  "notifyReleases" | "notifyReplies" | "notifyComments" | "notifyFollowers" | "notifyLikes" | "animeListPublic"
+  "notifyReleases" | "notifyReplies" | "notifyComments" | "notifyFollowers" | "notifyLikes" | "notifyCommunity" | "animeListPublic"
 > & { titleFormat: "ja" | "romaji"; synopsisLanguage: "pt" | "ja"; timeZone: string };
 
 const SOCIAL_TOGGLES: Array<{ key: keyof Draft; label: string; hint: string }> = [
@@ -28,6 +28,7 @@ const SOCIAL_TOGGLES: Array<{ key: keyof Draft; label: string; hint: string }> =
   { key: "notifyComments", label: "Respostas aos meus comentários", hint: "Abrir a resposta exata na discussão. Padrão ativado." },
   { key: "notifyFollowers", label: "Novos seguidores", hint: "Padrão ativado; seguir perfil não acompanha anime." },
   { key: "notifyLikes", label: "Curtidas", hint: "Padrão desativado para reduzir ruído." },
+  { key: "notifyCommunity", label: "Comunidades", hint: "Respostas nos tópicos em que você participa e eventos novos nas suas comunidades. Padrão ativado." },
 ];
 
 /** Cartão do Figma: surface, raio 16, respiro de 24 e título de 20 px. */
@@ -144,6 +145,7 @@ export default function SettingsPage() {
         notifyComments: p.notifyComments,
         notifyFollowers: p.notifyFollowers,
         notifyLikes: p.notifyLikes,
+        notifyCommunity: p.notifyCommunity,
         animeListPublic: p.animeListPublic,
       });
     }
@@ -176,7 +178,7 @@ export default function SettingsPage() {
     }
   }
 
-  const allSocialOff = !draft.notifyReplies && !draft.notifyComments && !draft.notifyFollowers && !draft.notifyLikes;
+  const allSocialOff = !draft.notifyReplies && !draft.notifyComments && !draft.notifyFollowers && !draft.notifyLikes && !draft.notifyCommunity;
   const japanese = draft.titleFormat === "ja";
 
   return (

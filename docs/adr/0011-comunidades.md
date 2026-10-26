@@ -43,7 +43,7 @@ as comunidades do Orkut. Decisões da pessoa usuária:
   `CommunityReply`, `CommunityPoll`, `CommunityPollOption`, `CommunityPollVote`).
 - O spoiler é escondido na tela (o texto vai na página); diferente das publicações do feed, que só liberam o texto por
   uma rota própria.
-- Pendências possíveis: aviso de resposta nos tópicos em que a pessoa participou; busca dentro do fórum.
+- Pendências possíveis: aviso de resposta nos tópicos em que a pessoa participou; busca dentro do fórum (feitos na revisão "Avisos e busca", abaixo).
 
 ## Revisão de 26/10/2026 — formato do Orkut
 
@@ -64,3 +64,25 @@ O menu principal passou a ter **Feed** (as publicações, antes "Comunidade") e 
   nome do anime; cada anime tem a sua comunidade mesmo antes do primeiro membro).
 - Migração `20261107100000_community_orkut`: descrição, `pinnedAt`/`lockedAt`, `CommunityEvent`,
   `CommunityEventRsvp` e `CommunityReport`. Só acrescenta.
+
+## Revisão de 26/10/2026 — avisos e busca
+
+- **Avisos no sino** (canal Social):
+  - **Resposta num tópico** em que a pessoa participa, isto é, que ela criou ou em que respondeu. Enquanto o aviso
+    daquele tópico não é lido, ele não se repete: só passa a mostrar quem respondeu por último. O aviso leva à última
+    página do tópico, direto na resposta.
+  - **Evento novo** numa comunidade da pessoa: avisa todos os membros, menos quem criou o evento.
+  - O aviso mostra o título do tópico ou do evento e o nome da comunidade. Esses títulos já aparecem para todos na
+    lista do fórum; o texto das mensagens nunca entra no aviso.
+  - Bloqueio entre as duas pessoas impede o aviso.
+  - Tópico ou evento apagado aparece como "removido".
+- **Preferência "Comunidades"** em Configurações, ativada por padrão. O botão "Desativar todo o Social" também a
+  desliga.
+- **Busca no fórum** (`/comunidades/<chave>/forum?q=`):
+  - procura no título, no texto e nas respostas visíveis dos tópicos daquela comunidade;
+  - todas as palavras precisam aparecer;
+  - ignora palavras de uma letra e usa no máximo 6;
+  - a paginação mantém a busca.
+- Migração `20261109100000_community_notifications`: `User.notifyCommunity` e `topicId`/`replyId`/`eventId` em
+  `SocialNotification`. Só acrescenta.
+- Testes: spec 122 e `community.test.ts`; spec 52 ajustado.
