@@ -1649,8 +1649,13 @@ model Scrap {
   createdAt DateTime  @default(now())
   deletedAt DateTime?
   reports   ProfileReport[]
+  /// Resposta a um recado recebido: fica no perfil de quem escreveu o original (como responder no Orkut).
+  replyToId String?
+  replyTo   Scrap?    @relation("ScrapReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   Scrap[]   @relation("ScrapReplies")
 
   @@index([profileId, deletedAt, createdAt])
+  @@index([authorId, profileId])
 }
 
 /// Depoimento: um amigo (seguir mútuo) escreve sobre a pessoa; só aparece depois que ela aprova. Um por amigo (editar volta

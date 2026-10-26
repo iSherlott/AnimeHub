@@ -4,12 +4,12 @@ import { AppLink } from "@/components/AppLink";
 import { AnimeTitle } from "@/components/AnimeTitle";
 import { CoverImage } from "@/components/CoverImage";
 import { UserAvatar } from "@/components/UserAvatar";
-import { DeleteButton, ProfileReportButton } from "@/components/profile/ProfileOrkut";
+import { DeleteButton, ProfileReportButton, ScrapReplyButton } from "@/components/profile/ProfileOrkut";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import type { CommunityLink } from "@/lib/community";
 
 type Person = { id: string; displayName: string; avatarUrl: string | null };
-export type ScrapView = { id: string; body: string; createdAt: Date; author: Person; authorId: string; profileId: string };
+export type ScrapView = { id: string; body: string; createdAt: Date; author: Person; authorId: string; profileId: string; replyTo?: { id: string; deletedAt: Date | null } | null };
 
 /** Seção do centro do perfil (recados, depoimentos…): título em minúsculas como no Orkut, contagem e "ver todos". */
 export function ProfileSection({ id, title, count, more, testId, children }: { id: string; title: string; count?: number; more?: { href: string; label: string }; testId: string; children: ReactNode }) {
@@ -35,8 +35,8 @@ export function ProfileSection({ id, title, count, more, testId, children }: { i
   );
 }
 
-/** Um recado (ou depoimento): avatar e nome de quem escreveu, quando, o texto e as ações. */
-export function NoteItem({ author, when, body, actions, testId }: { author: Person; when: Date; body: string; actions?: ReactNode; testId: string }) {
+/** Um recado (ou depoimento): avatar e nome de quem escreveu, quando, o texto, as ações e uma linha de contexto. */
+export function NoteItem({ author, when, body, actions, footer, testId }: { author: Person; when: Date; body: string; actions?: ReactNode; footer?: ReactNode; testId: string }) {
   return (
     <Box component="li" data-testid={testId} sx={{ display: "flex", gap: 1.5, py: 1.5, borderTop: 1, borderColor: "divider", "&:first-of-type": { borderTop: 0, pt: 0 } }}>
       <AppLink href={`/users/${author.id}`} aria-label={author.displayName} sx={{ flexShrink: 0 }}>
@@ -53,13 +53,18 @@ export function NoteItem({ author, when, body, actions, testId }: { author: Pers
           {actions && <Box sx={{ ml: "auto", display: "flex", gap: 0.5, alignItems: "center" }}>{actions}</Box>}
         </Box>
         <Typography sx={{ fontSize: 15, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{body}</Typography>
+        {footer && <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", fontSize: 12, color: "text.secondary" }}>{footer}</Box>}
       </Box>
     </Box>
   );
 }
 
-/** Lista de recados; quem recebeu, quem escreveu ou a moderação podem apagar; quem não escreveu pode denunciar. */
-export function ScrapList({ scraps, viewerId, canModerate, empty }: { scraps: ScrapView[]; viewerId: string | null; canModerate: boolean; empty: string }) {
+/**
+ * Lista de recados. Quem recebeu responde (a resposta vai para o perfil de quem escreveu); quem recebeu, quem escreveu
+ * ou a moderação apagam; quem não escreveu denuncia. "ver conversa" mostra os recados trocados entre as duas pessoas.
+ * `showProfile`: na conversa, diz em que perfil cada recado está.
+ */
+export function ScrapList({ scraps, viewerId, canModerate, empty, showProfile }: { scraps: ScrapView[]; viewerId: string | null; canModerate: boolean; empty: string; showProfile?: Map<string, string> }) {
   if (scraps.length === 0) return <Typography sx={{ fontSize: 14, color: "text.secondary" }}>{empty}</Typography>;
   return (
     <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none" }}>
@@ -70,9 +75,21 @@ export function ScrapList({ scraps, viewerId, canModerate, empty }: { scraps: Sc
           when={s.createdAt}
           body={s.body}
           testId={`scrap-${s.id}`}
+          footer={
+            <>
+              {showProfile && <span>no perfil de {showProfile.get(s.profileId) ?? "—"}</span>}
+              {s.replyTo && <span data-testid={`scrap-is-reply-${s.id}`}>↩ resposta a um recado</span>}
+              {!showProfile && s.authorId !== s.profileId && (
+                <AppLink href={`/users/${s.profileId}/recados/com/${s.authorId}`} underline="hover" sx={{ fontSize: 12, color: "text.secondary" }} data-testid={`scrap-thread-${s.id}`}>
+                  ver conversa
+                </AppLink>
+              )}
+            </>
+          }
           actions={
             viewerId ? (
               <>
+                {viewerId === s.profileId && viewerId !== s.authorId && <ScrapReplyButton scrapId={s.id} authorId={s.authorId} authorName={s.author.displayName} />}
                 {viewerId !== s.authorId && <ProfileReportButton kind="scrap" id={s.id} />}
                 {(viewerId === s.profileId || viewerId === s.authorId || canModerate) && <DeleteButton url={`/api/scraps/${s.id}`} testId={`scrap-delete-${s.id}`} />}
               </>

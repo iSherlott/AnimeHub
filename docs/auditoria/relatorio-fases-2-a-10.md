@@ -299,3 +299,12 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
   - nas sugestões de quem seguir da aba "Seguindo".
 - **Banco.** Sem migração.
 - **Testes.** Spec 125.
+
+## Depois: recados mais completos (26/10)
+
+- **Responder recado.** A resposta vai para o perfil de quem escreveu, marcada como resposta.
+- **Conversa entre duas pessoas.** `/users/<id>/recados/com/<outro>`, nos dois sentidos e em ordem, com o campo para
+  escrever.
+- **Lista de fãs.** `/users/<id>/fas`.
+- **Banco.** `20261112100000_scrap_replies` (só acrescenta).
+- **Testes.** Spec 126.

@@ -35,16 +35,27 @@ async function canInteract(viewerId: string, profileId: string): Promise<Profile
 export async function listScraps(profileId: string, page: number, viewerId: string | null, take = SCRAPS_PAGE) {
   const blocked = [...(await blockedUserIdSet(viewerId))];
   const where = { profileId, deletedAt: null, ...(blocked.length ? { authorId: { notIn: blocked } } : {}) };
-  const [total, rows] = await Promise.all([prisma.scrap.count({ where }), prisma.scrap.findMany({ where, orderBy: { createdAt: "desc" }, skip: page * take, take, include: { author: AUTHOR } })]);
+  const [total, rows] = await Promise.all([prisma.scrap.count({ where }), prisma.scrap.findMany({ where, orderBy: { createdAt: "desc" }, skip: page * take, take, include: { author: AUTHOR, replyTo: { select: { id: true, deletedAt: true } } } })]);
   return { total, rows };
 }
 
+/**
+ * Deixar um recado. Com `replyToId`, é a resposta a um recado que a pessoa recebeu: vai para o perfil de quem escreveu
+ * o original (só quem recebeu responde, e só para quem escreveu).
+ */
 export async function createScrap(profileId: string, authorId: string, input: unknown): Promise<{ ok: true; id: string } | ProfileError> {
-  const body = clean((input as { body?: unknown } | null)?.body);
+  const raw = (input ?? {}) as { body?: unknown; replyToId?: unknown };
+  const body = clean(raw.body);
   if (isBlank(body) || body.length > SCRAP_MAX) return { ok: false, status: 400, error: `Recado de 1 a ${SCRAP_MAX.toLocaleString("pt-BR")} caracteres.` };
   const denied = await canInteract(authorId, profileId);
   if (denied) return denied;
-  const scrap = await prisma.scrap.create({ data: { profileId, authorId, body }, select: { id: true } });
+  let replyToId: string | null = null;
+  if (raw.replyToId !== undefined && raw.replyToId !== null) {
+    const original = typeof raw.replyToId === "string" ? await prisma.scrap.findFirst({ where: { id: raw.replyToId, deletedAt: null }, select: { id: true, profileId: true, authorId: true } }) : null;
+    if (!original || original.profileId !== authorId || original.authorId !== profileId) return { ok: false, status: 400, error: "Só dá para responder um recado que você recebeu, no perfil de quem o escreveu." };
+    replyToId = original.id;
+  }
+  const scrap = await prisma.scrap.create({ data: { profileId, authorId, body, replyToId }, select: { id: true } });
   await notifySocial({ type: "PROFILE_SCRAP", recipientId: profileId, actorId: authorId });
   return { ok: true, id: scrap.id };
 }
@@ -56,6 +67,26 @@ export async function deleteScrap(scrapId: string, user: { id: string; canModera
   if (scrap.profileId !== user.id && scrap.authorId !== user.id && !user.canModerate) return { ok: false, status: 403, error: "Só quem recebeu ou quem escreveu pode apagar o recado." };
   await prisma.scrap.update({ where: { id: scrapId }, data: { deletedAt: new Date() } });
   return { ok: true };
+}
+
+/**
+ * A conversa entre duas pessoas: os recados de uma no perfil da outra, nos dois sentidos, do mais antigo ao mais novo
+ * (os 100 mais recentes). Nulo se alguma das duas não existe ou se quem vê tem bloqueio com uma delas.
+ */
+export async function scrapConversation(aId: string, bId: string, viewerId: string | null) {
+  if (aId === bId) return null;
+  const people = await prisma.user.findMany({ where: { id: { in: [aId, bId] } }, select: { id: true, displayName: true, handle: true, avatarUrl: true } });
+  if (people.length !== 2) return null;
+  const blocked = await blockedUserIdSet(viewerId);
+  if (blocked.has(aId) || blocked.has(bId) || (await blockRelation(aId, bId)) !== "none") return null;
+  const rows = await prisma.scrap.findMany({
+    where: { deletedAt: null, OR: [{ profileId: aId, authorId: bId }, { profileId: bId, authorId: aId }] },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    include: { author: AUTHOR, replyTo: { select: { id: true, deletedAt: true } } },
+  });
+  const byId = new Map(people.map((p) => [p.id, p]));
+  return { a: byId.get(aId)!, b: byId.get(bId)!, scraps: rows.reverse() };
 }
 
 // ---------- Depoimentos ----------
@@ -119,6 +150,14 @@ export async function setFan(fanId: string, targetId: string, fan: boolean): Pro
     await prisma.fan.deleteMany({ where: { fanId, targetId } });
   }
   return { ok: true, fans: await prisma.fan.count({ where: { targetId } }) };
+}
+
+/** Fãs da pessoa (os mais recentes primeiro), sem quem tem bloqueio com quem vê. */
+export async function listFans(targetId: string, viewerId: string | null, take = 60) {
+  const blocked = [...(await blockedUserIdSet(viewerId))];
+  const where = { targetId, ...(blocked.length ? { fanId: { notIn: blocked } } : {}) };
+  const [total, rows] = await Promise.all([prisma.fan.count({ where }), prisma.fan.findMany({ where, orderBy: { createdAt: "desc" }, take, include: { fan: AUTHOR } })]);
+  return { total, rows: rows.map((r) => r.fan) };
 }
 
 /** Avaliar um amigo (0 a 3 em cada); só amigos. */

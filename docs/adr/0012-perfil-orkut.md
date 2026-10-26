@@ -121,3 +121,20 @@ A pessoa usuária escolheu trocar o "amigo = seguir mútuo" por **pedido de amiz
     sem bloqueios e sem a conta do sistema.
 - **Código.** `searchPeople` e `friendSuggestions` em `src/lib/friends.ts`. Sem migração.
 - **Testes.** Spec 125.
+
+## Revisão de 26/10/2026 — recados mais completos
+
+- **Responder.** No próprio perfil, cada recado recebido tem "Responder".
+  - A resposta vai para o perfil de quem escreveu, como no Orkut.
+  - Ela fica marcada como "↩ resposta a um recado" (`Scrap.replyToId`).
+  - Só quem recebeu responde, e só para quem escreveu.
+  - Quem escreveu o original recebe o aviso de recado no sino.
+- **Conversa** (`/users/<id>/recados/com/<outro>`, link "ver conversa" em cada recado).
+  - Mostra os recados de uma pessoa no perfil da outra, nos dois sentidos, do mais antigo ao mais novo (os 100 mais
+    recentes), cada um com "no perfil de …".
+  - Quem é uma das duas pessoas escreve para a outra dali mesmo; quem visita só lê, porque recados são públicos.
+  - Com bloqueio entre as duas, ou entre quem vê e uma delas, a página não existe (404).
+- **Fãs** (`/users/<id>/fas`, link "ver fãs" na caixa de fãs): quem é fã, dos mais recentes aos mais antigos, sem
+  bloqueios.
+- **Banco.** `20261112100000_scrap_replies` só acrescenta: a coluna `replyToId` e um índice.
+- **Testes.** Spec 126.

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Box, Button, TextField, Typography } from "@mui/material";
+import { Box, Button, Dialog, DialogContent, DialogTitle, TextField, Typography } from "@mui/material";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
@@ -269,11 +269,11 @@ function Composer({ label, placeholder, max, initial = "", submitLabel, onSubmit
 }
 
 /** Deixar um recado no perfil. */
-export function ScrapForm({ userId }: { userId: string }) {
+export function ScrapForm({ userId, label = "Escreva um recado" }: { userId: string; label?: string }) {
   const router = useRouter();
   return (
     <Composer
-      label="Escreva um recado"
+      label={label}
       placeholder="Oi! Viu o episódio de hoje?"
       max={1000}
       submitLabel="Enviar recado"
@@ -422,5 +422,46 @@ export function ProfileReportsQueue({ reports }: { reports: ProfileReportView[] 
         </Box>
       ))}
     </Box>
+  );
+}
+
+/** "Responder" um recado recebido: a resposta vai para o perfil de quem escreveu (como no Orkut). */
+export function ScrapReplyButton({ scrapId, authorId, authorName }: { scrapId: string; authorId: string; authorName: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [sent, setSent] = useState(false);
+  if (sent)
+    return (
+      <Typography sx={{ fontSize: 12, color: "text.secondary" }} data-testid={`scrap-replied-${scrapId}`}>
+        Resposta enviada
+      </Typography>
+    );
+  return (
+    <>
+      <Button size="small" color="inherit" onClick={() => setOpen(true)} sx={{ fontSize: 12, color: "text.secondary", minWidth: 0 }} data-testid={`scrap-reply-${scrapId}`}>
+        Responder
+      </Button>
+      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Responder a {authorName}</DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <Typography sx={{ fontSize: 13, color: "text.secondary" }}>A resposta fica no perfil de {authorName}, como um recado.</Typography>
+          <Composer
+            label="Sua resposta"
+            placeholder="Escreva a resposta"
+            max={1000}
+            submitLabel="Enviar resposta"
+            testId="scrap-reply"
+            onSubmit={async (body) => {
+              const r = await send(`/api/users/${authorId}/scraps`, "POST", { body, replyToId: scrapId });
+              if (!r.ok) return errorOf(r.data);
+              setOpen(false);
+              setSent(true);
+              router.refresh();
+              return null;
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

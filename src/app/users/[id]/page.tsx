@@ -144,7 +144,7 @@ export default async function UserProfilePage({ params }: Params) {
                 </Box>
               ))}
             </Box>
-            <SideBox title="fãs" testId="profile-fans">
+            <SideBox title="fãs" testId="profile-fans" more={fans > 0 ? { href: `/users/${id}/fas`, label: "ver fãs" } : undefined}>
               <FanButton userId={id} initialFan={isFan} initialFans={fans} canFan={Boolean(viewer) && !isOwnProfile} />
             </SideBox>
             <SideBox title="avaliações">

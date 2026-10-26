@@ -187,18 +187,18 @@ A migração `20261106100000_communities` (o fórum de cada anime, ADR 0011) só
 `20261107100000_community_orkut` (eventos, denúncias, fixar/trancar, descrição) só acrescenta. A
 `20261108100000_profile_orkut` (perfil no formato do Orkut, ADR 0012: favoritos, recados, depoimentos, fãs e avaliações)
 também só acrescenta, assim como a `20261109100000_community_notifications` (avisos das comunidades no sino). A `20261110100000_friendships` cria a
-amizade separada do seguir e transforma em amizade quem já se seguia mutuamente (só acrescenta linhas). A `20261111100000_profile_reports` (denúncias de recados e depoimentos) só cria uma tabela.
+amizade separada do seguir e transforma em amizade quem já se seguia mutuamente (só acrescenta linhas). A `20261111100000_profile_reports` (denúncias de recados e depoimentos) só cria uma tabela. A `20261112100000_scrap_replies` (responder recado) só acrescenta uma coluna.
 
 Para o lote do AniDB funcionar, o servidor precisa de `ANIDB_CLIENT_NAME` e `ANIDB_CLIENT_VERSION` (o client registrado no
 AniDB). Opcional: `ANIDB_REQUEST_GAP_MS` (intervalo entre obras, padrão 4000 ms; não baixe de 2000).
 
-#### Ordem segura desta atualização (18 migrações, de `20261025100000` a `20261111100000`)
+#### Ordem segura desta atualização (19 migrações, de `20261025100000` a `20261112100000`)
 
 O site do cluster e o desenvolvimento no Windows usam o **mesmo banco**. O código antigo ainda lê a tabela `Episode`, que
 a migração de 02/11 arquiva: migrar o banco sem atualizar o cluster derruba as páginas de obra do site antigo. Por isso,
 banco e site sobem juntos, pelo próprio Job de migração:
 
-1. Backup do schema (passo acima). Ensaio de 26/10: as 12 primeiras migrações (as 6 últimas, das comunidades, do perfil, da amizade e das denúncias dos perfis, só acrescentam) rodaram numa cópia restaurada do banco em ~12 s, sem
+1. Backup do schema (passo acima). Ensaio de 26/10: as 12 primeiras migrações (as 7 últimas, das comunidades, do perfil, da amizade, das denúncias e das respostas dos recados, só acrescentam) rodaram numa cópia restaurada do banco em ~12 s, sem
    erro; 800 itens de lista e 7.952 produções ficaram ligados ao catálogo, 209 episódios vieram da tabela antiga e
    nenhum ficou sem obra.
 2. No Windows, pare o `npm run dev` e o `npm run services` (eles gravariam no banco durante a migração).
