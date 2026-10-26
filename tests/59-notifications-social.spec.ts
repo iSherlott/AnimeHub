@@ -149,7 +149,7 @@ test.describe("Notificações: Lançamentos e Social", () => {
     expect((await request.post(`/api/notifications/social/${nid}/read`)).status()).toBe(200);
   });
 
-  test("UI: sino com dois canais, 'Data alterada' com horário anterior e destino na obra", async ({ page, request }) => {
+  test("UI: sino com dois canais, 'Data alterada' com horário anterior, destino na obra e 'Marcar todas como lidas'", async ({ page, request }) => {
     const airingAt = new Date("2026-10-20T22:30:00Z");
     const previous = new Date("2026-10-20T21:00:00Z");
     await prisma.airingAlert.upsert({
@@ -170,7 +170,10 @@ test.describe("Notificações: Lançamentos e Social", () => {
 
     await menu.getByRole("tab", { name: /Social/ }).click();
     await expect(menu.getByText(/respondeu à sua publicação/)).toBeVisible();
-    await menu.getByRole("button", { name: "Marcar Social como lido" }).click();
+    // Contador único no sino; "Marcar todas como lidas" (no topo) vale para os dois canais.
+    await menu.getByTestId("bell-mark-all").click();
     await expect(menu.getByRole("tab", { name: "Social" })).toBeVisible();
+    await expect(menu.getByRole("tab", { name: "Lançamentos" })).toBeVisible();
+    await expect.poll(async () => prisma.airingAlert.count({ where: { userId: me.id, seenAt: null } })).toBe(0);
   });
 });

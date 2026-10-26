@@ -3,7 +3,6 @@
 import { useId, useState, type MouseEvent } from "react";
 import NextLink from "next/link";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import EmojiEventsOutlinedIcon from "@mui/icons-material/EmojiEventsOutlined";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import LogoutIcon from "@mui/icons-material/Logout";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -73,12 +72,6 @@ export function AccountMenu({ user, onLogout }: { user: PublicUser; onLogout: ()
             <AccountCircleIcon fontSize="small" />
           </ListItemIcon>
           Meu perfil
-        </MenuItem>
-        <MenuItem component={NextLink} href="/conquistas" onClick={handleClose}>
-          <ListItemIcon>
-            <EmojiEventsOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          Minhas conquistas
         </MenuItem>
         <MenuItem component={NextLink} href="/configuracoes" onClick={handleClose}>
           <ListItemIcon>

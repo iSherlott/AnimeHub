@@ -55,7 +55,13 @@ test.describe.serial("Admin — carga de perguntas do quiz", () => {
 
     test("a página está no menu do admin e orienta o formato", async ({ page }) => {
       await page.goto("/admin");
-      await page.getByRole("navigation", { name: "Administração" }).getByRole("link", { name: "Quizzes" }).click();
+      // Menu em grupos: Quizzes fica em "Comunidade e acesso".
+      const nav = page.getByRole("navigation", { name: "Administração" });
+      await expect(async () => {
+        await nav.getByTestId("admin-group-toggle-comunidade").click();
+        await expect(nav.getByRole("link", { name: "Quizzes" })).toBeVisible({ timeout: 2000 });
+      }).toPass();
+      await nav.getByRole("link", { name: "Quizzes" }).click();
       await expect(page).toHaveURL(/\/admin\/quizzes$/);
       await expect(page.getByRole("heading", { level: 1, name: "Quizzes" })).toBeVisible();
       await expect(page.getByText("categoria;pergunta;A;B;C;D;correta")).toBeVisible();

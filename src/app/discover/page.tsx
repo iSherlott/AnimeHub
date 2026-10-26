@@ -9,7 +9,7 @@ import PersonOutlineIcon from "@mui/icons-material/PersonOutlined";
 import TuneIcon from "@mui/icons-material/Tune";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
-import { Alert, Badge, Box, Button, Dialog, IconButton, Typography } from "@mui/material";
+import { Alert, Badge, Box, Button, Dialog, IconButton, TextField, Typography } from "@mui/material";
 import LiveTvOutlinedIcon from "@mui/icons-material/LiveTvOutlined";
 import { ErrorNotice } from "@/components/StatePanels";
 import { ScrollCarousel } from "@/components/ScrollCarousel";
@@ -45,6 +45,24 @@ const SORT_LABELS: Record<SortKey, string> = {
   year: "Ano",
   episodes: "Episódios",
 };
+
+/** "Mais filtros": palavras-chave, faixa de episódios e nota mínima (o servidor aplica; a busca ao vivo também respeita). */
+const EMPTY_KEYWORDS = { titleHas: "", synopsisHas: "", exclude: "", epMin: "", epMax: "", minScore: "" };
+type KeywordFilters = typeof EMPTY_KEYWORDS;
+
+const wordsOf = (raw: string) => [...new Set(raw.toLowerCase().split(/[\s,]+/).filter((w) => w.length >= 2))];
+
+function matchesKeywordFilters(item: DiscoverItem, f: KeywordFilters): boolean {
+  const titles = [item.titleRomaji, item.titleEnglish, item.titleNative].filter(Boolean).join(" ").toLowerCase();
+  const synopsis = (item.description ?? "").toLowerCase();
+  if (wordsOf(f.titleHas).some((w) => !titles.includes(w))) return false;
+  if (wordsOf(f.synopsisHas).some((w) => !synopsis.includes(w))) return false;
+  if (wordsOf(f.exclude).some((w) => titles.includes(w) || synopsis.includes(w))) return false;
+  if (f.epMin.trim() && (item.episodes === null || item.episodes < Number(f.epMin))) return false;
+  if (f.epMax.trim() && (item.episodes === null || item.episodes > Number(f.epMax))) return false;
+  // A nota do site não vem no resultado da busca ao vivo: o catálogo (servidor) é quem filtra por ela.
+  return true;
+}
 
 function yearOf(item: DiscoverItem): number | null {
   return item.startDate ? new Date(item.startDate).getFullYear() : null;
@@ -191,7 +209,8 @@ function DiscoverPageContent() {
   const [availability, setAvailability] = useState<"" | "scheduled" | "unscheduled">("");
   const [moreOpen, setMoreOpen] = useState(false);
   // Rascunho do modal "Mais filtros": só vale ao Aplicar; Esc/Cancelar descarta.
-  const [draft, setDraft] = useState({ status: "", availability: "" as "" | "scheduled" | "unscheduled", sort: "popular" as SortKey });
+  const [keywordFilters, setKeywordFilters] = useState(EMPTY_KEYWORDS);
+  const [draft, setDraft] = useState({ status: "", availability: "" as "" | "scheduled" | "unscheduled", sort: "popular" as SortKey, ...EMPTY_KEYWORDS });
 
   useEffect(() => {
     // A cada nova tentativa volta ao estado "carregando" antes da busca terminar.
@@ -274,17 +293,18 @@ function DiscoverPageContent() {
   }, [facets, currentYear, selectedYear]);
 
   const searchActive = query.trim().length >= 2;
-  const filtersActive = selectedGenre !== "" || selectedStatus !== "" || selectedSeason !== "" || selectedYear !== "" || selectedFormat !== "" || availability !== "";
-  const moreCount = (selectedStatus ? 1 : 0) + (availability ? 1 : 0) + (sortBy !== "popular" ? 1 : 0);
+  const keywordCount = Object.values(keywordFilters).filter((v) => v.trim() !== "").length;
+  const filtersActive = selectedGenre !== "" || selectedStatus !== "" || selectedSeason !== "" || selectedYear !== "" || selectedFormat !== "" || availability !== "" || keywordCount > 0;
+  const moreCount = (selectedStatus ? 1 : 0) + (availability ? 1 : 0) + (sortBy !== "popular" ? 1 : 0) + keywordCount;
   const mode: "search" | "filter" | "browse" = searchActive ? "search" : filtersActive ? "filter" : "browse";
 
   // As obras do catálogo chegam do servidor, 48 por vez, conforme a pessoa desce a página (rolagem infinita).
   const catalogQuery = useMemo(() => {
     const params = new URLSearchParams();
-    const values: Record<string, string> = { q: searchActive ? query.trim() : "", genre: selectedGenre, status: selectedStatus, season: selectedSeason, year: selectedYear, kind: selectedFormat, availability, sort: sortBy };
-    for (const [key, value] of Object.entries(values)) if (value) params.set(key, value);
+    const values: Record<string, string> = { q: searchActive ? query.trim() : "", genre: selectedGenre, status: selectedStatus, season: selectedSeason, year: selectedYear, kind: selectedFormat, availability, sort: sortBy, ...keywordFilters };
+    for (const [key, value] of Object.entries(values)) if (value.trim()) params.set(key, value.trim());
     return params.toString();
-  }, [searchActive, query, selectedGenre, selectedStatus, selectedSeason, selectedYear, selectedFormat, availability, sortBy]);
+  }, [searchActive, query, selectedGenre, selectedStatus, selectedSeason, selectedYear, selectedFormat, availability, sortBy, keywordFilters]);
   const pager = usePagedList<DiscoverItem>({
     resetKey: catalogQuery,
     enabled: mode !== "browse",
@@ -306,6 +326,7 @@ function DiscoverPageContent() {
     if (selectedFormat && item.kind !== selectedFormat) return false;
     if (availability === "scheduled" && !item.nextEpisodeAt) return false;
     if (availability === "unscheduled" && item.nextEpisodeAt) return false;
+    if (!matchesKeywordFilters(item, keywordFilters)) return false;
     return true;
   }
 
@@ -317,7 +338,7 @@ function DiscoverPageContent() {
     const seen = new Set(live.map((i) => i.key));
     return [...live, ...pager.items.filter((i) => !seen.has(i.key))];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchResults, pager.items, searchActive, selectedGenre, selectedStatus, selectedSeason, selectedYear, selectedFormat, availability, sortBy]);
+  }, [searchResults, pager.items, searchActive, selectedGenre, selectedStatus, selectedSeason, selectedYear, selectedFormat, availability, sortBy, keywordFilters]);
   // Quantos animes a busca encontrou: o total do catálogo (a busca ao vivo é parte dele), ou a lista inteira se for maior.
   const searchCount = pager.total !== null ? Math.max(pager.total, searchList.length) : searchList.length;
 
@@ -330,6 +351,7 @@ function DiscoverPageContent() {
     setSelectedFormat("");
     setAvailability("");
     setSortBy("popular");
+    setKeywordFilters(EMPTY_KEYWORDS);
   }
 
   const season = currentSeasonRef();
@@ -384,7 +406,7 @@ function DiscoverPageContent() {
           <Badge badgeContent={moreCount} color="primary" overlap="rectangular">
             <Button
               onClick={() => {
-                setDraft({ status: selectedStatus, availability, sort: sortBy });
+                setDraft({ status: selectedStatus, availability, sort: sortBy, ...keywordFilters });
                 setMoreOpen(true);
               }}
               startIcon={<TuneIcon />}
@@ -614,6 +636,17 @@ function DiscoverPageContent() {
               options={(Object.keys(SORT_LABELS) as SortKey[]).map((key) => ({ value: key, label: SORT_LABELS[key] }))}
             />
           </Box>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }} data-testid="more-filters-keywords">
+            <Typography sx={{ fontSize: 14, fontWeight: 700 }}>Palavras-chave</Typography>
+            <TextField size="small" label="No título" placeholder="ex.: dragão ilha" value={draft.titleHas} onChange={(e) => setDraft((d) => ({ ...d, titleHas: e.target.value }))} helperText="Todas as palavras precisam aparecer em algum título (romaji, inglês ou japonês)." slotProps={{ htmlInput: { maxLength: 200, "data-testid": "filter-title-has" } }} />
+            <TextField size="small" label="Na sinopse" placeholder="ex.: vingança pirata" value={draft.synopsisHas} onChange={(e) => setDraft((d) => ({ ...d, synopsisHas: e.target.value }))} helperText="Procura na sinopse original e na tradução em português." slotProps={{ htmlInput: { maxLength: 200, "data-testid": "filter-synopsis-has" } }} />
+            <TextField size="small" label="Sem estas palavras" placeholder="ex.: isekai" value={draft.exclude} onChange={(e) => setDraft((d) => ({ ...d, exclude: e.target.value }))} helperText="Tira as obras que tenham qualquer uma delas no título ou na sinopse." slotProps={{ htmlInput: { maxLength: 200, "data-testid": "filter-exclude" } }} />
+            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+              <TextField size="small" type="number" label="Episódios: mínimo" value={draft.epMin} onChange={(e) => setDraft((d) => ({ ...d, epMin: e.target.value }))} sx={{ flex: "1 1 140px" }} slotProps={{ htmlInput: { min: 0, max: 5000, "data-testid": "filter-ep-min" } }} />
+              <TextField size="small" type="number" label="Episódios: máximo" value={draft.epMax} onChange={(e) => setDraft((d) => ({ ...d, epMax: e.target.value }))} sx={{ flex: "1 1 140px" }} slotProps={{ htmlInput: { min: 0, max: 5000, "data-testid": "filter-ep-max" } }} />
+              <TextField size="small" type="number" label="Nota do site: mínima" value={draft.minScore} onChange={(e) => setDraft((d) => ({ ...d, minScore: e.target.value }))} sx={{ flex: "1 1 140px" }} slotProps={{ htmlInput: { min: 0, max: 10, step: 0.5, "data-testid": "filter-min-score" } }} />
+            </Box>
+          </Box>
           <SelectField
             label="Disponibilidade de previsão"
             value={draft.availability}
@@ -626,15 +659,17 @@ function DiscoverPageContent() {
             ]}
           />
           <Box sx={{ display: "flex", gap: 1.5 }}>
-            <Button onClick={() => setDraft({ status: "", availability: "", sort: "popular" })} sx={ELEVATED_BUTTON_SX}>
+            <Button onClick={() => setDraft({ status: "", availability: "", sort: "popular", ...EMPTY_KEYWORDS })} sx={ELEVATED_BUTTON_SX}>
               Limpar filtros
             </Button>
             <Button
               variant="contained"
+              data-testid="more-filters-apply"
               onClick={() => {
                 setSelectedStatus(draft.status);
                 setAvailability(draft.availability);
                 setSortBy(draft.sort);
+                setKeywordFilters({ titleHas: draft.titleHas, synopsisHas: draft.synopsisHas, exclude: draft.exclude, epMin: draft.epMin, epMax: draft.epMax, minScore: draft.minScore });
                 setMoreOpen(false);
               }}
             >

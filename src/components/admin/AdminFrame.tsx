@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -27,44 +27,82 @@ import TimelineOutlinedIcon from "@mui/icons-material/TimelineOutlined";
 import TranslateOutlinedIcon from "@mui/icons-material/TranslateOutlined";
 import VideoLibraryOutlinedIcon from "@mui/icons-material/VideoLibraryOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
-import { Box, Typography } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { Box, ButtonBase, Collapse, Typography } from "@mui/material";
 import { can, type Permission } from "@/lib/auth/permissions";
 
-type NavItem = { href: string; label: string; icon: ReactNode; crumb: string; perm?: Permission };
+type NavItem = { href: string; label: string; icon: ReactNode; crumb: string; perm?: Permission; group: GroupKey };
+type GroupKey = "inicio" | "visao" | "catalogo" | "episodios" | "fontes" | "curadoria" | "comunidade";
+
+/** Grupos do menu (cada um abre e fecha); o do item aberto começa aberto. "Dashboard" fica fora, sempre à vista. */
+const GROUPS: Array<{ key: Exclude<GroupKey, "inicio">; label: string }> = [
+  { key: "visao", label: "Visão geral" },
+  { key: "catalogo", label: "Catálogo" },
+  { key: "episodios", label: "Episódios e agenda" },
+  { key: "fontes", label: "Fontes e dados" },
+  { key: "curadoria", label: "Curadoria" },
+  { key: "comunidade", label: "Comunidade e acesso" },
+];
 
 const NAV: NavItem[] = [
-  { href: "/admin", label: "Dashboard", icon: <DashboardOutlinedIcon />, crumb: "DASHBOARD" },
-  { href: "/admin/saude", label: "Saúde do catálogo", icon: <MonitorHeartOutlinedIcon />, crumb: "SAÚDE DO CATÁLOGO" },
-  { href: "/admin/obras", label: "Catálogo de obras", icon: <MovieFilterOutlinedIcon />, crumb: "CATÁLOGO DE OBRAS" },
-  { href: "/admin/episodios", label: "Episódios", icon: <VideoLibraryOutlinedIcon />, crumb: "EPISÓDIOS" },
-  { href: "/admin/calendario", label: "Calendário", icon: <CalendarMonthOutlinedIcon />, crumb: "CALENDÁRIO" },
-  { href: "/admin/correspondencias", label: "Correspondências", icon: <JoinInnerOutlinedIcon />, crumb: "CORRESPONDÊNCIAS" },
-  { href: "/admin/atualizacoes", label: "Atualização seletiva", icon: <SyncAltOutlinedIcon />, crumb: "ATUALIZAÇÃO SELETIVA" },
-  { href: "/admin/franquias", label: "Franquias", icon: <TimelineOutlinedIcon />, crumb: "FRANQUIAS" },
-  { href: "/admin/catalogo", label: "Produções e franquias", icon: <LibraryBooksOutlinedIcon />, crumb: "PRODUÇÕES E FRANQUIAS" },
-  { href: "/admin/taxonomia", label: "Taxonomia", icon: <CategoryOutlinedIcon />, crumb: "TAXONOMIA" },
-  { href: "/admin/traducoes", label: "Traduções", icon: <TranslateOutlinedIcon />, crumb: "TRADUÇÕES" },
-  { href: "/admin/pendencias", label: "Pendências", icon: <RuleOutlinedIcon />, crumb: "PENDÊNCIAS" },
-  { href: "/admin/curadoria", label: "Curadoria", icon: <FactCheckOutlinedIcon />, crumb: "CURADORIA" },
-  { href: "/admin/importacoes", label: "Importações", icon: <FileDownloadOutlinedIcon />, crumb: "IMPORTAÇÕES" },
-  { href: "/admin/match-name", label: "Match name", icon: <LinkOutlinedIcon />, crumb: "MATCH NAME" },
-  { href: "/admin/quizzes", label: "Quizzes", icon: <QuizOutlinedIcon />, crumb: "QUIZZES" },
-  { href: "/admin/matching", label: "Matching", icon: <CompareArrowsOutlinedIcon />, crumb: "MATCHING" },
-  { href: "/admin/scrapers", label: "Scrapers", icon: <RadarOutlinedIcon />, crumb: "SCRAPERS" },
-  { href: "/admin/jobs", label: "Jobs", icon: <AccountTreeOutlinedIcon />, crumb: "JOBS" },
-  { href: "/admin/conflitos", label: "Conflitos", icon: <WarningAmberOutlinedIcon />, crumb: "CONFLITOS" },
-  { href: "/admin/overrides", label: "Overrides", icon: <EditOutlinedIcon />, crumb: "OVERRIDES" },
-  { href: "/admin/logs", label: "Logs", icon: <FilterListOutlinedIcon />, crumb: "LOGS" },
-  { href: "/admin/acesso", label: "Acesso e moderação", icon: <AdminPanelSettingsOutlinedIcon />, crumb: "ACESSO E MODERAÇÃO", perm: "moderation" },
+  { href: "/admin", label: "Dashboard", icon: <DashboardOutlinedIcon />, crumb: "DASHBOARD", group: "inicio" },
+  { href: "/admin/saude", label: "Saúde do catálogo", icon: <MonitorHeartOutlinedIcon />, crumb: "SAÚDE DO CATÁLOGO", group: "visao" },
+  { href: "/admin/jobs", label: "Jobs", icon: <AccountTreeOutlinedIcon />, crumb: "JOBS", group: "visao" },
+  { href: "/admin/logs", label: "Logs", icon: <FilterListOutlinedIcon />, crumb: "LOGS", group: "visao" },
+  { href: "/admin/obras", label: "Catálogo de obras", icon: <MovieFilterOutlinedIcon />, crumb: "CATÁLOGO DE OBRAS", group: "catalogo" },
+  { href: "/admin/catalogo", label: "Produções e franquias", icon: <LibraryBooksOutlinedIcon />, crumb: "PRODUÇÕES E FRANQUIAS", group: "catalogo" },
+  { href: "/admin/franquias", label: "Franquias", icon: <TimelineOutlinedIcon />, crumb: "FRANQUIAS", group: "catalogo" },
+  { href: "/admin/taxonomia", label: "Taxonomia", icon: <CategoryOutlinedIcon />, crumb: "TAXONOMIA", group: "catalogo" },
+  { href: "/admin/traducoes", label: "Traduções", icon: <TranslateOutlinedIcon />, crumb: "TRADUÇÕES", group: "catalogo" },
+  { href: "/admin/episodios", label: "Episódios", icon: <VideoLibraryOutlinedIcon />, crumb: "EPISÓDIOS", group: "episodios" },
+  { href: "/admin/calendario", label: "Calendário", icon: <CalendarMonthOutlinedIcon />, crumb: "CALENDÁRIO", group: "episodios" },
+  { href: "/admin/overrides", label: "Overrides", icon: <EditOutlinedIcon />, crumb: "OVERRIDES", group: "episodios" },
+  { href: "/admin/conflitos", label: "Conflitos", icon: <WarningAmberOutlinedIcon />, crumb: "CONFLITOS", group: "episodios" },
+  { href: "/admin/importacoes", label: "Importações", icon: <FileDownloadOutlinedIcon />, crumb: "IMPORTAÇÕES", group: "fontes" },
+  { href: "/admin/atualizacoes", label: "Atualização seletiva", icon: <SyncAltOutlinedIcon />, crumb: "ATUALIZAÇÃO SELETIVA", group: "fontes" },
+  { href: "/admin/correspondencias", label: "Correspondências", icon: <JoinInnerOutlinedIcon />, crumb: "CORRESPONDÊNCIAS", group: "fontes" },
+  { href: "/admin/match-name", label: "Match name", icon: <LinkOutlinedIcon />, crumb: "MATCH NAME", group: "fontes" },
+  { href: "/admin/matching", label: "Matching", icon: <CompareArrowsOutlinedIcon />, crumb: "MATCHING", group: "fontes" },
+  { href: "/admin/scrapers", label: "Scrapers", icon: <RadarOutlinedIcon />, crumb: "SCRAPERS", group: "fontes" },
+  { href: "/admin/curadoria", label: "Curadoria", icon: <FactCheckOutlinedIcon />, crumb: "CURADORIA", group: "curadoria" },
+  { href: "/admin/pendencias", label: "Pendências", icon: <RuleOutlinedIcon />, crumb: "PENDÊNCIAS", group: "curadoria" },
+  { href: "/admin/quizzes", label: "Quizzes", icon: <QuizOutlinedIcon />, crumb: "QUIZZES", group: "comunidade" },
+  { href: "/admin/acesso", label: "Acesso e moderação", icon: <AdminPanelSettingsOutlinedIcon />, crumb: "ACESSO E MODERAÇÃO", perm: "moderation", group: "comunidade" },
 ];
 
 function isActive(pathname: string, href: string): boolean {
   return href === "/admin" ? pathname === "/admin" : pathname === href || pathname.startsWith(`${href}/`);
 }
 
+const linkSx = (active: boolean) => ({
+  display: "flex",
+  alignItems: "center",
+  gap: 1.5,
+  px: 1.5,
+  py: 1,
+  minHeight: 40,
+  boxSizing: "border-box",
+  borderRadius: "10px",
+  fontSize: 14,
+  color: active ? "text.primary" : "text.secondary",
+  bgcolor: active ? "#2c111b" : "transparent",
+  textDecoration: "none",
+  "& svg": { fontSize: 19, color: active ? "primary.main" : "text.secondary" },
+  "&:hover": { color: "text.primary", bgcolor: active ? "#2c111b" : "#171820" },
+});
+
+function NavLink({ item, active }: { item: NavItem; active: boolean }) {
+  return (
+    <Box component={NextLink} href={item.href} aria-current={active ? "page" : undefined} sx={linkSx(active)}>
+      {item.icon}
+      {item.label}
+    </Box>
+  );
+}
+
 /**
  * Casca da área Admin (Figma "Admin UX", `8:3436`): barra lateral de 224 px
- * com as seções operacionais, faixa superior com o caminho (breadcrumb), a
+ * com as seções operacionais agrupadas por tipo (cada grupo abre e fecha, o da página atual vem aberto), faixa superior com o caminho (breadcrumb), a
  * data e o fuso, e o conteúdo da seção. Acesso restrito a administradores.
  */
 export function AdminFrame({ adminName, timeZone, role, children }: { adminName: string; timeZone: string; role: string; children: ReactNode }) {
@@ -72,6 +110,8 @@ export function AdminFrame({ adminName, timeZone, role, children }: { adminName:
   // Fase 9: o menu mostra só as áreas que o papel pode abrir (o servidor confere de novo em cada página e API).
   const nav = NAV.filter((item) => can(role, item.perm ?? "catalog"));
   const current = nav.find((item) => isActive(pathname, item.href) && item.href !== "/admin") ?? nav[0] ?? NAV[0];
+  // Grupo sem escolha da pessoa: aberto se a página atual está nele (a casca não remonta entre páginas, então segue a rota).
+  const [open, setOpen] = useState<Partial<Record<GroupKey, boolean>>>({});
   const now = new Date();
   const dateLabel = `${new Intl.DateTimeFormat("pt-BR", { timeZone, weekday: "short" }).format(now).replace(".", "").toUpperCase()} ${new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit" }).format(now)} ${new Intl.DateTimeFormat("pt-BR", { timeZone, month: "short" }).format(now).replace(".", "").toUpperCase()} ${new Intl.DateTimeFormat("pt-BR", { timeZone, year: "numeric" }).format(now)} · ${timeZone}`;
 
@@ -105,34 +145,37 @@ export function AdminFrame({ adminName, timeZone, role, children }: { adminName:
             Admin / Operações
           </Typography>
         </Box>
-        <Box component="nav" aria-label="Administração" sx={{ display: "flex", flexDirection: { xs: "row", md: "column" }, flexWrap: "wrap", gap: 0.5 }}>
-          {nav.map((item) => {
-            const active = isActive(pathname, item.href);
+        <Box component="nav" aria-label="Administração" sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+          {nav
+            .filter((item) => item.group === "inicio")
+            .map((item) => (
+              <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} />
+            ))}
+          {GROUPS.map((group) => {
+            const items = nav.filter((item) => item.group === group.key);
+            if (items.length === 0) return null;
+            const hasActive = items.some((item) => isActive(pathname, item.href));
+            const expanded = open[group.key] ?? hasActive;
+            const listId = `admin-group-${group.key}`;
             return (
-              <Box
-                key={item.href}
-                component={NextLink}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1.5,
-                  px: 1.5,
-                  py: 1.25,
-                  minHeight: 44,
-                  boxSizing: "border-box",
-                  borderRadius: "10px",
-                  fontSize: 15,
-                  color: active ? "text.primary" : "text.secondary",
-                  bgcolor: active ? "#2c111b" : "transparent",
-                  textDecoration: "none",
-                  "& svg": { fontSize: 20, color: active ? "primary.main" : "text.secondary" },
-                  "&:hover": { color: "text.primary", bgcolor: active ? "#2c111b" : "#171820" },
-                }}
-              >
-                {item.icon}
-                {item.label}
+              <Box key={group.key} sx={{ display: "flex", flexDirection: "column" }}>
+                <ButtonBase
+                  onClick={() => setOpen((o) => ({ ...o, [group.key]: !expanded }))}
+                  aria-expanded={expanded}
+                  aria-controls={listId}
+                  data-testid={`admin-group-toggle-${group.key}`}
+                  sx={{ justifyContent: "space-between", px: 1.5, py: 1, minHeight: 40, borderRadius: "10px", fontSize: 12, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: hasActive ? "text.primary" : "text.secondary", "&:hover": { bgcolor: "#171820", color: "text.primary" } }}
+                >
+                  {group.label}
+                  <ExpandMoreIcon sx={{ fontSize: 18, transition: "transform 150ms", transform: expanded ? "rotate(180deg)" : "none" }} />
+                </ButtonBase>
+                <Collapse in={expanded} id={listId}>
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, pl: 1, pb: 0.5 }}>
+                    {items.map((item) => (
+                      <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} />
+                    ))}
+                  </Box>
+                </Collapse>
               </Box>
             );
           })}

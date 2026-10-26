@@ -5,7 +5,7 @@ const parse = (qs: string) => parseCatalogParams(new URLSearchParams(qs));
 
 describe("parseCatalogParams", () => {
   it("sem nada na URL, pede a primeira página por popularidade", () => {
-    expect(parse("")).toEqual({ q: "", genre: "", status: "", season: "", year: null, kind: "", availability: "", sort: "popular", offset: 0, limit: CATALOG_PAGE_SIZE });
+    expect(parse("")).toEqual({ q: "", genre: "", status: "", season: "", year: null, kind: "", availability: "", titleHas: [], synopsisHas: [], exclude: [], epMin: null, epMax: null, minScore: null, sort: "popular", offset: 0, limit: CATALOG_PAGE_SIZE });
   });
 
   it("lê os filtros e normaliza a temporada", () => {
@@ -95,5 +95,22 @@ describe("matchesTitleQuery", () => {
 
   it("busca curta demais não filtra nada", () => {
     expect(matchesTitleQuery(["Qualquer"], "a")).toBe(true);
+  });
+});
+
+describe("Mais filtros: palavras, episódios e nota", () => {
+  it("lê as palavras (sem repetição nem palavra curta), os limites e a nota", () => {
+    const p = parse("titleHas=Dragão%20dragão%20a&synopsisHas=vingança,ilha&exclude=isekai&epMin=12&epMax=26&minScore=7.5");
+    expect(p).toMatchObject({ titleHas: ["dragão"], synopsisHas: ["vingança", "ilha"], exclude: ["isekai"], epMin: 12, epMax: 26, minScore: 7.5 });
+    expect(parse("epMin=-1&epMax=x&minScore=11")).toMatchObject({ epMin: null, epMax: null, minScore: null });
+  });
+
+  it("cada palavra vira uma condição; as excluídas valem para título e sinopse", () => {
+    const and = JSON.stringify(catalogWhere(parse("titleHas=ilha&synopsisHas=pirata&exclude=isekai&epMin=12&minScore=7"), null).AND);
+    expect(and).toContain('"titleRomaji":{"contains":"ilha","mode":"insensitive"}');
+    expect(and).toContain('"descriptionPt":{"contains":"pirata","mode":"insensitive"}');
+    expect(and).toContain('{"OR":[{"titleEnglish":null},{"NOT":{"titleEnglish":{"contains":"isekai","mode":"insensitive"}}}]}');
+    expect(and).toContain('"episodes":{"gte":12}');
+    expect(and).toContain('"siteScore":{"gte":7}');
   });
 });

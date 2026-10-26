@@ -81,6 +81,8 @@ function socialText(n: SocialItem): string {
 }
 
 const POLL_INTERVAL_MS = 60 * 1000;
+/** Quantas notificações cada canal mostra antes de "Ver mais". */
+const PREVIEW_COUNT = 5;
 
 /** "sábado, 10 out · 13:00" no fuso escolhido (Figma: "DATA ALTERADA · Nova data…"). */
 function formatInZone(date: Date, timeZone: string): string {
@@ -91,7 +93,9 @@ function formatInZone(date: Date, timeZone: string): string {
 /**
  * Sino único com dois canais (Figma `13:43025`): "Lançamentos" (favoritos no
  * ar agora e "Data alterada", Epic 10) e "Social" (respostas, novos
- * seguidores, curtidas). Só aparece logado. Os dados (services/notifier e as
+ * seguidores, curtidas). Só aparece logado. O contador é um número só (os dois
+ * canais somados); cada canal mostra as 5 mais recentes e "Ver mais" abre as
+ * demais; "Marcar todas como lidas", no topo, vale para os dois canais. Os dados (services/notifier e as
  * rotas sociais escrevem, `GET /api/notifications` só lê) chegam com horários
  * crus (ISO); a hora exibida é calculada aqui, no fuso escolhido na conta —
  * mesmo motivo do calendário.
@@ -102,6 +106,7 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
   const [alerts, setAlerts] = useState<AiringAlertItem[]>([]);
   const [social, setSocial] = useState<SocialItem[]>([]);
   const [channel, setChannel] = useState<"releases" | "social">("releases");
+  const [expanded, setExpanded] = useState(false);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const open = Boolean(anchorEl);
   const buttonId = useId();
@@ -159,10 +164,12 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
     }
   }
 
-  async function markAllSocialRead() {
-    setSocial((prev) => prev.map((n) => (n.readAt ? n : { ...n, readAt: new Date().toISOString() })));
+  async function markAllRead() {
+    const now = new Date().toISOString();
+    setAlerts((prev) => prev.map((a) => (a.seenAt ? a : { ...a, seenAt: now })));
+    setSocial((prev) => prev.map((n) => (n.readAt ? n : { ...n, readAt: now })));
     try {
-      await fetch("/api/notifications/social/read-all", { method: "POST" });
+      await fetch("/api/notifications/read-all", { method: "POST" });
     } catch {
       // idem
     }
@@ -170,7 +177,12 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
 
   function handleClose() {
     setAnchorEl(null);
+    setExpanded(false);
   }
+
+  const visibleAlerts = expanded ? alerts : alerts.slice(0, PREVIEW_COUNT);
+  const visibleSocial = expanded ? social : social.slice(0, PREVIEW_COUNT);
+  const hidden = channel === "releases" ? alerts.length - visibleAlerts.length : social.length - visibleSocial.length;
 
   return (
     <>
@@ -184,18 +196,17 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
         aria-expanded={open ? "true" : undefined}
         sx={{ borderRadius: "10px" }}
       >
-        {/* Sino + pílula "Lançamentos · Social" (Figma 13:41182); a pílula
-            só aparece quando há algo novo. */}
+        {/* Sino + contador único (os dois canais somados); só aparece quando há algo novo. */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "text.secondary" }}>
           <NotificationsNoneIcon sx={{ fontSize: 20 }} />
           {unseenCount > 0 && (
             <Box
               component="span"
               data-testid="bell-counts"
-              aria-label={`${unseenReleases} de lançamentos e ${unreadSocial} sociais não lidos`}
-              sx={{ bgcolor: "#2c111b", color: "primary.main", fontSize: 11, fontWeight: 700, px: 1, py: 0.75, borderRadius: "6px", lineHeight: 1.5 }}
+              aria-label={`${unseenCount} ${unseenCount === 1 ? "notificação não lida" : "notificações não lidas"}`}
+              sx={{ bgcolor: "#2c111b", color: "primary.main", fontSize: 11, fontWeight: 700, px: 1, py: 0.75, borderRadius: "6px", lineHeight: 1.5, minWidth: 24, textAlign: "center" }}
             >
-              {unseenReleases} · {unreadSocial}
+              {unseenCount > 99 ? "99+" : unseenCount}
             </Box>
           )}
         </Box>
@@ -211,10 +222,15 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
           list: { "aria-labelledby": buttonId, sx: { p: 0 } },
         }}
       >
-        <Typography component="h2" sx={{ fontSize: 26, lineHeight: 1.5, mb: 2 }}>
-          Notificações
-        </Typography>
-        <Tabs value={channel} onChange={(_, v) => setChannel(v)} aria-label="Canais de notificação" sx={{ mb: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, mb: 2, flexWrap: "wrap" }}>
+          <Typography component="h2" sx={{ fontSize: 26, lineHeight: 1.5 }}>
+            Notificações
+          </Typography>
+          <Button size="small" onClick={() => void markAllRead()} disabled={unseenCount === 0} data-testid="bell-mark-all" sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}>
+            Marcar todas como lidas
+          </Button>
+        </Box>
+        <Tabs value={channel} onChange={(_, v) => { setChannel(v); setExpanded(false); }} aria-label="Canais de notificação" sx={{ mb: 2 }}>
           <Tab value="releases" label={unseenReleases > 0 ? `Lançamentos · ${unseenReleases}` : "Lançamentos"} />
           <Tab value="social" label={unreadSocial > 0 ? `Social · ${unreadSocial}` : "Social"} />
         </Tabs>
@@ -223,7 +239,7 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
           alerts.length === 0 ? (
             <Typography sx={{ py: 2, color: "text.secondary", fontSize: 14 }}>Nenhum lançamento da sua lista hoje nem no ar agora.</Typography>
           ) : (
-            alerts.map((alert) => {
+            visibleAlerts.map((alert) => {
               const when = new Date(alert.airingAt);
               // Aviso antecipado: o episódio ainda vai ao ar (lembrete de hoje).
               const upcoming = when > new Date();
@@ -287,7 +303,7 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
           </Box>
         ) : (
           <>
-            {social.map((n) => (
+            {visibleSocial.map((n) => (
               <MenuItem
                 key={n.id}
                 component={n.href ? NextLink : "div"}
@@ -312,15 +328,14 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
                 </Box>
               </MenuItem>
             ))}
-            <Box sx={{ borderTop: 1, borderColor: "divider", pt: 2, display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start" }}>
-              <Button onClick={markAllSocialRead} disabled={unreadSocial === 0} sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}>
-                Marcar Social como lido
-              </Button>
-              <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
-                Sem trecho da resposta, mesmo quando tem spoilers. A notificação abre a discussão e ancora o comentário exato; seguir abre o perfil.
-              </Typography>
-            </Box>
           </>
+        )}
+        {hidden > 0 && (
+          <Box sx={{ borderTop: 1, borderColor: "divider", pt: 2 }}>
+            <Button onClick={() => setExpanded(true)} data-testid="bell-more" sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}>
+              Ver mais ({hidden})
+            </Button>
+          </Box>
         )}
       </Menu>
     </>

@@ -153,7 +153,11 @@ test.describe.serial("Admin — catálogo de obras", () => {
       await page.getByTestId("health-protegidas").getByRole("link", { name: "Ver" }).click();
       await expect(page).toHaveURL(/\/admin\/obras\?qualidade=protegida/);
       await expect(page.getByTestId(`work-link-${entryId}`)).toBeVisible();
-      await expect(page.getByRole("navigation", { name: "Administração" }).getByRole("link", { name: "Saúde do catálogo" })).toBeVisible();
+      // Menu em grupos: "Saúde do catálogo" está em "Visão geral", que abre com um clique.
+      const nav = page.getByRole("navigation", { name: "Administração" });
+      await expect(nav.getByRole("link", { name: "Catálogo de obras" })).toBeVisible();
+      await nav.getByTestId("admin-group-toggle-visao").click();
+      await expect(nav.getByRole("link", { name: "Saúde do catálogo" })).toBeVisible();
     });
   });
 });
