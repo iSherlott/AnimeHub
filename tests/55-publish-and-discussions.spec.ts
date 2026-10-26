@@ -241,7 +241,7 @@ test.describe("Publicar, Recentes e discussões", () => {
       await request.delete(`/api/posts/${postId}`);
       await page.goto(`/publicacao/${postId}`);
       await expect(page.getByTestId("post-unavailable")).toContainText("Publicação removida");
-      await expect(page.getByRole("link", { name: "Voltar à Comunidade", exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Voltar ao Feed", exact: true })).toBeVisible();
     });
   });
 });

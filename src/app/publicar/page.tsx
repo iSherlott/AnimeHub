@@ -73,7 +73,7 @@ export default async function PublishPage({ searchParams }: Props) {
           underline="hover"
           sx={{ fontSize: 14, color: "text.secondary", alignSelf: "flex-start" }}
         >
-          {initialAnime ? `← Voltar a ${initialAnime.native ?? initialAnime.title} / Discussões` : "← Voltar à Comunidade / Para você"}
+          {initialAnime ? `← Voltar a ${initialAnime.native ?? initialAnime.title} / Discussões` : "← Voltar ao Feed / Para você"}
         </AppLink>
         <TwoColumn
           main={<PostComposer initialAnime={initialAnime} quote={quote} />}

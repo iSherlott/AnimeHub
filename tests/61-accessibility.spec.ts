@@ -47,7 +47,7 @@ test.describe("Acessibilidade", () => {
   });
 
   const PAGES: Array<{ name: string; path: () => string }> = [
-    { name: "Comunidade", path: () => "/" },
+    { name: "Feed", path: () => "/" },
     { name: "Explorar", path: () => "/discover" },
     { name: "Calendário", path: () => "/calendar" },
     { name: "Meus animes", path: () => "/minha-lista" },

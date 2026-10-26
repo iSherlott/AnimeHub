@@ -80,7 +80,7 @@ export function SinglePostView({ postId, aside }: { postId: string; aside?: Reac
           <Typography sx={{ color: "text.secondary", fontSize: 14, mb: 2 }}>Esta conversa não está mais disponível.</Typography>
           <Box>
             <Button component={NextLink} href="/" variant="outlined">
-              Voltar à Comunidade
+              Voltar ao Feed
             </Button>
           </Box>
         </Box>
@@ -108,7 +108,7 @@ export function SinglePostView({ postId, aside }: { postId: string; aside?: Reac
     <>
       <PageIntro kicker="会話 / COMUNIDADE" title="Discussão" subtitle="Uma conversa por inteiro, com a obra sempre em contexto." />
       <Button onClick={goBack} sx={{ alignSelf: "flex-start", px: 0, color: "text.secondary", fontWeight: 400 }}>
-        ← Voltar à Comunidade / Para você
+        ← Voltar ao Feed / Para você
       </Button>
       <TwoColumn main={main} aside={aside} />
     </>

@@ -16,6 +16,7 @@ import { useTimeZone } from "@/lib/useTimeZone";
 import type { CalendarItem } from "@/lib/calendarItem";
 
 type Tag = { key: string; display: string };
+const KIND_LABEL: Record<string, string> = { WORK: "Obra", SEASON: "Temporada", GENRE: "Gênero", TOPIC: "Tópico" };
 const GROUPS: Array<{ kind: string; label: string }> = [
   { kind: "WORK", label: "OBRA" },
   { kind: "GENRE", label: "GÊNERO" },
@@ -23,7 +24,7 @@ const GROUPS: Array<{ kind: string; label: string }> = [
 ];
 
 /**
- * Lateral da Comunidade (Figma `13:41368`): "Conversas da temporada" com a
+ * Lateral do Feed (Figma `13:41368`): "Em alta agora" (hashtags dos últimos 7 dias), "Conversas da temporada" com a
  * hashtag da temporada e as populares por tipo, e "Também na sua agenda"
  * (próximo episódio da Minha Lista, só para quem tem conta). Nada aqui
  * publica a Minha Lista de ninguém.
@@ -34,6 +35,7 @@ export function CommunitySidebar() {
   const { preference } = useTitlePreference();
   const season = useMemo(() => currentSeasonTag(new Date(), timeZone), [timeZone]);
   const [groups, setGroups] = useState<Record<string, Tag[]>>({});
+  const [trending, setTrending] = useState<Array<Tag & { postCount: number; kind: string }> | null>(null);
   const [next, setNext] = useState<CalendarItem | null>(null);
   const [recommended, setRecommended] = useState<RecommendationItem[] | null>(null);
 
@@ -43,6 +45,12 @@ export function CommunitySidebar() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!cancelled && data) setGroups(data.groups ?? {});
+      })
+      .catch(() => undefined);
+    fetch("/api/hashtags?trending=1")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) setTrending(data?.trending ?? []);
       })
       .catch(() => undefined);
     return () => {
@@ -96,6 +104,32 @@ export function CommunitySidebar() {
 
   return (
     <>
+      {/* "Em alta agora" (como no Twitter): as hashtags com mais publicações nos últimos 7 dias, em ordem. */}
+      {trending && trending.length > 0 && (
+        <Box component="section" aria-labelledby="em-alta-heading" sx={{ display: "flex", flexDirection: "column", gap: 1.5 }} data-testid="trending-hashtags">
+          <SectionTitle>
+            <span id="em-alta-heading">Em alta agora</span>
+          </SectionTitle>
+          <Box component="ol" sx={{ m: 0, p: 0, listStyle: "none", display: "flex", flexDirection: "column" }}>
+            {trending.map((t, i) => (
+              <Box component="li" key={t.key} sx={{ borderTop: i ? 1 : 0, borderColor: "divider" }}>
+                <MuiLink component={NextLink} href={`/hashtag/${encodeURIComponent(t.key)}`} underline="none" data-testid={`trending-${t.key}`} sx={{ display: "flex", flexDirection: "column", py: 1, color: "text.primary", "&:hover .tag": { textDecoration: "underline" } }}>
+                  <Typography component="span" sx={{ fontSize: 12, color: "text.secondary" }}>
+                    {i + 1} · {KIND_LABEL[t.kind] ?? "Tópico"} · em alta
+                  </Typography>
+                  <Typography component="span" className="tag" sx={{ fontSize: 15, fontWeight: 700 }}>
+                    #{t.display}
+                  </Typography>
+                  <Typography component="span" sx={{ fontSize: 12, color: "text.secondary", fontVariantNumeric: "tabular-nums" }}>
+                    {t.postCount} {t.postCount === 1 ? "publicação" : "publicações"} nos últimos 7 dias
+                  </Typography>
+                </MuiLink>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      )}
+
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <SectionTitle>Conversas da temporada</SectionTitle>
         <Typography sx={{ fontSize: 14, color: "text.secondary" }}>

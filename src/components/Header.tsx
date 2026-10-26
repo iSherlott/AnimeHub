@@ -8,7 +8,6 @@ import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutlined";
-import TuneIcon from "@mui/icons-material/Tune";
 import {
   AppBar,
   Box,
@@ -34,10 +33,10 @@ const NAV_ITEMS: Array<{ href: string; label: string; match: (p: string) => bool
   { href: "/discover", label: "Explorar", match: (p) => p === "/discover" },
   { href: "/calendar", label: "Calendário", match: (p) => p === "/calendar" },
   { href: "/minha-lista", label: "Meus animes", match: (p) => p === "/minha-lista" || p.startsWith("/minha-lista/") },
-  // "Comunidade" cobre o feed e as telas sociais (publicar, buscar, hashtag, discussão, comunidades dos animes, perfis).
+  // "Feed" cobre as publicações e as telas sociais (publicar, buscar, hashtag, discussão, perfis).
   {
     href: "/",
-    label: "Comunidade",
+    label: "Feed",
     match: (p) =>
       p === "/" ||
       p.startsWith("/publicar") ||
@@ -135,10 +134,8 @@ function AccountArea({ user, onLogout, pathname }: { user: PublicUser | null | u
   }
   return (
     <Stack direction="row" spacing={3} sx={{ alignItems: "center" }}>
+      {/* Configurações e conquistas ficam no menu do avatar e no perfil (sem atalho repetido aqui). */}
       <NotificationBell user={user} />
-      <IconButton component={NextLink} href="/configuracoes" aria-label="Configurações" sx={{ color: "text.secondary" }}>
-        <TuneIcon sx={{ fontSize: 20 }} />
-      </IconButton>
       <AccountMenu user={user} onLogout={onLogout} />
     </Stack>
   );
@@ -147,8 +144,7 @@ function AccountArea({ user, onLogout, pathname }: { user: PublicUser | null | u
 /**
  * Cabeçalho do Figma ("Header / Expansão social"): 88 px, borda inferior,
  * marca com selo de acento, navegação em caixa alta com indicador ativo e,
- * à direita, sino com contagens (Lançamentos · Social), Configurações e
- * avatar. Abaixo de 1240 px vira hambúrguer (comportamento já existente).
+ * à direita, sino (um contador só) e avatar (Configurações ficam no menu dele). Abaixo de 1240 px vira hambúrguer (comportamento já existente).
  */
 export function Header() {
   const pathname = usePathname();

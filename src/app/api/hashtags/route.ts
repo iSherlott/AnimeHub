@@ -4,6 +4,8 @@ import { canonicalHashtagKey } from "@/lib/hashtags";
 
 const PER_KIND = 4;
 const MAX_MATCHES = 5;
+const TRENDING_DAYS = 7;
+const TRENDING_LIMIT = 8;
 
 /**
  * Hashtags (leitura pública).
@@ -13,9 +15,29 @@ const MAX_MATCHES = 5;
  *   entram tags com ao menos uma publicação ativa.
  * - `?q=texto`: sugestões por prefixo do ID canônico para o campo Hashtags do
  *   editor (`13:41840`: "hashtag existente" × "usar novo tema").
+ * - `?trending=1`: "Em alta agora" do Feed — as hashtags com mais publicações nos últimos 7 dias (como no Twitter).
  */
 export async function GET(request: Request) {
-  const q = (new URL(request.url).searchParams.get("q") ?? "").trim().replace(/^#/, "").slice(0, 40);
+  const params = new URL(request.url).searchParams;
+  const q = (params.get("q") ?? "").trim().replace(/^#/, "").slice(0, 40);
+
+  if (params.get("trending")) {
+    const since = new Date(Date.now() - TRENDING_DAYS * 86_400_000);
+    const counts = await prisma.postHashtag.groupBy({
+      by: ["hashtagId"],
+      where: { post: { deletedAt: null, createdAt: { gte: since } } },
+      _count: { _all: true },
+      orderBy: { _count: { hashtagId: "desc" } },
+      take: TRENDING_LIMIT,
+    });
+    const tags = counts.length ? await prisma.hashtag.findMany({ where: { id: { in: counts.map((c) => c.hashtagId) } }, select: { id: true, key: true, display: true, kind: true } }) : [];
+    const byId = new Map(tags.map((t) => [t.id, t]));
+    const trending = counts.flatMap((c) => {
+      const t = byId.get(c.hashtagId);
+      return t ? [{ key: t.key, display: t.display, kind: t.kind, postCount: c._count._all }] : [];
+    });
+    return NextResponse.json({ trending, days: TRENDING_DAYS });
+  }
 
   if (q) {
     const prefix = canonicalHashtagKey(q);

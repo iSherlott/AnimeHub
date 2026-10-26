@@ -8,10 +8,9 @@ import { CommunitySidebar } from "@/components/CommunitySidebar";
 import { PageContainer, PageIntro, TwoColumn } from "@/components/PageShell";
 
 /**
- * Comunidade (Figma "14 — Comunidade / Para você · Seguindo · Recentes",
- * `13:41181`): introdução com "+ Nova publicação", busca social, feed com
- * abas e a lateral "Conversas da temporada". Pública: só interagir exige
- * conta (a página `/publicar` pede login e volta para o editor).
+ * Feed (antes "Comunidade"; Figma "14 — Comunidade / Para você · Seguindo · Recentes", `13:41181`): as publicações e as
+ * notícias, com hashtags como no Twitter/Instagram — "Em alta agora" e as conversas da temporada na lateral. A comunidade
+ * de cada anime (o fórum) fica em /comunidades. Pública: só interagir exige conta (`/publicar` pede login e volta).
  */
 export default function Home() {
   return (
@@ -19,9 +18,9 @@ export default function Home() {
       <Header />
       <PageContainer>
         <PageIntro
-          kicker="会話 / COMUNIDADE"
-          title="Comunidade"
-          subtitle="Histórias que continuam na conversa."
+          kicker="フィード / FEED"
+          title="Feed"
+          subtitle="Notícias, impressões e hashtags do que está passando."
           action={
             <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
               <LinkButton href="/comunidades" variant="outlined" data-testid="home-my-communities">
