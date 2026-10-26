@@ -139,23 +139,13 @@ async function main() {
           favoritedAt: isFavorite ? randomPastDate(30) : null,
         },
       });
+      // Andamento por obra (acompanhar é por obra; o progresso por episódio foi descontinuado): parte termina e dá nota.
       if (Math.random() < 0.7) {
-        const episodeProgress = anime.episodes
-          ? Math.floor(Math.random() * anime.episodes)
-          : Math.floor(Math.random() * 12);
-        await prisma.watchProgress.create({
-          data: {
-            animeId: anime.id,
-            status: pick(["WATCHING", "COMPLETED", "PLAN_TO_WATCH"]),
-            episodeProgress,
-            // `score` é 0-10 (cada estrela do widget de 5 estrelas vale 2
-            // pontos) — a fórmula original gerava 10-20 por confundir a
-            // escala de estrelas (0-5) com a de score (0-10), resultando em
-            // notas "14/10"/"20/10" ao lado de 5 estrelas cheias na tela
-            // (achado real da 24ª rodada de auditoria, Epic 18). 3-5
-            // estrelas (nota tendendo positiva, mais orgânico) = score 6/8/10.
-            score: Math.random() < 0.6 ? 2 * (3 + Math.floor(Math.random() * 3)) : null,
-          },
+        const watchState = pick(["WATCHING", "UNFINISHED", "FINISHED"]);
+        await prisma.anime.update({
+          where: { id: anime.id },
+          // `userScore` é 0-10; 3-5 estrelas (nota tendendo positiva, mais orgânico) = 6/8/10.
+          data: { watchState, ...(watchState === "FINISHED" && Math.random() < 0.6 ? { userScore: 2 * (3 + Math.floor(Math.random() * 3)), scoredAt: new Date() } : {}) },
         });
       }
       rows.push(anime);

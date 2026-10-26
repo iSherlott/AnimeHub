@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { getKitsuEpisodes, searchKitsuAnime } from "@/lib/kitsu";
-import { asEpisodes, hasEpisodeContent, loadGlobalEpisodes, markEpisodesChecked, recentlyChecked, upsertSourceEpisodes } from "@/lib/globalEpisodes";
-import type { Anime, Episode } from "@prisma/client";
+import { asEpisodes, hasEpisodeContent, loadGlobalEpisodes, markEpisodesChecked, recentlyChecked, upsertSourceEpisodes, type EpisodeView } from "@/lib/globalEpisodes";
+import type { Anime } from "@prisma/client";
 
 export type EpisodesResult = {
-  episodes: Episode[];
+  episodes: EpisodeView[];
   source: "cache" | "kitsu";
   error?: string;
 };
@@ -18,7 +18,7 @@ const OTHER_SOURCES_DISABLED = process.env.DISABLE_OTHER_SOURCES === "true";
  * carregar quebrava a página inteira com um erro cru do Prisma (achado
  * real da 8ª rodada de auditoria, Epic 18) — o 1º anime a reivindicar um
  * kitsuId o mantém; o resto só usa esse id pra buscar episódios (ainda
- * funciona, graças ao cache em `Episode`), sem tentar gravar no próprio
+ * funciona, graças ao episódio global da obra), sem tentar gravar no próprio
  * registro.
  */
 async function kitsuIdAvailable(
@@ -38,7 +38,7 @@ async function kitsuIdAvailable(
  * Busca os episódios na Kitsu e grava no episódio GLOBAL da obra (Fase 4): o mesmo para todo mundo, nunca uma cópia
  * por usuário. `refresh` troca o que mudou (botão "Atualizar dados"); senão só completa o que falta.
  */
-async function fetchAndStoreEpisodes(anime: Anime, kitsuId: number, mode: "fill" | "refresh" = "fill"): Promise<Episode[]> {
+async function fetchAndStoreEpisodes(anime: Anime, kitsuId: number, mode: "fill" | "refresh" = "fill"): Promise<EpisodeView[]> {
   // A mesma (temporada, número) repetida é o mesmo episódio; números iguais em temporadas internas diferentes são
   // ambíguos e ficam de fora no upsert (a contagem reinicia e não dá para saber qual é o desta obra).
   const seen = new Set<string>();

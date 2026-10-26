@@ -35,7 +35,13 @@ acompanhamento é por obra" era violada pelo "Adiar" ("parei no EP02", "2 episó
   - sem hora da fonte, a data vai para o próprio episódio, protegida;
   - mudança de data avisa quem acompanha uma vez (o aviso é único por episódio; repetir o mesmo valor não gera nada).
 - **`Episode` descontinuada**: copiada na migração (a cópia mais completa por obra, sem números ambíguos) e sem novas
-  gravações. A remoção fica para depois da confirmação.
+  gravações. Desde a migração `20261102100000_archive_episode_watchprogress` (junto com `WatchProgress`) ela está
+  **arquivada** no schema `animehub_archive`, fora do Prisma: sem chave estrangeira, com `anilistId` e `userId` gravados
+  em cada linha. Não foi apagada porque os números ambíguos (temporadas internas da Kitsu) e o episódio 0 só existem ali.
+  Se o arquivo já existir (banco recriado do zero, banco-sombra do Prisma), tabela vazia só sai e tabela com linhas vai
+  para `animehub_archive_<data_hora>`. Voltar: `ALTER TABLE "animehub_archive"."Episode" SET SCHEMA <schema do app>`.
+  Apagar de vez: `DROP SCHEMA "animehub_archive" CASCADE`, depois de conferir. A grade usa o tipo `EpisodeView`
+  (`src/lib/globalEpisodes.ts`), com o mesmo formato.
 - **"Adiar a obra"** (D5): `PendingEpisode.fromEpisode` ficou opcional e não é mais gravado. "Para assistir" mostra
   quando a obra foi adiada e os fatos globais dela (até onde saiu, o próximo), nunca o que a pessoa viu.
 
@@ -62,4 +68,5 @@ acompanhamento é por obra" era violada pelo "Adiar" ("parei no EP02", "2 episó
   `EpisodeExtra`). Extra que o AniDB deixou de listar não é apagado. Ao ligar a obra à AniList (`moveExtras`), o extra
   com o mesmo código no destino fica e só se completa; os outros mudam de obra. Apagar a obra apaga os extras (cascata).
 - Reverter: as colunas novas podem ser ignoradas; `airingAt` volta a NOT NULL só depois de apagar ou datar as linhas sem
-  hora (`DELETE FROM "AiringScheduleEntry" WHERE "airingAt" IS NULL`), o que perde os episódios copiados da tabela antiga.
+  hora (`DELETE FROM "AiringScheduleEntry" WHERE "airingAt" IS NULL`), o que perde os episódios copiados da tabela antiga
+  (a tabela antiga continua no arquivo `animehub_archive`).

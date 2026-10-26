@@ -129,7 +129,6 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 
 ## O que fica para depois
 
-- **Apagar as tabelas descontinuadas.** `Episode` e `WatchProgress` estão sem uso, mas continuam no banco. A remoção só depois de conferir em produção.
 - **Kitsu e AniDB na atualização seletiva.** Hoje a comparação é só com a AniList.
 - **Prioridade das pendências pela tela.** Hoje ela é configurada por variável de ambiente, não pelo painel.
 - **Esqueleto de carregamento por seção** (Suspense dentro das páginas), em vez de por rota, para não afetar o status 404 de quem não tem papel.
@@ -163,3 +162,12 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 - **Banco.** Nenhuma migração.
 - **Testes.** Spec 113.
 - **Limitação.** Acompanhar, comunidade, quiz e relacionadas continuam dependendo do AniList ID.
+
+## Depois: tabelas descontinuadas arquivadas
+
+- **O que mudou.** `Episode` (cópia por usuário dos episódios) e `WatchProgress` (progresso por episódio) saíram do schema do app e do Prisma.
+  - Elas não foram apagadas: foram para o schema `animehub_archive`, sem chave estrangeira e com `anilistId` e `userId` em cada linha.
+  - O motivo: os episódios ambíguos (temporadas internas da Kitsu) e o episódio 0 nunca foram copiados para o episódio global e só existem ali.
+  - A migração não falha se o arquivo já existir: tabela vazia só sai, e tabela com linhas vai para `animehub_archive_<data_hora>`.
+- **Banco.** `20261102100000_archive_episode_watchprogress`. Apagar de vez é `DROP SCHEMA "animehub_archive" CASCADE`, depois de conferir em produção.
+- **Testes.** O setup do Playwright também limpa `animehub_archive`. A migração foi conferida com dados: arquivar, arquivar de novo sobre um arquivo existente e apagar o item de lista depois.

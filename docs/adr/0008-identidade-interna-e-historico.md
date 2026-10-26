@@ -18,7 +18,8 @@ quem mudou o quê.
   (`src/lib/changeLog.ts`).
 - **Campos protegidos** (`CatalogEntry.manualFields`): a base para a edição da Fase 3.
 - **Verificação de integridade** (`src/lib/integrity.ts`, `GET/POST /api/admin/integrity`).
-- **`WatchProgress` descontinuada** (sem uso e sem linhas); a remoção fica para depois da confirmação.
+- **`WatchProgress` descontinuada** (sem uso e sem linhas); arquivada no schema `animehub_archive` pela migração
+  `20261102100000_archive_episode_watchprogress` (ver ADR 0009).
 
 A regra campo a campo está em [docs/arquitetura/fonte-de-verdade.md](../arquitetura/fonte-de-verdade.md).
 

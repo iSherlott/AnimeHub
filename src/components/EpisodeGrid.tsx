@@ -12,7 +12,7 @@ import {
   Typography,
   type SelectChangeEvent,
 } from "@mui/material";
-import type { Episode } from "@prisma/client";
+import type { EpisodeView as Episode } from "@/lib/globalEpisodes";
 import { BranchCard } from "@/components/BranchCard";
 import { CollapsibleEpisodes } from "@/components/CollapsibleEpisodes";
 import { InfiniteFooter } from "@/components/InfiniteFooter";
@@ -141,7 +141,7 @@ function EpisodeRow({ ep, fallbackImage, airingAt, calendarImage }: { ep: Episod
 
 /** Episódio que só existe no calendário (a Kitsu ainda não o lista): número, data e imagem, sem texto inventado. */
 function scheduledOnly(number: number, seasonNumber: number): Episode {
-  return { id: `sched-${number}`, animeId: "", number, seasonNumber, titleRomaji: null, titleEnglish: null, titleJapanese: null, synopsis: null, thumbnail: null, airDate: null, createdAt: new Date(0) } as Episode;
+  return { id: `sched-${number}`, number, seasonNumber, titleRomaji: null, titleEnglish: null, titleJapanese: null, synopsis: null, thumbnail: null, airDate: null };
 }
 
 export function EpisodeGrid({

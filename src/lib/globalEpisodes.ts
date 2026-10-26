@@ -1,4 +1,4 @@
-import type { Episode, Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { catalogEntryIdFor } from "@/lib/catalogLink";
 import { certaintyFor, releaseState, type ReleaseState } from "@/lib/episodeState";
@@ -41,13 +41,18 @@ export function hasEpisodeContent(rows: ReadonlyArray<GlobalEpisodeRow>): boolea
   return rows.some((r) => r.episodeTitle || r.episodeTitleEn || r.episodeTitleJa || r.synopsis || r.thumbnail);
 }
 
+/**
+ * Episódio no formato da grade da página da obra. Era o modelo `Episode` (cópia por usuário), arquivado fora do schema
+ * do app desde a migração 20261102100000 (ADR 0009); a grade continua com o mesmo formato.
+ */
+export type EpisodeView = { id: string; number: number; seasonNumber: number; titleRomaji: string | null; titleEnglish: string | null; titleJapanese: string | null; synopsis: string | null; thumbnail: string | null; airDate: Date | null };
+
 /** No formato que a grade de episódios da página da obra já usa (a temporada interna da Kitsu não existe mais: 1). */
-export function asEpisodes(rows: ReadonlyArray<GlobalEpisodeRow>): Episode[] {
+export function asEpisodes(rows: ReadonlyArray<GlobalEpisodeRow>): EpisodeView[] {
   return rows.map(
     (r) =>
       ({
         id: r.id,
-        animeId: "",
         number: r.episode,
         seasonNumber: 1,
         titleRomaji: r.episodeTitle,
@@ -56,8 +61,7 @@ export function asEpisodes(rows: ReadonlyArray<GlobalEpisodeRow>): Episode[] {
         synopsis: r.synopsis,
         thumbnail: r.thumbnail,
         airDate: r.airingAt ?? r.airDate,
-        createdAt: new Date(0),
-      }) satisfies Episode
+      }) satisfies EpisodeView
   );
 }
 

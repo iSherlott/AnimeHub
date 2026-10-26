@@ -216,8 +216,6 @@ model Anime {
   updatedAt       DateTime  @updatedAt
 
   platformLinks PlatformLink[]
-  progress      WatchProgress?
-  episodeList   Episode[]
 
   @@unique([userId, anilistId])
   @@unique([userId, kitsuId])
@@ -351,41 +349,6 @@ model Block {
 
   @@unique([blockerId, blockedId])
   @@index([blockedId])
-}
-
-/// DESCONTINUADA (Fase 4, ADR 0009): cópia POR USUÁRIO dos episódios. Os episódios agora são globais
-/// (`AiringScheduleEntry`); a tabela fica só para leitura histórica e não recebe mais gravações.
-model Episode {
-  id            String    @id @default(cuid())
-  animeId       String
-  anime         Anime     @relation(fields: [animeId], references: [id], onDelete: Cascade)
-  number        Int
-  /// Temporada/cour dentro do próprio anime (ex.: One Piece tem 1 entrada
-  /// só na Kitsu com centenas de episódios espalhados em várias
-  /// "seasonNumber") — usado pra agrupar a grade de episódios por
-  /// temporada. Diferente do seasonNumber do Anime (que separa franquias
-  /// em entradas de catálogo distintas).
-  seasonNumber  Int       @default(1)
-  titleRomaji   String?
-  /// Adicionado no Epic 2 — sem isso, a grade de episódios não tinha nada
-  /// pra mostrar quando a preferência de idioma era "inglês", diferente do
-  /// título do anime (que sempre tem titleEnglish vindo da AniList).
-  titleEnglish  String?
-  titleJapanese String?
-  /// Sinopse curta do episódio — a Kitsu expõe isso no mesmo padrão do
-  /// `synopsis` que já é capturado no nível do anime (KitsuAnimeMatch),
-  /// só que por episódio. Usada na lista de episódios (redesenho inspirado
-  /// em sites de streaming — grade de cards sem contexto nenhum virou uma
-  /// lista com resumo por episódio).
-  synopsis      String?
-  thumbnail     String?
-  airDate       DateTime?
-  createdAt     DateTime  @default(now())
-
-  /// seasonNumber entra na chave (não só number sozinho): o número reinicia
-  /// a cada temporada dentro do mesmo anime (ver comentário acima), então
-  /// S1E1 e S2E1 são episódios distintos e legítimos, não um conflito.
-  @@unique([animeId, seasonNumber, number])
 }
 
 model PlatformLink {
@@ -718,21 +681,6 @@ model EpisodeSourceCheck {
   kitsuId   Int?
   found     Int      @default(0)
   checkedAt DateTime @default(now())
-}
-
-/// DESCONTINUADA (Fase 2, ADR 0008): progresso pessoal por episódio, proibido pela regra "acompanhar é por obra". Sem
-/// nenhum consumidor no código e sem linhas; fica no schema até a remoção ser confirmada (ver docs/auditoria).
-model WatchProgress {
-  id              String    @id @default(cuid())
-  animeId         String    @unique
-  anime           Anime     @relation(fields: [animeId], references: [id], onDelete: Cascade)
-  status          String    @default("PLAN_TO_WATCH")
-  episodeProgress Int       @default(0)
-  score           Int?
-  notes           String?
-  startedAt       DateTime?
-  completedAt     DateTime?
-  updatedAt       DateTime  @updatedAt
 }
 
 /**

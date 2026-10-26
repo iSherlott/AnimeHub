@@ -21,11 +21,9 @@ const prisma = new PrismaClient();
 
 (async () => {
   const catalogCount = await prisma.catalogEntry.count();
-  const episodeCount = await prisma.episode.count();
   const airingCount = await prisma.airingScheduleEntry.count();
 
   await prisma.catalogEntry.deleteMany();
-  await prisma.episode.deleteMany();
   await prisma.airingScheduleEntry.deleteMany();
 
   const animeUpdate = await prisma.anime.updateMany({
@@ -49,7 +47,6 @@ const prisma = new PrismaClient();
 
   console.log(`Cache limpo:`);
   console.log(`  CatalogEntry removidas: ${catalogCount}`);
-  console.log(`  Episode removidos: ${episodeCount}`);
   console.log(`  AiringScheduleEntry removidas: ${airingCount}`);
   console.log(`  Anime com enriquecimento zerado: ${animeUpdate.count}`);
   console.log(`Mantidos: titleRomaji, progresso, links de plataforma, anidbId, agrupamento de temporada.`);

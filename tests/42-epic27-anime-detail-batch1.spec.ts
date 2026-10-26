@@ -80,7 +80,7 @@ test.describe("Epic 27 (lote 1) — metadados atrás de 1 ícone único", () => 
 });
 
 // Removidos (D-02): "status simplificado" e "marcar como finalizado" testavam consumo
-// (WatchProgress), que deixou de existir. Ver tests/50-follow-unfollow-my-list.spec.ts.
+// (progresso por episódio, tabela arquivada na migração 20261102100000), que deixou de existir. Ver tests/50-follow-unfollow-my-list.spec.ts.
 
 test.describe("Epic 27 (lote 1) — lista de episódios em accordion fechado por padrão", () => {
   let animeId: string;
@@ -146,15 +146,6 @@ test.describe("Epic 27 (lote 1) — comentários paginados, 'ver mais' e ícone 
     });
     adminAnimeId = adminAnime.id;
 
-    // TEST_USER já assistiu (COMPLETED) — deve ganhar o ícone nos próprios
-    // comentários; admin não, não ganha.
-    await prisma.watchProgress.upsert({
-      where: { animeId },
-      create: { animeId, status: "COMPLETED", episodeProgress: 0 },
-      update: { status: "COMPLETED" },
-    });
-    await prisma.watchProgress.deleteMany({ where: { animeId: adminAnimeId } });
-
     await prisma.comment.deleteMany({ where: { anilistId: COMMENTS_ANILIST_ID } });
     const base = Date.now() - 20 * 60 * 1000;
     const rows = Array.from({ length: 14 }, (_, i) => ({
@@ -212,8 +203,8 @@ test.describe("Epic 27 (lote 1) — comentários paginados, 'ver mais' e ícone 
     await page.goto(`/anime/${adminAnimeId}`);
     await expect(page.getByText("Comentário paginado número 1", { exact: true })).toBeVisible();
 
-    // Antes havia um ícone "Já assistiu esse anime" derivado do WatchProgress
-    // do autor — dado privado de outra pessoa. Removido (audit D-02).
+    // Antes havia um ícone "Já assistiu esse anime" derivado do progresso por
+    // episódio do autor — dado privado de outra pessoa. Removido (audit D-02).
     await expect(page.getByLabel("Já assistiu esse anime")).toHaveCount(0);
 
     const res = await page.request.get(`/api/anime/${adminAnimeId}/comments`);

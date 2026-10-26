@@ -57,8 +57,8 @@ externos: preservados, nunca inventados, e uma obra pode não ter nenhum deles a
 | `titlePortuguese`, `descriptionPortuguese`, `PlatformLink` | **pessoal** (correção/anotação da pessoa) |
 | títulos, capa, sinopse, ficha, gêneros, site, trailer, elenco, recomendações, dados do AniDB | **cópia** (a página lê o catálogo primeiro) |
 | `catalogEntryId` | identidade (FK) |
-| `Episode` (tabela filha) | **descontinuada** (Fase 4): copiada para o episódio global e sem novas gravações |
-| `WatchProgress` | **descontinuada**: progresso por episódio (proibido); sem uso e sem linhas |
+| `Episode` (tabela filha) | **arquivada** (schema `animehub_archive`, fora do app): copiada para o episódio global na Fase 4 |
+| `WatchProgress` | **arquivada** (schema `animehub_archive`, fora do app): progresso por episódio (proibido) |
 
 ### Episódio global (`AiringScheduleEntry`)
 

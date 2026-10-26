@@ -27,18 +27,6 @@ test.describe("Epic 20 — 2ª rodada de auditoria de UX/UI", () => {
     });
     animeId = anime.id;
 
-    // 5 episódios numa única temporada — número já é a posição absoluta,
-    // sem precisar simular reinício por temporada pra este teste.
-    await prisma.episode.deleteMany({ where: { animeId } });
-    await prisma.episode.createMany({
-      data: Array.from({ length: 5 }, (_, i) => ({
-        animeId,
-        number: i + 1,
-        seasonNumber: 1,
-        titleRomaji: `Episódio ${i + 1}`,
-      })),
-    });
-
     await prisma.$disconnect();
   });
 

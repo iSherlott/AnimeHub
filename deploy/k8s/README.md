@@ -169,6 +169,10 @@ Depois siga os passos de "Atualizar para uma versão nova" acima e confira o res
 
 As migrações `20261031100000_anidb_only_episodes` (episódios das obras só do AniDB) e `20261101100000_episode_extras`
 (especiais, aberturas, trailers do AniDB como extras da obra) vieram depois, na mesma atualização.
+
+A migração `20261102100000_archive_episode_watchprogress` tira `Episode` e `WatchProgress` do schema do app e as guarda no
+schema `animehub_archive` (nada é apagado). O usuário do banco precisa poder criar schema (`CREATE` no banco). Depois de
+conferir que nada ali faz falta, apagar de vez é `DROP SCHEMA "animehub_archive" CASCADE;`.
 Para o lote do AniDB funcionar, o servidor precisa de `ANIDB_CLIENT_NAME` e `ANIDB_CLIENT_VERSION` (o client registrado no
 AniDB). Opcional: `ANIDB_REQUEST_GAP_MS` (intervalo entre obras, padrão 4000 ms; não baixe de 2000).
 

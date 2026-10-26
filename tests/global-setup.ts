@@ -41,6 +41,9 @@ export default async function globalSetup() {
   // ao banco `animehub_test` (nunca `animehub`, o de dev) via TEST_DB_URL.
   const resetClient = new PrismaClient({ datasourceUrl: TEST_DB_URL });
   await resetClient.$executeRawUnsafe(`DROP SCHEMA IF EXISTS public CASCADE;`);
+  // As tabelas descontinuadas vão para "animehub_archive" (migração 20261102100000): sem limpar, a rodada seguinte
+  // encontraria o arquivo da anterior e a migração colidiria.
+  await resetClient.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "animehub_archive" CASCADE;`);
   await resetClient.$executeRawUnsafe(`CREATE SCHEMA public;`);
   await resetClient.$disconnect();
 
