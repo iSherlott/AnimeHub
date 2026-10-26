@@ -1,7 +1,7 @@
 import { notFound, permanentRedirect, redirect } from "next/navigation";
-import NextLink from "next/link";
 import type { CatalogEntry, PlatformLink } from "@prisma/client";
-import { Box, Button, Chip, Stack, Typography } from "@mui/material";
+import { Box, Chip, Stack, Typography } from "@mui/material";
+import { LinkButton } from "@/components/LinkButton";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
@@ -109,9 +109,9 @@ export async function CatalogWork({ entry, signedIn, userId, owned = null }: { e
             <SeasonControls anilistId={null} work={work} seasonNumber={1} mine={owned ? { animeId: owned.id, watchState: owned.watchState, waiting: owned.waiting, userScore: owned.userScore } : null} />
           ) : (
             <Box>
-              <Button component={NextLink} href={`/login?next=${encodeURIComponent(`/anime/${work}`)}`} variant="contained" data-testid="follow-login-button">
+              <LinkButton href={`/login?next=${encodeURIComponent(`/anime/${work}`)}`} variant="contained" data-testid="follow-login-button">
                 Entre para acompanhar
-              </Button>
+              </LinkButton>
             </Box>
           )}
           <Typography data-testid="catalog-work-follow-note" sx={{ fontSize: 14, color: "text.secondary", borderLeft: 3, borderColor: "secondary.main", pl: 1.5, maxWidth: 560 }}>

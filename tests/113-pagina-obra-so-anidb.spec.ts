@@ -67,6 +67,16 @@ test.describe.serial("Página das obras só do AniDB", () => {
     await page.screenshot({ path: test.info().outputPath("pagina-obra-so-anidb.png"), fullPage: true });
   });
 
+  test.describe("sem login", () => {
+    test.use({ storageState: { cookies: [], origins: [] } });
+    // Regressão: o botão "Entre para acompanhar" (só para quem não entrou) derrubava a página no servidor.
+    test("a página abre e convida a entrar para acompanhar", async ({ page }) => {
+      const res = await page.goto(`/anime/anidb-${AID}`);
+      expect(res?.status()).toBe(200);
+      await expect(page.getByTestId("follow-login-button")).toHaveAttribute("href", `/login?next=${encodeURIComponent(`/anime/anidb-${AID}`)}`);
+    });
+  });
+
   test("obra só da Kitsu também abre; sem episódios cadastrados, diz isso", async ({ page }) => {
     const res = await page.goto(`/anime/kitsu-${KITSU}`);
     expect(res?.status()).toBe(200);

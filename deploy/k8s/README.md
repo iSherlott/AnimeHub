@@ -182,8 +182,29 @@ O lote pela Kitsu usa `KITSU_API_BASE_URL`; o lote pelo AniDB usa as mesmas vari
 
 A migração `20261105100000_catalog_only_community` (comunidade das obras sem AniList ID) só acrescenta colunas e índices
 e relaxa o AniList ID de comentários e quizzes.
+
 Para o lote do AniDB funcionar, o servidor precisa de `ANIDB_CLIENT_NAME` e `ANIDB_CLIENT_VERSION` (o client registrado no
 AniDB). Opcional: `ANIDB_REQUEST_GAP_MS` (intervalo entre obras, padrão 4000 ms; não baixe de 2000).
+
+#### Ordem segura desta atualização (12 migrações, de `20261025100000` a `20261105100000`)
+
+O site do cluster e o desenvolvimento no Windows usam o **mesmo banco**. O código antigo ainda lê a tabela `Episode`, que
+a migração de 02/11 arquiva: migrar o banco sem atualizar o cluster derruba as páginas de obra do site antigo. Por isso,
+banco e site sobem juntos, pelo próprio Job de migração:
+
+1. Backup do schema (passo acima). Ensaio de 26/10: as 12 migrações rodaram numa cópia restaurada do banco em ~12 s, sem
+   erro; 800 itens de lista e 7.952 produções ficaram ligados ao catálogo, 209 episódios vieram da tabela antiga e
+   nenhum ficou sem obra.
+2. No Windows, pare o `npm run dev` e o `npm run services` (eles gravariam no banco durante a migração).
+3. No notebook, "Atualizar para uma versão nova" (acima): `git pull`, `build-images.sh`, Job de migração, `apply`,
+   `rollout restart`.
+4. Confira: `curl -s http://localhost:8010/api/auth/me`, uma página de obra, Admin → Saúde do catálogo e Admin →
+   Taxonomia. No ensaio, só o gênero "Supernatural" (208 obras) ficou fora do vocabulário: registre, mescle ou remova.
+5. Só então volte a rodar o desenvolvimento no Windows (o código dele já é o novo).
+
+Para voltar atrás: com o site parado, `pg_restore --clean --if-exists -d "<URL sem ?schema=…>" --schema=animehub
+<backup>.dump` (cliente do Postgres 18, o mesmo do servidor), `DROP SCHEMA "animehub_archive" CASCADE;` e as imagens
+anteriores.
 
 Variável opcional: `CURATION_PRIORITIES` (JSON). Ela muda a prioridade de um tipo de pendência, por exemplo `{"OFFICIAL_SITE_MISSING":"media"}` (veja `docs/arquitetura/pendencias.md`).
 
