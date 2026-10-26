@@ -31,7 +31,7 @@ import { WatchLinks } from "@/components/WatchLinks";
 import { WorkHero } from "@/components/WorkHero";
 import { WorkExtras } from "@/components/WorkExtras";
 import { loadExtras } from "@/lib/episodeExtras";
-import { WorkDiscussions, WorkQuizEntry, WorkRelated } from "@/components/WorkSections";
+import { WorkCommunityCard, WorkDiscussions, WorkQuizEntry, WorkRelated } from "@/components/WorkSections";
 
 /**
  * Detalhe de uma obra para quem ainda não a acompanha (e para visitantes): o MESMO desenho da página pessoal
@@ -215,6 +215,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
           </WorkCard>
 
           <WorkQuizEntry anilistId={anilistId} userId={user?.id ?? null} />
+          <WorkCommunityCard workKey={String(anilistId)} />
         </Box>
       </Box>
 

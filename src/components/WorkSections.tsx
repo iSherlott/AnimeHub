@@ -13,6 +13,8 @@ import { WorkCard } from "@/components/WorkInfoCard";
 import type { StoryRelation } from "@/lib/story/context";
 import { UserPostList } from "@/components/UserPostList";
 import { anilistRef, workWhere, type WorkRef } from "@/lib/workRef";
+import { communitySummary } from "@/lib/community";
+import { LinkButton } from "@/components/LinkButton";
 
 /** Seções que toda obra tem, esteja ou não na lista de quem olha: quiz, discussões e histórias relacionadas. */
 
@@ -49,6 +51,38 @@ export async function WorkQuizEntry({ anilistId, work, workKey, userId }: { anil
         >
           {quizState.attempt.status === "COMPLETED" ? "Ver resultado do quiz" : "Ver o quiz"}
         </AppLink>
+      </Box>
+    </WorkCard>
+  );
+}
+
+/** Cartão da comunidade do anime (o fórum da franquia): números, os tópicos mais ativos e o caminho até ela. */
+export async function WorkCommunityCard({ workKey }: { workKey: string }) {
+  const summary = await communitySummary(workKey);
+  if (!summary) return null;
+  return (
+    <WorkCard title="Comunidade do anime" testId="work-community">
+      <Typography sx={{ fontSize: 14, color: "text.secondary", fontVariantNumeric: "tabular-nums" }}>
+        {summary.topics === 0 ? "O fórum da franquia ainda não tem tópicos." : `${summary.members} ${summary.members === 1 ? "membro" : "membros"} · ${summary.topics} ${summary.topics === 1 ? "tópico" : "tópicos"}`}
+      </Typography>
+      {summary.latest.length > 0 && (
+        <Box component="ul" sx={{ m: 0, pl: 2.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
+          {summary.latest.map((t) => (
+            <li key={t.id}>
+              <AppLink href={`/comunidades/${summary.key}/topicos/${t.id}`} underline="hover" sx={{ fontSize: 14, overflowWrap: "anywhere" }}>
+                {t.title}
+              </AppLink>{" "}
+              <Typography component="span" sx={{ fontSize: 12, color: "text.secondary" }}>
+                ({t.replyCount})
+              </Typography>
+            </li>
+          ))}
+        </Box>
+      )}
+      <Box>
+        <LinkButton href={`/comunidades/${summary.key}`} variant="outlined" size="small" data-testid="work-community-link">
+          Abrir a comunidade
+        </LinkButton>
       </Box>
     </WorkCard>
   );

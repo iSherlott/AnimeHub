@@ -76,6 +76,10 @@ model User {
   postCommentReplyTargets PostComment[] @relation("CommentReplyTo")
   blocksMade          Block[]      @relation("Blocker")
   blocksReceived      Block[]      @relation("Blocked")
+  communityMemberships CommunityMember[]
+  communityTopics      CommunityTopic[]
+  communityReplies     CommunityReply[]
+  communityPollVotes   CommunityPollVote[]
 
   @@index([email])
 }
@@ -521,6 +525,10 @@ model CatalogEntry {
   posts             Post[]
   comments          Comment[]
   quiz              Quiz?
+  /// Comunidade da obra sem franquia (só do AniDB/Kitsu); as demais ficam na comunidade da franquia (`franchiseKey`).
+  community         Community?
+  /// Tópicos da comunidade que dizem de qual obra (temporada, filme…) falam.
+  communityTopics   CommunityTopic[]
 }
 
 /**
@@ -1430,4 +1438,110 @@ model ChangeLog {
   @@index([catalogEntryId, at])
   @@index([at])
   @@index([batchId])
+}
+
+/**
+ * Comunidade do anime (estilo Orkut): o fórum de UMA franquia — todas as temporadas, OVAs e filmes juntos. A franquia é a
+ * do catálogo (`CatalogEntry.franchiseKey`); obra sem franquia (só do AniDB/Kitsu) tem a comunidade dela
+ * (`catalogEntryId`). Ler é público; criar tópico, responder e votar exige entrar na comunidade (`CommunityMember`).
+ * Criada na primeira participação. Ver `src/lib/community.ts`.
+ */
+model Community {
+  id             String            @id @default(cuid())
+  /// Franquia (menor AniList ID do grupo, Epic 45). Pode mudar quando uma obra mais antiga entra no grupo: a busca
+  /// acha a comunidade por qualquer obra da franquia e reajusta a chave.
+  franchiseKey   Int?              @unique
+  catalogEntryId String?           @unique
+  catalogEntry   CatalogEntry?     @relation(fields: [catalogEntryId], references: [id], onDelete: SetNull)
+  createdAt      DateTime          @default(now())
+  members        CommunityMember[]
+  topics         CommunityTopic[]
+}
+
+model CommunityMember {
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt    DateTime  @default(now())
+  /// Última visita à comunidade: o que teve atividade depois disto aparece como novo em "Minhas comunidades".
+  lastVisitAt DateTime  @default(now())
+
+  @@id([communityId, userId])
+  @@index([userId])
+}
+
+model CommunityTopic {
+  id             String           @id @default(cuid())
+  communityId    String
+  community      Community        @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  authorId       String
+  author         User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  /// Obra (temporada, filme…) da franquia de que o tópico fala; nulo = a franquia toda.
+  catalogEntryId String?
+  catalogEntry   CatalogEntry?    @relation(fields: [catalogEntryId], references: [id], onDelete: SetNull)
+  title          String
+  body           String
+  isSpoiler      Boolean          @default(false)
+  replyCount     Int              @default(0)
+  /// Criação ou última resposta: a lista de tópicos ordena por aqui.
+  lastActivityAt DateTime         @default(now())
+  createdAt      DateTime         @default(now())
+  editedAt       DateTime?
+  /// Apagado pelo autor ou removido pela equipe: some da lista, as respostas ficam guardadas.
+  deletedAt      DateTime?
+  replies        CommunityReply[]
+  poll           CommunityPoll?
+
+  @@index([communityId, deletedAt, lastActivityAt])
+  @@index([authorId])
+}
+
+model CommunityReply {
+  id        String         @id @default(cuid())
+  topicId   String
+  topic     CommunityTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  isSpoiler Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  editedAt  DateTime?
+  deletedAt DateTime?
+
+  @@index([topicId, createdAt])
+  @@index([authorId])
+}
+
+/// Enquete de um tópico: 2 a 10 opções, um voto por pessoa (sem trocar), resultado visível a todos.
+model CommunityPoll {
+  id      String                @id @default(cuid())
+  topicId String                @unique
+  topic   CommunityTopic        @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  options CommunityPollOption[]
+  votes   CommunityPollVote[]
+}
+
+model CommunityPollOption {
+  id       String              @id @default(cuid())
+  pollId   String
+  poll     CommunityPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  position Int
+  label    String
+  votes    CommunityPollVote[]
+
+  @@unique([pollId, position])
+}
+
+model CommunityPollVote {
+  pollId   String
+  poll     CommunityPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  optionId String
+  option   CommunityPollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  votedAt  DateTime            @default(now())
+
+  @@id([pollId, userId])
+  @@index([optionId])
 }

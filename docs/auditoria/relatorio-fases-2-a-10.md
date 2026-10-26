@@ -202,3 +202,17 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
   - Os tópicos em alta do feed continuam só com obras da AniList.
 - **Banco.** `20261105100000_catalog_only_community` (só acrescenta colunas e índices e relaxa o AniList ID de `Comment` e `Quiz`).
 - **Testes.** Spec 116.
+
+## Depois: comunidades dos animes (fórum estilo Orkut)
+
+- **O que mudou.** Cada anime ganhou uma comunidade: o fórum da franquia inteira (temporadas, OVAs e filmes juntos), em `/comunidades/<chave>`. Detalhes no ADR 0011.
+  - Ler é público. Para criar tópico, responder e votar, a pessoa clica "Participar".
+  - Tópicos com título, mensagem, spoiler e "Sobre" (de qual temporada ou filme falam), com enquete opcional (um voto por pessoa).
+  - Editar é só de quem escreveu; apagar, de quem escreveu ou da moderação.
+  - "Minhas comunidades" (`/comunidades`, também no topo da página Comunidade) mostra o que teve atividade depois da última visita.
+  - A página de cada obra tem o cartão "Comunidade do anime".
+  - Obra só do AniDB tem a comunidade dela, que vai junto quando a obra é ligada à AniList.
+  - Se a chave da franquia mudar (uma obra mais antiga entra no grupo), a comunidade continua achada e duplicatas viram uma só.
+- **Banco.** `20261106100000_communities` (só cria tabelas).
+- **Testes.** Spec 117 e `src/lib/community.test.ts`.
+- **Fora desta versão.** Denúncia, fixar e trancar tópicos; aviso de resposta.

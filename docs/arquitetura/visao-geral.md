@@ -50,6 +50,7 @@ O papel define o que cada pessoa vê (Fase 9): **C** = curador, **M** = moderado
 | Pendências | fila priorizada da curadoria; resolver, ignorar com justificativa, reabrir; indicadores | C |
 | Curadoria, Importações, Match name, Matching | processos que já existiam (curadoria, linhas do tempo, tradução, cargas) | C |
 | Quizzes | carregar, revisar, publicar, arquivar; resultados e erros de configuração | C |
+| Comunidades (público) | o fórum de cada anime (franquia): tópicos, respostas, enquetes, membros e "Minhas comunidades" (ADR 0011) | — |
 | Scrapers, Jobs, Logs | serviços de fundo; todos os processos; eventos | C |
 | Conflitos, Overrides | divergências de horário e horários manuais | C |
 | Acesso e moderação | denúncias (M); convites, usuários e papéis (A) | M / A |

@@ -23,9 +23,14 @@ export default function Home() {
           title="Comunidade"
           subtitle="Histórias que continuam na conversa."
           action={
-            <LinkButton href="/publicar" variant="contained" color="primary">
-              + Nova publicação
-            </LinkButton>
+            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+              <LinkButton href="/comunidades" variant="outlined" data-testid="home-my-communities">
+                Minhas comunidades
+              </LinkButton>
+              <LinkButton href="/publicar" variant="contained" color="primary">
+                + Nova publicação
+              </LinkButton>
+            </Box>
           }
         />
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", lg: "minmax(0,1fr) 320px" }, columnGap: 5, rowGap: 2, alignItems: "start" }}>

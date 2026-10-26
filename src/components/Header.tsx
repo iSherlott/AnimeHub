@@ -34,7 +34,7 @@ const NAV_ITEMS: Array<{ href: string; label: string; match: (p: string) => bool
   { href: "/discover", label: "Explorar", match: (p) => p === "/discover" },
   { href: "/calendar", label: "Calendário", match: (p) => p === "/calendar" },
   { href: "/minha-lista", label: "Meus animes", match: (p) => p === "/minha-lista" || p.startsWith("/minha-lista/") },
-  // "Comunidade" cobre o feed e as telas sociais (publicar, buscar, hashtag, discussão, perfis).
+  // "Comunidade" cobre o feed e as telas sociais (publicar, buscar, hashtag, discussão, comunidades dos animes, perfis).
   {
     href: "/",
     label: "Comunidade",
@@ -44,6 +44,7 @@ const NAV_ITEMS: Array<{ href: string; label: string; match: (p: string) => bool
       p.startsWith("/buscar") ||
       p.startsWith("/hashtag") ||
       p.startsWith("/publicacao") ||
+      p.startsWith("/comunidades") ||
       p.startsWith("/users"),
   },
 ];

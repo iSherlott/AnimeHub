@@ -9,7 +9,7 @@ import { PlatformLinksManager } from "@/components/PlatformLinksManager";
 import { SeasonControls } from "@/components/SeasonControls";
 import { UnfollowButton } from "@/components/UnfollowButton";
 import { CommentSection } from "@/components/CommentSection";
-import { WorkDiscussions, WorkQuizEntry } from "@/components/WorkSections";
+import { WorkCommunityCard, WorkDiscussions, WorkQuizEntry } from "@/components/WorkSections";
 import { catalogSlug } from "@/lib/workHref";
 import { Header } from "@/components/Header";
 import { AnimeTitle } from "@/components/AnimeTitle";
@@ -177,6 +177,7 @@ export async function CatalogWork({ entry, signedIn, userId, owned = null }: { e
             </WorkCard>
           )}
           <WorkQuizEntry work={ref} workKey={work} userId={userId} />
+          <WorkCommunityCard workKey={work} />
           {owned && (
             <Box>
               <UnfollowButton animeId={owned.id} title={owned.titleEnglish ?? owned.titleRomaji} />

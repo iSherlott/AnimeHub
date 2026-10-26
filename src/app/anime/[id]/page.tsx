@@ -50,7 +50,7 @@ import { FranchiseNav } from "@/components/FranchiseNav";
 import { WorkHero } from "@/components/WorkHero";
 import { WorkExtras } from "@/components/WorkExtras";
 import { loadExtras } from "@/lib/episodeExtras";
-import { WorkDiscussions, WorkQuizEntry, WorkRelated } from "@/components/WorkSections";
+import { WorkCommunityCard, WorkDiscussions, WorkQuizEntry, WorkRelated } from "@/components/WorkSections";
 import { PublicWork } from "@/app/anime/[id]/PublicWork";
 import { CatalogWork, PublicCatalogWork, findCatalogWork } from "@/app/anime/[id]/CatalogWork";
 import { CATALOG_ONLY_SLUG } from "@/lib/workHref";
@@ -338,6 +338,7 @@ export default async function AnimeDetailPage({
           </WorkCard>
 
           <WorkQuizEntry anilistId={anime.anilistId} userId={user.id} />
+          <WorkCommunityCard workKey={String(anime.anilistId)} />
 
           {(awards.length > 0 || resources) && (
             <WorkCard title="Dados da AniDB" testId="work-card-anidb">
