@@ -24,9 +24,9 @@ export function CommunitySearchBox({ initialQuery = "", scope = "posts" }: { ini
   }
 
   return (
-    <Box component="form" onSubmit={submit} role="search" aria-label="Buscar na comunidade" sx={{ display: "flex", flexDirection: "column", gap: 1, width: "100%" }}>
+    <Box component="form" onSubmit={submit} role="search" aria-label="Buscar no Feed" sx={{ display: "flex", flexDirection: "column", gap: 1, width: "100%" }}>
       <Typography component="label" htmlFor={inputId} sx={{ fontSize: 12, fontWeight: 600, color: "text.secondary" }}>
-        Busca na Comunidade
+        Busca no Feed
       </Typography>
       <Box
         sx={{

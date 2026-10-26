@@ -108,6 +108,7 @@ function NavLinks({
 }
 
 function AccountArea({ user, onLogout, pathname }: { user: PublicUser | null | undefined; onLogout: () => void; pathname: string }) {
+  // Com conta, o sino fica na barra (fora desta área), visível também no celular.
   if (user === undefined) return <Skeleton variant="rounded" width={64} height={30} />;
   if (!user) {
     return (
@@ -136,7 +137,6 @@ function AccountArea({ user, onLogout, pathname }: { user: PublicUser | null | u
   return (
     <Stack direction="row" spacing={3} sx={{ alignItems: "center" }}>
       {/* Configurações e conquistas ficam no menu do avatar e no perfil (sem atalho repetido aqui). */}
-      <NotificationBell user={user} />
       <AccountMenu user={user} onLogout={onLogout} />
     </Stack>
   );
@@ -205,17 +205,21 @@ export function Header() {
           <NavLinks pathname={pathname} />
         </Box>
 
-        <Box sx={{ display: "none", [DESKTOP_QUERY]: { display: "flex" }, alignItems: "center" }}>
-          <AccountArea user={user} onLogout={handleLogout} pathname={pathname} />
-        </Box>
+        <Stack direction="row" sx={{ alignItems: "center", gap: { xs: 1, sm: 3 }, ml: "auto", [DESKTOP_QUERY]: { ml: 0 } }}>
+          {/* Um sino só, na barra, em qualquer largura: no celular o contador fica à vista sem abrir o menu. */}
+          {user && <NotificationBell user={user} />}
+          <Box sx={{ display: "none", [DESKTOP_QUERY]: { display: "flex" }, alignItems: "center" }}>
+            <AccountArea user={user} onLogout={handleLogout} pathname={pathname} />
+          </Box>
 
-        <IconButton
-          onClick={() => setMobileOpen((v) => !v)}
-          sx={{ ml: "auto", display: "inline-flex", [DESKTOP_QUERY]: { display: "none" } }}
-          aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
-        >
-          {mobileOpen ? <CloseIcon /> : <MenuIcon />}
-        </IconButton>
+          <IconButton
+            onClick={() => setMobileOpen((v) => !v)}
+            sx={{ display: "inline-flex", [DESKTOP_QUERY]: { display: "none" } }}
+            aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
+          >
+            {mobileOpen ? <CloseIcon /> : <MenuIcon />}
+          </IconButton>
+        </Stack>
       </Box>
 
       <Collapse in={mobileOpen} unmountOnExit>

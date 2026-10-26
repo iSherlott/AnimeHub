@@ -27,9 +27,10 @@ type FriendState = "none" | "friends" | "sent" | "received";
 
 /**
  * Amizade (como no Orkut): adicionar, cancelar o pedido, aceitar ou recusar o recebido, desfazer. Depois da mudança a
- * página é recarregada (depoimentos e avaliações dependem da amizade).
+ * página é recarregada (depoimentos e avaliações dependem da amizade). `inline`: só botões, para a linha de ações do
+ * cabeçalho do perfil (ao lado de "Seguir perfil").
  */
-export function FriendButton({ userId, initial, compact = false }: { userId: string; initial: FriendState; compact?: boolean }) {
+export function FriendButton({ userId, initial, compact = false, inline = false }: { userId: string; initial: FriendState; compact?: boolean; inline?: boolean }) {
   const router = useRouter();
   const [state, setState] = useState<FriendState>(initial);
   const [busy, setBusy] = useState(false);
@@ -45,6 +46,42 @@ export function FriendButton({ userId, initial, compact = false }: { userId: str
     router.refresh();
   }
   const size = compact ? "small" : "medium";
+  if (inline) {
+    return (
+      <>
+        {state === "none" && (
+          <Button variant="contained" disabled={busy} onClick={() => act("PUT")} data-testid="friend-add">
+            Adicionar como amigo
+          </Button>
+        )}
+        {state === "sent" && (
+          <Button disabled={busy} onClick={() => act("DELETE")} sx={ELEVATED_BUTTON_SX} data-testid="friend-cancel" title="Pedido de amizade enviado">
+            Pedido enviado · cancelar
+          </Button>
+        )}
+        {state === "received" && (
+          <>
+            <Button variant="contained" disabled={busy} onClick={() => act("PUT")} data-testid="friend-accept">
+              Aceitar amizade
+            </Button>
+            <Button disabled={busy} onClick={() => act("DELETE")} sx={ELEVATED_BUTTON_SX} data-testid="friend-decline">
+              Recusar
+            </Button>
+          </>
+        )}
+        {state === "friends" && (
+          <Button disabled={busy} onClick={() => act("DELETE", "Desfazer a amizade?")} sx={ELEVATED_BUTTON_SX} data-testid="friend-remove" title="Vocês são amigos. Clique para desfazer a amizade.">
+            ✓ Amigos
+          </Button>
+        )}
+        {error && (
+          <Typography role="alert" sx={{ fontSize: 12, color: "error.main", alignSelf: "center" }}>
+            {error}
+          </Typography>
+        )}
+      </>
+    );
+  }
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }} data-testid="friend-box" data-state={state}>
       {state === "none" && (

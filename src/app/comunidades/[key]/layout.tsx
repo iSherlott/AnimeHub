@@ -40,18 +40,23 @@ export default async function CommunityLayout({ children, params }: { children: 
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", md: "220px minmax(0,1fr)", lg: "220px minmax(0,1fr) 280px" }, gap: 3, alignItems: "start" }}>
           {/* Coluna da esquerda: a comunidade */}
           <Box component="aside" aria-label="A comunidade" sx={{ display: "flex", flexDirection: "column", gap: 1.5 }} data-testid="community-header">
-            <Box sx={{ position: "relative", width: { xs: 140, md: "100%" }, aspectRatio: "2 / 3", borderRadius: "12px", overflow: "hidden", bgcolor: "#171820" }}>
-              {root.coverImage && <CoverImage src={root.coverImage} sizes="220px" />}
+            {/* No celular a capa fica pequena, ao lado do nome, para o conteúdo da seção aparecer logo. */}
+            <Box sx={{ display: "flex", flexDirection: { xs: "row", md: "column" }, alignItems: { xs: "center", md: "stretch" }, gap: 1.5 }}>
+              <Box sx={{ position: "relative", width: { xs: 64, md: "100%" }, flexShrink: 0, aspectRatio: "2 / 3", borderRadius: { xs: "8px", md: "12px" }, overflow: "hidden", bgcolor: "#171820" }}>
+                {root.coverImage && <CoverImage src={root.coverImage} sizes="(max-width: 900px) 64px, 220px" />}
+              </Box>
+              <Box sx={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 0.75 }}>
+                <Typography component="p" lang="ja" sx={{ color: "primary.main", fontSize: 11, fontWeight: 700 }}>
+                  コミュニティ / COMUNIDADE
+                </Typography>
+                <Typography component="h1" sx={{ fontSize: 20, fontWeight: 700, lineHeight: 1.3, overflowWrap: "anywhere" }} data-testid="community-name">
+                  <AnimeTitle titles={{ titleRomaji: root.titleRomaji, titleEnglish: root.titleEnglish, titleNative: root.titleNative }} />
+                </Typography>
+                <Typography sx={{ color: "text.secondary", fontSize: 13, fontVariantNumeric: "tabular-nums" }} data-testid="community-stats">
+                  {membersSample.total} {membersSample.total === 1 ? "membro" : "membros"} · {topics} {topics === 1 ? "tópico" : "tópicos"} · {scope.works.length} {scope.works.length === 1 ? "obra" : "obras"} da franquia
+                </Typography>
+              </Box>
             </Box>
-            <Typography component="p" lang="ja" sx={{ color: "primary.main", fontSize: 11, fontWeight: 700 }}>
-              コミュニティ / COMUNIDADE
-            </Typography>
-            <Typography component="h1" sx={{ fontSize: 20, fontWeight: 700, lineHeight: 1.3, overflowWrap: "anywhere" }} data-testid="community-name">
-              <AnimeTitle titles={{ titleRomaji: root.titleRomaji, titleEnglish: root.titleEnglish, titleNative: root.titleNative }} />
-            </Typography>
-            <Typography sx={{ color: "text.secondary", fontSize: 13, fontVariantNumeric: "tabular-nums" }} data-testid="community-stats">
-              {membersSample.total} {membersSample.total === 1 ? "membro" : "membros"} · {topics} {topics === 1 ? "tópico" : "tópicos"} · {scope.works.length} {scope.works.length === 1 ? "obra" : "obras"} da franquia
-            </Typography>
             <JoinButton communityKey={scope.key} member={member} loggedIn={Boolean(user)} />
             <CommunityMenu communityKey={scope.key} counts={{ topics, polls, events, members: membersSample.total }} />
             <AppLink href={`/anime/${root.workKey}`} underline="hover" sx={{ fontSize: 13, color: "text.secondary" }}>

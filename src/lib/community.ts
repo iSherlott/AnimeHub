@@ -183,6 +183,7 @@ export async function createTopic(scope: CommunityScope, userId: string, input: 
     data: { ...data, communityId: community.id, authorId: userId, ...(poll ? { poll: { create: { options: { create: poll.map((label, i) => ({ position: i + 1, label })) } } } } : {}) },
     select: { id: true },
   });
+  await markVisit(community.id, userId);
   return { ok: true, topicId: topic.id };
 }
 
@@ -222,6 +223,7 @@ export async function createReply(topicId: string, userId: string, input: unknow
     prisma.communityTopic.findUniqueOrThrow({ where: { id: topicId }, select: { authorId: true } }),
   ]);
   await notifyCommunity({ type: "COMMUNITY_REPLY", topicId, replyId: reply.id, actorId: userId, recipientIds: [author.authorId, ...repliers.map((r) => r.authorId)] });
+  await markVisit(topic.communityId, userId);
   return { ok: true, replyId: reply.id };
 }
 

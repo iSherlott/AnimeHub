@@ -64,7 +64,7 @@ pediu o perfil no formato do antigo Orkut, com o tema do Anime Hub, e escolheu:
 A pessoa usuária escolheu trocar o "amigo = seguir mútuo" por **pedido de amizade**, como no Orkut.
 
 - **Pedir e responder:**
-  - "Adicionar como amigo" fica no perfil, na coluna da esquerda.
+  - "Adicionar como amigo" fica no cabeçalho do perfil, ao lado de "Seguir perfil".
   - Quem recebe aceita ou recusa no próprio perfil de quem pediu ou na página **Amigos** (`/amigos`, também no menu da
     conta). A página lista os pedidos recebidos, os enviados e os amigos.
   - Quem pediu pode cancelar. Qualquer um dos dois pode desfazer a amizade.

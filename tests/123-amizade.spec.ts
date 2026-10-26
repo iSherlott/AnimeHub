@@ -72,7 +72,7 @@ test.describe.serial("Amizade separada do seguir", () => {
     expect(await prisma.follow.count({ where: { followerId: { in: [userId, adminId] }, followingId: { in: [userId, adminId] } } })).toBe(0);
 
     await page.reload();
-    await expect(page.getByTestId("friend-state")).toHaveText("✓ Vocês são amigos");
+    await expect(page.getByTestId("friend-remove")).toHaveText("✓ Amigos");
     await expect(page.getByTestId("testimonial-form")).toBeVisible();
     await page.goto(`/users/${userId}`);
     await expect(page.getByTestId("profile-friends")).toContainText("amigos (1)");

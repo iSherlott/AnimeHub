@@ -126,9 +126,10 @@ export default async function UserProfilePage({ params }: Params) {
         </AppLink>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", md: "220px minmax(0,1fr)", lg: "220px minmax(0,1fr) 280px" }, gap: 3, alignItems: "start" }}>
           {/* Esquerda: menu, fãs e avaliações */}
-          <Box component="aside" aria-label="Menu do perfil" sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {friendRel && friendRel !== "self" && <FriendButton userId={id} initial={friendRel} />}
-            <Box component="nav" aria-label="Seções do perfil" data-testid="profile-menu" sx={{ display: "flex", flexDirection: { xs: "row", md: "column" }, flexWrap: "wrap", gap: 0.5 }}>
+          {/* No celular o centro (cabeçalho, quem sou eu, recados) vem primeiro; o menu, os fãs e as avaliações depois. */}
+          <Box component="aside" aria-label="Menu do perfil" sx={{ display: "flex", flexDirection: "column", gap: 2, order: { xs: 2, md: 0 } }}>
+            {/* O menu de âncoras só faz sentido com as colunas lado a lado (no celular tudo já está em sequência). */}
+            <Box component="nav" aria-label="Seções do perfil" data-testid="profile-menu" sx={{ display: { xs: "none", md: "flex" }, flexDirection: "column", gap: 0.5 }}>
               {menu.map((m) => (
                 <Box
                   key={m.href}
@@ -153,7 +154,7 @@ export default async function UserProfilePage({ params }: Params) {
           </Box>
 
           {/* Centro */}
-          <Box sx={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+          <Box sx={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 3, order: { xs: 1, md: 0 } }}>
             <ProfileHeader
               userId={id}
               displayName={target.displayName}
@@ -168,6 +169,7 @@ export default async function UserProfilePage({ params }: Params) {
               isOwnProfile={isOwnProfile}
               viewerLoggedIn={Boolean(viewer)}
               initialFollowing={isFollowedByMe}
+              friendAction={friendRel && friendRel !== "self" ? <FriendButton userId={id} initial={friendRel} inline /> : null}
             />
 
             {fortune && (
@@ -249,7 +251,7 @@ export default async function UserProfilePage({ params }: Params) {
           </Box>
 
           {/* Direita: amigos, comunidades e conquistas */}
-          <Box component="aside" aria-label="Amigos, comunidades e conquistas" sx={{ display: "flex", flexDirection: "column", gap: 2, gridColumn: { md: "1 / -1", lg: "auto" } }}>
+          <Box component="aside" aria-label="Amigos, comunidades e conquistas" sx={{ display: "flex", flexDirection: "column", gap: 2, gridColumn: { md: "1 / -1", lg: "auto" }, order: { xs: 3, md: 0 } }}>
             {isOwnProfile && (
               <SideBox title="só você vê">
                 <Typography sx={{ fontSize: 13 }}>A aba Animes pode ser ocultada em Configurações. Datas e adiados continuam só seus.</Typography>

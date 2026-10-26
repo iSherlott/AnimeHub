@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Box, Stack, Tooltip, Typography } from "@mui/material";
 import { AchievementTitleBadge } from "@/components/AchievementTitleBadge";
 import { FollowToggle } from "@/components/FollowToggle";
@@ -28,6 +28,7 @@ export function ProfileHeader({
   isOwnProfile,
   viewerLoggedIn,
   initialFollowing,
+  friendAction = null,
 }: {
   userId: string;
   displayName: string;
@@ -35,6 +36,8 @@ export function ProfileHeader({
   avatarUrl: string | null;
   bannerUrl?: string | null;
   bio: string | null;
+  /** Ação de amizade (perfil estilo Orkut), ao lado de "Seguir perfil". */
+  friendAction?: ReactNode;
   /** Título equipado (conquista do quiz), se houver. */
   title?: string | null;
   postCount: number;
@@ -97,6 +100,7 @@ export function ProfileHeader({
                   initialFollowing={initialFollowing}
                   onChange={(following) => setFollowerCount((c) => c + (following ? 1 : -1))}
                 />
+                {friendAction}
                 <ProfileSafetyMenu userId={userId} displayName={displayName} />
               </>
             ) : (
