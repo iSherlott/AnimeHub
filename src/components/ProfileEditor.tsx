@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import EditIcon from "@mui/icons-material/Edit";
-import { Box, ButtonBase, IconButton, InputBase, Typography } from "@mui/material";
+import { Box, ButtonBase, Chip, IconButton, InputBase, Typography } from "@mui/material";
 import { AvatarPickerDialog, PROFILE_ACCENT } from "@/components/AvatarPickerDialog";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useCurrentUser, useSetCurrentUser } from "@/lib/auth/useCurrentUser";
 
-type Me = { id: string; displayName: string; handle: string | null; bio: string | null; avatarUrl: string | null; bannerUrl: string | null };
+type Me = { id: string; displayName: string; handle: string | null; bio: string | null; avatarUrl: string | null; bannerUrl: string | null; favoriteAnime: string | null; favoriteCharacter: string | null; favoriteGenres: string[] };
 
 const outlined = (enabled: boolean, accent: boolean) => ({
   px: 4,
@@ -52,20 +52,29 @@ function Field({ id, label, value, onChange, help, placeholder, maxLength, multi
  * campos com sublinhado e os botões SALVAR / CANCELAR. Avatar e banner vêm das obras que a pessoa acompanha
  * (e gravam ao salvar no seletor); nome, identificador e bio gravam com SALVAR.
  */
-export function ProfileEditor({ me }: { me: Me }) {
+export function ProfileEditor({ me, genreOptions = [] }: { me: Me; genreOptions?: string[] }) {
   const router = useRouter();
   const currentUser = useCurrentUser();
   const setCurrentUser = useSetCurrentUser();
   const [name, setName] = useState(me.displayName);
   const [handle, setHandle] = useState(me.handle ?? "");
   const [bio, setBio] = useState(me.bio ?? "");
+  const [favoriteAnime, setFavoriteAnime] = useState(me.favoriteAnime ?? "");
+  const [favoriteCharacter, setFavoriteCharacter] = useState(me.favoriteCharacter ?? "");
+  const [favoriteGenres, setFavoriteGenres] = useState<string[]>(me.favoriteGenres);
   const [avatar, setAvatar] = useState(me.avatarUrl);
   const [banner, setBanner] = useState(me.bannerUrl);
   const [picker, setPicker] = useState<"avatar" | "banner" | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const dirty = name.trim() !== me.displayName || handle.trim() !== (me.handle ?? "") || bio.trim() !== (me.bio ?? "");
+  const dirty =
+    name.trim() !== me.displayName ||
+    handle.trim() !== (me.handle ?? "") ||
+    bio.trim() !== (me.bio ?? "") ||
+    favoriteAnime.trim() !== (me.favoriteAnime ?? "") ||
+    favoriteCharacter.trim() !== (me.favoriteCharacter ?? "") ||
+    favoriteGenres.join(",") !== me.favoriteGenres.join(",");
   const canSave = dirty && name.trim().length > 0 && !busy;
 
   async function save() {
@@ -73,7 +82,7 @@ export function ProfileEditor({ me }: { me: Me }) {
     setBusy(true);
     setError(null);
     try {
-      const payload: Record<string, string> = { displayName: name, bio };
+      const payload: Record<string, string | string[]> = { displayName: name, bio, favoriteAnime, favoriteCharacter, favoriteGenres };
       if (handle.trim()) payload.handle = handle;
       const res = await fetch("/api/users/me", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json().catch(() => ({}));
@@ -144,7 +153,31 @@ export function ProfileEditor({ me }: { me: Me }) {
             maxLength={21}
             help="3 a 20 caracteres: letras sem acento, números e _. Aparece como @identificador e é único."
           />
-          <Field id="profile-bio" label="Bio (opcional)" value={bio} onChange={setBio} multiline maxLength={300} placeholder="uma frase sobre você" help="Até 300 caracteres. Aparece no seu perfil público." />
+          <Field id="profile-bio" label="Quem sou eu (opcional)" value={bio} onChange={setBio} multiline maxLength={300} placeholder="uma frase sobre você" help="Até 300 caracteres. Aparece no seu perfil público." />
+          <Field id="profile-favorite-anime" label="Anime favorito (opcional)" value={favoriteAnime} onChange={setFavoriteAnime} maxLength={80} placeholder="ex.: Frieren" help="Aparece no quem sou eu do seu perfil." />
+          <Field id="profile-favorite-character" label="Personagem favorito (opcional)" value={favoriteCharacter} onChange={setFavoriteCharacter} maxLength={80} placeholder="ex.: Himmel" help="Aparece no quem sou eu do seu perfil." />
+          {genreOptions.length > 0 && (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }} data-testid="profile-favorite-genres">
+              <Typography sx={{ fontSize: 13, fontWeight: 700, color: "text.secondary" }}>Gêneros favoritos (até 5)</Typography>
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                {genreOptions.map((g) => {
+                  const on = favoriteGenres.includes(g);
+                  return (
+                    <Chip
+                      key={g}
+                      label={g}
+                      clickable
+                      color={on ? "primary" : "default"}
+                      variant={on ? "filled" : "outlined"}
+                      disabled={!on && favoriteGenres.length >= 5}
+                      onClick={() => setFavoriteGenres((cur) => (on ? cur.filter((x) => x !== g) : [...cur, g]))}
+                      data-testid={`profile-genre-${g}`}
+                    />
+                  );
+                })}
+              </Box>
+            </Box>
+          )}
           {error && (
             <Typography role="alert" data-testid="profile-edit-error" sx={{ fontSize: 14, color: "#ef4444" }}>
               {error}

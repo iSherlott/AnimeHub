@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { blockRelation } from "@/lib/blocks";
 
-export type SocialNotificationType = "POST_REPLY" | "COMMENT_REPLY" | "NEW_FOLLOWER" | "POST_LIKE";
+export type SocialNotificationType = "POST_REPLY" | "COMMENT_REPLY" | "NEW_FOLLOWER" | "POST_LIKE" | "PROFILE_SCRAP" | "PROFILE_TESTIMONIAL" | "PROFILE_FAN";
 
 /** Qual preferência da conta controla cada tipo (Configurações, S-12). */
 const PREFERENCE_BY_TYPE = {
@@ -9,10 +9,14 @@ const PREFERENCE_BY_TYPE = {
   COMMENT_REPLY: "notifyComments",
   NEW_FOLLOWER: "notifyFollowers",
   POST_LIKE: "notifyLikes",
+  // Perfil estilo Orkut: recado e depoimento são comentários no perfil; virar fã é como ganhar um seguidor.
+  PROFILE_SCRAP: "notifyComments",
+  PROFILE_TESTIMONIAL: "notifyComments",
+  PROFILE_FAN: "notifyFollowers",
 } as const;
 
 /** Tipos que não se repetem: a mesma pessoa curtindo/seguindo de novo não gera outro aviso. */
-const DEDUPED: ReadonlySet<SocialNotificationType> = new Set(["NEW_FOLLOWER", "POST_LIKE"]);
+const DEDUPED: ReadonlySet<SocialNotificationType> = new Set(["NEW_FOLLOWER", "POST_LIKE", "PROFILE_FAN"]);
 
 /**
  * Registra uma notificação social para `recipientId`. Nunca lança: o aviso

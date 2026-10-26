@@ -514,6 +514,20 @@ export async function listMembers(communityId: string, page: number, take = MEMB
 
 export type CommunityLink = { key: string; titleRomaji: string; titleNative: string | null; titleEnglish: string | null; coverImage: string | null; members: number };
 
+/** Comunidades de que a pessoa participa (a grade do perfil, como no Orkut): as que entrou por último primeiro. */
+export async function memberCommunities(userId: string, take = 9): Promise<{ total: number; rows: CommunityLink[] }> {
+  const [total, memberships] = await Promise.all([
+    prisma.communityMember.count({ where: { userId } }),
+    prisma.communityMember.findMany({ where: { userId }, orderBy: { joinedAt: "desc" }, take, include: { community: { select: { franchiseKey: true, catalogEntryId: true, _count: { select: { members: true } } } } } }),
+  ]);
+  const rows: CommunityLink[] = [];
+  for (const m of memberships) {
+    const scope = await scopeOfCommunity(m.community);
+    if (scope) rows.push({ key: scope.key, titleRomaji: scope.root.titleRomaji, titleNative: scope.root.titleNative, titleEnglish: scope.root.titleEnglish, coverImage: scope.root.coverImage, members: m.community._count.members });
+  }
+  return { total, rows };
+}
+
 /** Chave da comunidade de uma obra do catálogo (a da franquia ou, sem ela, a da obra). */
 const communityKeyOf = (w: { franchiseKey: number | null; anilistId: number | null; anidbId: number | null; kitsuId: number | null }) => (w.franchiseKey !== null ? String(w.franchiseKey) : workKeyOf(w));
 

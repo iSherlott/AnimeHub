@@ -10,10 +10,13 @@ import { normalizeHandle, validateHandle } from "@/lib/handle";
 // sem estourar o layout do cabeçalho do perfil.
 const MAX_BIO_LENGTH = 300;
 const MAX_DISPLAY_NAME_LENGTH = 40;
+/** "Quem sou eu" do perfil estilo Orkut: anime e personagem favoritos (texto livre) e até 5 gêneros favoritos. */
+const MAX_FAVORITE_LENGTH = 80;
+const MAX_FAVORITE_GENRES = 5;
 
 /**
- * Edição do próprio perfil (Epic 28; PROF-001/002) — nome, @identificador
- * e bio, cada campo opcional (só o que vier no corpo é alterado). Sempre
+ * Edição do próprio perfil (Epic 28; PROF-001/002) — nome, @identificador,
+ * bio e o "quem sou eu" do perfil estilo Orkut (favoritos), cada campo opcional (só o que vier no corpo é alterado). Sempre
  * opera sobre `user.id` da sessão ativa, nunca sobre um `id` de rota; não
  * existe (e não deveria existir) um jeito de editar o perfil de outra
  * pessoa.
@@ -42,6 +45,20 @@ export async function PATCH(request: Request) {
     data.bio = isBlank(raw) ? null : raw;
   }
 
+  for (const field of ["favoriteAnime", "favoriteCharacter"] as const) {
+    if (!(field in body)) continue;
+    const raw = typeof body[field] === "string" ? body[field].trim() : "";
+    if (raw.length > MAX_FAVORITE_LENGTH) return NextResponse.json({ error: `Favorito muito longo (máximo ${MAX_FAVORITE_LENGTH} caracteres)` }, { status: 400 });
+    data[field] = isBlank(raw) ? null : raw;
+  }
+
+  if ("favoriteGenres" in body) {
+    const raw: unknown = body.favoriteGenres;
+    const list: string[] | null = Array.isArray(raw) ? raw.filter((g): g is string => typeof g === "string" && g.trim().length > 0 && g.length <= 40).map((g) => g.trim()) : null;
+    if (!list || list.length > MAX_FAVORITE_GENRES) return NextResponse.json({ error: `Escolha até ${MAX_FAVORITE_GENRES} gêneros favoritos` }, { status: 400 });
+    data.favoriteGenres = [...new Set(list)];
+  }
+
   if ("displayName" in body) {
     const name = typeof body.displayName === "string" ? body.displayName.trim() : "";
     if (isBlank(name)) {
@@ -66,7 +83,7 @@ export async function PATCH(request: Request) {
 
   try {
     const updated = await prisma.user.update({ where: { id: user.id }, data });
-    return NextResponse.json({ bio: updated.bio, displayName: updated.displayName, handle: updated.handle });
+    return NextResponse.json({ bio: updated.bio, displayName: updated.displayName, handle: updated.handle, favoriteAnime: updated.favoriteAnime, favoriteCharacter: updated.favoriteCharacter, favoriteGenres: updated.favoriteGenres });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json({ error: "Esse identificador já está em uso" }, { status: 409 });

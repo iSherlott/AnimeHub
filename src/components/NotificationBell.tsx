@@ -39,7 +39,7 @@ type AiringAlertItem = {
 
 type SocialItem = {
   id: string;
-  type: "POST_REPLY" | "COMMENT_REPLY" | "NEW_FOLLOWER" | "POST_LIKE";
+  type: "POST_REPLY" | "COMMENT_REPLY" | "NEW_FOLLOWER" | "POST_LIKE" | "PROFILE_SCRAP" | "PROFILE_TESTIMONIAL" | "PROFILE_FAN";
   actor: { id: string; displayName: string };
   readAt: string | null;
   createdAt: string;
@@ -77,6 +77,12 @@ function socialText(n: SocialItem): string {
       return `${n.actor.displayName} começou a seguir você`;
     case "POST_LIKE":
       return `${n.actor.displayName} curtiu sua publicação`;
+    case "PROFILE_SCRAP":
+      return `${n.actor.displayName} deixou um recado no seu perfil`;
+    case "PROFILE_TESTIMONIAL":
+      return `${n.actor.displayName} escreveu um depoimento para você aprovar`;
+    case "PROFILE_FAN":
+      return `${n.actor.displayName} virou seu fã`;
   }
 }
 

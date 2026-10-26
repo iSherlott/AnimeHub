@@ -90,7 +90,7 @@ test.describe.serial("Avatar de anime e Editar Perfil", () => {
     const original = (await prisma.user.findUniqueOrThrow({ where: { id: userId } })).displayName;
     await page.goto("/perfil/editar");
     await page.getByLabel("Nome do Perfil").fill("Perfil Round70");
-    await page.getByLabel("Bio (opcional)").fill("Bio escrita no Editar Perfil");
+    await page.getByLabel("Quem sou eu (opcional)").fill("Bio escrita no Editar Perfil");
     await page.getByTestId("profile-edit-save").click();
     await expect(page).toHaveURL(new RegExp(`/users/${userId}$`));
     await expect(page.getByRole("heading", { name: "Perfil Round70" }).first()).toBeVisible();

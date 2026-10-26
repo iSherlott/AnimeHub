@@ -1,0 +1,60 @@
+# ADR 0012 — Perfil no formato do Orkut
+
+Status: aceito em 26/10/2026.
+
+## Contexto
+
+O perfil tinha o cabeçalho (capa, avatar, nome, bio, seguir) e as abas Publicações, Discussões e Animes. A pessoa usuária
+pediu o perfil no formato do antigo Orkut, com o tema do Anime Hub, e escolheu:
+
+- **recados** (scrapbook): qualquer conta deixa um recado no perfil de outra;
+- **depoimentos**: escritos por amigos, aparecem só depois que a pessoa aprova;
+- **fãs e avaliações**: "ser fã" e notas de amigos (como confiável/legal/sexy, com o tema do site);
+- **quem sou eu + sorte do dia**;
+- **amigos = o seguir que já existe**: amigo é quem se segue mutuamente. Não há pedido de amizade.
+
+## Decisão
+
+- **Layout em 3 colunas**, igual ao das comunidades (ADR 0011):
+  - esquerda: menu das seções, fãs e avaliações;
+  - centro: o cabeçalho de antes (sem a bio), a sorte do dia, o quem sou eu, os recados, os depoimentos e as abas de
+    antes (Publicações, Discussões, Animes);
+  - direita: amigos (9, com "ver todos"), comunidades em que a pessoa entrou e conquistas (títulos dos quizzes).
+- **Quem sou eu.** A bio de antes, mais anime e personagem favoritos (texto livre, até 80 caracteres) e até 5 gêneros
+  favoritos (do vocabulário de gêneros, sem Hentai). Tudo opcional, em Editar perfil.
+- **Sorte do dia.** Só a dona do perfil vê, como no Orkut. As 30 frases são do Anime Hub; nenhuma cita uma obra. A frase
+  depende da pessoa e do dia no fuso de quem vê (`src/lib/dailyFortune.ts`).
+- **Recados.** Até 1.000 caracteres, 20 por minuto por conta. Apagar: quem recebeu, quem escreveu ou a moderação; o
+  recado fica marcado como apagado. O perfil mostra os 5 últimos; `/users/<id>/recados` mostra todos, 20 por página.
+- **Depoimentos.**
+  - Só amigos escrevem, até 2.000 caracteres e um por amigo.
+  - Reescrever volta a esperar a aprovação.
+  - A dona aprova ou recusa. Quem visita vê só os aprovados.
+  - Quem escreveu ou quem recebeu pode apagar.
+- **Fãs.** Qualquer conta pode ser fã, menos de si mesma. Os fãs aparecem só como contagem.
+- **Avaliações.** Só amigos avaliam. São três notas de 0 a 3 cada:
+  - Otaku raiz;
+  - Gente boa;
+  - Sem spoiler.
+
+  O perfil mostra a média e quantos avaliaram. Quem avaliou pode mudar as notas.
+- **Bloqueio.** Com bloqueio entre as duas pessoas, não há recado, depoimento, fã nem avaliação, e o que a pessoa
+  bloqueada escreveu some para quem bloqueou.
+- **Notificações (sino).**
+  - Recado e depoimento seguem a preferência de comentários e levam a `#recados` / `#depoimentos`.
+  - Virar fã segue a de seguidores, sem repetir.
+- **"Minhas conquistas"** saiu do menu do avatar e agora fica no perfil: na caixa de conquistas e na aba de antes.
+
+## Consequências
+
+- **Banco.** `20261108100000_profile_orkut` só acrescenta:
+  - os favoritos em `User`;
+  - as tabelas `Scrap`, `Testimonial`, `Fan` e `ProfileRating`.
+- **Código.**
+  - Regras: `src/lib/profileOrkut.ts`.
+  - Rotas: `/api/users/<id>/scraps`, `/testimonials`, `/fan`, `/rating`, `/api/scraps/<id>` e `/api/testimonials/<id>`.
+- **Testes.** Spec 121 e `src/lib/dailyFortune.test.ts`. O spec 70 foi ajustado ao novo rótulo "Quem sou eu".
+- **Fora desta versão.**
+  - Pedido de amizade separado do seguir.
+  - Lista de quem é fã.
+  - Responder recado no perfil de quem escreveu, num clique.

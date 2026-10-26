@@ -6,36 +6,13 @@ import { AppLink } from "@/components/AppLink";
 import { AnimeTitle } from "@/components/AnimeTitle";
 import { CoverImage } from "@/components/CoverImage";
 import { PageContainer } from "@/components/PageShell";
+import { SideBox } from "@/components/SideBox";
 import { UserAvatar } from "@/components/UserAvatar";
 import { JoinButton } from "@/components/community/CommunityClient";
 import { CommunityMenu } from "@/components/community/CommunityOrkut";
 import { listMembers, markVisit, relatedCommunities } from "@/lib/community";
 import { prisma } from "@/lib/prisma";
 import { getCommunity, getScope, getViewer } from "./data";
-
-/** Caixa das colunas laterais (como as do Orkut): título com a contagem e o "ver todos". */
-function SideBox({ title, count, more, children, testId }: { title: string; count?: number; more?: { href: string; label: string }; children: ReactNode; testId?: string }) {
-  return (
-    <Box component="section" data-testid={testId} sx={{ display: "flex", flexDirection: "column", gap: 1.25, p: 1.5, border: 1, borderColor: "divider", borderRadius: "12px", bgcolor: "background.paper" }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 1 }}>
-        <Typography component="h2" sx={{ fontSize: 15, fontWeight: 700 }}>
-          {title}
-          {count !== undefined && (
-            <Typography component="span" sx={{ fontSize: 13, color: "text.secondary", fontWeight: 400 }}>
-              {" "}({count})
-            </Typography>
-          )}
-        </Typography>
-        {more && (
-          <AppLink href={more.href} underline="hover" sx={{ fontSize: 12 }}>
-            {more.label}
-          </AppLink>
-        )}
-      </Box>
-      {children}
-    </Box>
-  );
-}
 
 /**
  * A comunidade do anime no formato do Orkut: à esquerda a capa, o nome, "Participar" e o menu; no centro a seção aberta;

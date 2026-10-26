@@ -231,3 +231,19 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
   - O menu do admin ficou agrupado por tipo.
 - **Banco.** `20261107100000_community_orkut` (só acrescenta).
 - **Testes.** Specs 118 (correções), 119 (Feed) e 120 (Orkut); 117 ajustado.
+
+## Depois: perfil no formato do Orkut (26/10)
+
+- **Perfil em 3 colunas** (ADR 0012):
+  - à esquerda, o menu, os fãs e as avaliações;
+  - no centro, o cabeçalho, a sorte do dia, o quem sou eu, os recados, os depoimentos e as abas de antes;
+  - à direita, os amigos, as comunidades e as conquistas.
+- **Amigos** são quem se segue mutuamente.
+- **Recados.** Qualquer conta escreve.
+- **Depoimentos.** Só amigos escrevem, e o depoimento aparece depois de aprovado.
+- **Avaliações.** Só amigos avaliam: Otaku raiz, Gente boa e Sem spoiler, de 0 a 3.
+- **Sorte do dia.** Só a dona do perfil vê.
+- **Quem sou eu.** Ganhou anime e personagem favoritos e até 5 gêneros, em Editar perfil.
+- **Notificações.** O sino avisa de recado, depoimento e fã.
+- **Banco.** `20261108100000_profile_orkut` (só acrescenta).
+- **Testes.** Spec 121 e `dailyFortune.test.ts`; spec 70 ajustado.

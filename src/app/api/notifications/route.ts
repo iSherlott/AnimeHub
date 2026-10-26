@@ -83,7 +83,10 @@ export async function GET() {
   const social = socialRows.map((n) => {
     const unavailable = n.postId ? !livePosts.has(n.postId) : false;
     let href: string | null = null;
-    if (n.type === "NEW_FOLLOWER") href = `/users/${n.actor.id}`;
+    if (n.type === "NEW_FOLLOWER" || n.type === "PROFILE_FAN") href = `/users/${n.actor.id}`;
+    // Recado e depoimento ficam no perfil de quem recebe (quem está vendo o sino).
+    else if (n.type === "PROFILE_SCRAP") href = `/users/${user.id}#recados`;
+    else if (n.type === "PROFILE_TESTIMONIAL") href = `/users/${user.id}#depoimentos`;
     else if (n.postId && !unavailable) href = `/publicacao/${n.postId}${n.commentId ? `#comentario-${n.commentId}` : ""}`;
     return {
       id: n.id,
