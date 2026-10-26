@@ -7,6 +7,8 @@ import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined
 import { Box, Link as MuiLink, Typography } from "@mui/material";
 import { SectionTitle } from "@/components/PageShell";
 import { HashtagRow } from "@/components/HashtagRow";
+import { UserAvatar } from "@/components/UserAvatar";
+import { FriendButton } from "@/components/profile/ProfileOrkut";
 import type { RecommendationItem } from "@/lib/animeRecommendations";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { currentSeasonTag } from "@/lib/season";
@@ -16,6 +18,7 @@ import { useTimeZone } from "@/lib/useTimeZone";
 import type { CalendarItem } from "@/lib/calendarItem";
 
 type Tag = { key: string; display: string };
+type Person = { id: string; displayName: string; handle: string | null; avatarUrl: string | null; detail: string | null };
 const KIND_LABEL: Record<string, string> = { WORK: "Obra", SEASON: "Temporada", GENRE: "Gênero", TOPIC: "Tópico" };
 const GROUPS: Array<{ kind: string; label: string }> = [
   { kind: "WORK", label: "OBRA" },
@@ -25,9 +28,10 @@ const GROUPS: Array<{ kind: string; label: string }> = [
 
 /**
  * Lateral do Feed (Figma `13:41368`): "Em alta agora" (hashtags dos últimos 7 dias), "Conversas da temporada" com a
- * hashtag da temporada e as populares por tipo, e "Também na sua agenda"
- * (próximo episódio da Minha Lista, só para quem tem conta). Nada aqui
- * publica a Minha Lista de ninguém.
+ * hashtag da temporada e as populares por tipo, "Também na sua agenda"
+ * (próximo episódio da Minha Lista, só para quem tem conta) e "Pessoas que você
+ * talvez conheça" (comunidades e animes em comum). Nada aqui publica a Minha
+ * Lista de ninguém.
  */
 export function CommunitySidebar() {
   const user = useCurrentUser();
@@ -38,6 +42,7 @@ export function CommunitySidebar() {
   const [trending, setTrending] = useState<Array<Tag & { postCount: number; kind: string }> | null>(null);
   const [next, setNext] = useState<CalendarItem | null>(null);
   const [recommended, setRecommended] = useState<RecommendationItem[] | null>(null);
+  const [people, setPeople] = useState<Person[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,6 +76,21 @@ export function CommunitySidebar() {
           .filter((i) => i.inMyList && new Date(i.airingAt).getTime() >= now)
           .sort((a, b) => a.airingAt.localeCompare(b.airingAt));
         setNext(mine[0] ?? null);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [loggedIn]);
+
+  // "Pessoas que você talvez conheça": as mesmas sugestões da página Amigos (três aqui).
+  useEffect(() => {
+    if (!loggedIn) return;
+    let cancelled = false;
+    fetch("/api/friends/suggestions?take=3")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) setPeople(data?.people ?? []);
       })
       .catch(() => undefined);
     return () => {
@@ -192,6 +212,35 @@ export function CommunitySidebar() {
           )}
           <MuiLink component={NextLink} href="/calendar" underline="hover" sx={{ fontSize: 14, fontWeight: 700, color: "text.primary" }}>
             Consultar calendário ↗
+          </MuiLink>
+        </Box>
+      )}
+
+      {loggedIn && people && people.length > 0 && (
+        <Box component="section" aria-labelledby="pessoas-heading" data-testid="sidebar-people" sx={{ borderTop: 1, borderColor: "divider", pt: 3, display: "flex", flexDirection: "column", gap: 2 }}>
+          <SectionTitle>
+            <span id="pessoas-heading">Pessoas que você talvez conheça</span>
+          </SectionTitle>
+          <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 2 }}>
+            {people.map((p) => (
+              <Box component="li" key={p.id} data-testid={`sidebar-person-${p.id}`} sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                <Box component={NextLink} href={`/users/${p.id}`} sx={{ display: "flex", gap: 1.5, alignItems: "center", color: "text.primary", textDecoration: "none", "&:hover .person-name": { textDecoration: "underline" } }}>
+                  <UserAvatar id={p.id} displayName={p.displayName} avatarUrl={p.avatarUrl} size={40} />
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography className="person-name" sx={{ fontSize: 14, fontWeight: 700, overflowWrap: "anywhere" }}>
+                      {p.displayName}
+                    </Typography>
+                    {p.detail && <Typography sx={{ fontSize: 12, color: "text.secondary" }}>{p.detail}</Typography>}
+                  </Box>
+                </Box>
+                <Box sx={{ alignSelf: "flex-start" }}>
+                  <FriendButton userId={p.id} initial="none" compact />
+                </Box>
+              </Box>
+            ))}
+          </Box>
+          <MuiLink component={NextLink} href="/amigos#sugestoes" underline="hover" sx={{ fontSize: 14, fontWeight: 700, color: "text.primary" }}>
+            Ver mais sugestões
           </MuiLink>
         </Box>
       )}

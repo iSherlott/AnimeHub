@@ -44,6 +44,33 @@ test.describe.serial("Encontrar amigos", () => {
     await prisma.$disconnect();
   });
 
+  test("as mesmas sugestões na lateral do Feed, no perfil sem amigos e em quem seguir", async ({ page, request }) => {
+    await prisma.friendship.deleteMany({ where: { OR: [{ userAId: userId }, { userBId: userId }] } });
+    const api = (await (await request.get("/api/friends/suggestions?take=3")).json()).people as Array<{ id: string; detail: string }>;
+    expect(api[0]).toMatchObject({ id: id.ana, detail: "1 comunidade em comum · 1 anime em comum" });
+    expect(api.map((p) => p.id)).not.toContain(id.bia);
+
+    // "Seguindo" vazio: quem tem algo em comum vem antes das contas mais novas.
+    const follow = (await (await request.get("/api/users/suggestions")).json()).users as Array<{ id: string }>;
+    const followedAna = await prisma.follow.count({ where: { followerId: userId, followingId: id.ana } });
+    if (!followedAna) expect(follow[0].id).toBe(id.ana);
+
+    await page.goto("/");
+    const side = page.getByTestId("sidebar-people");
+    await expect(side.getByTestId(`sidebar-person-${id.ana}`)).toContainText("1 comunidade em comum · 1 anime em comum");
+    await expect(side.getByRole("link", { name: "Ver mais sugestões" })).toHaveAttribute("href", "/amigos#sugestoes");
+
+    await page.goto(`/users/${userId}`);
+    await expect(page.getByTestId("profile-friend-suggestions")).toContainText("Ana Round125");
+
+    // Pedir pela lateral do Feed (e desfazer, para os próximos testes).
+    await page.goto("/");
+    await page.getByTestId(`sidebar-person-${id.ana}`).getByTestId("friend-add").click();
+    await expect(page.getByTestId(`sidebar-person-${id.ana}`).getByTestId("friend-cancel")).toBeVisible();
+    expect(await prisma.friendRequest.count({ where: { fromId: userId, toId: id.ana } })).toBe(1);
+    await prisma.friendRequest.deleteMany({ where: { fromId: userId, toId: id.ana } });
+  });
+
   test("sugestões: comunidade e anime em comum, na ordem do peso; lista oculta não conta", async ({ page }) => {
     await page.goto("/amigos");
     const box = page.getByTestId("friend-suggestions");

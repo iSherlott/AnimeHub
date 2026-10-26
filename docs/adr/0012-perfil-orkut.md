@@ -113,5 +113,11 @@ A pessoa usuária escolheu trocar o "amigo = seguir mútuo" por **pedido de amiz
   - Anime em comum só conta para quem deixa a aba Animes pública, para não revelar listas ocultas.
   - Cada sugestão diz o que há em comum, como "2 comunidades em comum · 3 animes em comum".
   - Ficam de fora amigos, pedidos pendentes nos dois sentidos e bloqueios.
+- **As mesmas sugestões em outros lugares** (rota `/api/friends/suggestions`):
+  - na lateral do Feed, a caixa "Pessoas que você talvez conheça", com 3 pessoas, o botão de amizade e "Ver mais
+    sugestões";
+  - no próprio perfil, enquanto não há amigos, a caixa de amigos;
+  - na aba "Seguindo" vazia, as sugestões de quem seguir: primeiro quem tem algo em comum, depois as contas mais novas,
+    sem bloqueios e sem a conta do sistema.
 - **Código.** `searchPeople` e `friendSuggestions` em `src/lib/friends.ts`. Sem migração.
 - **Testes.** Spec 125.

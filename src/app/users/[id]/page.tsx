@@ -17,7 +17,7 @@ import { BlockedProfileNotice } from "@/components/BlockedProfileNotice";
 import { equippedTitleNames } from "@/lib/quiz";
 import { visibleAnimeCount } from "@/lib/profileAnimeList";
 import { listScraps, listTestimonials, ratingSummary } from "@/lib/profileOrkut";
-import { friendState, listFriends, pendingReceivedCount } from "@/lib/friends";
+import { friendState, friendSuggestions, listFriends, pendingReceivedCount } from "@/lib/friends";
 import { memberCommunities } from "@/lib/community";
 import { dailyFortune } from "@/lib/dailyFortune";
 import { resolveTimeZone } from "@/lib/timeZone";
@@ -95,6 +95,8 @@ export default async function UserProfilePage({ params }: Params) {
       isOwnProfile ? pendingReceivedCount(id) : Promise.resolve(0),
     ]);
   const friendOfViewer = friendRel === "friends";
+  // Perfil próprio ainda sem amigos: a caixa de amigos mostra quem a pessoa talvez conheça.
+  const peopleYouMayKnow = isOwnProfile && friends.total === 0 ? await friendSuggestions(id, 3) : [];
 
   const pending = testimonials.filter((t) => t.status === "PENDING");
   const approved = testimonials.filter((t) => t.status === "APPROVED");
@@ -275,7 +277,15 @@ export default async function UserProfilePage({ params }: Params) {
                   {pendingRequests} {pendingRequests === 1 ? "pedido de amizade esperando" : "pedidos de amizade esperando"} →
                 </AppLink>
               )}
-              {friends.rows.length === 0 ? (
+              {friends.rows.length === 0 && peopleYouMayKnow.length > 0 ? (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }} data-testid="profile-friend-suggestions">
+                  <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Ainda nenhum. Talvez você conheça:</Typography>
+                  <PeopleGrid people={peopleYouMayKnow} />
+                  <AppLink href="/amigos#sugestoes" underline="hover" sx={{ fontSize: 13 }}>
+                    ver sugestões
+                  </AppLink>
+                </Box>
+              ) : friends.rows.length === 0 ? (
                 <Typography sx={{ fontSize: 13, color: "text.secondary" }}>{isOwnProfile ? "Ainda nenhum. Abra um perfil e use “Adicionar como amigo”." : "Ainda nenhum amigo."}</Typography>
               ) : (
                 <PeopleGrid people={friends.rows} />

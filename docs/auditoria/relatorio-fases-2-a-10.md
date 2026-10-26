@@ -293,5 +293,9 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 - **Busca na página Amigos.** Por nome ou @identificador, com o botão de amizade em cada resultado.
 - **Sugestões.** Quem participa das mesmas comunidades ou acompanha os mesmos animes. Anime em comum só conta para quem
   deixa a lista pública.
+- **Onde as sugestões também aparecem:**
+  - na lateral do Feed ("Pessoas que você talvez conheça");
+  - no próprio perfil, enquanto não há amigos;
+  - nas sugestões de quem seguir da aba "Seguindo".
 - **Banco.** Sem migração.
 - **Testes.** Spec 125.
