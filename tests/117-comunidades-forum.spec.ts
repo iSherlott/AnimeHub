@@ -83,7 +83,9 @@ test.describe.serial("Comunidades dos animes (fórum)", () => {
     await expect(page.getByTestId("work-community")).toContainText("ainda não tem tópicos");
     await page.getByTestId("work-community-link").click();
     await expect(page).toHaveURL(new RegExp(`/comunidades/${S1}$`));
-    // Sem participar, não há como criar tópico.
+    // O fórum (menu da esquerda): sem participar, não há como criar tópico.
+    await page.getByTestId("community-menu-fórum").click();
+    await expect(page).toHaveURL(new RegExp(`/comunidades/${S1}/forum$`));
     await expect(page.getByTestId("community-join-hint")).toBeVisible();
     await expect(async () => {
       await page.getByTestId("community-join").click();

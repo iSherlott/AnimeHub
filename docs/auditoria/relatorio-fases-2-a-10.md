@@ -216,3 +216,18 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 - **Banco.** `20261106100000_communities` (só cria tabelas).
 - **Testes.** Spec 117 e `src/lib/community.test.ts`.
 - **Fora desta versão.** Denúncia, fixar e trancar tópicos; aviso de resposta.
+
+## Depois: Feed, comunidades no formato do Orkut e correções (26/10)
+
+- **Feed.** A aba "Comunidade" (as publicações) virou "Feed". A lateral ganhou "Em alta agora": as hashtags com mais publicações nos últimos 7 dias.
+- **Comunidades.** Novo item no menu. O fórum de cada anime ficou em 3 colunas como no Orkut (comunidade, seção, membros e relacionadas). Detalhes no ADR 0011.
+  - Moderação: fixar, trancar, descrição e denúncias resolvidas em Acesso e moderação.
+  - Eventos com presença ("Vou"/"Talvez").
+  - Diretório com Minhas, Populares e Buscar.
+- **Correções.**
+  - O sino tem um contador só, mostra as 5 últimas por canal com "Ver mais" e tem "Marcar todas como lidas" no topo.
+  - O "Mais filtros" do Explorar ganhou palavras no título, na sinopse e a excluir, faixa de episódios e nota mínima.
+  - O atalho de Configurações saiu do cabeçalho, e "Minhas conquistas" saiu do menu do avatar (fica no perfil).
+  - O menu do admin ficou agrupado por tipo.
+- **Banco.** `20261107100000_community_orkut` (só acrescenta).
+- **Testes.** Specs 118 (correções), 119 (Feed) e 120 (Orkut); 117 ajustado.

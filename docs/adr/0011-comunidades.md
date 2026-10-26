@@ -43,5 +43,24 @@ as comunidades do Orkut. Decisões da pessoa usuária:
   `CommunityReply`, `CommunityPoll`, `CommunityPollOption`, `CommunityPollVote`).
 - O spoiler é escondido na tela (o texto vai na página); diferente das publicações do feed, que só liberam o texto por
   uma rota própria.
-- Pendências possíveis: denunciar tópico/resposta na fila da moderação; fixar e trancar tópicos; aviso de resposta nos
-  tópicos em que a pessoa participou; busca no fórum.
+- Pendências possíveis: aviso de resposta nos tópicos em que a pessoa participou; busca dentro do fórum.
+
+## Revisão de 26/10/2026 — formato do Orkut
+
+O menu principal passou a ter **Feed** (as publicações, antes "Comunidade") e **Comunidades** (o fórum de cada anime).
+
+- **Layout em 3 colunas, como no Orkut** (`src/app/comunidades/[key]/layout.tsx`): à esquerda a capa, o nome, os números,
+  "Participar" e o menu (Início · Fórum · Enquetes · Eventos · Membros); no centro a seção aberta; à direita a grade de
+  membros (9, com "ver todos") e as **comunidades relacionadas** (outras franquias com o mesmo gênero principal, das mais
+  populares).
+- **Início:** descrição (a da comunidade ou, sem ela, a sinopse da obra principal), informações (categoria, franquia,
+  idioma, tipo, criada em), os tópicos mais ativos, as enquetes e os próximos eventos.
+- **Moderação** (permissão `moderation`): fixar (fica no topo do fórum) e trancar (não aceita respostas nem votos),
+  editar a descrição e resolver as **denúncias** de tópicos e respostas em Admin → Acesso e moderação (remover ou manter;
+  resolver fecha todas as denúncias do mesmo conteúdo). Qualquer pessoa com conta denuncia, com o motivo.
+- **Eventos:** título, descrição, início e fim (digitados no fuso da conta, gravados como instante), onde; presença
+  "Vou"/"Talvez" (só membros; quem cria já vai); próximos e passados; apagar é de quem criou ou da moderação.
+- **Diretório** (`/comunidades`): Minhas (com novidades desde a última visita), Populares (mais membros) e Buscar (pelo
+  nome do anime; cada anime tem a sua comunidade mesmo antes do primeiro membro).
+- Migração `20261107100000_community_orkut`: descrição, `pinnedAt`/`lockedAt`, `CommunityEvent`,
+  `CommunityEventRsvp` e `CommunityReport`. Só acrescenta.

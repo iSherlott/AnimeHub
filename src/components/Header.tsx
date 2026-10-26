@@ -43,9 +43,10 @@ const NAV_ITEMS: Array<{ href: string; label: string; match: (p: string) => bool
       p.startsWith("/buscar") ||
       p.startsWith("/hashtag") ||
       p.startsWith("/publicacao") ||
-      p.startsWith("/comunidades") ||
       p.startsWith("/users"),
   },
+  // "Comunidades": o fórum de cada anime (estilo Orkut) e o diretório.
+  { href: "/comunidades", label: "Comunidades", match: (p) => p === "/comunidades" || p.startsWith("/comunidades/") },
 ];
 
 function NavLinks({

@@ -80,6 +80,10 @@ model User {
   communityTopics      CommunityTopic[]
   communityReplies     CommunityReply[]
   communityPollVotes   CommunityPollVote[]
+  communityEvents      CommunityEvent[]
+  communityRsvps       CommunityEventRsvp[]
+  communityReports     CommunityReport[] @relation("CommunityReporter")
+  communityReportsResolved CommunityReport[] @relation("CommunityReportResolver")
 
   @@index([email])
 }
@@ -1453,9 +1457,12 @@ model Community {
   franchiseKey   Int?              @unique
   catalogEntryId String?           @unique
   catalogEntry   CatalogEntry?     @relation(fields: [catalogEntryId], references: [id], onDelete: SetNull)
+  /// Descrição da comunidade (como no Orkut). Nula = a sinopse da obra principal da franquia.
+  description    String?
   createdAt      DateTime          @default(now())
   members        CommunityMember[]
   topics         CommunityTopic[]
+  events         CommunityEvent[]
 }
 
 model CommunityMember {
@@ -1490,8 +1497,13 @@ model CommunityTopic {
   editedAt       DateTime?
   /// Apagado pelo autor ou removido pela equipe: some da lista, as respostas ficam guardadas.
   deletedAt      DateTime?
+  /// Fixado pela moderação: fica no topo do fórum.
+  pinnedAt       DateTime?
+  /// Trancado pela moderação: continua visível, mas não aceita respostas nem votos.
+  lockedAt       DateTime?
   replies        CommunityReply[]
   poll           CommunityPoll?
+  reports        CommunityReport[]
 
   @@index([communityId, deletedAt, lastActivityAt])
   @@index([authorId])
@@ -1508,6 +1520,7 @@ model CommunityReply {
   createdAt DateTime       @default(now())
   editedAt  DateTime?
   deletedAt DateTime?
+  reports   CommunityReport[]
 
   @@index([topicId, createdAt])
   @@index([authorId])
@@ -1544,4 +1557,57 @@ model CommunityPollVote {
 
   @@id([pollId, userId])
   @@index([optionId])
+}
+
+/// Evento da comunidade (maratona, estreia, encontro…), como no Orkut: data, descrição e quem vai.
+model CommunityEvent {
+  id          String               @id @default(cuid())
+  communityId String
+  community   Community            @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User                 @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  startsAt    DateTime
+  endsAt      DateTime?
+  /// Onde: texto livre ou um link (sala de chat, transmissão…).
+  place       String?
+  createdAt   DateTime             @default(now())
+  deletedAt   DateTime?
+  rsvps       CommunityEventRsvp[]
+
+  @@index([communityId, deletedAt, startsAt])
+}
+
+model CommunityEventRsvp {
+  eventId   String
+  event     CommunityEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// GOING (vou) | MAYBE (talvez)
+  status    String
+  createdAt DateTime       @default(now())
+
+  @@id([eventId, userId])
+}
+
+/// Denúncia de tópico ou resposta da comunidade: vai para a fila de Acesso e moderação.
+model CommunityReport {
+  id           String          @id @default(cuid())
+  reporterId   String
+  reporter     User            @relation("CommunityReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  topicId      String?
+  topic        CommunityTopic? @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  replyId      String?
+  reply        CommunityReply? @relation(fields: [replyId], references: [id], onDelete: Cascade)
+  reason       String
+  createdAt    DateTime        @default(now())
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolvedBy   User?           @relation("CommunityReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  /// REMOVED (conteúdo removido) | KEPT (mantido)
+  action       String?
+
+  @@unique([reporterId, topicId, replyId])
+  @@index([resolvedAt])
 }

@@ -206,8 +206,9 @@ export async function createReply(topicId: string, userId: string, input: unknow
   const text = clean(body.body);
   if (isBlank(text)) return { ok: false, status: 400, error: "Escreva a resposta.", errors: { body: "escreva a resposta" } };
   if (text.length > LIMITS.reply) return { ok: false, status: 400, error: `Resposta com até ${LIMITS.reply.toLocaleString("pt-BR")} caracteres.`, errors: { body: `até ${LIMITS.reply.toLocaleString("pt-BR")} caracteres` } };
-  const topic = await prisma.communityTopic.findUnique({ where: { id: topicId }, select: { id: true, communityId: true, deletedAt: true } });
+  const topic = await prisma.communityTopic.findUnique({ where: { id: topicId }, select: { id: true, communityId: true, deletedAt: true, lockedAt: true } });
   if (!topic || topic.deletedAt) return { ok: false, status: 404, error: "Tópico não encontrado." };
+  if (topic.lockedAt) return { ok: false, status: 409, error: "Tópico trancado pela moderação: não aceita respostas." };
   if (!(await isMember(topic.communityId, userId))) return { ok: false, status: 403, error: "Entre na comunidade para responder." };
   const now = new Date();
   const [reply] = await prisma.$transaction([
@@ -263,8 +264,9 @@ export async function deleteReply(replyId: string, user: { id: string; canModera
 
 /** Votar na enquete: um voto por pessoa, sem troca; só quem é da comunidade. */
 export async function vote(topicId: string, userId: string, optionId: unknown): Promise<{ ok: true } | CommunityError> {
-  const topic = await prisma.communityTopic.findUnique({ where: { id: topicId }, select: { communityId: true, deletedAt: true, poll: { select: { id: true, options: { select: { id: true } } } } } });
+  const topic = await prisma.communityTopic.findUnique({ where: { id: topicId }, select: { communityId: true, deletedAt: true, lockedAt: true, poll: { select: { id: true, options: { select: { id: true } } } } } });
   if (!topic || topic.deletedAt || !topic.poll) return { ok: false, status: 404, error: "Enquete não encontrada." };
+  if (topic.lockedAt) return { ok: false, status: 409, error: "Tópico trancado pela moderação: a enquete está encerrada." };
   if (typeof optionId !== "string" || !topic.poll.options.some((o) => o.id === optionId)) return { ok: false, status: 400, error: "Escolha uma das opções." };
   if (!(await isMember(topic.communityId, userId))) return { ok: false, status: 403, error: "Entre na comunidade para votar." };
   const existing = await prisma.communityPollVote.findUnique({ where: { pollId_userId: { pollId: topic.poll.id, userId } } });
@@ -278,12 +280,12 @@ export async function vote(topicId: string, userId: string, optionId: unknown): 
 const AUTHOR = { select: { id: true, displayName: true, handle: true, avatarUrl: true } } as const;
 
 /** Tópicos da comunidade, do de atividade mais recente ao mais antigo, sem os de quem a pessoa bloqueou (ou a bloqueou). */
-export async function listTopics(communityId: string, page: number, viewerId: string | null) {
+export async function listTopics(communityId: string, page: number, viewerId: string | null, options: { pollsOnly?: boolean; take?: number } = {}) {
   const blocked = [...(await blockedUserIdSet(viewerId))];
-  const where = { communityId, deletedAt: null, ...(blocked.length ? { authorId: { notIn: blocked } } : {}) };
+  const where = { communityId, deletedAt: null, ...(blocked.length ? { authorId: { notIn: blocked } } : {}), ...(options.pollsOnly ? { poll: { isNot: null } } : {}) };
   const [total, rows] = await Promise.all([
     prisma.communityTopic.count({ where }),
-    prisma.communityTopic.findMany({ where, orderBy: [{ lastActivityAt: "desc" }, { id: "desc" }], skip: page * TOPICS_PAGE, take: TOPICS_PAGE, include: { author: AUTHOR, catalogEntry: { select: { titleRomaji: true, titleNative: true } }, poll: { select: { id: true } } } }),
+    prisma.communityTopic.findMany({ where, orderBy: [{ pinnedAt: { sort: "desc", nulls: "last" } }, { lastActivityAt: "desc" }, { id: "desc" }], skip: page * TOPICS_PAGE, take: options.take ?? TOPICS_PAGE, include: { author: AUTHOR, catalogEntry: { select: { titleRomaji: true, titleNative: true } }, poll: { select: { id: true } } } }),
   ]);
   return { total, rows };
 }
@@ -330,4 +332,252 @@ export async function communitySummary(workKey: string): Promise<{ key: string; 
     prisma.communityTopic.findMany({ where: { communityId: community.id, deletedAt: null }, orderBy: { lastActivityAt: "desc" }, take: 3, select: { id: true, title: true, replyCount: true } }),
   ]);
   return { key: scope.key, members, topics, latest };
+}
+
+// ---------- Moderação (equipe com a permissão "moderation") ----------
+
+/** Fixar/desafixar e trancar/destrancar um tópico. */
+export async function moderateTopic(topicId: string, action: "pin" | "unpin" | "lock" | "unlock"): Promise<{ ok: true } | CommunityError> {
+  const topic = await prisma.communityTopic.findUnique({ where: { id: topicId }, select: { deletedAt: true } });
+  if (!topic || topic.deletedAt) return { ok: false, status: 404, error: "Tópico não encontrado." };
+  const now = new Date();
+  const data = action === "pin" ? { pinnedAt: now } : action === "unpin" ? { pinnedAt: null } : action === "lock" ? { lockedAt: now } : { lockedAt: null };
+  await prisma.communityTopic.update({ where: { id: topicId }, data });
+  return { ok: true };
+}
+
+/** Descrição da comunidade (vazio volta à sinopse da obra principal). */
+export async function updateDescription(scope: CommunityScope, text: unknown): Promise<{ ok: true } | CommunityError> {
+  const description = clean(text);
+  if (description.length > 2000) return { ok: false, status: 400, error: "Descrição com até 2.000 caracteres." };
+  const community = (await findCommunity(scope, { create: true })) as Community;
+  await prisma.community.update({ where: { id: community.id }, data: { description: description || null } });
+  return { ok: true };
+}
+
+/** Denunciar um tópico ou uma resposta (uma denúncia aberta por pessoa e conteúdo). Vai para Acesso e moderação. */
+export async function report(userId: string, input: unknown): Promise<{ ok: true } | CommunityError> {
+  const body = (input ?? {}) as Record<string, unknown>;
+  const reason = clean(body.reason);
+  if (isBlank(reason) || reason.length > 300) return { ok: false, status: 400, error: "Diga o motivo da denúncia (até 300 caracteres).", errors: { reason: "motivo obrigatório" } };
+  const topicId = typeof body.topicId === "string" ? body.topicId : null;
+  const replyId = typeof body.replyId === "string" ? body.replyId : null;
+  if (!topicId === !replyId) return { ok: false, status: 400, error: "Denuncie um tópico ou uma resposta." };
+  const exists = topicId ? await prisma.communityTopic.findFirst({ where: { id: topicId, deletedAt: null }, select: { id: true } }) : await prisma.communityReply.findFirst({ where: { id: replyId as string, deletedAt: null }, select: { id: true } });
+  if (!exists) return { ok: false, status: 404, error: "Conteúdo não encontrado." };
+  const open = await prisma.communityReport.findFirst({ where: { reporterId: userId, topicId, replyId, resolvedAt: null }, select: { id: true } });
+  if (!open) await prisma.communityReport.create({ data: { reporterId: userId, topicId, replyId, reason } });
+  return { ok: true };
+}
+
+/** Fila de denúncias abertas, com o conteúdo e o endereço da comunidade. */
+export async function openReports() {
+  const rows = await prisma.communityReport.findMany({
+    where: { resolvedAt: null },
+    orderBy: { createdAt: "asc" },
+    take: 100,
+    include: {
+      reporter: { select: { displayName: true } },
+      topic: { select: { id: true, title: true, body: true, deletedAt: true, community: true, author: { select: { displayName: true } } } },
+      reply: { select: { id: true, body: true, deletedAt: true, topic: { select: { id: true, title: true, community: true } }, author: { select: { displayName: true } } } },
+    },
+  });
+  const out = [];
+  for (const r of rows) {
+    const community = r.topic?.community ?? r.reply?.topic.community;
+    const scope = community ? await scopeOfCommunity(community) : null;
+    const topicId = r.topic?.id ?? r.reply?.topic.id ?? null;
+    out.push({
+      id: r.id,
+      kind: r.topicId ? ("topic" as const) : ("reply" as const),
+      reason: r.reason,
+      reporter: r.reporter.displayName,
+      createdAt: r.createdAt.toISOString(),
+      author: r.topic?.author.displayName ?? r.reply?.author.displayName ?? "—",
+      title: r.topic?.title ?? r.reply?.topic.title ?? "",
+      body: r.topic?.body ?? r.reply?.body ?? "",
+      removed: Boolean(r.topic?.deletedAt ?? r.reply?.deletedAt),
+      href: scope && topicId ? `/comunidades/${scope.key}/topicos/${topicId}` : null,
+      community: scope ? scope.root.titleNative ?? scope.root.titleRomaji : "—",
+    });
+  }
+  return out;
+}
+
+/** Resolver: "remove" apaga o conteúdo (some da comunidade); "keep" mantém. Fecha todas as denúncias do mesmo conteúdo. */
+export async function resolveReport(reportId: string, action: "remove" | "keep", moderatorId: string): Promise<{ ok: true } | CommunityError> {
+  const r = await prisma.communityReport.findUnique({ where: { id: reportId }, select: { topicId: true, replyId: true, resolvedAt: true } });
+  if (!r) return { ok: false, status: 404, error: "Denúncia não encontrada." };
+  if (r.resolvedAt) return { ok: false, status: 409, error: "Denúncia já resolvida." };
+  if (action === "remove") {
+    if (r.topicId) await deleteTopic(r.topicId, { id: moderatorId, canModerate: true });
+    if (r.replyId) await deleteReply(r.replyId, { id: moderatorId, canModerate: true });
+  }
+  await prisma.communityReport.updateMany({
+    where: { resolvedAt: null, ...(r.topicId ? { topicId: r.topicId } : { replyId: r.replyId }) },
+    data: { resolvedAt: new Date(), resolvedById: moderatorId, action: action === "remove" ? "REMOVED" : "KEPT" },
+  });
+  return { ok: true };
+}
+
+// ---------- Eventos ----------
+
+export function validateEvent(input: unknown, now: Date = new Date()): { ok: true; value: { title: string; description: string; startsAt: Date; endsAt: Date | null; place: string | null } } | { ok: false; errors: Record<string, string> } {
+  const body = (input ?? {}) as Record<string, unknown>;
+  const errors: Record<string, string> = {};
+  const title = clean(body.title);
+  const description = clean(body.description);
+  const place = clean(body.place);
+  if (isBlank(title) || title.length > LIMITS.title) errors.title = `título de 1 a ${LIMITS.title} caracteres`;
+  if (isBlank(description) || description.length > 2000) errors.description = "descrição de 1 a 2.000 caracteres";
+  if (place.length > 200) errors.place = "até 200 caracteres";
+  // Instante com fuso explícito (ISO 8601), como nas datas do admin: nunca um horário solto no fuso do servidor.
+  const parse = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/.test(v) ? new Date(v) : null);
+  const startsAt = parse(body.startsAt);
+  const endsAt = body.endsAt ? parse(body.endsAt) : null;
+  if (!startsAt) errors.startsAt = "data e hora de início";
+  else if (startsAt.getTime() < now.getTime() - 60 * 60_000) errors.startsAt = "o evento precisa ser no futuro";
+  if (body.endsAt && !endsAt) errors.endsAt = "data e hora de fim inválidas";
+  else if (startsAt && endsAt && endsAt <= startsAt) errors.endsAt = "o fim precisa ser depois do início";
+  if (Object.keys(errors).length) return { ok: false, errors };
+  return { ok: true, value: { title, description, startsAt: startsAt as Date, endsAt, place: place || null } };
+}
+
+export async function createEvent(scope: CommunityScope, userId: string, input: unknown): Promise<{ ok: true; eventId: string } | CommunityError> {
+  const parsed = validateEvent(input);
+  if (!parsed.ok) return { ok: false, status: 400, error: "Corrija os campos indicados.", errors: parsed.errors };
+  const community = await findCommunity(scope);
+  if (!community || !(await isMember(community.id, userId))) return { ok: false, status: 403, error: "Entre na comunidade para criar um evento." };
+  const event = await prisma.communityEvent.create({ data: { ...parsed.value, communityId: community.id, authorId: userId }, select: { id: true } });
+  // Quem cria vai ao evento.
+  await prisma.communityEventRsvp.create({ data: { eventId: event.id, userId, status: "GOING" } });
+  return { ok: true, eventId: event.id };
+}
+
+/** Presença: "GOING" (vou), "MAYBE" (talvez) ou nada (desmarcar). Só quem é da comunidade. */
+export async function rsvp(eventId: string, userId: string, status: unknown): Promise<{ ok: true } | CommunityError> {
+  const event = await prisma.communityEvent.findUnique({ where: { id: eventId }, select: { communityId: true, deletedAt: true } });
+  if (!event || event.deletedAt) return { ok: false, status: 404, error: "Evento não encontrado." };
+  if (!(await isMember(event.communityId, userId))) return { ok: false, status: 403, error: "Entre na comunidade para confirmar presença." };
+  if (status === null) {
+    await prisma.communityEventRsvp.deleteMany({ where: { eventId, userId } });
+    return { ok: true };
+  }
+  if (status !== "GOING" && status !== "MAYBE") return { ok: false, status: 400, error: "Presença inválida." };
+  await prisma.communityEventRsvp.upsert({ where: { eventId_userId: { eventId, userId } }, create: { eventId, userId, status }, update: { status } });
+  return { ok: true };
+}
+
+export async function deleteEvent(eventId: string, user: { id: string; canModerate: boolean }): Promise<{ ok: true } | CommunityError> {
+  const event = await prisma.communityEvent.findUnique({ where: { id: eventId }, select: { authorId: true, deletedAt: true } });
+  if (!event || event.deletedAt) return { ok: false, status: 404, error: "Evento não encontrado." };
+  if (event.authorId !== user.id && !user.canModerate) return { ok: false, status: 403, error: "Só quem criou o evento (ou a moderação) pode apagá-lo." };
+  await prisma.communityEvent.update({ where: { id: eventId }, data: { deletedAt: new Date() } });
+  return { ok: true };
+}
+
+/** Eventos da comunidade: os próximos (do mais perto ao mais longe) ou os passados (do mais recente ao mais antigo). */
+export async function listEvents(communityId: string, when: "upcoming" | "past", viewerId: string | null, take = 20) {
+  const now = new Date();
+  const rows = await prisma.communityEvent.findMany({
+    where: { communityId, deletedAt: null, ...(when === "upcoming" ? { OR: [{ startsAt: { gte: now } }, { endsAt: { gte: now } }] } : { startsAt: { lt: now }, OR: [{ endsAt: null }, { endsAt: { lt: now } }] }) },
+    orderBy: { startsAt: when === "upcoming" ? "asc" : "desc" },
+    take,
+    include: { author: AUTHOR, rsvps: { select: { userId: true, status: true } } },
+  });
+  return rows.map((e) => ({
+    id: e.id,
+    title: e.title,
+    description: e.description,
+    startsAt: e.startsAt.toISOString(),
+    endsAt: e.endsAt?.toISOString() ?? null,
+    place: e.place,
+    author: e.author,
+    going: e.rsvps.filter((r) => r.status === "GOING").length,
+    maybe: e.rsvps.filter((r) => r.status === "MAYBE").length,
+    mine: (viewerId ? e.rsvps.find((r) => r.userId === viewerId)?.status : null) ?? null,
+  }));
+}
+
+// ---------- Membros, relacionadas e diretório ----------
+
+export const MEMBERS_PAGE = 30;
+
+/** Membros, dos que entraram por último aos primeiros (a grade do Orkut mostra os 9 primeiros desta lista). */
+export async function listMembers(communityId: string, page: number, take = MEMBERS_PAGE) {
+  const [total, rows] = await Promise.all([
+    prisma.communityMember.count({ where: { communityId } }),
+    prisma.communityMember.findMany({ where: { communityId }, orderBy: { joinedAt: "desc" }, skip: page * take, take, include: { user: { select: { id: true, displayName: true, handle: true, avatarUrl: true } } } }),
+  ]);
+  return { total, rows: rows.map((m) => ({ ...m.user, joinedAt: m.joinedAt.toISOString() })) };
+}
+
+export type CommunityLink = { key: string; titleRomaji: string; titleNative: string | null; titleEnglish: string | null; coverImage: string | null; members: number };
+
+/** Chave da comunidade de uma obra do catálogo (a da franquia ou, sem ela, a da obra). */
+const communityKeyOf = (w: { franchiseKey: number | null; anilistId: number | null; anidbId: number | null; kitsuId: number | null }) => (w.franchiseKey !== null ? String(w.franchiseKey) : workKeyOf(w));
+
+/** Quantos membros tem a comunidade de cada chave (as que ainda não existem contam 0). */
+async function memberCounts(keys: string[]): Promise<Map<string, number>> {
+  const franchiseKeys = keys.filter((k) => /^\d+$/.test(k)).map(Number);
+  const rows = franchiseKeys.length ? await prisma.community.findMany({ where: { franchiseKey: { in: franchiseKeys } }, select: { franchiseKey: true, _count: { select: { members: true } } } }) : [];
+  return new Map(rows.map((r) => [String(r.franchiseKey), r._count.members]));
+}
+
+/**
+ * Comunidades relacionadas (coluna da direita): outras franquias com o mesmo gênero principal da obra raiz, das mais
+ * populares para as menos. Uma por franquia.
+ */
+export async function relatedCommunities(scope: CommunityScope, limit = 6): Promise<CommunityLink[]> {
+  const root = await prisma.catalogEntry.findFirst({ where: scope.franchiseKey !== null ? { anilistId: scope.franchiseKey } : { id: scope.catalogEntryId as string }, select: { genres: true } });
+  const genre = root?.genres?.split(",").find(Boolean);
+  if (!genre) return [];
+  const own = new Set(scope.works.map((w) => w.id));
+  const candidates = await prisma.catalogEntry.findMany({
+    where: { onPlatform: true, OR: [{ genres: genre }, { genres: { startsWith: `${genre},` } }, { genres: { endsWith: `,${genre}` } }, { genres: { contains: `,${genre},` } }], NOT: scope.franchiseKey !== null ? { franchiseKey: scope.franchiseKey } : { id: { in: [...own] } } },
+    orderBy: [{ popularityRank: { sort: "asc", nulls: "last" } }, { titleRomaji: "asc" }],
+    take: limit * 4,
+    select: { franchiseKey: true, anilistId: true, anidbId: true, kitsuId: true, titleRomaji: true, titleNative: true, titleEnglish: true, coverImage: true },
+  });
+  const seen = new Set<string>();
+  const picked = candidates.filter((c) => {
+    const key = communityKeyOf(c);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, limit);
+  const counts = await memberCounts(picked.map(communityKeyOf));
+  return picked.map((c) => ({ key: communityKeyOf(c), titleRomaji: c.titleRomaji, titleNative: c.titleNative, titleEnglish: c.titleEnglish, coverImage: c.coverImage, members: counts.get(communityKeyOf(c)) ?? 0 }));
+}
+
+/** Diretório: as comunidades com mais membros (e, no empate, mais tópicos). */
+export async function popularCommunities(limit = 24): Promise<CommunityLink[]> {
+  const rows = await prisma.community.findMany({ orderBy: [{ members: { _count: "desc" } }, { topics: { _count: "desc" } }, { createdAt: "asc" }], take: limit, include: { _count: { select: { members: true } } } });
+  const out: CommunityLink[] = [];
+  for (const c of rows) {
+    if (c._count.members === 0) continue;
+    const scope = await scopeOfCommunity(c);
+    if (scope) out.push({ key: scope.key, titleRomaji: scope.root.titleRomaji, titleNative: scope.root.titleNative, titleEnglish: scope.root.titleEnglish, coverImage: scope.root.coverImage, members: c._count.members });
+  }
+  return out;
+}
+
+/** Diretório: busca pelo nome do anime (qualquer título de qualquer obra da franquia), uma comunidade por franquia. */
+export async function searchCommunities(query: string, limit = 24): Promise<CommunityLink[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const rows = await prisma.catalogEntry.findMany({
+    where: { onPlatform: true, OR: [{ titleRomaji: { contains: q, mode: "insensitive" } }, { titleEnglish: { contains: q, mode: "insensitive" } }, { titleNative: { contains: q, mode: "insensitive" } }] },
+    orderBy: [{ popularityRank: { sort: "asc", nulls: "last" } }, { titleRomaji: "asc" }],
+    take: limit * 4,
+    select: { franchiseKey: true, anilistId: true, anidbId: true, kitsuId: true, titleRomaji: true },
+  });
+  const keys = [...new Set(rows.map(communityKeyOf).filter(Boolean))].slice(0, limit);
+  const out: CommunityLink[] = [];
+  const counts = await memberCounts(keys);
+  for (const key of keys) {
+    const scope = await scopeForKey(key);
+    if (scope) out.push({ key: scope.key, titleRomaji: scope.root.titleRomaji, titleNative: scope.root.titleNative, titleEnglish: scope.root.titleEnglish, coverImage: scope.root.coverImage, members: counts.get(scope.key) ?? 0 });
+  }
+  return out;
 }

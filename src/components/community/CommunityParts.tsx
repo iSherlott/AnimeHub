@@ -1,42 +1,14 @@
 import { Box, Chip, Typography } from "@mui/material";
 import { AppLink } from "@/components/AppLink";
-import { AnimeTitle } from "@/components/AnimeTitle";
-import { CoverImage } from "@/components/CoverImage";
 import { UserAvatar } from "@/components/UserAvatar";
 import { formatRelativeTime } from "@/lib/relativeTime";
-import type { CommunityScope } from "@/lib/community";
-
-/** Cabeçalho da comunidade: capa e nome da franquia, números e a ação (Participar / Sair). */
-export function CommunityHeader({ scope, members, topics, action }: { scope: CommunityScope; members: number; topics: number; action: React.ReactNode }) {
-  const { root } = scope;
-  return (
-    <Box component="header" sx={{ display: "flex", gap: 3, alignItems: "flex-end", flexWrap: "wrap" }} data-testid="community-header">
-      <Box sx={{ position: "relative", width: 112, aspectRatio: "2 / 3", borderRadius: "10px", overflow: "hidden", bgcolor: "#171820", flexShrink: 0 }}>
-        {root.coverImage && <CoverImage src={root.coverImage} sizes="112px" />}
-      </Box>
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0, flex: "1 1 320px" }}>
-        <Typography component="p" lang="ja" sx={{ color: "primary.main", fontSize: 12, fontWeight: 700 }}>
-          コミュニティ / COMUNIDADE
-        </Typography>
-        <Typography component="h1" sx={{ fontSize: { xs: 28, md: 36 }, fontWeight: 400, lineHeight: 1.2, overflowWrap: "anywhere" }} data-testid="community-name">
-          <AnimeTitle titles={{ titleRomaji: root.titleRomaji, titleEnglish: root.titleEnglish, titleNative: root.titleNative }} />
-        </Typography>
-        <Typography sx={{ color: "text.secondary", fontSize: 15, fontVariantNumeric: "tabular-nums" }} data-testid="community-stats">
-          {members} {members === 1 ? "membro" : "membros"} · {topics} {topics === 1 ? "tópico" : "tópicos"} · {scope.works.length} {scope.works.length === 1 ? "obra" : "obras"} da franquia
-        </Typography>
-        <AppLink href={`/anime/${root.workKey}`} underline="hover" sx={{ fontSize: 14, color: "text.secondary", alignSelf: "flex-start" }}>
-          Ver a página do anime
-        </AppLink>
-      </Box>
-      {action}
-    </Box>
-  );
-}
 
 type TopicRowData = {
   id: string;
   title: string;
   isSpoiler: boolean;
+  pinnedAt?: Date | null;
+  lockedAt?: Date | null;
   replyCount: number;
   lastActivityAt: Date;
   author: { id: string; displayName: string; avatarUrl: string | null };
@@ -56,6 +28,8 @@ export function TopicRow({ topic, href, now }: { topic: TopicRowData; href: stri
           <UserAvatar id={topic.author.id} displayName={topic.author.displayName} avatarUrl={topic.author.avatarUrl} size={20} />
           <Typography sx={{ fontSize: 13, color: "text.secondary" }}>{topic.author.displayName}</Typography>
           {topic.catalogEntry && <Chip size="small" label={`Sobre: ${topic.catalogEntry.titleNative ?? topic.catalogEntry.titleRomaji}`} sx={{ height: 20, fontSize: 11 }} />}
+          {topic.pinnedAt && <Chip size="small" color="primary" label="Fixado" sx={{ height: 20, fontSize: 11 }} data-testid={`topic-pinned-${topic.id}`} />}
+          {topic.lockedAt && <Chip size="small" label="Trancado" sx={{ height: 20, fontSize: 11 }} data-testid={`topic-locked-${topic.id}`} />}
           {topic.poll && <Chip size="small" label="Enquete" sx={{ height: 20, fontSize: 11 }} />}
           {topic.isSpoiler && <Chip size="small" color="warning" label="Spoiler" sx={{ height: 20, fontSize: 11 }} />}
         </Box>
@@ -91,4 +65,26 @@ export function Pager({ basePath, page, pages }: { basePath: string; page: numbe
 export function workLabel(w: { titleRomaji: string; titleNative: string | null; seasonYear: number | null; kind: string | null }): string {
   const kind = w.kind === "MOVIE" ? "filme" : w.kind === "OVA" ? "OVA" : w.kind === "ODA" ? "ODA" : null;
   return [w.titleNative ?? w.titleRomaji, [kind, w.seasonYear].filter(Boolean).join(", ")].filter(Boolean).join(" · ");
+}
+
+/** Caixa do centro da comunidade (como os blocos do Orkut): título, "ver todos" e o conteúdo. */
+export function Panel({ title, more, children, testId, action }: { title: string; more?: { href: string; label: string }; children: React.ReactNode; testId?: string; action?: React.ReactNode }) {
+  return (
+    <Box component="section" data-testid={testId} sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2, border: 1, borderColor: "divider", borderRadius: "12px", bgcolor: "background.paper" }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+        <Typography component="h2" sx={{ fontSize: 18, fontWeight: 700 }}>
+          {title}
+        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          {action}
+          {more && (
+            <AppLink href={more.href} underline="hover" sx={{ fontSize: 13 }}>
+              {more.label}
+            </AppLink>
+          )}
+        </Box>
+      </Box>
+      {children}
+    </Box>
+  );
 }

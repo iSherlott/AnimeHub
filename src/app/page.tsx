@@ -22,14 +22,9 @@ export default function Home() {
           title="Feed"
           subtitle="Notícias, impressões e hashtags do que está passando."
           action={
-            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-              <LinkButton href="/comunidades" variant="outlined" data-testid="home-my-communities">
-                Minhas comunidades
-              </LinkButton>
-              <LinkButton href="/publicar" variant="contained" color="primary">
-                + Nova publicação
-              </LinkButton>
-            </Box>
+            <LinkButton href="/publicar" variant="contained" color="primary">
+              + Nova publicação
+            </LinkButton>
           }
         />
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", lg: "minmax(0,1fr) 320px" }, columnGap: 5, rowGap: 2, alignItems: "start" }}>
