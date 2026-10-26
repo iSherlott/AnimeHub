@@ -7,6 +7,7 @@ import NextLink from "next/link";
 import { useSynopsis } from "@/components/SynopsisText";
 import { Box, Chip, Dialog, IconButton, Link as MuiLink, Skeleton, Stack, Typography } from "@mui/material";
 import type { DiscoverItem } from "@/lib/discoverItem";
+import { workHref } from "@/lib/workHref";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -148,9 +149,9 @@ export function AnimeInfoModal({
         </Typography>
       )}
 
-      {item.anilistId ? (
+      {workHref(item) ? (
         <Box sx={{ px: 3, pb: 3 }}>
-          <MuiLink component={NextLink} href={`/anime/${item.anilistId}`} sx={{ fontWeight: 700 }}>
+          <MuiLink component={NextLink} href={workHref(item) as string} sx={{ fontWeight: 700 }}>
             Ver página da obra
           </MuiLink>
         </Box>

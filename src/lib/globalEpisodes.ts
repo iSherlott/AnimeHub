@@ -31,6 +31,11 @@ export function loadGlobalEpisodes(anilistId: number): Promise<GlobalEpisodeRow[
   return prisma.airingScheduleEntry.findMany({ where: { anilistId }, orderBy: { episode: "asc" }, select: GLOBAL_EPISODE_SELECT });
 }
 
+/** Episódios de uma obra pelo catálogo (obras sem AniList ID: só do AniDB ou da Kitsu). */
+export function loadCatalogEpisodes(catalogEntryId: string): Promise<GlobalEpisodeRow[]> {
+  return prisma.airingScheduleEntry.findMany({ where: { catalogEntryId }, orderBy: { episode: "asc" }, select: GLOBAL_EPISODE_SELECT });
+}
+
 /** Já tem conteúdo de episódio (não só data de agenda)? */
 export function hasEpisodeContent(rows: ReadonlyArray<GlobalEpisodeRow>): boolean {
   return rows.some((r) => r.episodeTitle || r.episodeTitleEn || r.episodeTitleJa || r.synopsis || r.thumbnail);

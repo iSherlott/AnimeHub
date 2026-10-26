@@ -13,6 +13,7 @@ import { KINDS, KIND_LABELS } from "@/lib/curation/kind";
 import { activeGenreKeys } from "@/lib/genres";
 import { ADULT_GENRE } from "@/lib/contentPolicy";
 import { loadWorkDetail } from "@/lib/workDetail";
+import { workHref } from "@/lib/workHref";
 import { prisma } from "@/lib/prisma";
 import { EXTRA_ORDER, toExtraView } from "@/lib/episodeExtras";
 import { EXTRA_FIELD_LABELS } from "@/lib/extraEdit";
@@ -82,7 +83,7 @@ export default async function AdminWorkDetailPage({ params, searchParams }: { pa
         subtitle={[entry.titleNative ? entry.titleRomaji : null, entry.titleEnglish].filter(Boolean).join(" · ") || undefined}
         action={
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {entry.anilistId !== null && entry.onPlatform && <AdminButtonLink href={`/anime/${entry.anilistId}`}>Página pública</AdminButtonLink>}
+            {entry.onPlatform && workHref(entry) && <AdminButtonLink href={workHref(entry) as string}>Página pública</AdminButtonLink>}
             <WorkVisibilityControl id={entry.id} onPlatform={entry.onPlatform} />
           </Box>
         }

@@ -52,12 +52,19 @@ import { WorkExtras } from "@/components/WorkExtras";
 import { loadExtras } from "@/lib/episodeExtras";
 import { WorkDiscussions, WorkQuizEntry, WorkRelated } from "@/components/WorkSections";
 import { PublicWork } from "@/app/anime/[id]/PublicWork";
+import { CatalogWork, findCatalogWork } from "@/app/anime/[id]/CatalogWork";
+import { CATALOG_ONLY_SLUG } from "@/lib/workHref";
 
 /** Um id só de dígitos é o da AniList (obra de quem ainda não a acompanha); o resto é o id da sua própria lista. */
 const ANILIST_ID = /^\d{1,9}$/;
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
+  const slug = CATALOG_ONLY_SLUG.exec(id);
+  if (slug) {
+    const entry = await findCatalogWork(slug[1] as "anidb" | "kitsu", Number(slug[2]));
+    return { title: entry ? `${entry.titleRomaji} · Anime Hub` : "Anime Hub" };
+  }
   if (!ANILIST_ID.test(id)) return { title: "Anime Hub" };
   const production = await prisma.production.findUnique({ where: { anilistId: Number(id) }, select: { titleRomaji: true } });
   return { title: production ? `${production.titleRomaji} · Anime Hub` : "Anime Hub" };
@@ -70,6 +77,9 @@ export default async function AnimeDetailPage({
 }) {
   const { id } = await params;
   if (ANILIST_ID.test(id) && Number(id) > 0) return <PublicWork anilistId={Number(id)} />;
+  // Obra sem AniList ID (só do AniDB ou da Kitsu): página pelo catálogo.
+  const slug = CATALOG_ONLY_SLUG.exec(id);
+  if (slug && Number(slug[2]) > 0) return <CatalogWork source={slug[1] as "anidb" | "kitsu"} sourceId={Number(slug[2])} />;
 
   const user = await getCurrentUser();
   if (!user) notFound();

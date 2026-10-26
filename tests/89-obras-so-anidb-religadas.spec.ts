@@ -127,7 +127,7 @@ test.describe.serial("Obras só do AniDB religadas à AniList", () => {
       await page.getByPlaceholder("Buscar anime...").fill("");
       await page.getByLabel("Gênero").selectOption(GENRE);
       const lonely = page.getByTestId(`explore-card-anidb-${ALONE_ANIDB}`);
-      await expect(lonely).toContainText("Finalizado"); // sem página, mas também sem "Data não definida"
+      await expect(lonely).toContainText("Finalizado"); // ainda não dá para acompanhar, mas também sem "Data não definida"
       await expect(lonely).not.toContainText("Data não definida");
       await expect(lonely.getByRole("button", { name: "+ Acompanhar" })).toBeDisabled();
 

@@ -20,6 +20,7 @@ import { sanitizeFuriganaHtml } from "@/lib/plainText";
 import { useReading } from "@/lib/useReadings";
 import { formatTimeInZone, weekdayName } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
+import { workHref } from "@/lib/workHref";
 
 export const ELEVATED_BUTTON_SX = {
   bgcolor: "#171820",
@@ -140,7 +141,9 @@ export function ExploreCard({ item }: { item: DiscoverItem }) {
   const ownedId = item.inMyList && item.animeId ? item.animeId : followedId;
   const owned = Boolean(ownedId);
   // Quem já acompanha abre o detalhe pessoal; os demais, o detalhe público.
-  const detailHref = ownedId ? `/anime/${ownedId}` : item.anilistId !== null ? `/anime/${item.anilistId}` : null;
+  const detailHref = ownedId ? `/anime/${ownedId}` : workHref(item);
+  // Acompanhar depende do AniList ID: obra só do AniDB/Kitsu tem página, mas ainda não entra na lista.
+  const followable = item.anilistId !== null;
 
   async function follow() {
     if (item.anilistId === null) return;
@@ -200,13 +203,13 @@ export function ExploreCard({ item }: { item: DiscoverItem }) {
         <StarIcon />
       </IconButton>
     );
-  } else if (detailHref && user) {
+  } else if (followable && user) {
     star = (
       <IconButton onClick={() => void follow()} disabled={following} aria-label="+ Acompanhar" title="Acompanhar" data-testid={`explore-follow-${item.key}`} sx={starSx}>
         <StarBorderIcon />
       </IconButton>
     );
-  } else if (detailHref) {
+  } else if (followable && detailHref) {
     star = (
       <IconButton component={NextLink} href={loginHref(detailHref)} aria-label="+ Acompanhar" title="Entrar para acompanhar" sx={starSx}>
         <StarBorderIcon />
@@ -214,7 +217,7 @@ export function ExploreCard({ item }: { item: DiscoverItem }) {
     );
   } else {
     star = (
-      <IconButton disabled aria-label="+ Acompanhar" title="Esta obra ainda não tem página pública" sx={starSx}>
+      <IconButton disabled aria-label="+ Acompanhar" title="Esta obra ainda não pode ser acompanhada" sx={starSx}>
         <StarBorderIcon />
       </IconButton>
     );

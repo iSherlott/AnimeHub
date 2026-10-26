@@ -142,7 +142,7 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
   - Ao ligar a obra à AniList, os episódios se juntam sem colidir no número.
 - **Banco.** `20261031100000_anidb_only_episodes`.
 - **Testes.** Spec 111, com AniDB e AniList falsos.
-- **Limitação.** Essas obras continuam sem página pública, então os episódios aparecem só no admin e passam a valer na página quando a obra é ligada à AniList.
+- **Limitação (resolvida depois).** Essas obras ficavam sem página pública; os episódios apareciam só no admin.
 
 ## Depois: extras do AniDB (especiais, créditos, trailers)
 
@@ -153,3 +153,13 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
   - Não contam como lançados, não entram no calendário, no sino nem no "próximo episódio". Ligar a obra à AniList leva os extras.
 - **Banco.** `20261101100000_episode_extras` (só cria a tabela).
 - **Testes.** Spec 112, com AniDB e AniList falsos; testes de unidade em `src/lib/episodeExtras.test.ts`.
+
+## Depois: página das obras sem AniList ID
+
+- **O que mudou.** As obras só do AniDB (ou só da Kitsu) que estão na plataforma ganharam página pública em `/anime/anidb-<id>` (ou `/anime/kitsu-<id>`).
+  - A página traz ficha, sinopse, episódios (só o dia) e extras, e avisa que ainda não dá para acompanhar nem comentar.
+  - O cartão do Explorar, a janela de informações e o botão "Página pública" do admin levam até ela.
+  - Quando a obra é ligada à AniList, o endereço redireciona para a página da AniList. Obra fora da plataforma: 404.
+- **Banco.** Nenhuma migração.
+- **Testes.** Spec 113.
+- **Limitação.** Acompanhar, comunidade, quiz e relacionadas continuam dependendo do AniList ID.

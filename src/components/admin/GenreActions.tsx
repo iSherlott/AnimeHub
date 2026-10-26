@@ -59,7 +59,15 @@ export function GenreActions({ genreKey, label, description, aliases, adult, wor
     }
   }
 
-  if (!editable) return <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Gênero mesclado ou excluído: só consulta.</Typography>;
+  const message = msg && <Typography role="status" data-testid="genre-message" sx={{ fontSize: 14, color: msg.tone === "ok" ? "success.main" : "error.main" }}>{msg.text}</Typography>;
+  // Depois de mesclar ou excluir, a página recarrega já sem edição: o aviso do que foi feito continua visível.
+  if (!editable)
+    return (
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+        {message}
+        <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Gênero mesclado ou excluído: só consulta.</Typography>
+      </Box>
+    );
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
@@ -125,7 +133,7 @@ export function GenreActions({ genreKey, label, description, aliases, adult, wor
           </Button>
         </Box>
       </Box>
-      {msg && <Typography role="status" data-testid="genre-message" sx={{ fontSize: 14, color: msg.tone === "ok" ? "success.main" : "error.main" }}>{msg.text}</Typography>}
+      {message}
     </Box>
   );
 }

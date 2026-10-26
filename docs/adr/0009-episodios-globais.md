@@ -45,11 +45,15 @@ acompanhamento é por obra" era violada pelo "Adiar" ("parei no EP02", "2 episó
   `status: "ACTIVE"`.
 - Obras sem AniList ID (só do AniDB) recebem episódios do AniDB desde 31/10/2026: `anilistId` ficou opcional e a
   identidade do episódio passou a ser também (obra do catálogo, número) — índice único `(catalogEntryId, episode)`.
-  Vêm com título e dia (sem horário), não entram no calendário nem no sino (não têm página), e quando a obra é ligada à
+  Vêm com título e dia (sem horário), não entram no calendário nem no sino (não há quem acompanhe), e quando a obra é ligada à
   AniList (`mergeScheduleInto`) o episódio da AniList fica e recebe o que faltava; os demais ganham o AniList ID.
   Busca por obra (detalhe da obra) ou em lote (Admin → Episódios; job ANIDB_EPISODES, uma obra a cada
   `ANIDB_REQUEST_GAP_MS`, padrão 4 s; cada obra no máximo uma vez a cada 30 dias; para no primeiro sinal de bloqueio).
 - Especiais sem numeração regular não entram na sequência; ficam como obras próprias (OVA/ODA/filme) na linha do tempo.
+- Página pública das obras sem AniList ID: `/anime/anidb-<id>` e `/anime/kitsu-<id>` (o mesmo identificador da chave do
+  cartão no Explorar; `src/lib/workHref.ts`). Mostra ficha, sinopse, episódios e extras; acompanhar, comentar, quiz e
+  relacionadas dependem do AniList ID e não aparecem. Só abre o que está na plataforma; ligada à AniList, redireciona
+  (308) para `/anime/<anilistId>`, porque o `anidbId` passa para a obra da AniList.
 - Extras do AniDB (desde 01/11/2026): os códigos `S` (especial), `C` (abertura/encerramento), `T` (trailer/promocional),
   `P` (paródia) e `O` (outro) viram linhas de `EpisodeExtra`, identidade (obra do catálogo, código). Ficam numa seção
   própria da página da obra e do detalhe no admin: não contam como lançados, não entram no calendário nem no sino e não

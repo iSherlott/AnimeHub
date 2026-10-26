@@ -23,12 +23,14 @@ export function WorkExtras({ extras }: { extras: ExtraView[] }) {
   return (
     <Box component="section" aria-labelledby="work-extras-heading" data-testid="work-extras" sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
-        <Typography id="work-extras-heading" component="h2" sx={{ fontSize: 22, lineHeight: 1.5 }}>
-          Extras
-        </Typography>
-        <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
-          {[...groups.entries()].map(([kind, list]) => `${EXTRA_KINDS[kind]}: ${list.length}`).join(" · ")}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "baseline", gap: 2, flexWrap: "wrap", minWidth: 0 }}>
+          <Typography id="work-extras-heading" component="h2" sx={{ fontSize: 22, lineHeight: 1.5 }}>
+            Extras
+          </Typography>
+          <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
+            {[...groups.entries()].map(([kind, list]) => `${EXTRA_KINDS[kind]}: ${list.length}`).join(" · ")}
+          </Typography>
+        </Box>
         <Button size="small" onClick={() => setOpen((v) => !v)} aria-expanded={open} data-testid="work-extras-toggle">
           {open ? "Minimizar extras" : "Mostrar extras"}
         </Button>
