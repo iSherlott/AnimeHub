@@ -15,7 +15,6 @@ import { AnimeDescription } from "@/components/AnimeDescription";
 import { RefreshDataButton } from "@/components/RefreshDataButton";
 import { OtherTitles } from "@/components/OtherTitles";
 import { FavoriteToggle } from "@/components/FavoriteToggle";
-import { CommentSection } from "@/components/CommentSection";
 import { CastSection } from "@/components/CastSection";
 import { TrailerEmbed } from "@/components/TrailerEmbed";
 import { WatchLinks } from "@/components/WatchLinks";
@@ -50,7 +49,7 @@ import { FranchiseNav } from "@/components/FranchiseNav";
 import { WorkHero } from "@/components/WorkHero";
 import { WorkExtras } from "@/components/WorkExtras";
 import { loadExtras } from "@/lib/episodeExtras";
-import { WorkCommunityCard, WorkDiscussions, WorkQuizEntry, WorkRelated } from "@/components/WorkSections";
+import { WorkCommunityCard, WorkQuizEntry, WorkRelated } from "@/components/WorkSections";
 import { PublicWork } from "@/app/anime/[id]/PublicWork";
 import { CatalogWork, PublicCatalogWork, findCatalogWork } from "@/app/anime/[id]/CatalogWork";
 import { CATALOG_ONLY_SLUG } from "@/lib/workHref";
@@ -333,7 +332,6 @@ export default async function AnimeDetailPage({
           </WorkCard>
 
           <WorkQuizEntry anilistId={anime.anilistId} userId={user.id} />
-          <WorkCommunityCard workKey={String(anime.anilistId)} />
 
           {(awards.length > 0 || resources) && (
             <WorkCard title="Dados da AniDB" testId="work-card-anidb">
@@ -374,21 +372,11 @@ export default async function AnimeDetailPage({
         </Box>
       </Box>
 
-      <Box id="comunidade" sx={{ mt: 6, px: { xs: 3, sm: 5 }, display: "flex", flexDirection: "column", gap: 5, scrollMarginTop: 150 }}>
-        <Box component="section" aria-labelledby="comentarios-heading" sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <Typography id="comentarios-heading" component="h2" sx={headingSx}>
-            Comentários
-          </Typography>
-          <CommentSection animeId={anime.id} accentColor={anime.accentColor} />
+      <Box sx={{ mt: 6, px: { xs: 3, sm: 5 }, display: "flex", flexDirection: "column", gap: 5 }}>
+        {/* A conversa sobre a obra fica na comunidade da franquia (a aba "Comunidade" leva a este cartão, com o link). */}
+        <Box id="comunidade" sx={{ scrollMarginTop: 150, maxWidth: 520 }}>
+          <WorkCommunityCard workKey={String(anime.anilistId)} />
         </Box>
-        <WorkDiscussions
-          anilistId={anime.anilistId}
-          titleNative={anime.titleNative}
-          titleRomaji={anime.titleRomaji}
-          titleEnglish={anime.titleEnglish}
-          seasonNumber={productionRow?.seasonNumber ?? anime.seasonNumber}
-          loggedIn
-        />
         <WorkRelated anilistId={anime.anilistId} franchiseId={productionRow?.franchiseId ?? null} relationsJson={productionRow?.relationsJson ?? null} seasonIds={franchiseSeasons.map((x) => x.anilistId)} story={story.relations} />
       </Box>
 

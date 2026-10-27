@@ -113,38 +113,24 @@ test.describe("Publicar, Recentes e discussões", () => {
   });
 
   test.describe("detalhe público da obra", () => {
-    test("visitante lê as discussões e vê 'Entre para publicar'", async ({ browser, request }) => {
-      const r = await request.post("/api/posts", { data: { body: "Discussão visível ao visitante", anilistId: PROD_ID } });
+    test("a página da obra não lista as discussões: a conversa fica na comunidade", async ({ browser, request }) => {
+      const r = await request.post("/api/posts", { data: { body: "Discussão sobre a obra", anilistId: PROD_ID } });
       created.push((await r.json()).post.id);
 
       const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
       const page = await context.newPage();
       await page.goto(`/obra/${PROD_ID}`);
-      const section = page.getByTestId("discussions");
-      await expect(section).toContainText("Discussão visível ao visitante");
-      const publishAbout = section.getByTestId("publish-about");
-      await expect(publishAbout).toContainText("Publicar sobre este anime");
-      // Visitante é levado ao login, com o destino (o editor) preservado.
-      await publishAbout.click();
-      await expect(page).toHaveURL(/\/login\?next=%2Fpublicar/);
+      await expect(page.getByTestId("discussions")).toHaveCount(0);
+      await expect(page.getByTestId("publish-about")).toHaveCount(0);
+      await expect(page.locator("#comunidade")).toHaveCount(1);
+      // A publicação continua ligada à obra (o Feed filtra por ela).
+      const feed = await (await request.get(`/api/posts?tab=recent&anilistId=${PROD_ID}&limit=50`)).json();
+      expect((feed.posts as Array<{ body: string }>).some((p) => p.body === "Discussão sobre a obra")).toBe(true);
       await context.close();
     });
 
-    test("sem discussões mostra o convite exato", async ({ page, request }) => {
-      // Garante lista vazia para esta obra.
-      const feed = await (await request.get(`/api/posts?tab=recent&anilistId=${PROD_ID}&limit=50`)).json();
-      for (const p of feed.posts as Array<{ id: string; isMine: boolean }>) if (p.isMine) await request.delete(`/api/posts/${p.id}`);
-      await page.route("**/api/posts?*anilistId=*", async (route) => {
-        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ posts: [], nextCursor: null }) });
-      });
-      await page.goto(`/obra/${PROD_ID}`);
-      await expect(page.getByText("Esta obra ainda não tem discussões. Seja a primeira pessoa a compartilhar uma impressão.")).toBeVisible();
-    });
-
-    test("'Publicar sobre este anime': produção pré-selecionada, rascunho, descarte e publicação", async ({ page }) => {
-      await page.goto(`/obra/${PROD_ID}`);
-      await page.getByTestId("publish-about").click();
-      await expect(page).toHaveURL(new RegExp(`/publicar\\?anilistId=${PROD_ID}`));
+    test("publicar sobre a obra pelo editor: produção pré-selecionada, rascunho, descarte e publicação", async ({ page }) => {
+      await page.goto(`/publicar?anilistId=${PROD_ID}`);
 
       // Produção pré-selecionada a partir do detalhe, removível.
       await expect(page.getByTestId("related-anime-chip")).toContainText("Selecionado a partir do detalhe");
@@ -161,8 +147,6 @@ test.describe("Publicar, Recentes e discussões", () => {
       await field.fill(`Publicado pelo detalhe ${Date.now()}`);
       await page.getByTestId("publish-send").click();
       await expect(page).toHaveURL(/\/publicacao\//);
-      await page.goto(`/obra/${PROD_ID}`);
-      await expect(page.getByTestId("discussions")).toContainText("Publicado pelo detalhe");
 
       const feed = await (await page.request.get(`/api/posts?tab=recent&anilistId=${PROD_ID}&limit=5`)).json();
       const mine = (feed.posts as Array<{ id: string; body: string; anilistId: number }>).find((p) => p.body.startsWith("Publicado pelo detalhe"));

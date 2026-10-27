@@ -146,7 +146,8 @@ test.describe.serial("Explorar — fileiras, temporadas e cartões", () => {
       await page.goto("/discover");
       const links = page.getByRole("navigation", { name: "Temporadas" }).getByRole("link");
       await expect(links).toHaveCount(4);
-      const expected = recentSeasons(new Date(), 4).map((s) => ({ WINTER: "Winter", SPRING: "Spring", SUMMER: "Summer", FALL: "Autumn" })[s.season]);
+      // O nome da temporada para quem usa o site (o formato técnico fica na URL).
+      const expected = recentSeasons(new Date(), 4).map((s) => ({ WINTER: "Inverno", SPRING: "Primavera", SUMMER: "Verão", FALL: "Outono" })[s.season]);
       expect(await links.allTextContents()).toEqual(expected);
     });
 

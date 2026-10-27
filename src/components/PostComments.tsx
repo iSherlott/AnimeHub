@@ -37,8 +37,8 @@ type CommentItem = {
   isMine: boolean;
 };
 
-// Mesmo limite do backend (src/app/api/posts/[postId]/comments/route.ts) —
-// mesmo padrão de eco no cliente já usado em CommentSection.tsx.
+// Mesmo limite do backend (src/app/api/posts/[postId]/comments/route.ts),
+// repetido no cliente para o contador e o campo.
 const MAX_BODY_LENGTH = 2000;
 // Respostas que aparecem de cada vez (o resto vem ao rolar a conversa).
 const COMMENT_WINDOW = 20;
@@ -98,8 +98,7 @@ export function PostComments({
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Mesma guarda síncrona contra clique duplo/triplo já usada em
-  // CommentSection.tsx/FeedView.tsx — disabled={posting} só reflete no
-  // próximo render.
+  // FeedView.tsx — disabled={posting} só reflete no próximo render.
   const postingRef = useRef(false);
 
   // Rolagem infinita: conversas longas aparecem aos poucos, na ordem da conversa.

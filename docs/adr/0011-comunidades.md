@@ -106,3 +106,12 @@ O menu principal passou a ter **Feed** (as publicações, antes "Comunidade") e 
 - **Remover.** Apaga o evento e fecha todas as denúncias dele.
 - **Banco.** Coluna `CommunityReport.eventId`, na migração `20261116100000_reports_events_albums`.
 - **Testes.** Spec 132.
+
+## Revisão de 27/10/2026 — a comunidade substitui os comentários da obra
+
+- **A página da obra tem só o caminho para a comunidade.** "Comentários" (de quem acompanha) e "Discussões sobre esta
+  obra" (publicações do Feed) saíram. A aba "Comunidade" leva ao cartão da comunidade da franquia (números, tópicos mais
+  ativos e "Abrir a comunidade").
+- **Dados preservados.** Nada foi apagado: os comentários continuam no banco e na API, e as publicações sobre a obra
+  continuam no Feed.
+- **Testes.** Spec 133; os specs 18, 21 (removido), 42, 55, 81 e 116 foram ajustados.

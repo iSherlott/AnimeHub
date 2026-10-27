@@ -25,9 +25,8 @@ import { useTimeZone } from "@/lib/useTimeZone";
 import { resolveTitleTextLenient, useTitlePreference } from "@/lib/titlePreference";
 import type { PostDTO } from "@/lib/postDto";
 
-// Ponto de corte do "ver mais" pra legenda de post com imagem — mesmo
-// padrão já usado em CommentSection.tsx (lote 1 do Epic 27) pra
-// comentários longos.
+// Ponto de corte do "ver mais" pra legenda de post com imagem (lote 1 do
+// Epic 27, mesmo corte dos comentários longos).
 const LONG_CAPTION_THRESHOLD = 220;
 
 /** Ação textual do Figma (ReplyAction/ShareAction): ícone de 16 px + texto de 12 px, alvo de 44 px. */

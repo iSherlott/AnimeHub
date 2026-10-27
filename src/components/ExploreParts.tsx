@@ -5,7 +5,7 @@ import NextLink from "next/link";
 import { Box, Button, Skeleton, Typography } from "@mui/material";
 import { ELEVATED_BUTTON_SX } from "@/components/ExploreCard";
 import { EmptyState } from "@/components/StatePanels";
-import { recentSeasons, seasonLabel, seasonSlug, type SeasonRef } from "@/lib/exploreGroups";
+import { recentSeasons, SEASON_COPY, seasonSlug, type SeasonRef } from "@/lib/exploreGroups";
 
 /** Grade de cartões do Figma: 4 colunas com 24 px de respiro (2 no celular, 3 no tablet). */
 export function CardGrid({ children, label }: { children: ReactNode; label?: string }) {
@@ -98,7 +98,7 @@ export function SeasonChips({ exclude }: { exclude?: SeasonRef }) {
       )}
       {seasons.map((s) => (
         <Button key={seasonSlug(s)} component={NextLink} href={`/temporada/${seasonSlug(s)}`} sx={ELEVATED_BUTTON_SX}>
-          {seasonLabel(s).replace(/\d{4}$/, "")}
+          {SEASON_COPY[s.season].labelPt}
         </Button>
       ))}
     </Box>

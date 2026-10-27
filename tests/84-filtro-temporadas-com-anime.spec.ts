@@ -54,10 +54,10 @@ test.describe("Filtro de temporada só com o que tem anime", () => {
 
     await expect(filter).toHaveValue("summer2031");
     const labels = await filter.locator("option").allTextContents();
-    expect(labels).toContain("Winter2031");
-    expect(labels).toContain("Summer2031");
-    expect(labels).not.toContain("Spring2031");
-    expect(labels).not.toContain("Autumn2033");
+    expect(labels).toContain("Inverno 2031");
+    expect(labels).toContain("Verão 2031");
+    expect(labels).not.toContain("Primavera 2031");
+    expect(labels).not.toContain("Outono 2033");
 
     await filter.selectOption("winter2031");
     await expect(page).toHaveURL(/\/temporada\/winter2031$/);

@@ -23,7 +23,7 @@ import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
 import { usePagedList } from "@/lib/usePagedList";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { DiscoverItem } from "@/lib/discoverItem";
-import { currentSeasonRef, scheduleOf, seasonLabel, seasonSlug } from "@/lib/exploreGroups";
+import { currentSeasonRef, scheduleOf, seasonDisplayName, seasonSlug } from "@/lib/exploreGroups";
 import { readRecentWorks } from "@/lib/recentWorks";
 import { loginHref } from "@/lib/safeRedirect";
 import { CATALOG_STATUS_LABELS, SEASON_LABELS } from "@/lib/types";
@@ -355,7 +355,7 @@ function DiscoverPageContent() {
   }
 
   const season = currentSeasonRef();
-  const seasonName = seasonLabel(season);
+  const seasonName = seasonDisplayName(season);
   const heroArt = todayItems.find((i) => i.bannerImage)?.bannerImage ?? storyItems.find((i) => i.bannerImage)?.bannerImage ?? todayItems[0]?.coverImage ?? null;
 
   const todayLabel = (() => {

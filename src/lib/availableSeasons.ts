@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NOT_BLOCKED_GENRE } from "@/lib/contentPolicy";
-import { seasonLabel, seasonSlug, type SeasonName, type SeasonRef } from "@/lib/exploreGroups";
+import { seasonDisplayName, seasonSlug, type SeasonName, type SeasonRef } from "@/lib/exploreGroups";
 
 /** Uma temporada que tem obras na plataforma. */
 export type AvailableSeason = SeasonRef & { slug: string; label: string; count: number };
@@ -20,7 +20,7 @@ export async function loadAvailableSeasons(): Promise<AvailableSeason[]> {
   return rows
     .map((r) => {
       const ref: SeasonRef = { season: r.season as SeasonName, year: r.seasonYear as number };
-      return { ...ref, slug: seasonSlug(ref), label: seasonLabel(ref), count: r._count._all };
+      return { ...ref, slug: seasonSlug(ref), label: seasonDisplayName(ref), count: r._count._all };
     })
     .sort((a, b) => b.year - a.year || ORDER.indexOf(b.season) - ORDER.indexOf(a.season));
 }

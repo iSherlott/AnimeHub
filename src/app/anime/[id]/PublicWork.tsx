@@ -31,7 +31,7 @@ import { WatchLinks } from "@/components/WatchLinks";
 import { WorkHero } from "@/components/WorkHero";
 import { WorkExtras } from "@/components/WorkExtras";
 import { loadExtras } from "@/lib/episodeExtras";
-import { WorkCommunityCard, WorkDiscussions, WorkQuizEntry, WorkRelated } from "@/components/WorkSections";
+import { WorkCommunityCard, WorkQuizEntry, WorkRelated } from "@/components/WorkSections";
 
 /**
  * Detalhe de uma obra para quem ainda não a acompanha (e para visitantes): o MESMO desenho da página pessoal
@@ -215,19 +215,14 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
           </WorkCard>
 
           <WorkQuizEntry anilistId={anilistId} userId={user?.id ?? null} />
-          <WorkCommunityCard workKey={String(anilistId)} />
         </Box>
       </Box>
 
-      <Box id="comunidade" sx={{ mt: 6, px: { xs: 3, sm: 5 }, display: "flex", flexDirection: "column", gap: 5, scrollMarginTop: 150 }}>
-        <WorkDiscussions
-          anilistId={anilistId}
-          titleNative={production.titleNative}
-          titleRomaji={production.titleRomaji}
-          titleEnglish={production.titleEnglish}
-          seasonNumber={production.seasonNumber}
-          loggedIn={Boolean(user)}
-        />
+      <Box sx={{ mt: 6, px: { xs: 3, sm: 5 }, display: "flex", flexDirection: "column", gap: 5 }}>
+        {/* A conversa sobre a obra fica na comunidade da franquia (a aba "Comunidade" leva a este cartão, com o link). */}
+        <Box id="comunidade" sx={{ scrollMarginTop: 150, maxWidth: 520 }}>
+          <WorkCommunityCard workKey={String(anilistId)} />
+        </Box>
         <WorkRelated anilistId={anilistId} franchiseId={production.franchiseId} relationsJson={production.relationsJson} seasonIds={seasons.map((s) => s.anilistId)} story={story.relations} />
       </Box>
     </div>

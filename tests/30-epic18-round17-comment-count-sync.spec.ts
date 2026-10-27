@@ -7,7 +7,6 @@ import { TEST_ADMIN_EMAIL, TEST_USER_EMAIL } from "./test-auth";
 const ANILIST_ID = 901700;
 
 test.describe("Epic 18 — 17ª rodada de auditoria de UX/UI — badge de comentário sincroniza com a contagem real", () => {
-  let animeId: string;
   let postId: string;
 
   test.beforeAll(async () => {
@@ -18,7 +17,6 @@ test.describe("Epic 18 — 17ª rodada de auditoria de UX/UI — badge de coment
       create: { userId: user.id, anilistId: ANILIST_ID, titleRomaji: "Anime Round17 Comment Count Test", genres: "" },
       update: {},
     });
-    animeId = anime.id;
     const post = await prisma.post.create({
       data: {
         userId: user.id,

@@ -59,11 +59,11 @@ test.describe.serial("Obra unificada em /anime e temporadas juntas", () => {
     expect(res.headers().location).toContain(`/anime/${S2}`);
   });
 
-  test("a obra de quem ainda não acompanha tem o mesmo desenho: capa, temporadas, onde assistir, discussões", async ({ page }) => {
+  test("a obra de quem ainda não acompanha tem o mesmo desenho: capa, temporadas, onde assistir, comunidade", async ({ page }) => {
     await page.goto(`/anime/${S2}`);
     await expect(page.getByTestId("follow-button")).toBeVisible();
     await expect(page.getByTestId("my-watch-source-hint")).toBeVisible();
-    await expect(page.getByTestId("discussions")).toBeVisible();
+    await expect(page.locator("#comunidade")).toHaveCount(1);
     await expect(page.getByTestId("franchise-seasons")).toBeVisible();
   });
 
@@ -100,7 +100,7 @@ test.describe.serial("Obra unificada em /anime e temporadas juntas", () => {
       await expect(page).toHaveURL(new RegExp(`/anime/${mine.id}$`));
       await expect(page.getByTestId("anime-title")).toBeVisible();
       await expect(page.getByTestId("franchise-seasons").getByRole("tab")).toHaveCount(2);
-      await expect(page.getByTestId("discussions")).toBeVisible();
+      await expect(page.locator("#comunidade")).toHaveCount(1);
     } finally {
       await prisma.anime.delete({ where: { id: mine.id } });
     }

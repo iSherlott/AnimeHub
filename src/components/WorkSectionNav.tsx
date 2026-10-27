@@ -23,12 +23,20 @@ export function WorkSectionNav({ sections }: { sections: WorkSection[] }) {
     setPresent(found);
     if (found.length === 0) return;
     const elements = found.map((id) => document.getElementById(id) as HTMLElement);
-    // A seção ativa é a última cujo topo já passou da linha logo abaixo do cabeçalho e da barra (a que está sendo lida).
+    // A seção ativa é a que está sendo lida: entre as que já passaram da linha logo abaixo do cabeçalho e da barra, a de
+    // topo mais próximo dela (a ordem da barra não é a da página: a comunidade fica na lateral, perto do topo).
     let frame = 0;
     const update = () => {
       frame = 0;
       let current = elements[0].id;
-      for (const el of elements) if (el.getBoundingClientRect().top <= ACTIVE_LINE) current = el.id;
+      let best = -Infinity;
+      for (const el of elements) {
+        const top = el.getBoundingClientRect().top;
+        if (top <= ACTIVE_LINE && top > best) {
+          best = top;
+          current = el.id;
+        }
+      }
       setActive(current);
     };
     const schedule = () => {

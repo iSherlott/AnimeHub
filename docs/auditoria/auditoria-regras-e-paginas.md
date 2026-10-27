@@ -204,3 +204,13 @@ curadoria, calendário, taxonomia).
 - **Três espaços de conversa na página da obra.** Há "Comentários" (de quem acompanha), "Discussões sobre esta obra"
   (publicações do Feed) e "Comunidade" (o fórum). Vale decidir se "Comentários" continua, já que a comunidade cobre
   essa conversa.
+
+**Decidido e feito (27/10):**
+
+- **Temporada com um nome só.** O site mostra "Outono 2026" (e Inverno, Primavera, Verão) no Explorar, na página da
+  temporada, no seletor e nos atalhos. O endereço continua `/temporada/autumn2026`; o admin e as importações mantêm o
+  formato técnico "Autumn2026" (`seasonDisplayName` em `src/lib/exploreGroups.ts`).
+- **A comunidade substitui os comentários.** A página da obra perdeu "Comentários" e "Discussões sobre esta obra" (e o
+  "Publicar sobre este anime" que ficava nelas). A aba "Comunidade" leva ao cartão da comunidade da franquia, com o link.
+  Os comentários e as publicações já gravados ficam no banco; as publicações sobre a obra continuam no Feed, filtradas
+  por ela.

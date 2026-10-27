@@ -13,7 +13,7 @@ import { InfiniteFooter } from "@/components/InfiniteFooter";
 import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
 import { useWindowedList } from "@/lib/useWindowedList";
 import type { DiscoverItem } from "@/lib/discoverItem";
-import { parseSeasonSlug, SEASON_COPY, seasonLabel, seasonSlug, splitSeasonItems, type SeasonRef } from "@/lib/exploreGroups";
+import { parseSeasonSlug, SEASON_COPY, seasonDisplayName, seasonSlug, splitSeasonItems, type SeasonRef } from "@/lib/exploreGroups";
 import type { AvailableSeason } from "@/lib/availableSeasons";
 import { CATALOG_STATUS_LABELS } from "@/lib/types";
 
@@ -87,7 +87,7 @@ function SeasonView({ seasonRef: ref }: { seasonRef: SeasonRef }) {
   const seasonOptions = useMemo(() => {
     const list = (available ?? []).map((s) => ({ value: s.slug, label: s.label }));
     const current = seasonSlug(ref);
-    if (!list.some((o) => o.value === current)) list.push({ value: current, label: seasonLabel(ref) });
+    if (!list.some((o) => o.value === current)) list.push({ value: current, label: seasonDisplayName(ref) });
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [available, season, year]);
@@ -112,7 +112,7 @@ function SeasonView({ seasonRef: ref }: { seasonRef: SeasonRef }) {
   const airingShown = windowed.visible.slice(0, airing.length);
   const restShown = windowed.visible.slice(airing.length);
   const copy = SEASON_COPY[season];
-  const label = seasonLabel(ref);
+  const label = seasonDisplayName(ref);
 
   return (
     <Box sx={{ minHeight: "100%", bgcolor: "background.default" }}>

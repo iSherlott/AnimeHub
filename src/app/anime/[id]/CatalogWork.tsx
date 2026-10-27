@@ -8,8 +8,7 @@ import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { PlatformLinksManager } from "@/components/PlatformLinksManager";
 import { SeasonControls } from "@/components/SeasonControls";
 import { UnfollowButton } from "@/components/UnfollowButton";
-import { CommentSection } from "@/components/CommentSection";
-import { WorkCommunityCard, WorkDiscussions, WorkQuizEntry } from "@/components/WorkSections";
+import { WorkCommunityCard, WorkQuizEntry } from "@/components/WorkSections";
 import { catalogSlug } from "@/lib/workHref";
 import { Header } from "@/components/Header";
 import { AnimeTitle } from "@/components/AnimeTitle";
@@ -50,8 +49,8 @@ export type OwnedCatalogItem = { id: string; accentColor?: string | null; isFavo
 
 /**
  * Página de uma obra sem AniList ID (só do AniDB ou da Kitsu): ficha, sinopse, episódios (só o dia — o AniDB não informa
- * horário) e extras. Dá para acompanhar, marcar o andamento e dar nota, e a comunidade (discussões, comentários de quem
- * acompanha e quiz) vai pela obra do catálogo. Relacionadas dependem da AniList e não aparecem. Sem horário, a obra não
+ * horário) e extras. Dá para acompanhar, marcar o andamento e dar nota; a conversa fica na comunidade (o cartão leva a
+ * ela) e o quiz vai pela obra do catálogo. Relacionadas dependem da AniList e não aparecem. Sem horário, a obra não
  * entra no calendário nem nos avisos. Quando é ligada à AniList, o endereço público passa a levar à página dela — e a
  * comunidade vai junto.
  */
@@ -177,7 +176,6 @@ export async function CatalogWork({ entry, signedIn, userId, owned = null }: { e
             </WorkCard>
           )}
           <WorkQuizEntry work={ref} workKey={work} userId={userId} />
-          <WorkCommunityCard workKey={work} />
           {owned && (
             <Box>
               <UnfollowButton animeId={owned.id} title={owned.titleEnglish ?? owned.titleRomaji} />
@@ -186,16 +184,11 @@ export async function CatalogWork({ entry, signedIn, userId, owned = null }: { e
         </Box>
       </Box>
 
-      <Box id="comunidade" sx={{ mt: 6, px: { xs: 3, sm: 5 }, display: "flex", flexDirection: "column", gap: 5, scrollMarginTop: 150 }}>
-        {owned && (
-          <Box component="section" aria-labelledby="comentarios-heading" sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Typography id="comentarios-heading" component="h2" sx={headingSx}>
-              Comentários
-            </Typography>
-            <CommentSection animeId={owned.id} accentColor={owned.accentColor ?? null} />
-          </Box>
-        )}
-        <WorkDiscussions work={ref} workKey={work} titleNative={entry.titleNative} titleRomaji={entry.titleRomaji} titleEnglish={entry.titleEnglish} seasonNumber={null} loggedIn={signedIn} />
+      <Box sx={{ mt: 6, px: { xs: 3, sm: 5 }, display: "flex", flexDirection: "column", gap: 5 }}>
+        {/* A conversa sobre a obra fica na comunidade da franquia (a aba "Comunidade" leva a este cartão, com o link). */}
+        <Box id="comunidade" sx={{ scrollMarginTop: 150, maxWidth: 520 }}>
+          <WorkCommunityCard workKey={work} />
+        </Box>
       </Box>
     </div>
   );

@@ -46,6 +46,23 @@ test.describe.serial("Telas antigas", () => {
     await expect(card).not.toContainText("Data não definida");
   });
 
+  test("temporada com o nome para quem usa o site ('Outono 2026'); a URL continua autumn2026", async ({ page }) => {
+    await page.goto("/temporada/autumn2026");
+    await expect(page.getByRole("heading", { name: "Outono 2026", level: 1 })).toBeVisible();
+    await expect(page.getByTestId("season-filter")).toHaveValue("autumn2026");
+    await expect(page.getByTestId("season-filter").locator("option:checked")).toHaveText("Outono 2026");
+    await page.goto("/discover");
+    await expect(page.getByRole("link", { name: /Explorar Outono 2026/ })).toHaveAttribute("href", "/temporada/autumn2026");
+    await expect(page.getByText("Autumn2026")).toHaveCount(0);
+  });
+
+  test("página da obra: sem comentários nem discussões, só o caminho para a comunidade", async ({ page }) => {
+    await page.goto(`/anime/${animeId}`);
+    await expect(page.getByRole("heading", { name: "Comentários" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Discussões sobre esta obra" })).toHaveCount(0);
+    await expect(page.locator("#comunidade").getByTestId("work-community-link")).toHaveAttribute("href", `/comunidades/${A}`);
+  });
+
   test("página da obra: sinopse do catálogo e título sem repetição", async ({ page }) => {
     await page.goto(`/anime/${animeId}`);
     await expect(page.getByText("Sinopse do catálogo 133.")).toBeVisible();

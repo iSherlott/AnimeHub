@@ -5,14 +5,11 @@ import { getQuizState } from "@/lib/quiz";
 import { parseRelations } from "@/lib/production";
 import { platformAnilistIds } from "@/lib/platform";
 import { AppLink } from "@/components/AppLink";
-import { HashtagRow } from "@/components/HashtagRow";
-import { PublishAboutButton } from "@/components/PublishAboutButton";
 import { RelatedWorkCard } from "@/components/RelatedWorkCard";
 import { VersionsCallout } from "@/components/StoryMarkers";
 import { WorkCard } from "@/components/WorkInfoCard";
 import type { StoryRelation } from "@/lib/story/context";
-import { UserPostList } from "@/components/UserPostList";
-import { anilistRef, workWhere, type WorkRef } from "@/lib/workRef";
+import { anilistRef, type WorkRef } from "@/lib/workRef";
 import { communitySummary } from "@/lib/community";
 import { LinkButton } from "@/components/LinkButton";
 
@@ -85,66 +82,6 @@ export async function WorkCommunityCard({ workKey }: { workKey: string }) {
         </LinkButton>
       </Box>
     </WorkCard>
-  );
-}
-
-export async function WorkDiscussions({
-  anilistId,
-  work,
-  workKey,
-  titleNative,
-  titleRomaji,
-  titleEnglish,
-  seasonNumber,
-  loggedIn,
-}: {
-  anilistId?: number;
-  /** Obra sem AniList ID (só do AniDB/Kitsu): a obra do catálogo e a chave dela (`anidb-<id>`). */
-  work?: WorkRef;
-  workKey?: string;
-  titleNative: string | null;
-  titleRomaji: string;
-  titleEnglish: string | null;
-  seasonNumber: number | null;
-  loggedIn: boolean;
-}) {
-  const ref = work ?? anilistRef(anilistId as number);
-  const key = workKey ?? String(anilistId);
-  // Hashtags mais usadas nas discussões desta obra (Figma 13:42469).
-  const topTags = await prisma.postHashtag.groupBy({
-    by: ["hashtagId"],
-    where: { post: { ...workWhere(ref), deletedAt: null } },
-    _count: { _all: true },
-    orderBy: { _count: { hashtagId: "desc" } },
-    take: 3,
-  });
-  const tagRows = topTags.length ? await prisma.hashtag.findMany({ where: { id: { in: topTags.map((t) => t.hashtagId) } }, select: { id: true, key: true, display: true } }) : [];
-  const orderedTags = topTags.map((t) => tagRows.find((r) => r.id === t.hashtagId)).filter((t): t is NonNullable<typeof t> => Boolean(t));
-  const titlePrimary = titleNative ?? titleRomaji;
-
-  return (
-    <Box component="section" aria-labelledby="discussoes-heading" id="discussoes" data-testid="discussions" sx={{ borderTop: 1, borderColor: "divider", pt: 4, display: "flex", flexDirection: "column", gap: 3 }}>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
-        <Typography id="discussoes-heading" component="h2" sx={{ fontSize: 26, lineHeight: 1.5 }}>
-          Discussões sobre esta obra
-        </Typography>
-        <PublishAboutButton anilistId={ref.anilistId} work={key} loggedIn={loggedIn} />
-      </Box>
-      <Typography sx={{ fontSize: 16, color: "text.secondary" }}>Impressões da comunidade{seasonNumber !== null ? ` · Temporada ${seasonNumber}` : ""}. Contexto explícito, spoilers protegidos.</Typography>
-      <HashtagRow tags={orderedTags.map((t) => ({ key: t.key, display: t.display }))} />
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", lg: "minmax(0,1fr) 320px" }, columnGap: 5, rowGap: 3, alignItems: "start" }}>
-        <UserPostList endpoint="/api/posts" params={{ tab: "recent", work: key }} timeStyle="relative" emptyText="Esta obra ainda não tem discussões. Seja a primeira pessoa a compartilhar uma impressão." />
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-            <Typography lang={titleNative ? "ja" : undefined} sx={{ fontSize: 20, fontWeight: 700 }}>
-              {titlePrimary}
-            </Typography>
-            {titleEnglish && titleEnglish !== titlePrimary && <Typography sx={{ fontSize: 13, color: "text.secondary" }}>{titleEnglish}</Typography>}
-          </Box>
-          <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Selecionar “Publicar” abre o editor com esta produção pré-selecionada, removível. Não cria um post de acompanhamento.</Typography>
-        </Box>
-      </Box>
-    </Box>
   );
 }
 

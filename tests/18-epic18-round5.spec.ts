@@ -1,33 +1,9 @@
-﻿import { test, expect } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
 
-// Mesma normalização de src/lib/animeHashtag.ts (animeSlug) — duplicada
-// aqui de propósito, não importada, pra não depender do alias "@/" no
-// runtime de teste (nunca usado antes nos specs deste projeto).
-const DIACRITIC_COMBINING_MARKS = new RegExp("[\\u0300-\\u036f]", "g");
-function animeSlug(title: string): string {
-  return title
-    .normalize("NFD")
-    .replace(DIACRITIC_COMBINING_MARKS, "")
-    .replace(/[^a-zA-Z0-9]/g, "")
-    .toLowerCase();
-}
-
 test.describe("Epic 18 — 5ª rodada de auditoria de UX/UI — duplo clique não duplica", () => {
-  let animeId: string;
-  let animeTitleRomaji: string;
-
-  test.beforeAll(async () => {
-    const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
-    const user = await prisma.user.findUniqueOrThrow({ where: { email: TEST_USER_EMAIL } });
-    const anime = await prisma.anime.findFirstOrThrow({ where: { userId: user.id } });
-    animeId = anime.id;
-    animeTitleRomaji = anime.titleRomaji;
-    await prisma.$disconnect();
-  });
-
   test("clicar 'Publicar' duas vezes rápido no Feed cria só 1 post", async ({ page, request }) => {
     // O contexto de obra é opcional (F8): basta haver texto.
     const uniqueBody = `Post de teste de duplo clique ${Date.now()}`;
@@ -52,30 +28,6 @@ test.describe("Epic 18 — 5ª rodada de auditoria de UX/UI — duplo clique nã
     const res = await request.get("/api/posts?tab=recent&limit=50");
     const data = await res.json();
     const matches = data.posts.filter((p: { body: string }) => p.body === uniqueBody);
-    expect(matches.length).toBe(1);
-  });
-
-  test("clicar 'Comentar' duas vezes rápido cria só 1 comentário", async ({ page, request }) => {
-    const uniqueBody = `Comentário de teste de duplo clique ${Date.now()}`;
-    await page.goto(`/anime/${animeId}`);
-
-    await page.getByPlaceholder("Escreva um comentário...").fill(uniqueBody);
-    const submit = page.getByRole("button", { name: "Comentar" });
-    await submit.evaluate((el: HTMLElement) => {
-      el.click();
-      el.click();
-    });
-    await page.waitForTimeout(800);
-
-    // Comentários paginados (10/página, lote 1 do Epic 27) — o recém-postado
-    // é o mais novo (createdAt asc), então cai na última página, não
-    // necessariamente na 1ª (a suíte inteira compartilha este anime entre
-    // vários arquivos, já pode haver mais de 10 comentários acumulados).
-    const firstPage = await (await request.get(`/api/anime/${animeId}/comments`)).json();
-    const lastPage = await (
-      await request.get(`/api/anime/${animeId}/comments?page=${firstPage.totalPages}`)
-    ).json();
-    const matches = lastPage.comments.filter((c: { body: string }) => c.body === uniqueBody);
     expect(matches.length).toBe(1);
   });
 

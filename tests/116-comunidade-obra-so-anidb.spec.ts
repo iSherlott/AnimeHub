@@ -74,7 +74,7 @@ test.describe.serial("Comunidade das obras só do AniDB", () => {
   test.describe("pelo admin", () => {
     test.use({ storageState: adminState });
 
-    test("o quiz entra pela obra do catálogo (anidbId) e a página pública mostra discussões e quiz", async ({ page, request }) => {
+    test("o quiz entra pela obra do catálogo (anidbId) e a página pública mostra a comunidade e o quiz", async ({ page, request }) => {
       const res = await request.post("/api/admin/quizzes/import", { data: { text: JSON.stringify({ anidbId: AID, scope: "Season 1", titleReward: `Titulo ${TAG}`, questions }), approve: true } });
       expect(res.status()).toBe(201);
       expect((await res.json()).outcomes[0]).toMatchObject({ anilistId: null, work: `anidb-${AID}`, action: "created" });
@@ -83,13 +83,13 @@ test.describe.serial("Comunidade das obras só do AniDB", () => {
       expect((await request.post("/api/admin/quizzes/import", { data: { text: JSON.stringify({ anidbId: 999999998, scope: "S", titleReward: "T", questions }) } })).status()).toBe(409);
 
       await page.goto(`/anime/anidb-${AID}`);
-      await expect(page.getByTestId("discussions")).toBeVisible();
-      await expect(page.getByTestId("publish-about")).toHaveAttribute("href", `/publicar?obra=anidb-${AID}`);
+      await expect(page.locator("#comunidade")).toHaveCount(1);
+      await expect(page.getByTestId("discussions")).toHaveCount(0);
       await expect(page.getByTestId("quiz-link")).toHaveAttribute("href", `/obra/anidb-${AID}/quiz`);
     });
   });
 
-  test("publicar sobre a obra: o post vai para as discussões dela e o link leva à página da obra", async ({ page, request }) => {
+  test("publicar sobre a obra: o post fica ligado a ela (filtro do Feed) e o link leva à página da obra", async ({ page, request }) => {
     await page.goto(`/publicar?obra=anidb-${AID}`);
     await expect(page.getByText(`So AniDB ${TAG}`).first()).toBeVisible();
     const res = await request.post("/api/posts", { data: { body: `Gostei muito ${TAG}`, work: `anidb-${AID}` } });
@@ -101,15 +101,10 @@ test.describe.serial("Comunidade das obras só do AniDB", () => {
     const feed = await (await request.get(`/api/posts?tab=recent&work=anidb-${AID}`)).json();
     expect(feed.posts.map((p: { body: string }) => p.body)).toEqual([`Gostei muito ${TAG}`]);
     expect((await (await request.get("/api/posts?tab=recent&work=anidb-999999997")).json()).posts).toEqual([]);
-
-    // Quem acompanha vê a própria página da obra, com discussões e comentários.
-    await page.goto(`/anime/${id.item}`);
-    const discussions = page.getByTestId("discussions");
-    await expect(discussions).toContainText(`Gostei muito ${TAG}`);
-    await expect(discussions.getByRole("link", { name: /So AniDB/ }).first()).toHaveAttribute("href", `/anime/anidb-${AID}`);
+    expect(feed.posts[0].workKey).toBe(`anidb-${AID}`);
   });
 
-  test("comentários de quem acompanha; denúncia só por quem acompanha esta mesma obra", async ({ page, request, playwright, baseURL }) => {
+  test("comentários de quem acompanha (API); denúncia só por quem acompanha esta mesma obra", async ({ request, playwright, baseURL }) => {
     const created = await request.post(`/api/anime/${id.item}/comments`, { data: { body: `Comentario ${TAG}` } });
     expect(created.status()).toBe(201);
     const list = await (await request.get(`/api/anime/${id.item}/comments`)).json();
@@ -117,8 +112,6 @@ test.describe.serial("Comunidade das obras só do AniDB", () => {
     const comment = await prisma.comment.findFirstOrThrow({ where: { body: `Comentario ${TAG}` } });
     expect(comment).toMatchObject({ anilistId: null, catalogEntryId: id.A });
 
-    await page.goto(`/anime/${id.item}`);
-    await expect(page.getByText(`Comentario ${TAG}`)).toBeVisible();
 
     // O admin acompanha OUTRA obra só do AniDB: não pode denunciar (antes, "anilistId nulo" casaria com qualquer uma).
     const admin = await playwright.request.newContext({ baseURL, storageState: adminState });

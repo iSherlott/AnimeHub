@@ -28,6 +28,11 @@ export function seasonLabel(ref: SeasonRef): string {
   return `${name[0].toUpperCase()}${name.slice(1)}${ref.year}`;
 }
 
+/** "Outono 2026": o nome da temporada para quem usa o site (o formato técnico "Autumn2026" fica na URL, nos filtros do admin e nas importações). */
+export function seasonDisplayName(ref: SeasonRef): string {
+  return `${SEASON_COPY[ref.season].labelPt} ${ref.year}`;
+}
+
 /** "autumn2026" — o trecho da URL `/temporada/autumn2026`. */
 export function seasonSlug(ref: SeasonRef): string {
   return seasonLabel(ref).toLowerCase();
