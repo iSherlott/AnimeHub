@@ -14,6 +14,7 @@ async function resetPreferences(request: import("@playwright/test").APIRequestCo
       notifyFollowers: true,
       notifyLikes: false,
       notifyCommunity: true,
+      recordVisits: true,
     },
   });
 }

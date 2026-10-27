@@ -155,3 +155,18 @@ A pessoa usuária escolheu trocar o "amigo = seguir mútuo" por **pedido de amiz
 - **Banco.** `20261113100000_birthdays` só acrescenta duas colunas em `User`.
 - **Código e testes.** O cálculo de datas fica em `src/lib/birthdayDates.ts` (sem banco, também usado no navegador) e os
   aniversariantes e avisos em `src/lib/birthdays.ts`. Testes: spec 127 e `birthdayDates.test.ts`.
+
+## Revisão de 26/10/2026 — visitas ao perfil
+
+- **Registro:** quem tem conta e abre o perfil de outra pessoa fica registrado, guardando só a última visita de cada
+  pessoa (`ProfileVisit`). Não contam a própria visita, quem não entrou nem quem tem bloqueio com a dona do perfil.
+- **Quem vê:** só a dona do perfil vê quem visitou.
+  - No perfil, a caixa "visitas recentes" mostra 9 visitantes com há quanto tempo.
+  - Em `/users/<id>/visitas` estão até 100; para qualquer outra pessoa essa página não existe (404).
+  - As visitas valem pelos últimos 90 dias.
+  - Visitante que depois teve bloqueio com a dona some da lista.
+- **Reciprocidade, como no Orkut:** Configurações tem "Registrar minhas visitas aos perfis", ligado por padrão.
+  Desligado, as visitas da pessoa não são registradas e somem da lista de todos, até as antigas; e ela também não vê
+  quem visitou o perfil dela.
+- **Banco.** `20261114100000_profile_visits` só acrescenta: `User.recordVisits` e a tabela `ProfileVisit`.
+- **Código e testes.** `src/lib/profileVisits.ts`. Testes: spec 128; o spec 52 foi ajustado.

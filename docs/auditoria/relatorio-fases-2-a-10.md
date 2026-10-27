@@ -316,3 +316,13 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 - **Sino.** Avisa no dia, com o link para deixar um recado.
 - **Banco.** `20261113100000_birthdays` (só acrescenta).
 - **Testes.** Spec 127 e `birthdayDates.test.ts`.
+
+## Depois: visitas ao perfil (26/10)
+
+- **Quem visitou.** Só a dona do perfil vê: a caixa no perfil e a página `/users/<id>/visitas`, com os últimos 90
+  dias.
+- **Configurações.** "Registrar minhas visitas aos perfis". Desligado, as visitas da pessoa somem para todos e ela também
+  não vê as dela.
+- **Bloqueio.** Não registra a visita e esconde a já registrada.
+- **Banco.** `20261114100000_profile_visits` (só acrescenta).
+- **Testes.** Spec 128.

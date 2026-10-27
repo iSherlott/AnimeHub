@@ -20,7 +20,7 @@ import { SOCIAL_OFF_PATCH, type UserPreferences } from "@/lib/userSettings";
  */
 type Draft = Pick<
   UserPreferences,
-  "notifyReleases" | "notifyReplies" | "notifyComments" | "notifyFollowers" | "notifyLikes" | "notifyCommunity" | "animeListPublic"
+  "notifyReleases" | "notifyReplies" | "notifyComments" | "notifyFollowers" | "notifyLikes" | "notifyCommunity" | "animeListPublic" | "recordVisits"
 > & { titleFormat: "ja" | "romaji"; synopsisLanguage: "pt" | "ja"; timeZone: string };
 
 const SOCIAL_TOGGLES: Array<{ key: keyof Draft; label: string; hint: string }> = [
@@ -147,6 +147,7 @@ export default function SettingsPage() {
         notifyLikes: p.notifyLikes,
         notifyCommunity: p.notifyCommunity,
         animeListPublic: p.animeListPublic,
+        recordVisits: p.recordVisits,
       });
     }
   }, [user, draft]);
@@ -277,6 +278,12 @@ export default function SettingsPage() {
                 hint="Ativado, quem visita seu perfil vê e pesquisa por gênero as obras que você acompanha. Você sempre vê a sua."
                 checked={draft.animeListPublic}
                 onChange={(v) => update("animeListPublic", v)}
+              />
+              <PillToggle
+                label="Registrar minhas visitas aos perfis"
+                hint="Como no Orkut: ativado, quem você visita vê que você passou por lá. Desativado, ninguém vê suas visitas (nem as antigas), e você também não vê quem visitou o seu perfil."
+                checked={draft.recordVisits}
+                onChange={(v) => update("recordVisits", v)}
               />
               <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
                 Publicações são públicas. Acompanhar uma obra e seguir uma pessoa nunca publicam uma mensagem por conta própria.

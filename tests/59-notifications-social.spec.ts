@@ -1,7 +1,7 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
-import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
+import { SESSION_COOKIE_NAME, TEST_ADMIN_EMAIL, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
 
 // F12 (NOTIF-001…003; Figma 13:43025): sino único com canais Lançamentos e
 // Social, "Data alterada" com horário anterior, eventos sociais sem texto
@@ -21,7 +21,8 @@ test.describe("Notificações: Lançamentos e Social", () => {
   test.beforeAll(async ({ playwright, baseURL }) => {
     prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
     me = await prisma.user.findUniqueOrThrow({ where: { email: TEST_USER_EMAIL }, select: { id: true } });
-    other = await prisma.user.findFirstOrThrow({ where: { role: "ADMIN" }, select: { id: true } });
+    // A conta da sessão de admin (há outras contas ADMIN no banco de teste, e a ordem de findFirst não é garantida).
+    other = await prisma.user.findUniqueOrThrow({ where: { email: TEST_ADMIN_EMAIL }, select: { id: true } });
     otherApi = await playwright.request.newContext({
       baseURL,
       extraHTTPHeaders: { Cookie: `${SESSION_COOKIE_NAME}=${TEST_ADMIN_SESSION_TOKEN}` },

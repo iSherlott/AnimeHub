@@ -47,6 +47,9 @@ model User {
   equippedTitleId String?
   /// A lista de animes acompanhados aparece no perfil para quem o visita (padrão: sim; dá para ocultar em Configurações).
   animeListPublic Boolean @default(true)
+  /// Visitas ao perfil (como no Orkut): registrar as minhas visitas. Desligado, ninguém vê que a pessoa visitou e ela
+  /// também não vê quem visitou o perfil dela.
+  recordVisits    Boolean @default(true)
   notifyReleases  Boolean  @default(true)
   notifyReplies   Boolean  @default(true)
   notifyComments  Boolean  @default(true)
@@ -106,6 +109,8 @@ model User {
   friendRequestsSent     FriendRequest[] @relation("FriendRequestFrom")
   friendRequestsReceived FriendRequest[] @relation("FriendRequestTo")
   profileReports         ProfileReport[] @relation("ProfileReporter")
+  profileVisitsReceived  ProfileVisit[]  @relation("ProfileVisited")
+  profileVisitsMade      ProfileVisit[]  @relation("ProfileVisitor")
   profileReportsResolved ProfileReport[] @relation("ProfileReportResolver")
 
   @@index([email])
@@ -1756,4 +1761,16 @@ model ProfileReport {
   @@index([resolvedAt])
   @@index([scrapId])
   @@index([testimonialId])
+}
+
+/// Visita ao perfil (como no Orkut): a última visita de cada pessoa com conta a cada perfil. Só a dona do perfil vê.
+model ProfileVisit {
+  profileId String
+  profile   User     @relation("ProfileVisited", fields: [profileId], references: [id], onDelete: Cascade)
+  visitorId String
+  visitor   User     @relation("ProfileVisitor", fields: [visitorId], references: [id], onDelete: Cascade)
+  visitedAt DateTime @default(now())
+
+  @@id([profileId, visitorId])
+  @@index([profileId, visitedAt])
 }

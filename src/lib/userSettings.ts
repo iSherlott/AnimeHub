@@ -23,11 +23,13 @@ export type UserPreferences = {
   notifyCommunity: boolean;
   /** A aba Animes do perfil (obras acompanhadas) aparece para quem visita. */
   animeListPublic: boolean;
+  /** Visitas ao perfil: registrar as minhas (desligado, também não vejo quem visitou o meu). */
+  recordVisits: boolean;
 };
 
 export type UserPreferencesPatch = Partial<UserPreferences>;
 
-const BOOLEAN_KEYS = ["notifyReleases", "notifyReplies", "notifyComments", "notifyFollowers", "notifyLikes", "notifyCommunity", "animeListPublic"] as const;
+const BOOLEAN_KEYS = ["notifyReleases", "notifyReplies", "notifyComments", "notifyFollowers", "notifyLikes", "notifyCommunity", "animeListPublic", "recordVisits"] as const;
 
 export type ValidationResult = { ok: true; patch: UserPreferencesPatch } | { ok: false; error: string };
 

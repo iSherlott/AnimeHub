@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
-import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
+import { SESSION_COOKIE_NAME, TEST_ADMIN_EMAIL, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
 
 // F11 (PROF-001/002/004; Figma 13:43571): @identificador único, edição de
 // nome/identificador, atalhos no perfil próprio e "Discussões iniciadas".
@@ -88,7 +88,7 @@ test.describe("Perfil: nome, @identificador e discussões", () => {
     const found = await (await request.get(`/api/search?q=${HANDLE}&scope=profiles`)).json();
     expect(found.profiles.map((p: { id: string }) => p.id)).toContain(userId);
 
-    const admin = await prisma.user.findFirstOrThrow({ where: { role: "ADMIN" } });
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: TEST_ADMIN_EMAIL } });
     await page.goto(`/users/${admin.id}`);
     await expect(page.getByTestId("profile-edit-open")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Minha Lista privada" })).toHaveCount(0);

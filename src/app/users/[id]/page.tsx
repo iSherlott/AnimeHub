@@ -4,6 +4,7 @@ import { Header } from "@/components/Header";
 import { ProfileHeader } from "@/components/ProfileHeader";
 import { ProfileTabs } from "@/components/ProfileTabs";
 import { AppLink } from "@/components/AppLink";
+import { UserAvatar } from "@/components/UserAvatar";
 import { LinkButton } from "@/components/LinkButton";
 import { PageContainer, PageIntro } from "@/components/PageShell";
 import { SideBox } from "@/components/SideBox";
@@ -21,6 +22,8 @@ import { friendState, friendSuggestions, listFriends, pendingReceivedCount } fro
 import { memberCommunities } from "@/lib/community";
 import { dailyFortune } from "@/lib/dailyFortune";
 import { formatBirthday } from "@/lib/birthdays";
+import { recentVisitors, recordVisit } from "@/lib/profileVisits";
+import { formatRelativeTime } from "@/lib/relativeTime";
 import { resolveTimeZone } from "@/lib/timeZone";
 import { loginHref } from "@/lib/safeRedirect";
 
@@ -75,6 +78,9 @@ export default async function UserProfilePage({ params }: Params) {
 
   const viewerId = viewer?.id ?? null;
   const isOwnProfile = viewerId === id;
+  // Visitas (como no Orkut): registra a de quem tem conta; a dona do perfil vê as recentes (se registra as dela).
+  await recordVisit(viewer, id);
+  const visitors = isOwnProfile && viewer?.recordVisits ? await recentVisitors(id) : null;
   const [followerCount, followingCount, postCount, isFollowedByMe, titles, equippedTitles, animeCount, friends, communities, fans, isFan, ratings, scraps, testimonials, friendRel, myTestimonial, pendingRequests] =
     await Promise.all([
       prisma.follow.count({ where: { followingId: id } }),
@@ -318,6 +324,31 @@ export default async function UserProfilePage({ params }: Params) {
                 <CommunityGrid communities={communities.rows} />
               )}
             </SideBox>
+            {isOwnProfile && (
+              <SideBox id="visitas" title="visitas recentes" count={visitors?.total} testId="profile-visitors" more={visitors && visitors.total > visitors.rows.length ? { href: `/users/${id}/visitas`, label: "ver todas" } : undefined}>
+                {!visitors ? (
+                  <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
+                    Você desligou o registro de visitas: ninguém vê as suas, e você também não vê quem visitou o seu perfil. <AppLink href="/configuracoes">Configurações</AppLink>
+                  </Typography>
+                ) : visitors.rows.length === 0 ? (
+                  <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Ninguém visitou seu perfil nos últimos 90 dias.</Typography>
+                ) : (
+                  <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 1 }}>
+                    {visitors.rows.map((v) => (
+                      <Box component="li" key={v.id} data-testid={`visitor-${v.id}`}>
+                        <AppLink href={`/users/${v.id}`} underline="hover" sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5, color: "text.primary", fontSize: 11, textAlign: "center", overflowWrap: "anywhere" }}>
+                          <UserAvatar id={v.id} displayName={v.displayName} avatarUrl={v.avatarUrl} size={48} />
+                          {v.displayName}
+                          <Typography component="span" sx={{ fontSize: 10, color: "text.secondary" }}>
+                            {formatRelativeTime(v.visitedAt.toISOString())}
+                          </Typography>
+                        </AppLink>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </SideBox>
+            )}
             <SideBox id="conquistas" title="conquistas" count={titles.length} testId="profile-achievements" more={isOwnProfile ? { href: "/conquistas", label: "ver conquistas" } : undefined}>
               {titles.length === 0 ? (
                 <Typography sx={{ fontSize: 13, color: "text.secondary" }}>{isOwnProfile ? "Acerte 10 de 10 num quiz para ganhar um título." : "Nenhum título ainda."}</Typography>
