@@ -1,7 +1,7 @@
 "use client";
 
 import { Box, Typography } from "@mui/material";
-import { formatTimeInZone, weekdayName } from "@/lib/timeZone";
+import { formatTimeInZone, timeZoneLabel, weekdayName } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
 
 /**
@@ -46,7 +46,7 @@ function NextEpisodeDetails({ iso, episode, timeZone }: { iso: string; episode: 
           {dayMonth}
         </span>
       </Typography>
-      <Typography sx={{ fontSize: 14, color: "text.secondary" }}>{timeZone}</Typography>
+      <Typography sx={{ fontSize: 14, color: "text.secondary" }}>{timeZoneLabel(timeZone, true)}</Typography>
     </>
   );
 }

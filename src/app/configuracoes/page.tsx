@@ -9,7 +9,7 @@ import { PageContainer, PageIntro } from "@/components/PageShell";
 import { useCurrentUser, useSetCurrentUser } from "@/lib/auth/useCurrentUser";
 import { useTitlePreference } from "@/lib/titlePreference";
 import { loginHref } from "@/lib/safeRedirect";
-import { DEVICE_TIME_ZONE, TIME_ZONE_OPTIONS, DEFAULT_TIME_ZONE } from "@/lib/timeZone";
+import { DEVICE_TIME_ZONE, TIME_ZONE_OPTIONS, DEFAULT_TIME_ZONE, timeZoneLabel } from "@/lib/timeZone";
 import { SOCIAL_OFF_PATCH, type UserPreferences } from "@/lib/userSettings";
 
 /**
@@ -224,15 +224,11 @@ export default function SettingsPage() {
                 <MenuItem value={DEVICE_TIME_ZONE}>Usar o fuso do dispositivo</MenuItem>
                 {TIME_ZONE_OPTIONS.map((zone) => (
                   <MenuItem key={zone} value={zone}>
-                    {zone}
+                    {timeZoneLabel(zone, true)}
                   </MenuItem>
                 ))}
               </Select>
             </Box>
-
-            <Card title="Tema">
-              <Typography sx={{ fontSize: 14 }}>Escuro</Typography>
-            </Card>
 
             <Card title="Notificações / Lançamentos" labelledBy="notif-launch">
               <PillToggle

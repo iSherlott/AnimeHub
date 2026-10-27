@@ -246,3 +246,16 @@ visitante e admin): 201 combinações. Nenhuma transborda mais na horizontal.
 | Perfil e página da obra no tablet | As caixas laterais ficavam empilhadas em largura total. | Duas colunas. |
 
 **Camada 3:** suíte completa (lint, unitários e e2e) e conferência visual das telas alteradas.
+
+**Resíduos vistos no tour (27/10):**
+
+- **Fuso pelo nome.** O rodapé, o calendário, o Explorar, a lateral do Feed, as datas, o próximo episódio, o formulário de
+  evento e o seletor de Configurações mostram "Horário de Brasília" (e Amazonas, Recife, Buenos Aires, Nova York, Los
+  Angeles, Lisboa, Londres, Japão) em vez de "America/Sao_Paulo". Um fuso fora da lista, como o do dispositivo, vira
+  "horário de <cidade>". O nome é fixo no código (`timeZoneLabel` em `src/lib/timeZone.ts`), então sai igual no servidor
+  e no navegador. O admin continua com o identificador técnico.
+- **Configurações:** saiu o cartão "Tema". Só existe o tema escuro, então não havia o que escolher.
+- **Feed:** a aba "Para você" explica numa frase só que a ordem é por curtidas e que a Minha Lista não entra na conta. A
+  aba "Seguindo" passou a dizer que inclui os amigos, como já fazia.
+- **Franquia com "0 temporadas":** era só dos dados de teste do tour, que não tinham o papel na linha do tempo. No banco,
+  toda obra com posição na linha do tempo tem o papel preenchido, então não há o que corrigir.

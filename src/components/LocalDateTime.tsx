@@ -1,6 +1,6 @@
 "use client";
 
-import { formatTimeInZone } from "@/lib/timeZone";
+import { formatTimeInZone, timeZoneLabel } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
 
 /**
@@ -27,7 +27,7 @@ export function LocalDateTime({ iso, compact = false }: { iso: string; compact?:
   return (
     <span suppressHydrationWarning>
       {weekday} · {day} · {time}
-      <span style={{ opacity: 0.7 }}> ({timeZone})</span>
+      <span style={{ opacity: 0.7 }}> ({timeZoneLabel(timeZone)})</span>
     </span>
   );
 }

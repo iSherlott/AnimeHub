@@ -138,7 +138,7 @@ test.describe("Detalhe público da obra (/obra/[anilistId])", () => {
       await page.goto(`/obra/${S2}`);
       const nextEp = page.getByTestId("next-episode");
       await expect(nextEp).toContainText("Episódio 3");
-      await expect(nextEp).toContainText("America/Sao_Paulo");
+      await expect(nextEp).toContainText("Horário de Brasília");
 
       // A temporada irmã aparece junto, numa aba de "Temporadas e episódios"; ao abri-la, o caminho para a página dela.
       const seasons = page.getByTestId("franchise-seasons");

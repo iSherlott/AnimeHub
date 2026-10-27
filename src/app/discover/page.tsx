@@ -29,7 +29,7 @@ import { loginHref } from "@/lib/safeRedirect";
 import { CATALOG_STATUS_LABELS, SEASON_LABELS } from "@/lib/types";
 import { KINDS, KIND_LABELS, type Kind } from "@/lib/curation/kind";
 import { useTimeZone } from "@/lib/useTimeZone";
-import { formatTimeInZone } from "@/lib/timeZone";
+import { formatTimeInZone, timeZoneLabel } from "@/lib/timeZone";
 
 /** Mesma largura da coluna da grade (2/3/4 colunas, 24 px de respiro; o carrossel tem 8 px de folga de cada lado), para o cartão ter o mesmo tamanho nos dois lugares. */
 const CAROUSEL_CARD_WIDTH = { xs: "calc((100% + 16px - 24px) / 2)", md: "calc((100% + 16px - 48px) / 3)", lg: "calc((100% + 16px - 72px) / 4)" } as const;
@@ -137,7 +137,7 @@ function NextReleasePanel({ item }: { item: DiscoverItem }) {
         </Typography>
       )}
       <Typography sx={{ fontSize: 16, color: "text.secondary" }}>
-        Horários no seu fuso: <span suppressHydrationWarning>{timeZone}</span>. Nada é deslocado para um horário inventado.
+        Horários no <span suppressHydrationWarning>{timeZoneLabel(timeZone)}</span>, o fuso escolhido em Configurações.
       </Typography>
       <Box>
         {owned ? (

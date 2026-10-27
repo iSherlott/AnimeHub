@@ -20,6 +20,31 @@ export const TIME_ZONE_OPTIONS = [
   "UTC",
 ] as const;
 
+/** Nomes em português dos fusos da lista de Configurações; os demais viram "horário de <cidade>". */
+const TIME_ZONE_NAMES: Record<string, string> = {
+  "America/Sao_Paulo": "horário de Brasília",
+  "America/Manaus": "horário do Amazonas",
+  "America/Recife": "horário de Recife",
+  "America/Argentina/Buenos_Aires": "horário de Buenos Aires",
+  "America/New_York": "horário de Nova York",
+  "America/Los_Angeles": "horário de Los Angeles",
+  "Europe/Lisbon": "horário de Lisboa",
+  "Europe/London": "horário de Londres",
+  "Asia/Tokyo": "horário do Japão",
+  UTC: "UTC",
+};
+
+/**
+ * O fuso como a pessoa reconhece ("horário de Brasília"), em vez do identificador técnico ("America/Sao_Paulo"). Em
+ * minúsculas para entrar no meio da frase; `capitalize` para quando abre o texto. Igual no servidor e no navegador
+ * (não depende dos nomes do Intl, que mudam de um para o outro).
+ */
+export function timeZoneLabel(timeZone: string, capitalize = false): string {
+  const city = timeZone.split("/").pop()?.replace(/_/g, " ") ?? timeZone;
+  const label = TIME_ZONE_NAMES[timeZone] ?? (city === timeZone ? timeZone : `horário de ${city}`);
+  return capitalize ? label.charAt(0).toUpperCase() + label.slice(1) : label;
+}
+
 export function isValidTimeZone(value: unknown): value is string {
   if (typeof value !== "string" || value.length === 0 || value.length > 64) return false;
   try {

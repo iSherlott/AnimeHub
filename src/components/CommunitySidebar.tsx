@@ -13,7 +13,7 @@ import type { RecommendationItem } from "@/lib/animeRecommendations";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { currentSeasonTag } from "@/lib/season";
 import { resolveTitleTextLenient, useTitlePreference } from "@/lib/titlePreference";
-import { formatTimeInZone } from "@/lib/timeZone";
+import { formatTimeInZone, timeZoneLabel } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
 import type { CalendarItem } from "@/lib/calendarItem";
 
@@ -236,7 +236,7 @@ export function CommunitySidebar() {
                 </Box>
               </Box>
               <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
-                Hoje · programação em {timeZone}
+                Hoje · {timeZoneLabel(timeZone)}
               </Typography>
             </>
           ) : (

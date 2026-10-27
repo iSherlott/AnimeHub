@@ -53,7 +53,7 @@ test.describe("Configurações (Figma 8:3333 / 13:42966)", () => {
 
     await page.getByLabel("Romaji (romaji+inglês)").check();
     await page.getByTestId("timezone-select").click();
-    await page.getByRole("option", { name: "Asia/Tokyo" }).click();
+    await page.getByRole("option", { name: "Horário do Japão" }).click();
     await page.getByLabel("Curtidas").check();
     await page.getByTestId("save-settings").click();
 
@@ -63,7 +63,7 @@ test.describe("Configurações (Figma 8:3333 / 13:42966)", () => {
 
     // O fuso novo vale já na tela seguinte (rótulo explícito no calendário).
     await page.goto("/calendar");
-    await expect(page.getByTestId("calendar-timezone")).toContainText("Asia/Tokyo");
+    await expect(page.getByTestId("calendar-timezone")).toContainText("horário do Japão");
   });
 
   test("'Desativar todo o Social' desliga os 4 toggles sociais e NÃO toca em Lançamentos", async ({ page, request }) => {

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography } from "@mui/material";
 import { ELEVATED_BUTTON_SX } from "@/components/ExploreCard";
 import { useTimeZone } from "@/lib/useTimeZone";
-import { formatTimeInZone, zonedLocalToUtc } from "@/lib/timeZone";
+import { formatTimeInZone, timeZoneLabel, zonedLocalToUtc } from "@/lib/timeZone";
 
 async function send(url: string, method: string, body?: unknown): Promise<{ ok: boolean; data: Record<string, unknown> }> {
   const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -204,7 +204,7 @@ export function NewEventForm({ communityKey }: { communityKey: string }) {
       <TextField label="Título" value={form.title} onChange={(e) => set("title", e.target.value)} error={Boolean(errors.title)} helperText={errors.title ?? "Ex.: maratona da 1ª temporada, estreia do filme"} slotProps={{ htmlInput: { maxLength: 120, "data-testid": "new-event-title" } }} />
       <TextField label="Descrição" value={form.description} onChange={(e) => set("description", e.target.value)} multiline minRows={3} error={Boolean(errors.description)} helperText={errors.description} slotProps={{ htmlInput: { maxLength: 2000, "data-testid": "new-event-description" } }} />
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-        <TextField type="datetime-local" label={`Início (${timeZone})`} value={form.start} onChange={(e) => set("start", e.target.value)} error={Boolean(errors.startsAt)} helperText={errors.startsAt} sx={{ flex: "1 1 220px" }} slotProps={{ inputLabel: { shrink: true }, htmlInput: { "data-testid": "new-event-start" } }} />
+        <TextField type="datetime-local" label={`Início (${timeZoneLabel(timeZone)})`} value={form.start} onChange={(e) => set("start", e.target.value)} error={Boolean(errors.startsAt)} helperText={errors.startsAt} sx={{ flex: "1 1 220px" }} slotProps={{ inputLabel: { shrink: true }, htmlInput: { "data-testid": "new-event-start" } }} />
         <TextField type="datetime-local" label="Fim (opcional)" value={form.end} onChange={(e) => set("end", e.target.value)} error={Boolean(errors.endsAt)} helperText={errors.endsAt} sx={{ flex: "1 1 220px" }} slotProps={{ inputLabel: { shrink: true }, htmlInput: { "data-testid": "new-event-end" } }} />
       </Box>
       <TextField label="Onde (opcional)" value={form.place} onChange={(e) => set("place", e.target.value)} placeholder="Sala, link da transmissão…" error={Boolean(errors.place)} helperText={errors.place} slotProps={{ htmlInput: { maxLength: 200, "data-testid": "new-event-place" } }} />

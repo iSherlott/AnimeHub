@@ -20,7 +20,7 @@ import { mergeConsecutiveEpisodes, type CalendarItem } from "@/lib/calendarItem"
 import type { OffGridItem } from "@/lib/calendarOffGrid";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 import { loginHref } from "@/lib/safeRedirect";
-import { buildWeekDaysInZone, dayKeyInZone, formatTimeInZone, weekdayName } from "@/lib/timeZone";
+import { buildWeekDaysInZone, dayKeyInZone, formatTimeInZone, timeZoneLabel, weekdayName } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
 
 const MAX_WEEK_OFFSET = 8;
@@ -249,9 +249,9 @@ export default function CalendarPage() {
           title="CALENDÁRIO"
           subtitle={
             <>
-              <span suppressHydrationWarning>{weekRangeLabel}</span> · Horários locais em{" "}
+              <span suppressHydrationWarning>{weekRangeLabel}</span> · Horários no{" "}
               <span suppressHydrationWarning data-testid="calendar-timezone">
-                {timeZone}
+                {timeZoneLabel(timeZone)}
               </span>
               {myListCountThisWeek > 0 && (
                 <>

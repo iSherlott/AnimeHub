@@ -14,10 +14,9 @@ type Suggestion = { id: string; displayName: string };
 
 const EXPLAINERS: Record<FeedTab, string[]> = {
   recommended: [
-    "Publicações recentes com mais curtidas. Esta ordem não é cronológica e é a mesma para todo mundo.",
-    "Sugestões simples · sem expor sua Minha Lista",
+    "Publicações recentes com mais curtidas. Esta ordem não é cronológica e é a mesma para todo mundo; sua Minha Lista não entra na conta.",
   ],
-  following: ["Publicações dos perfis que você segue, da mais nova para a mais antiga."],
+  following: ["Publicações dos seus amigos e dos perfis que você segue, da mais nova para a mais antiga."],
   recent: [
     "Conversas públicas em ordem cronológica, da mais nova para a mais antiga.",
     "Primeira visita? Comece por uma pergunta ou explore uma hashtag. Não precisamos conhecer seus interesses para mostrar conversas públicas.",

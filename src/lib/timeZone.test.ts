@@ -3,6 +3,7 @@ import {
   buildWeekDaysInZone,
   dayKeyInZone,
   formatTimeInZone,
+  timeZoneLabel,
   zonedLocalToUtc,
   isValidTimeZone,
   resolveTimeZone,
@@ -92,5 +93,19 @@ describe("zonedLocalToUtc", () => {
   it("rejects malformed input", () => {
     expect(zonedLocalToUtc("2026-10-10 13:00", "UTC")).toBeNull();
     expect(zonedLocalToUtc("", "UTC")).toBeNull();
+  });
+});
+
+describe("timeZoneLabel", () => {
+  it("mostra o fuso pelo nome que a pessoa reconhece, não pelo identificador", () => {
+    expect(timeZoneLabel("America/Sao_Paulo")).toBe("horário de Brasília");
+    expect(timeZoneLabel("America/Sao_Paulo", true)).toBe("Horário de Brasília");
+    expect(timeZoneLabel("Asia/Tokyo", true)).toBe("Horário do Japão");
+    expect(timeZoneLabel("UTC")).toBe("UTC");
+  });
+
+  it("fuso fora da lista (o do dispositivo) vira o horário da cidade", () => {
+    expect(timeZoneLabel("America/Argentina/Cordoba")).toBe("horário de Cordoba");
+    expect(timeZoneLabel("Pacific/Port_Moresby", true)).toBe("Horário de Port Moresby");
   });
 });

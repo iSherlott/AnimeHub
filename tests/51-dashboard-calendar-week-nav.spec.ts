@@ -91,8 +91,8 @@ test.describe("Dashboard, calendário e navegação", () => {
     await expect(days.first()).toContainText(/^SEG\s*\d{2}/);
     await expect(days.last()).toContainText(/^DOM\s*\d{2}/);
 
-    await expect(page.locator("main")).toContainText("Horários locais em");
-    await expect(page.getByTestId("calendar-timezone")).toContainText("America/Sao_Paulo");
+    await expect(page.locator("main")).toContainText("Horários no");
+    await expect(page.getByTestId("calendar-timezone")).toContainText("horário de Brasília");
     // Horário antes de "EP" (D-05): primeira linha do item é a hora, depois o título e o EP.
     await expect(page.getByTestId("calendar-entry-906000-9")).toHaveText(/12:00[\s\S]*EP09/);
   });

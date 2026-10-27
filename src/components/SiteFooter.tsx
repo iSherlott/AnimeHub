@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { Box, Typography } from "@mui/material";
 import { useTimeZone } from "@/lib/useTimeZone";
+import { timeZoneLabel } from "@/lib/timeZone";
 
 /**
  * Rodapé do Figma ("Contrato da referência"): assinatura do produto à
@@ -43,7 +44,7 @@ export function SiteFooter() {
     >
       <Typography sx={{ fontSize: 12 }}>ANIME HUB · Sua próxima estreia, no seu tempo.</Typography>
       <Typography sx={{ fontSize: 12 }} suppressHydrationWarning>
-        {today} · {timeZone}
+        {today} · {timeZoneLabel(timeZone, true)}
       </Typography>
     </Box>
   );
