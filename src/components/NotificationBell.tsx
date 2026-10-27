@@ -39,7 +39,7 @@ type AiringAlertItem = {
 
 type SocialItem = {
   id: string;
-  type: "POST_REPLY" | "COMMENT_REPLY" | "NEW_FOLLOWER" | "POST_LIKE" | "PROFILE_SCRAP" | "PROFILE_TESTIMONIAL" | "PROFILE_FAN" | "COMMUNITY_REPLY" | "COMMUNITY_EVENT" | "FRIEND_REQUEST" | "FRIEND_ACCEPTED";
+  type: "POST_REPLY" | "COMMENT_REPLY" | "NEW_FOLLOWER" | "POST_LIKE" | "PROFILE_SCRAP" | "PROFILE_TESTIMONIAL" | "PROFILE_FAN" | "COMMUNITY_REPLY" | "COMMUNITY_EVENT" | "FRIEND_REQUEST" | "FRIEND_ACCEPTED" | "FRIEND_BIRTHDAY";
   actor: { id: string; displayName: string };
   /** Comunidades: a comunidade e o título do tópico ou do evento (públicos, como na lista do fórum). */
   community?: string | null;
@@ -95,6 +95,8 @@ function socialText(n: SocialItem): string {
       return `${n.actor.displayName} quer ser seu amigo`;
     case "FRIEND_ACCEPTED":
       return `${n.actor.displayName} aceitou seu pedido de amizade`;
+    case "FRIEND_BIRTHDAY":
+      return `Hoje é aniversário de ${n.actor.displayName}. Deixe um recado`;
     case "COMMUNITY_EVENT":
       return `${n.actor.displayName} marcou o evento "${n.subject ?? "…"}"${n.community ? ` na comunidade ${n.community}` : ""}`;
   }

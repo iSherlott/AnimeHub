@@ -10,6 +10,8 @@ import { PeopleGrid, ProfileSection } from "@/components/profile/ProfileSections
 import { getCurrentUser } from "@/lib/auth/session";
 import { friendRequests, friendSuggestions, listFriends, searchPeople, type PersonCard } from "@/lib/friends";
 import { formatRelativeTime } from "@/lib/relativeTime";
+import { formatBirthday, friendsBirthdays } from "@/lib/birthdays";
+import { resolveTimeZone } from "@/lib/timeZone";
 import { loginHref } from "@/lib/safeRedirect";
 
 export const dynamic = "force-dynamic";
@@ -43,11 +45,12 @@ export default async function FriendsHomePage({ searchParams }: { searchParams: 
   const user = await getCurrentUser();
   if (!user) redirect(loginHref("/amigos"));
   const query = ((await searchParams).q ?? "").trim().slice(0, 60);
-  const [{ received, sent }, friends, results, suggestions] = await Promise.all([
+  const [{ received, sent }, friends, results, suggestions, birthdays] = await Promise.all([
     friendRequests(user.id),
     listFriends(user.id, user.id, 12),
     query ? searchPeople(user.id, query) : Promise.resolve(null),
     friendSuggestions(user.id),
+    friendsBirthdays(user.id, resolveTimeZone(user.timeZone)),
   ]);
 
   return (
@@ -88,6 +91,32 @@ export default async function FriendsHomePage({ searchParams }: { searchParams: 
             </Box>
           )}
         </ProfileSection>
+        {birthdays.length > 0 && (
+          <ProfileSection id="aniversarios" title="aniversários" count={birthdays.length} testId="friend-birthdays">
+            <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none" }}>
+              {birthdays.map((b) => (
+                <Box component="li" key={b.id} data-testid={`birthday-${b.id}`} sx={{ display: "flex", alignItems: "center", gap: 1.5, py: 1.5, borderTop: 1, borderColor: "divider", flexWrap: "wrap", "&:first-of-type": { borderTop: 0, pt: 0 } }}>
+                  <AppLink href={`/users/${b.id}`} aria-label={b.displayName}>
+                    <UserAvatar id={b.id} displayName={b.displayName} avatarUrl={b.avatarUrl} size={40} />
+                  </AppLink>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <AppLink href={`/users/${b.id}`} underline="hover" sx={{ fontSize: 15, fontWeight: 700, color: "text.primary" }}>
+                      {b.displayName}
+                    </AppLink>
+                    <Typography sx={{ fontSize: 12, color: b.inDays === 0 ? "primary.main" : "text.secondary", fontWeight: b.inDays === 0 ? 700 : 400 }}>
+                      {b.inDays === 0 ? "🎂 Hoje!" : b.inDays === 1 ? "Amanhã" : `Em ${b.inDays} dias`} · {formatBirthday(b.birthDay, b.birthMonth)}
+                    </Typography>
+                  </Box>
+                  {b.inDays === 0 && (
+                    <AppLink href={`/users/${b.id}#recados`} underline="hover" sx={{ fontSize: 13, fontWeight: 700 }} data-testid={`birthday-scrap-${b.id}`}>
+                      Deixar um recado
+                    </AppLink>
+                  )}
+                </Box>
+              ))}
+            </Box>
+          </ProfileSection>
+        )}
         <ProfileSection id="sugestoes" title="sugestões" count={suggestions.length} testId="friend-suggestions">
           {suggestions.length === 0 ? (
             <Typography sx={{ fontSize: 14, color: "text.secondary" }}>

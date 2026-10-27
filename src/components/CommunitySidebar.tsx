@@ -19,6 +19,7 @@ import type { CalendarItem } from "@/lib/calendarItem";
 
 type Tag = { key: string; display: string };
 type Person = { id: string; displayName: string; handle: string | null; avatarUrl: string | null; detail: string | null };
+type Birthday = { id: string; displayName: string; avatarUrl: string | null; birthDay: number; birthMonth: number; inDays: number };
 const KIND_LABEL: Record<string, string> = { WORK: "Obra", SEASON: "Temporada", GENRE: "Gênero", TOPIC: "Tópico" };
 const GROUPS: Array<{ kind: string; label: string }> = [
   { kind: "WORK", label: "OBRA" },
@@ -43,6 +44,7 @@ export function CommunitySidebar() {
   const [next, setNext] = useState<CalendarItem | null>(null);
   const [recommended, setRecommended] = useState<RecommendationItem[] | null>(null);
   const [people, setPeople] = useState<Person[] | null>(null);
+  const [birthdays, setBirthdays] = useState<Birthday[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +78,21 @@ export function CommunitySidebar() {
           .filter((i) => i.inMyList && new Date(i.airingAt).getTime() >= now)
           .sort((a, b) => a.airingAt.localeCompare(b.airingAt));
         setNext(mine[0] ?? null);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [loggedIn]);
+
+  // Aniversários dos amigos (hoje e nos próximos dias).
+  useEffect(() => {
+    if (!loggedIn) return;
+    let cancelled = false;
+    fetch("/api/friends/birthdays")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) setBirthdays(data?.birthdays ?? []);
       })
       .catch(() => undefined);
     return () => {
@@ -213,6 +230,31 @@ export function CommunitySidebar() {
           <MuiLink component={NextLink} href="/calendar" underline="hover" sx={{ fontSize: 14, fontWeight: 700, color: "text.primary" }}>
             Consultar calendário ↗
           </MuiLink>
+        </Box>
+      )}
+
+      {loggedIn && birthdays && birthdays.length > 0 && (
+        <Box component="section" aria-labelledby="aniversarios-heading" data-testid="sidebar-birthdays" sx={{ borderTop: 1, borderColor: "divider", pt: 3, display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <SectionTitle>
+            <span id="aniversarios-heading">Aniversários</span>
+          </SectionTitle>
+          <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 1.5 }}>
+            {birthdays.slice(0, 5).map((b) => (
+              <Box component="li" key={b.id} data-testid={`sidebar-birthday-${b.id}`}>
+                <Box component={NextLink} href={b.inDays === 0 ? `/users/${b.id}#recados` : `/users/${b.id}`} sx={{ display: "flex", gap: 1.5, alignItems: "center", color: "text.primary", textDecoration: "none", "&:hover .person-name": { textDecoration: "underline" } }}>
+                  <UserAvatar id={b.id} displayName={b.displayName} avatarUrl={b.avatarUrl} size={36} />
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography className="person-name" sx={{ fontSize: 14, fontWeight: 700, overflowWrap: "anywhere" }}>
+                      {b.displayName}
+                    </Typography>
+                    <Typography sx={{ fontSize: 12, color: b.inDays === 0 ? "primary.main" : "text.secondary" }}>
+                      {b.inDays === 0 ? "🎂 Hoje · deixe um recado" : b.inDays === 1 ? "Amanhã" : `Em ${b.inDays} dias`}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+            ))}
+          </Box>
         </Box>
       )}
 

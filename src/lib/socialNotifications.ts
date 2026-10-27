@@ -12,7 +12,8 @@ export type SocialNotificationType =
   | "COMMUNITY_REPLY"
   | "COMMUNITY_EVENT"
   | "FRIEND_REQUEST"
-  | "FRIEND_ACCEPTED";
+  | "FRIEND_ACCEPTED"
+  | "FRIEND_BIRTHDAY";
 
 /** Qual preferência da conta controla cada tipo (Configurações, S-12). */
 const PREFERENCE_BY_TYPE = {
@@ -30,6 +31,8 @@ const PREFERENCE_BY_TYPE = {
   // Amizade: como um seguidor novo.
   FRIEND_REQUEST: "notifyFollowers",
   FRIEND_ACCEPTED: "notifyFollowers",
+  // Criado por src/lib/birthdays.ts (um por amigo por dia), não pelo notifySocial.
+  FRIEND_BIRTHDAY: "notifyFollowers",
 } as const;
 
 /** Tipos que não se repetem: a mesma pessoa curtindo/seguindo de novo não gera outro aviso. */

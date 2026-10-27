@@ -308,3 +308,11 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 - **Lista de fãs.** `/users/<id>/fas`.
 - **Banco.** `20261112100000_scrap_replies` (só acrescenta).
 - **Testes.** Spec 126.
+
+## Depois: aniversários (26/10)
+
+- **Data no perfil.** Aniversário opcional, só com dia e mês, e só amigos veem.
+- **Aniversariantes.** Hoje e nos próximos 7 dias, na página Amigos e na lateral do Feed.
+- **Sino.** Avisa no dia, com o link para deixar um recado.
+- **Banco.** `20261113100000_birthdays` (só acrescenta).
+- **Testes.** Spec 127 e `birthdayDates.test.ts`.

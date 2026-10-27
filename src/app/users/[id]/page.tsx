@@ -20,6 +20,7 @@ import { listScraps, listTestimonials, ratingSummary } from "@/lib/profileOrkut"
 import { friendState, friendSuggestions, listFriends, pendingReceivedCount } from "@/lib/friends";
 import { memberCommunities } from "@/lib/community";
 import { dailyFortune } from "@/lib/dailyFortune";
+import { formatBirthday } from "@/lib/birthdays";
 import { resolveTimeZone } from "@/lib/timeZone";
 import { loginHref } from "@/lib/safeRedirect";
 
@@ -50,7 +51,7 @@ export default async function UserProfilePage({ params }: Params) {
   const { id } = await params;
   const target = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, displayName: true, handle: true, avatarUrl: true, bannerUrl: true, bio: true, favoriteAnime: true, favoriteCharacter: true, favoriteGenres: true, createdAt: true },
+    select: { id: true, displayName: true, handle: true, avatarUrl: true, bannerUrl: true, bio: true, favoriteAnime: true, favoriteCharacter: true, favoriteGenres: true, birthDay: true, birthMonth: true, createdAt: true },
   });
   if (!target) notFound();
 
@@ -197,6 +198,17 @@ export default async function UserProfilePage({ params }: Params) {
                         <Chip key={g} label={g} size="small" component="span" />
                       ))}
                     </Box>
+                  </AboutRow>
+                )}
+                {target.birthDay && target.birthMonth && (isOwnProfile || friendOfViewer) && (
+                  <AboutRow label="Aniversário">
+                    {formatBirthday(target.birthDay, target.birthMonth)}
+                    {isOwnProfile && (
+                      <Typography component="span" sx={{ fontSize: 12, color: "text.secondary" }}>
+                        {" "}
+                        · só amigos veem
+                      </Typography>
+                    )}
                   </AboutRow>
                 )}
                 <AboutRow label="No Anime Hub desde">{target.createdAt.toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: resolveTimeZone(viewer?.timeZone) })}</AboutRow>

@@ -43,6 +43,12 @@ export async function activeGenreKeys(): Promise<string[]> {
   return rows.map((r) => r.key);
 }
 
+/** Os gêneros do vocabulário sem os marcados como adultos (os favoritos do perfil, que é público). */
+export async function favoriteGenreOptions(): Promise<string[]> {
+  const rows = await prisma.genre.findMany({ where: { active: true, mergedInto: null, registered: true, adult: false }, orderBy: [{ position: "asc" }, { key: "asc" }], select: { key: true } });
+  return rows.map((r) => r.key);
+}
+
 export async function genreWorks(key: string, page = 0, size = 50) {
   const where = { genreLinks: { some: { genreKey: key } } };
   const [total, rows] = await Promise.all([

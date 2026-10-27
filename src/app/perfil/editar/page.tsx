@@ -6,7 +6,7 @@ import { PageContainer } from "@/components/PageShell";
 import { ProfileEditor } from "@/components/ProfileEditor";
 import { getCurrentUser } from "@/lib/auth/session";
 import { loginHref } from "@/lib/safeRedirect";
-import { activeGenreKeys } from "@/lib/genres";
+import { favoriteGenreOptions } from "@/lib/genres";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Editar Perfil · Anime Hub" };
 export default async function EditProfilePage() {
   const user = await getCurrentUser();
   if (!user) redirect(loginHref("/perfil/editar"));
-  const [favorites, genreOptions] = await Promise.all([prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { favoriteAnime: true, favoriteCharacter: true, favoriteGenres: true } }), activeGenreKeys()]);
+  const [favorites, genreOptions] = await Promise.all([prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { favoriteAnime: true, favoriteCharacter: true, favoriteGenres: true, birthDay: true, birthMonth: true } }), favoriteGenreOptions()]);
 
   return (
     <Box sx={{ minHeight: "100%", bgcolor: "background.default" }}>
@@ -24,7 +24,7 @@ export default async function EditProfilePage() {
       <PageContainer>
         <ProfileEditor
           me={{ id: user.id, displayName: user.displayName, handle: user.handle, bio: user.bio, avatarUrl: user.avatarUrl, bannerUrl: user.bannerUrl, ...favorites }}
-          genreOptions={genreOptions.filter((g) => g !== "Hentai")}
+          genreOptions={genreOptions}
         />
       </PageContainer>
     </Box>

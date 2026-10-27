@@ -6,9 +6,10 @@ import EditIcon from "@mui/icons-material/Edit";
 import { Box, ButtonBase, Chip, IconButton, InputBase, Typography } from "@mui/material";
 import { AvatarPickerDialog, PROFILE_ACCENT } from "@/components/AvatarPickerDialog";
 import { UserAvatar } from "@/components/UserAvatar";
+import { MONTHS } from "@/lib/birthdayDates";
 import { useCurrentUser, useSetCurrentUser } from "@/lib/auth/useCurrentUser";
 
-type Me = { id: string; displayName: string; handle: string | null; bio: string | null; avatarUrl: string | null; bannerUrl: string | null; favoriteAnime: string | null; favoriteCharacter: string | null; favoriteGenres: string[] };
+type Me = { id: string; displayName: string; handle: string | null; bio: string | null; avatarUrl: string | null; bannerUrl: string | null; favoriteAnime: string | null; favoriteCharacter: string | null; favoriteGenres: string[]; birthDay: number | null; birthMonth: number | null };
 
 const outlined = (enabled: boolean, accent: boolean) => ({
   px: 4,
@@ -24,6 +25,8 @@ const outlined = (enabled: boolean, accent: boolean) => ({
   "&:hover": enabled || accent ? { bgcolor: "rgba(255,255,255,0.06)" } : undefined,
   "&:focus-visible": { outline: "2px solid #ffd400", outlineOffset: 2 },
 });
+
+const SELECT_SX = { fontSize: 18, py: 0.75, px: 0.5, bgcolor: "transparent", color: "text.primary", border: 0, borderBottom: "2px solid #6b6b6b", fontFamily: "inherit", "&:focus": { outline: "none", borderBottomColor: PROFILE_ACCENT }, "& option": { bgcolor: "#171820" } } as const;
 
 function Field({ id, label, value, onChange, help, placeholder, maxLength, multiline = false }: { id: string; label: string; value: string; onChange: (v: string) => void; help: string; placeholder?: string; maxLength: number; multiline?: boolean }) {
   return (
@@ -62,6 +65,8 @@ export function ProfileEditor({ me, genreOptions = [] }: { me: Me; genreOptions?
   const [favoriteAnime, setFavoriteAnime] = useState(me.favoriteAnime ?? "");
   const [favoriteCharacter, setFavoriteCharacter] = useState(me.favoriteCharacter ?? "");
   const [favoriteGenres, setFavoriteGenres] = useState<string[]>(me.favoriteGenres);
+  const [birthDay, setBirthDay] = useState(me.birthDay ? String(me.birthDay) : "");
+  const [birthMonth, setBirthMonth] = useState(me.birthMonth ? String(me.birthMonth) : "");
   const [avatar, setAvatar] = useState(me.avatarUrl);
   const [banner, setBanner] = useState(me.bannerUrl);
   const [picker, setPicker] = useState<"avatar" | "banner" | null>(null);
@@ -74,7 +79,9 @@ export function ProfileEditor({ me, genreOptions = [] }: { me: Me; genreOptions?
     bio.trim() !== (me.bio ?? "") ||
     favoriteAnime.trim() !== (me.favoriteAnime ?? "") ||
     favoriteCharacter.trim() !== (me.favoriteCharacter ?? "") ||
-    favoriteGenres.join(",") !== me.favoriteGenres.join(",");
+    favoriteGenres.join(",") !== me.favoriteGenres.join(",") ||
+    birthDay !== (me.birthDay ? String(me.birthDay) : "") ||
+    birthMonth !== (me.birthMonth ? String(me.birthMonth) : "");
   const canSave = dirty && name.trim().length > 0 && !busy;
 
   async function save() {
@@ -82,7 +89,15 @@ export function ProfileEditor({ me, genreOptions = [] }: { me: Me; genreOptions?
     setBusy(true);
     setError(null);
     try {
-      const payload: Record<string, string | string[]> = { displayName: name, bio, favoriteAnime, favoriteCharacter, favoriteGenres };
+      const payload: Record<string, string | string[] | number | null> = {
+        displayName: name,
+        bio,
+        favoriteAnime,
+        favoriteCharacter,
+        favoriteGenres,
+        birthDay: birthDay ? Number(birthDay) : null,
+        birthMonth: birthMonth ? Number(birthMonth) : null,
+      };
       if (handle.trim()) payload.handle = handle;
       const res = await fetch("/api/users/me", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json().catch(() => ({}));
@@ -156,6 +171,30 @@ export function ProfileEditor({ me, genreOptions = [] }: { me: Me; genreOptions?
           <Field id="profile-bio" label="Quem sou eu (opcional)" value={bio} onChange={setBio} multiline maxLength={300} placeholder="uma frase sobre você" help="Até 300 caracteres. Aparece no seu perfil público." />
           <Field id="profile-favorite-anime" label="Anime favorito (opcional)" value={favoriteAnime} onChange={setFavoriteAnime} maxLength={80} placeholder="ex.: Frieren" help="Aparece no quem sou eu do seu perfil." />
           <Field id="profile-favorite-character" label="Personagem favorito (opcional)" value={favoriteCharacter} onChange={setFavoriteCharacter} maxLength={80} placeholder="ex.: Himmel" help="Aparece no quem sou eu do seu perfil." />
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+            <Typography component="span" sx={{ fontSize: 13, color: "text.secondary" }}>
+              Aniversário (opcional)
+            </Typography>
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <Box component="select" value={birthDay} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBirthDay(e.target.value)} aria-label="Dia do aniversário" data-testid="profile-birth-day" sx={SELECT_SX}>
+                <option value="">Dia</option>
+                {Array.from({ length: 31 }, (_, i) => (
+                  <option key={i + 1} value={String(i + 1)}>
+                    {i + 1}
+                  </option>
+                ))}
+              </Box>
+              <Box component="select" value={birthMonth} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBirthMonth(e.target.value)} aria-label="Mês do aniversário" data-testid="profile-birth-month" sx={SELECT_SX}>
+                <option value="">Mês</option>
+                {MONTHS.map((m, i) => (
+                  <option key={m} value={String(i + 1)}>
+                    {m}
+                  </option>
+                ))}
+              </Box>
+            </Box>
+            <Typography sx={{ fontSize: 13, color: "text.secondary", lineHeight: 1.6 }}>Sem o ano. Só seus amigos veem, e eles recebem um lembrete no dia.</Typography>
+          </Box>
           {genreOptions.length > 0 && (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }} data-testid="profile-favorite-genres">
               <Typography sx={{ fontSize: 13, fontWeight: 700, color: "text.secondary" }}>Gêneros favoritos (até 5)</Typography>

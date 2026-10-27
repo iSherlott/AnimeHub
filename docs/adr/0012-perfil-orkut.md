@@ -138,3 +138,20 @@ A pessoa usuária escolheu trocar o "amigo = seguir mútuo" por **pedido de amiz
   bloqueios.
 - **Banco.** `20261112100000_scrap_replies` só acrescenta: a coluna `replyToId` e um índice.
 - **Testes.** Spec 126.
+
+## Revisão de 26/10/2026 — aniversários
+
+- **Data opcional em Editar perfil:** só dia e mês, sem o ano, para não expor a idade; 29/02 vale.
+  - No "quem sou eu" do perfil, a data aparece só para a própria pessoa (com "só amigos veem") e para os amigos.
+- **Aniversariantes:** hoje e os próximos 7 dias, no fuso de quem vê.
+  - Na página Amigos, cada um tem o link "Deixar um recado" no dia.
+  - Na lateral do Feed aparecem até 5.
+  - Quem nasceu em 29/02 aparece em 28/02 nos anos que não são bissextos.
+- **Sino:** "Hoje é aniversário de …", que leva aos recados da pessoa.
+  - O aviso é criado quando o sino é consultado, um por amigo por dia, sem precisar de um serviço agendado.
+  - Segue a preferência de seguidores e amizade.
+- **Gêneros favoritos:** a lista do editor passa a excluir os gêneros marcados como adultos (`Genre.adult`), em vez de
+  só "Hentai" pelo nome.
+- **Banco.** `20261113100000_birthdays` só acrescenta duas colunas em `User`.
+- **Código e testes.** O cálculo de datas fica em `src/lib/birthdayDates.ts` (sem banco, também usado no navegador) e os
+  aniversariantes e avisos em `src/lib/birthdays.ts`. Testes: spec 127 e `birthdayDates.test.ts`.

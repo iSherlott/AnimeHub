@@ -5,6 +5,7 @@ import { blockedUserIdSet } from "@/lib/blocks";
 import { isTodaysRelease } from "@/lib/airingWindow";
 import { resolveTimeZone } from "@/lib/timeZone";
 import { communityLabels } from "@/lib/community";
+import { ensureBirthdayNotifications } from "@/lib/birthdays";
 
 /**
  * Lista os alertas de "favorito no ar agora" (Epic 10) — só leitura, quem
@@ -68,6 +69,8 @@ export async function GET() {
 
   // Canal Social: só quem/onde (nunca o texto). Quem hoje tem bloqueio
   // comigo some; publicação apagada vira tombstone ("indisponível").
+  // Aniversários dos amigos: o aviso do dia nasce quando o sino é consultado (um por amigo por dia).
+  await ensureBirthdayNotifications(user.id, zone, now);
   const blocked = await blockedUserIdSet(user.id);
   const socialRows = await prisma.socialNotification.findMany({
     where: { userId: user.id, ...(blocked.size ? { actorId: { notIn: [...blocked] } } : {}) },
@@ -99,6 +102,7 @@ export async function GET() {
     let href: string | null = null;
     if (n.type === "NEW_FOLLOWER" || n.type === "PROFILE_FAN" || n.type === "FRIEND_ACCEPTED") href = `/users/${n.actor.id}`;
     else if (n.type === "FRIEND_REQUEST") href = "/amigos";
+    else if (n.type === "FRIEND_BIRTHDAY") href = `/users/${n.actor.id}#recados`;
     // Recado e depoimento ficam no perfil de quem recebe (quem está vendo o sino).
     else if (n.type === "PROFILE_SCRAP") href = `/users/${user.id}#recados`;
     else if (n.type === "PROFILE_TESTIMONIAL") href = `/users/${user.id}#depoimentos`;

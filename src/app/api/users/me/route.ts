@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validateBirthday } from "@/lib/birthdayDates";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
@@ -59,6 +60,13 @@ export async function PATCH(request: Request) {
     data.favoriteGenres = [...new Set(list)];
   }
 
+  if ("birthDay" in body || "birthMonth" in body) {
+    const checked = validateBirthday(body.birthDay, body.birthMonth);
+    if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: 400 });
+    data.birthDay = checked.value.birthDay;
+    data.birthMonth = checked.value.birthMonth;
+  }
+
   if ("displayName" in body) {
     const name = typeof body.displayName === "string" ? body.displayName.trim() : "";
     if (isBlank(name)) {
@@ -83,7 +91,7 @@ export async function PATCH(request: Request) {
 
   try {
     const updated = await prisma.user.update({ where: { id: user.id }, data });
-    return NextResponse.json({ bio: updated.bio, displayName: updated.displayName, handle: updated.handle, favoriteAnime: updated.favoriteAnime, favoriteCharacter: updated.favoriteCharacter, favoriteGenres: updated.favoriteGenres });
+    return NextResponse.json({ bio: updated.bio, displayName: updated.displayName, handle: updated.handle, favoriteAnime: updated.favoriteAnime, favoriteCharacter: updated.favoriteCharacter, favoriteGenres: updated.favoriteGenres, birthDay: updated.birthDay, birthMonth: updated.birthMonth });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json({ error: "Esse identificador já está em uso" }, { status: 409 });
