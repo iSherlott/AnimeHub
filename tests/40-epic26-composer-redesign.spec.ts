@@ -53,7 +53,7 @@ test.describe("Nova publicação — contexto de obra opcional e explícito", ()
     await page.goto("/");
     const card = page.getByTestId(`post-card-${postId}`);
     await expect(card).toBeVisible();
-    await card.getByRole("button", { name: "Compartilhar internamente" }).click();
+    await card.getByRole("button", { name: "Compartilhar" }).click();
     await page.getByRole("menuitem", { name: "Citar publicação" }).click();
 
     await expect(page).toHaveURL(/\/publicar\?.*quotePostId=/);

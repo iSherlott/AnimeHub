@@ -95,6 +95,7 @@ export default function CalendarPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [showAll, setShowAllRaw] = useState(false);
   const userTouchedToggle = useRef(false);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   function setShowAll(value: boolean) {
     userTouchedToggle.current = true;
@@ -135,6 +136,13 @@ export default function CalendarPage() {
 
   const weekDays = useMemo(() => buildWeekDaysInZone(weekOffset, timeZone), [weekOffset, timeZone]);
   const todayKey = useMemo(() => dayKeyInZone(new Date(), timeZone), [timeZone]);
+  // Celular e tablet (a grade rola): ao abrir a semana, o dia de hoje vem para o começo da área visível.
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (loading || !scroller || scroller.scrollWidth <= scroller.clientWidth) return;
+    const today = scroller.querySelector<HTMLElement>("[data-today='true']");
+    scroller.scrollLeft = today ? today.getBoundingClientRect().left - (scroller.firstElementChild as HTMLElement).getBoundingClientRect().left : 0;
+  }, [loading, weekOffset, showAll, todayKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -261,7 +269,7 @@ export default function CalendarPage() {
                 startIcon={<ChevronLeftIcon />}
                 sx={buttonSx()}
               >
-                Semana anterior
+                <ShortLabel short="Anterior" long="Semana anterior" />
               </Button>
               <Button onClick={() => setWeekOffset(0)} disabled={weekOffset === 0} sx={buttonSx()}>
                 Hoje
@@ -272,7 +280,7 @@ export default function CalendarPage() {
                 endIcon={<ChevronRightIcon />}
                 sx={buttonSx()}
               >
-                Próxima semana
+                <ShortLabel short="Próxima" long="Próxima semana" />
               </Button>
             </Box>
           }
@@ -298,8 +306,8 @@ export default function CalendarPage() {
           </ErrorNotice>
         ) : (
           <>
-            {/* Em telas estreitas a grade rola na horizontal (colunas com largura mínima). */}
-            <Box sx={{ overflowX: "auto", pb: 1 }}>
+            {/* Em telas estreitas a grade rola na horizontal: no celular um dia por vez (encaixa no dia, abre em hoje). */}
+            <Box ref={scrollerRef} sx={{ overflowX: "auto", pb: 1, scrollSnapType: { xs: "x mandatory", md: "none" }, overscrollBehaviorX: "contain" }}>
               <Box
                 key={`${weekOffset}-${showAll}`}
                 className="animate-fade-in"
@@ -310,11 +318,11 @@ export default function CalendarPage() {
                   "--u": "clamp(14px, 0.9722vw, 22px)",
                   fontSize: "var(--u)",
                   display: "grid",
-                  gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+                  // Celular: cada dia ocupa quase a tela (o próximo aparece na borda); tablet: dias de 200 px; a grade rola.
+                  gridTemplateColumns: { xs: "repeat(7, 82vw)", sm: "repeat(7, 200px)", md: "repeat(7, minmax(0, 1fr))" },
+                  "& > *": { scrollSnapAlign: "start" },
                   gap: "1px",
-                  minHeight: "33.93em",
-                  // No celular cada dia tem ao menos 160 px (o nome do anime cabe ao lado da miniatura); a grade rola.
-                  minWidth: { xs: 1120, md: 0 },
+                  minHeight: { xs: "16em", md: "33.93em" },
                   borderRadius: "0.857em",
                   overflow: "hidden",
                   bgcolor: "background.default",
@@ -414,5 +422,19 @@ export default function CalendarPage() {
         )}
       </PageContainer>
     </Box>
+  );
+}
+
+/** Rótulo curto no celular e completo a partir do tablet (só um dos dois existe para leitores de tela). */
+function ShortLabel({ short, long }: { short: string; long: string }) {
+  return (
+    <>
+      <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+        {short}
+      </Box>
+      <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+        {long}
+      </Box>
+    </>
   );
 }

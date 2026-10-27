@@ -36,7 +36,7 @@ function CommunityTile({ c }: { c: CommunityLink }) {
 const gridSx = { m: 0, p: 0, display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0,1fr))", sm: "repeat(4, minmax(0,1fr))", lg: "repeat(6, minmax(0,1fr))" }, gap: 2 } as const;
 
 /**
- * Comunidades (como no Orkut): o diretório dos fóruns dos animes — as minhas (com o que teve novidade desde a última
+ * Comunidades: o diretório dos fóruns dos animes — as minhas (com o que teve novidade desde a última
  * visita), as mais populares e a busca pelo nome do anime. Cada anime tem a sua comunidade, mesmo antes do primeiro membro.
  */
 export default async function CommunitiesPage({ searchParams }: Props) {

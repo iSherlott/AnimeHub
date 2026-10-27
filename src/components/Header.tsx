@@ -45,7 +45,7 @@ const NAV_ITEMS: Array<{ href: string; label: string; match: (p: string) => bool
       p.startsWith("/publicacao") ||
       p.startsWith("/users"),
   },
-  // "Comunidades": o fórum de cada anime (estilo Orkut) e o diretório.
+  // "Comunidades": o fórum de cada anime e o diretório.
   { href: "/comunidades", label: "Comunidades", match: (p) => p === "/comunidades" || p.startsWith("/comunidades/") },
 ];
 

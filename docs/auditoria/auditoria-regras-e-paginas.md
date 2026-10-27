@@ -214,3 +214,35 @@ curadoria, calendário, taxonomia).
   "Publicar sobre este anime" que ficava nelas). A aba "Comunidade" leva ao cartão da comunidade da franquia, com o link.
   Os comentários e as publicações já gravados ficam no banco; as publicações sobre a obra continuam no Feed, filtradas
   por ela.
+
+## Revisão em três camadas: nomes, celular e tablet (27/10)
+
+**Camada 1: nomes e textos.**
+
+- Nada no código, nos testes, nas migrações nem na documentação leva mais o nome de outra rede social. O perfil e as
+  comunidades são do próprio Anime Hub:
+  - `profileSocial.ts`, `ProfileActions.tsx` e `CommunityPanels.tsx`;
+  - as migrações `community_events_moderation` e `profile_social`, renomeadas antes de chegar ao banco de dev;
+  - o ADR `0012-perfil-social.md`.
+- Saíram da tela os textos de desenvolvimento e as frases repetidas:
+  - termos de projeto e de especificação: "Fase 2/4", "D-30", o caminho de um arquivo da documentação, "opt-in",
+    "Preferência existente preservada" e os parágrafos de especificação em Publicar;
+  - o detalhe técnico do erro de episódios ("fetch failed");
+  - "Timezone" e "Dark", que agora são "Fuso horário" e "Escuro";
+  - o "Autumn2026" repetido na lateral do Feed;
+  - a frase solta "A busca social fica aqui";
+  - os painéis técnicos de Importações e Scrapers, reescritos em português.
+- "Compartilhar internamente" agora é "Compartilhar"; o menu continua oferecendo repostar e citar.
+
+**Camada 2: celular (375 px) e tablet (768 px).** Cerca de 65 páginas foram medidas nos três tamanhos (usuário,
+visitante e admin): 201 combinações. Nenhuma transborda mais na horizontal.
+
+| Tela | Antes | Agora |
+| --- | --- | --- |
+| Publicações (Feed, perfil, busca, publicação) | No celular, a linha Curtir/Responder/Compartilhar/Excluir vazava da tela. | A linha quebra; cada ação fica inteira. |
+| Calendário | No celular, uma grade de 1120 px mostrava dois dias e meio cortados. | Um dia por vez (o próximo aparece na borda), com deslize que encaixa no dia e abertura no dia de hoje. No tablet, dias de 200 px. Botões "Anterior / Hoje / Próxima" numa linha. |
+| Filtros (Minha Lista, Explorar, temporada, admin) | Dois seletores lado a lado cortavam o texto ("Próximo lançam…"). | Cada seletor ocupa a linha inteira quando não cabe. |
+| Admin | No celular, o menu inteiro vinha antes do conteúdo. As tabelas espremiam as colunas. | Botão "Menu" com a seção atual, que fecha ao escolher. As tabelas rolam na horizontal com largura mínima pelo número de colunas. |
+| Perfil e página da obra no tablet | As caixas laterais ficavam empilhadas em largura total. | Duas colunas. |
+
+**Camada 3:** suíte completa (lint, unitários e e2e) e conferência visual das telas alteradas.

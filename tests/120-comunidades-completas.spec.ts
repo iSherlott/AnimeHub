@@ -4,21 +4,21 @@ import { deleteCatalogEntries } from "./catalog-cleanup";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_EMAIL, TEST_ADMIN_SESSION_TOKEN, TEST_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
 
-// Comunidades no formato do Orkut: coluna da esquerda (capa, nome, Participar, menu), centro (descrição, informações,
+// Comunidades em três colunas: coluna da esquerda (capa, nome, Participar, menu), centro (descrição, informações,
 // fórum, enquetes, eventos) e direita (membros e comunidades relacionadas); eventos com presença; moderação (fixar,
 // trancar, denúncia resolvida no admin, descrição); diretório (minhas, populares, busca) e o item "Comunidades" no menu.
 const S1 = 120001;
 const S2 = 120002;
 const OTHER = 120010;
 const GENRE = "Round120Genero";
-const TAG = "Orkut120";
+const TAG = "Comu120";
 
 const adminState = {
   cookies: [{ name: SESSION_COOKIE_NAME, value: TEST_ADMIN_SESSION_TOKEN, domain: "localhost", path: "/", expires: Math.floor(Date.now() / 1000) + 365 * 24 * 3600, httpOnly: true, secure: false, sameSite: "Lax" as const }],
   origins: [],
 };
 
-test.describe.serial("Comunidades no formato do Orkut", () => {
+test.describe.serial("Comunidades em três colunas", () => {
   let prisma: PrismaClient;
   const id: Record<string, string> = {};
 
@@ -43,7 +43,7 @@ test.describe.serial("Comunidades no formato do Orkut", () => {
     await prisma.$disconnect();
   });
 
-  test("layout do Orkut: menu, descrição (a sinopse), informações, membros e comunidades relacionadas", async ({ page, request }) => {
+  test("layout em três colunas: menu, descrição (a sinopse), informações, membros e comunidades relacionadas", async ({ page, request }) => {
     expect((await request.post(`/api/communities/${S1}/membership`)).status()).toBe(200);
     await page.goto(`/comunidades/${S2}`);
     await expect(page).toHaveURL(new RegExp(`/comunidades/${S1}$`));
@@ -53,7 +53,7 @@ test.describe.serial("Comunidades no formato do Orkut", () => {
     await expect(page.getByTestId("community-members-box")).toContainText("membros (1)");
     await expect(page.getByTestId("community-members-box")).toContainText("E2E");
     await expect(page.getByTestId("community-related").getByRole("link", { name: new RegExp(`Vizinha ${TAG}`) })).toHaveAttribute("href", `/comunidades/${OTHER}`);
-    await page.screenshot({ path: test.info().outputPath("comunidade-orkut.png"), fullPage: true });
+    await page.screenshot({ path: test.info().outputPath("comunidade-colunas.png"), fullPage: true });
     await page.getByTestId("community-menu-membros").click();
     await expect(page.getByTestId(`member-${id.user}`)).toBeVisible();
   });

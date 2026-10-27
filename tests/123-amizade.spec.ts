@@ -5,7 +5,7 @@ import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_EMAIL, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
 
-// Amizade separada do seguir (como no Orkut): pedir, aceitar, recusar, cancelar e desfazer; o pedido das duas pessoas
+// Amizade separada do seguir: pedir, aceitar, recusar, cancelar e desfazer; o pedido das duas pessoas
 // vira amizade; bloqueio desfaz; avisos no sino; seguir não muda nada. A migração transforma o seguir mútuo em amizade.
 const adminState = {
   cookies: [{ name: SESSION_COOKIE_NAME, value: TEST_ADMIN_SESSION_TOKEN, domain: "localhost", path: "/", expires: Math.floor(Date.now() / 1000) + 365 * 24 * 3600, httpOnly: true, secure: false, sameSite: "Lax" as const }],

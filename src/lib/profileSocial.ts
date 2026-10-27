@@ -6,7 +6,7 @@ import { areFriends } from "@/lib/friends";
 import { isReportReason, REPORT_REASON_LABELS } from "@/lib/reportReasons";
 
 /**
- * Perfil estilo Orkut, com o tema do Anime Hub: recados (qualquer conta), depoimentos (só amigos, com aprovação), fãs e
+ * Perfil social do Anime Hub: recados (qualquer conta), depoimentos (só amigos, com aprovação), fãs e
  * avaliações (só amigos). Amizade: pedido aceito (`src/lib/friends.ts`). Bloqueio entre as duas pessoas impede tudo isso
  * e esconde o que uma escreveu para a outra.
  */

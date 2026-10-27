@@ -22,13 +22,13 @@ model User {
   /// @identificador público e único (minúsculas; ver src/lib/handle.ts).
   /// Opcional até a pessoa escolher o seu.
   handle       String?   @unique
-  /// Bio curta e opcional (Epic 28) — texto livre, sem markdown/formatação. No perfil estilo Orkut é o "quem sou eu".
+  /// Bio curta e opcional (Epic 28) — texto livre, sem markdown/formatação. No perfil é o "quem sou eu".
   bio          String?
-  /// Perfil estilo Orkut ("quem sou eu"): anime e personagem favoritos (texto livre) e gêneros favoritos (do vocabulário).
+  /// Perfil ("quem sou eu"): anime e personagem favoritos (texto livre) e gêneros favoritos (do vocabulário).
   favoriteAnime     String?
   favoriteCharacter String?
   favoriteGenres    String[] @default([])
-  /// Aniversário (perfil estilo Orkut): só dia e mês, sem o ano. Só amigos veem; entra nos "aniversariantes" deles.
+  /// Aniversário (perfil social): só dia e mês, sem o ano. Só amigos veem; entra nos "aniversariantes" deles.
   birthDay          Int?
   birthMonth        Int?
   /// Último dia (AAAA-MM-DD, no fuso da pessoa) em que os aniversários dos amigos já viraram aviso: calcula uma vez por dia.
@@ -49,7 +49,7 @@ model User {
   equippedTitleId String?
   /// A lista de animes acompanhados aparece no perfil para quem o visita (padrão: sim; dá para ocultar em Configurações).
   animeListPublic Boolean @default(true)
-  /// Visitas ao perfil (como no Orkut): registrar as minhas visitas. Desligado, ninguém vê que a pessoa visitou e ela
+  /// Visitas ao perfil: registrar as minhas visitas. Desligado, ninguém vê que a pessoa visitou e ela
   /// também não vê quem visitou o perfil dela.
   recordVisits    Boolean @default(true)
   notifyReleases  Boolean  @default(true)
@@ -1482,7 +1482,7 @@ model ChangeLog {
 }
 
 /**
- * Comunidade do anime (estilo Orkut): o fórum de UMA franquia — todas as temporadas, OVAs e filmes juntos. A franquia é a
+ * Comunidade do anime: o fórum de UMA franquia — todas as temporadas, OVAs e filmes juntos. A franquia é a
  * do catálogo (`CatalogEntry.franchiseKey`); obra sem franquia (só do AniDB/Kitsu) tem a comunidade dela
  * (`catalogEntryId`). Ler é público; criar tópico, responder e votar exige entrar na comunidade (`CommunityMember`).
  * Criada na primeira participação. Ver `src/lib/community.ts`.
@@ -1494,7 +1494,7 @@ model Community {
   franchiseKey   Int?              @unique
   catalogEntryId String?           @unique
   catalogEntry   CatalogEntry?     @relation(fields: [catalogEntryId], references: [id], onDelete: SetNull)
-  /// Descrição da comunidade (como no Orkut). Nula = a sinopse da obra principal da franquia.
+  /// Descrição da comunidade. Nula = a sinopse da obra principal da franquia.
   description    String?
   createdAt      DateTime          @default(now())
   members        CommunityMember[]
@@ -1596,7 +1596,7 @@ model CommunityPollVote {
   @@index([optionId])
 }
 
-/// Evento da comunidade (maratona, estreia, encontro…), como no Orkut: data, descrição e quem vai.
+/// Evento da comunidade (maratona, estreia, encontro…): data, descrição e quem vai.
 model CommunityEvent {
   id          String               @id @default(cuid())
   communityId String
@@ -1653,7 +1653,7 @@ model CommunityReport {
   @@index([resolvedAt])
 }
 
-/// Recado (scrap) no perfil, como no Orkut: qualquer conta deixa um recado no perfil de outra pessoa (sem bloqueio entre
+/// Recado (scrap) no perfil: qualquer conta deixa um recado no perfil de outra pessoa (sem bloqueio entre
 /// as duas). Quem recebeu e quem escreveu podem apagar.
 model Scrap {
   id        String    @id @default(cuid())
@@ -1665,7 +1665,7 @@ model Scrap {
   createdAt DateTime  @default(now())
   deletedAt DateTime?
   reports   ProfileReport[]
-  /// Resposta a um recado recebido: fica no perfil de quem escreveu o original (como responder no Orkut).
+  /// Resposta a um recado recebido: fica no perfil de quem escreveu o original.
   replyToId String?
   replyTo   Scrap?    @relation("ScrapReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies   Scrap[]   @relation("ScrapReplies")
@@ -1694,7 +1694,7 @@ model Testimonial {
   @@index([profileId, status])
 }
 
-/// "Ser fã" de alguém (como no Orkut).
+/// "Ser fã" de alguém.
 model Fan {
   fanId     String
   fan       User     @relation("FanOf", fields: [fanId], references: [id], onDelete: Cascade)
@@ -1706,7 +1706,7 @@ model Fan {
   @@index([targetId])
 }
 
-/// Avaliação de um amigo (como o confiável/legal/sexy do Orkut, com o tema do Anime Hub): Otaku raiz, Gente boa e Sem
+/// Avaliação de um amigo (com o tema do Anime Hub): Otaku raiz, Gente boa e Sem
 /// spoiler, de 0 a 3 cada. Só amigos (seguir mútuo) avaliam; o perfil mostra a média.
 model ProfileRating {
   raterId    String
@@ -1722,7 +1722,7 @@ model ProfileRating {
   @@index([targetId])
 }
 
-/// Amizade (como no Orkut), separada do seguir: nasce de um pedido aceito. Um registro por par, com `userAId` < `userBId`
+/// Amizade, separada do seguir: nasce de um pedido aceito. Um registro por par, com `userAId` < `userBId`
 /// (ordem dos ids), para não haver duplicata. Depoimentos e avaliações exigem amizade.
 model Friendship {
   userAId   String
@@ -1747,7 +1747,7 @@ model FriendRequest {
   @@index([toId])
 }
 
-/// Denúncia de um recado ou de um depoimento (perfil estilo Orkut), com um dos motivos fixos (`REPORT_REASONS`). Vai para
+/// Denúncia de um recado ou de um depoimento (perfil social), com um dos motivos fixos (`REPORT_REASONS`). Vai para
 /// Admin → Acesso e moderação; remover esconde o conteúdo e fecha todas as denúncias dele.
 model ProfileReport {
   id            String       @id @default(cuid())
@@ -1775,7 +1775,7 @@ model ProfileReport {
   @@index([albumId])
 }
 
-/// Visita ao perfil (como no Orkut): a última visita de cada pessoa com conta a cada perfil. Só a dona do perfil vê.
+/// Visita ao perfil: a última visita de cada pessoa com conta a cada perfil. Só a dona do perfil vê.
 model ProfileVisit {
   profileId String
   profile   User     @relation("ProfileVisited", fields: [profileId], references: [id], onDelete: Cascade)
@@ -1787,7 +1787,7 @@ model ProfileVisit {
   @@index([profileId, visitedAt])
 }
 
-/// Álbum do perfil (como os do Orkut, mas de animes): uma coletânea que a pessoa monta com obras da própria lista. Os
+/// Álbum do perfil (de animes): uma coletânea que a pessoa monta com obras da própria lista. Os
 /// álbuns automáticos (Assistindo, Terminei, Não terminei, Dropei) não são gravados: vêm do andamento de cada obra.
 /// Quem vê segue "Mostrar meus animes" (`User.animeListPublic`).
 model ProfileAlbum {

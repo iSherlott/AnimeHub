@@ -35,11 +35,11 @@ export default async function AdminImportPage({ searchParams }: { searchParams: 
 
       <AdminPanel title="Validação e segurança">
         <Typography sx={{ fontSize: 16 }}>
-          Fonte e temporada obrigatórias. HTML vazio bloqueia ANALISAR com mensagem junto ao campo. O conteúdo é tratado como texto, sem executar scripts. Origem, timestamp, versão do parser e job ficam registrados para auditoria.
+          Fonte e temporada são obrigatórias, e sem HTML o botão Analisar avisa junto ao campo. O conteúdo é lido como texto, sem executar scripts. Cada análise fica registrada com a origem, o horário, a versão do leitor e o job.
         </Typography>
         <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
           Formato aceito: <code>&lt;section data-season=&quot;Autumn2026&quot;&gt;&lt;article data-anidb-id=&quot;19777&quot;&gt;&lt;h2&gt;Título&lt;/h2&gt;&lt;/article&gt;&lt;/section&gt;</code>, com{" "}
-          <code>data-type</code>, <code>data-year</code> e <code>data-aired</code> opcionais. Loading mantém o formulário; falha preserva o HTML e oferece nova tentativa. Sem autosave.
+          <code>data-type</code>, <code>data-year</code> e <code>data-aired</code> opcionais. Se a análise falhar, o HTML continua no campo para tentar de novo. Nada é salvo antes de Analisar.
         </Typography>
       </AdminPanel>
 

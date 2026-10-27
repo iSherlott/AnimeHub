@@ -1,7 +1,7 @@
 import { DEFAULT_TIME_ZONE } from "@/lib/timeZone";
 
 /**
- * "Sorte do dia" do perfil (como a do Orkut), com o tema do Anime Hub. As frases são do próprio Anime Hub (nenhuma é
+ * "Sorte do dia" do perfil com o tema do Anime Hub. As frases são do próprio Anime Hub (nenhuma é
  * citação de obra). A frase muda a cada dia e é a mesma o dia inteiro para a mesma pessoa; pessoas diferentes podem
  * receber frases diferentes no mesmo dia.
  */

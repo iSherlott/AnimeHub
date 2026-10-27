@@ -184,8 +184,8 @@ A migração `20261105100000_catalog_only_community` (comunidade das obras sem A
 e relaxa o AniList ID de comentários e quizzes.
 
 A migração `20261106100000_communities` (o fórum de cada anime, ADR 0011) só cria tabelas, e a
-`20261107100000_community_orkut` (eventos, denúncias, fixar/trancar, descrição) só acrescenta. A
-`20261108100000_profile_orkut` (perfil no formato do Orkut, ADR 0012: favoritos, recados, depoimentos, fãs e avaliações)
+`20261107100000_community_events_moderation` (eventos, denúncias, fixar/trancar, descrição) só acrescenta. A
+`20261108100000_profile_social` (perfil social, ADR 0012: favoritos, recados, depoimentos, fãs e avaliações)
 também só acrescenta, assim como a `20261109100000_community_notifications` (avisos das comunidades no sino). A `20261110100000_friendships` cria a
 amizade separada do seguir e transforma em amizade quem já se seguia mutuamente (só acrescenta linhas). A `20261111100000_profile_reports` (denúncias de recados e depoimentos) só cria uma tabela. A `20261112100000_scrap_replies` (responder recado) só acrescenta uma coluna. A `20261113100000_birthdays` (aniversário no perfil) só acrescenta duas colunas. A `20261114100000_profile_visits` (visitas ao perfil) só acrescenta uma coluna e uma tabela. A `20261115100000_profile_albums` (álbuns de animes) só cria tabelas. A
 `20261115110000_avatar_from_anime_only` **altera dados**: quem tinha foto própria enviada volta às iniciais (decisão da

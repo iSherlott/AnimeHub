@@ -7,13 +7,13 @@ import { PeopleGrid, ProfileSection } from "@/components/profile/ProfileSections
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { blockRelation } from "@/lib/blocks";
-import { listFans } from "@/lib/profileOrkut";
+import { listFans } from "@/lib/profileSocial";
 
 export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ id: string }> };
 
-/** Quem é fã da pessoa (como no Orkut), dos mais recentes aos mais antigos. */
+/** Quem é fã da pessoa, dos mais recentes aos mais antigos. */
 export default async function FansPage({ params }: Props) {
   const { id } = await params;
   const target = await prisma.user.findUnique({ where: { id }, select: { displayName: true } });

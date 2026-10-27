@@ -107,7 +107,7 @@ export default async function AdminScrapersPage() {
       <AdminPageHeader
         title="Scrapers"
         subtitle="Serviços independentes, execução explícita e observabilidade de origem."
-        action={<SmallChip>Coleta de sites de terceiros desativada · D-30</SmallChip>}
+        action={<SmallChip>Coleta de sites de terceiros desativada</SmallChip>}
       />
 
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" }, gap: 3, alignItems: "start" }}>
@@ -193,9 +193,9 @@ export default async function AdminScrapersPage() {
       <Notice tone="info" title="Saúde atual e erros históricos são diferentes">
         Uma fonte pode estar online agora e ter falhado antes: a falha de um job permanece em Jobs e Logs. Nenhum serviço funde seus estados nem apaga a origem de outro.
       </Notice>
-      <AdminPanel title="Guardas de execução">
+      <AdminPanel title="Regras de execução">
         <Typography sx={{ fontSize: 16 }}>
-          Impedir execução duplicada do mesmo serviço enquanto Running. Falha de um serviço não bloqueia os demais; toda execução recebe jobID, fonte e timestamp. A coleta automática de sites de terceiros permanece desativada até a política D-30 ser aprovada.
+          Um serviço não roda duas vezes ao mesmo tempo. A falha de um não bloqueia os demais, e cada execução fica registrada com o número do job, a fonte e o horário. A coleta automática de sites de terceiros continua desativada.
         </Typography>
       </AdminPanel>
     </>

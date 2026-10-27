@@ -4,7 +4,7 @@ import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_EMAIL, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
 import { FORTUNES } from "../src/lib/dailyFortune";
 
-// Perfil no formato do Orkut: menu, fãs e avaliações à esquerda; sorte do dia (só a dona), quem sou eu, recados e
+// Perfil em três colunas: menu, fãs e avaliações à esquerda; sorte do dia (só a dona), quem sou eu, recados e
 // depoimentos no centro; amigos (pedido aceito), comunidades e conquistas à direita. Recado: qualquer conta. Depoimento
 // e avaliação: só amigos; o depoimento só aparece depois de aprovado. Bloqueio impede tudo isso.
 const adminState = {
@@ -13,7 +13,7 @@ const adminState = {
 };
 const PROFILE_TYPES = ["PROFILE_SCRAP", "PROFILE_TESTIMONIAL", "PROFILE_FAN"];
 
-test.describe.serial("Perfil no formato do Orkut", () => {
+test.describe.serial("Perfil social", () => {
   let prisma: PrismaClient;
   let userId = "";
   let adminId = "";
@@ -80,7 +80,7 @@ test.describe.serial("Perfil no formato do Orkut", () => {
     await expect(page.getByTestId("profile-friends").getByRole("link", { name: "gerenciar" })).toHaveAttribute("href", "/amigos");
     await expect(page.getByTestId("profile-achievements").getByRole("link", { name: "ver conquistas" })).toHaveAttribute("href", "/conquistas");
     await expect(page.getByRole("link", { name: /Minha Lista privada/ })).toHaveAttribute("href", "/minha-lista");
-    await page.screenshot({ path: test.info().outputPath("perfil-orkut.png"), fullPage: true });
+    await page.screenshot({ path: test.info().outputPath("perfil-social.png"), fullPage: true });
   });
 
   test("sorte do dia só para a dona do perfil; quem não entrou vê o perfil e é convidado a entrar para o recado", async ({ browser }) => {

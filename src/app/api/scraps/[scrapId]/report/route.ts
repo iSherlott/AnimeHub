@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
-import { reportProfileContent } from "@/lib/profileOrkut";
+import { reportProfileContent } from "@/lib/profileSocial";
 import { rateLimitedResponse } from "@/lib/rateLimit";
 
 type Params = { params: Promise<{ scrapId: string }> };

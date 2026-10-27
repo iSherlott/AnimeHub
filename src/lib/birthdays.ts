@@ -6,7 +6,7 @@ import { upcomingBirthdayKeys } from "@/lib/birthdayDates";
 export { formatBirthday, MONTHS, validateBirthday } from "@/lib/birthdayDates";
 
 /**
- * Aniversários (perfil estilo Orkut): só dia e mês, sem o ano. Só amigos veem a data; os aniversariantes aparecem na
+ * Aniversários (perfil social): só dia e mês, sem o ano. Só amigos veem a data; os aniversariantes aparecem na
  * página Amigos e na lateral do Feed, e o sino avisa no dia ("Hoje é aniversário de …"). Quem nasceu em 29/02 faz
  * aniversário em 28/02 nos anos que não são bissextos. "Hoje" é o dia no fuso de quem vê.
  */

@@ -5,7 +5,7 @@ import { AppLink } from "@/components/AppLink";
 import { UserAvatar } from "@/components/UserAvatar";
 import { Pager } from "@/components/community/CommunityParts";
 import { ContentActions, PollBox, ReplyForm, SpoilerText } from "@/components/community/CommunityClient";
-import { ModerationButtons, ReportButton } from "@/components/community/CommunityOrkut";
+import { ModerationButtons, ReportButton } from "@/components/community/CommunityPanels";
 import { getCurrentUser } from "@/lib/auth/session";
 import { can } from "@/lib/auth/permissions";
 import { blockedUserIdSet } from "@/lib/blocks";

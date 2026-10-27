@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
 import { can } from "@/lib/auth/permissions";
-import { deleteScrap } from "@/lib/profileOrkut";
+import { deleteScrap } from "@/lib/profileSocial";
 
 type Params = { params: Promise<{ scrapId: string }> };
 

@@ -87,7 +87,7 @@ export function SocialSearchView({ query, scope }: { query: string; scope: Searc
             key={`${query}`}
             endpoint="/api/search"
             params={{ q: query, scope: "posts" }}
-            emptyText={`Nenhum resultado para “${query}” em publicações. Tente outro termo ou outro escopo.`}
+            emptyText={`Nenhum resultado para “${query}” em publicações. Tente outro termo ou outra aba.`}
           />
         </Box>
       ) : active.loading ? (
@@ -108,7 +108,7 @@ export function SocialSearchView({ query, scope }: { query: string; scope: Searc
       ) : active.items.length === 0 ? (
         <Typography variant="body2" sx={{ color: "text.secondary" }} data-testid="search-empty">
           Nenhum resultado para “{query}” em {SCOPES.find((s) => s.value === scope)?.label.toLowerCase()}. Tente outro termo ou
-          outro escopo.
+          outra aba.
         </Typography>
       ) : scope === "profiles" ? (
         <>

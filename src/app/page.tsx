@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { Box, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 import { LinkButton } from "@/components/LinkButton";
 import { Header } from "@/components/Header";
 import { FeedView } from "@/components/FeedView";
@@ -29,10 +29,6 @@ export default function Home() {
         />
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", lg: "minmax(0,1fr) 320px" }, columnGap: 5, rowGap: 2, alignItems: "start" }}>
           <CommunitySearchBox />
-          <Box sx={{ pt: { lg: "26px" }, display: "flex", flexDirection: "column", gap: 1 }}>
-            <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Publicações, perfis e hashtags.</Typography>
-            <Typography sx={{ fontSize: 14, color: "text.secondary" }}>A busca social fica aqui, não no menu principal.</Typography>
-          </Box>
         </Box>
         <TwoColumn
           main={

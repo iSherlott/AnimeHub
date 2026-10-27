@@ -1,4 +1,4 @@
--- Comunidades (estilo Orkut): o fórum de cada anime (franquia), com membros, tópicos, respostas e enquetes.
+-- Comunidades: o fórum de cada anime (franquia), com membros, tópicos, respostas e enquetes.
 -- Só cria tabelas novas; nada existente muda.
 
 -- CreateTable

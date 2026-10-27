@@ -3,18 +3,18 @@ import { Box, Typography } from "@mui/material";
 import { Header } from "@/components/Header";
 import { AppLink } from "@/components/AppLink";
 import { PageContainer, PageIntro } from "@/components/PageShell";
-import { ScrapForm } from "@/components/profile/ProfileOrkut";
+import { ScrapForm } from "@/components/profile/ProfileActions";
 import { ProfileSection, ScrapList } from "@/components/profile/ProfileSections";
 import { getCurrentUser } from "@/lib/auth/session";
 import { can } from "@/lib/auth/permissions";
-import { scrapConversation } from "@/lib/profileOrkut";
+import { scrapConversation } from "@/lib/profileSocial";
 
 export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ id: string; otherId: string }> };
 
 /**
- * A conversa por recados entre duas pessoas (como o "ver recados trocados" do Orkut): os recados de uma no perfil da
+ * A conversa por recados entre duas pessoas: os recados de uma no perfil da
  * outra, nos dois sentidos, do mais antigo ao mais novo. Se quem vê é uma das duas, escreve para a outra daqui mesmo.
  */
 export default async function ScrapConversationPage({ params }: Props) {

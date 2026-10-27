@@ -151,7 +151,7 @@ export async function CatalogWork({ entry, signedIn, userId, owned = null }: { e
           </Box>
         </Box>
 
-        <Box component="aside" aria-label="Informações da obra" sx={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+        <Box component="aside" aria-label="Informações da obra" sx={{ display: { xs: "flex", sm: "grid", lg: "flex" }, gridTemplateColumns: { sm: "repeat(2, minmax(0,1fr))" }, alignItems: { sm: "start", lg: "stretch" }, flexDirection: "column", gap: 2, minWidth: 0 }}>
           <WorkCard title="Ficha" testId="work-card-info">
             <WorkInfoList
               rows={[

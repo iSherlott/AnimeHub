@@ -9,13 +9,13 @@ import { PageContainer } from "@/components/PageShell";
 import { SideBox } from "@/components/SideBox";
 import { UserAvatar } from "@/components/UserAvatar";
 import { JoinButton } from "@/components/community/CommunityClient";
-import { CommunityMenu } from "@/components/community/CommunityOrkut";
+import { CommunityMenu } from "@/components/community/CommunityPanels";
 import { listMembers, markVisit, relatedCommunities } from "@/lib/community";
 import { prisma } from "@/lib/prisma";
 import { getCommunity, getScope, getViewer } from "./data";
 
 /**
- * A comunidade do anime no formato do Orkut: à esquerda a capa, o nome, "Participar" e o menu; no centro a seção aberta;
+ * A comunidade do anime em três colunas: à esquerda a capa, o nome, "Participar" e o menu; no centro a seção aberta;
  * à direita a grade de membros e as comunidades relacionadas.
  */
 export default async function CommunityLayout({ children, params }: { children: ReactNode; params: Promise<{ key: string }> }) {

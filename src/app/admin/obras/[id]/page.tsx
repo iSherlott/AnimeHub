@@ -238,7 +238,7 @@ export default async function AdminWorkDetailPage({ params, searchParams }: { pa
 
       <AdminPanel title="Histórico de alterações" testId="work-detail-history">
         {detail.history.rows.length === 0 ? (
-          <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Nenhuma alteração registrada desde a Fase 2 (histórico estruturado).</Typography>
+          <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Nenhuma alteração registrada.</Typography>
         ) : (
           <>
             <AdminTable

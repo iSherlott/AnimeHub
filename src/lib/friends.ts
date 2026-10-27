@@ -4,7 +4,7 @@ import { notifySocial } from "@/lib/socialNotifications";
 import { NEWSHUB_EMAIL } from "@/lib/newsHub";
 
 /**
- * Amizade como no Orkut, separada do seguir: alguém pede, a outra pessoa aceita ou recusa. Depoimentos e avaliações do
+ * Amizade separada do seguir: alguém pede, a outra pessoa aceita ou recusa. Depoimentos e avaliações do
  * perfil exigem amizade. Seguir continua independente (é o que monta o "Seguindo" do Feed). Bloqueio desfaz a amizade
  * e os pedidos, e impede pedidos novos.
  */

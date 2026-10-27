@@ -70,7 +70,7 @@ export function workLabel(w: { titleRomaji: string; titleNative: string | null; 
   return [w.titleNative ?? w.titleRomaji, [kind, w.seasonYear].filter(Boolean).join(", ")].filter(Boolean).join(" · ");
 }
 
-/** Caixa do centro da comunidade (como os blocos do Orkut): título, "ver todos" e o conteúdo. */
+/** Caixa do centro da comunidade: título, "ver todos" e o conteúdo. */
 export function Panel({ title, more, children, testId, action }: { title: string; more?: { href: string; label: string }; children: React.ReactNode; testId?: string; action?: React.ReactNode }) {
   return (
     <Box component="section" data-testid={testId} sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2, border: 1, borderColor: "divider", borderRadius: "12px", bgcolor: "background.paper" }}>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, requireUser } from "@/lib/auth/session";
-import { createScrap, listScraps } from "@/lib/profileOrkut";
+import { createScrap, listScraps } from "@/lib/profileSocial";
 import { rateLimitedResponse } from "@/lib/rateLimit";
 
 type Params = { params: Promise<{ id: string }> };

@@ -21,7 +21,7 @@ const PREFERENCE_BY_TYPE = {
   COMMENT_REPLY: "notifyComments",
   NEW_FOLLOWER: "notifyFollowers",
   POST_LIKE: "notifyLikes",
-  // Perfil estilo Orkut: recado e depoimento são comentários no perfil; virar fã é como ganhar um seguidor.
+  // Perfil social: recado e depoimento são comentários no perfil; virar fã é como ganhar um seguidor.
   PROFILE_SCRAP: "notifyComments",
   PROFILE_TESTIMONIAL: "notifyComments",
   PROFILE_FAN: "notifyFollowers",

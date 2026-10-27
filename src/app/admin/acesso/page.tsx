@@ -1,9 +1,9 @@
 import { AdminDashboard } from "@/components/AdminDashboard";
 import { AdminPageHeader, AdminPanel } from "@/components/admin/AdminUi";
-import { CommunityReportsQueue } from "@/components/community/CommunityOrkut";
+import { CommunityReportsQueue } from "@/components/community/CommunityPanels";
 import { openReports } from "@/lib/community";
-import { ProfileReportsQueue } from "@/components/profile/ProfileOrkut";
-import { openProfileReports } from "@/lib/profileOrkut";
+import { ProfileReportsQueue } from "@/components/profile/ProfileActions";
+import { openProfileReports } from "@/lib/profileSocial";
 import { requireAdminPage } from "@/lib/adminPage";
 import { can } from "@/lib/auth/permissions";
 

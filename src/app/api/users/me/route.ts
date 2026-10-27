@@ -11,13 +11,13 @@ import { normalizeHandle, validateHandle } from "@/lib/handle";
 // sem estourar o layout do cabeçalho do perfil.
 const MAX_BIO_LENGTH = 300;
 const MAX_DISPLAY_NAME_LENGTH = 40;
-/** "Quem sou eu" do perfil estilo Orkut: anime e personagem favoritos (texto livre) e até 5 gêneros favoritos. */
+/** "Quem sou eu" do perfil: anime e personagem favoritos (texto livre) e até 5 gêneros favoritos. */
 const MAX_FAVORITE_LENGTH = 80;
 const MAX_FAVORITE_GENRES = 5;
 
 /**
  * Edição do próprio perfil (Epic 28; PROF-001/002) — nome, @identificador,
- * bio e o "quem sou eu" do perfil estilo Orkut (favoritos), cada campo opcional (só o que vier no corpo é alterado). Sempre
+ * bio e o "quem sou eu" do perfil (favoritos), cada campo opcional (só o que vier no corpo é alterado). Sempre
  * opera sobre `user.id` da sessão ativa, nunca sobre um `id` de rota; não
  * existe (e não deveria existir) um jeito de editar o perfil de outra
  * pessoa.

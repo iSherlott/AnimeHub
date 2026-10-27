@@ -24,11 +24,11 @@ type Draft = Pick<
 > & { titleFormat: "ja" | "romaji"; synopsisLanguage: "pt" | "ja"; timeZone: string };
 
 const SOCIAL_TOGGLES: Array<{ key: keyof Draft; label: string; hint: string }> = [
-  { key: "notifyReplies", label: "Respostas às minhas publicações", hint: "Avisos sem trecho sensível. Padrão ativado." },
-  { key: "notifyComments", label: "Respostas aos meus comentários e recados", hint: "Respostas nas discussões, recados e depoimentos no seu perfil. Padrão ativado." },
-  { key: "notifyFollowers", label: "Seguidores, amizade e fãs", hint: "Novos seguidores, pedidos de amizade aceitos ou recebidos, novos fãs e aniversários dos amigos. Padrão ativado." },
-  { key: "notifyLikes", label: "Curtidas", hint: "Padrão desativado para reduzir ruído." },
-  { key: "notifyCommunity", label: "Comunidades", hint: "Respostas nos tópicos em que você participa e eventos novos nas suas comunidades. Padrão ativado." },
+  { key: "notifyReplies", label: "Respostas às minhas publicações", hint: "Quando alguém responde a uma publicação sua. Vem ativado." },
+  { key: "notifyComments", label: "Respostas aos meus comentários e recados", hint: "Respostas aos seus comentários, recados e depoimentos no seu perfil. Vem ativado." },
+  { key: "notifyFollowers", label: "Seguidores, amizade e fãs", hint: "Novos seguidores, pedidos de amizade aceitos ou recebidos, novos fãs e aniversários dos amigos. Vem ativado." },
+  { key: "notifyLikes", label: "Curtidas", hint: "Vem desativado, para não encher o sino." },
+  { key: "notifyCommunity", label: "Comunidades", hint: "Respostas nos tópicos em que você participa e eventos novos nas suas comunidades. Vem ativado." },
 ];
 
 /** Cartão do Figma: surface, raio 16, respiro de 24 e título de 20 px. */
@@ -212,7 +212,7 @@ export default function SettingsPage() {
 
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
               <Typography id="tz-label" sx={{ fontSize: 12, fontWeight: 600, color: "text.secondary" }}>
-                Timezone
+                Fuso horário
               </Typography>
               <Select
                 labelId="tz-label"
@@ -231,13 +231,13 @@ export default function SettingsPage() {
             </Box>
 
             <Card title="Tema">
-              <Typography sx={{ fontSize: 14 }}>Dark</Typography>
+              <Typography sx={{ fontSize: 14 }}>Escuro</Typography>
             </Card>
 
             <Card title="Notificações / Lançamentos" labelledBy="notif-launch">
               <PillToggle
                 label="Novos episódios e datas alteradas"
-                hint="Somente dos animes que você acompanha. Preferência existente preservada."
+                hint="Somente dos animes que você acompanha."
                 checked={draft.notifyReleases}
                 onChange={(v) => update("notifyReleases", v)}
               />
@@ -247,9 +247,6 @@ export default function SettingsPage() {
               {SOCIAL_TOGGLES.map(({ key, label, hint }) => (
                 <PillToggle key={key} label={label} hint={hint} checked={Boolean(draft[key])} onChange={(v) => update(key, v as never)} />
               ))}
-              <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
-                Avisos de uma discussão específica exigem opt-in no próprio contexto; fora desta configuração global.
-              </Typography>
             </Card>
 
             <Box>
@@ -281,7 +278,7 @@ export default function SettingsPage() {
               />
               <PillToggle
                 label="Registrar minhas visitas aos perfis"
-                hint="Como no Orkut: ativado, quem você visita vê que você passou por lá. Desativado, ninguém vê suas visitas (nem as antigas), e você também não vê quem visitou o seu perfil."
+                hint="Ativado, quem você visita vê que você passou por lá. Desativado, ninguém vê suas visitas (nem as antigas), e você também não vê quem visitou o seu perfil."
                 checked={draft.recordVisits}
                 onChange={(v) => update("recordVisits", v)}
               />

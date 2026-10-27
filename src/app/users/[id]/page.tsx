@@ -8,7 +8,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { LinkButton } from "@/components/LinkButton";
 import { PageContainer, PageIntro } from "@/components/PageShell";
 import { SideBox } from "@/components/SideBox";
-import { FanButton, FriendButton, ProfileReportButton, RatingBox, ScrapForm, TestimonialDecision, TestimonialForm, DeleteButton } from "@/components/profile/ProfileOrkut";
+import { FanButton, FriendButton, ProfileReportButton, RatingBox, ScrapForm, TestimonialDecision, TestimonialForm, DeleteButton } from "@/components/profile/ProfileActions";
 import { AlbumGrid, CommunityGrid, NoteItem, PeopleGrid, ProfileSection, ScrapList } from "@/components/profile/ProfileSections";
 import { NewAlbumButton } from "@/components/profile/ProfileAlbums";
 import { prisma } from "@/lib/prisma";
@@ -18,7 +18,7 @@ import { blockRelation } from "@/lib/blocks";
 import { BlockedProfileNotice } from "@/components/BlockedProfileNotice";
 import { equippedTitleNames } from "@/lib/quiz";
 import { loadProfileAnimeList } from "@/lib/profileAnimeList";
-import { listFans, listScraps, listTestimonials, ratingSummary } from "@/lib/profileOrkut";
+import { listFans, listScraps, listTestimonials, ratingSummary } from "@/lib/profileSocial";
 import { friendState, friendSuggestions, listFriends, pendingReceivedCount } from "@/lib/friends";
 import { memberCommunities } from "@/lib/community";
 import { dailyFortune } from "@/lib/dailyFortune";
@@ -33,7 +33,7 @@ type Params = { params: Promise<{ id: string }> };
 
 const SCRAPS_ON_PROFILE = 5;
 
-/** Uma linha do "quem sou eu" (rótulo à esquerda, valor à direita, como a ficha do Orkut). */
+/** Uma linha do "quem sou eu" (rótulo à esquerda, valor à direita). */
 function AboutRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <Box component="div" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "180px minmax(0,1fr)" }, gap: { xs: 0.25, sm: 2 }, py: 1, borderTop: 1, borderColor: "divider" }}>
@@ -48,7 +48,7 @@ function AboutRow({ label, children }: { label: string; children: React.ReactNod
 }
 
 /**
- * Perfil no formato do Orkut, com o tema do Anime Hub: à esquerda o menu, os fãs e as avaliações; no centro o cabeçalho,
+ * Perfil social do Anime Hub: à esquerda o menu, os fãs e as avaliações; no centro o cabeçalho,
  * a sorte do dia (só para a dona do perfil), o "quem sou eu", os recados, os depoimentos e as publicações; à direita os
  * amigos (pedido de amizade aceito), as comunidades e as conquistas.
  */
@@ -80,7 +80,7 @@ export default async function UserProfilePage({ params }: Params) {
 
   const viewerId = viewer?.id ?? null;
   const isOwnProfile = viewerId === id;
-  // Visitas (como no Orkut): registra a de quem tem conta; a dona do perfil vê as recentes (se registra as dela).
+  // Visitas: registra a de quem tem conta; a dona do perfil vê as recentes (se registra as dela).
   await recordVisit(viewer, id);
   const visitors = isOwnProfile && viewer?.recordVisits ? await recentVisitors(id) : null;
   const [followerCount, followingCount, postCount, isFollowedByMe, titles, equippedTitles, animeList, friends, communities, fans, isFan, ratings, scraps, testimonials, friendRel, myTestimonial, pendingRequests] =
@@ -143,8 +143,8 @@ export default async function UserProfilePage({ params }: Params) {
         </AppLink>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", md: "220px minmax(0,1fr)", lg: "220px minmax(0,1fr) 280px" }, gap: 3, alignItems: "start" }}>
           {/* Esquerda: menu, fãs e avaliações */}
-          {/* No celular o centro (cabeçalho, quem sou eu, recados) vem primeiro; o menu, os fãs e as avaliações depois. */}
-          <Box component="aside" aria-label="Menu do perfil" sx={{ display: "flex", flexDirection: "column", gap: 2, order: { xs: 2, md: 0 } }}>
+          {/* No celular o centro (cabeçalho, quem sou eu, recados) vem primeiro; o menu, os fãs e as avaliações depois (no tablet, lado a lado). */}
+          <Box component="aside" aria-label="Menu do perfil" sx={{ display: { xs: "flex", sm: "grid", md: "flex" }, gridTemplateColumns: { sm: "repeat(2, minmax(0,1fr))" }, alignItems: { sm: "start", md: "stretch" }, flexDirection: "column", gap: 2, order: { xs: 2, md: 0 } }}>
             {/* O menu de âncoras só faz sentido com as colunas lado a lado (no celular tudo já está em sequência). */}
             <Box component="nav" aria-label="Seções do perfil" data-testid="profile-menu" sx={{ display: { xs: "none", md: "flex" }, flexDirection: "column", gap: 0.5 }}>
               {menu.map((m) => (
@@ -306,7 +306,7 @@ export default async function UserProfilePage({ params }: Params) {
           </Box>
 
           {/* Direita: amigos, comunidades e conquistas */}
-          <Box component="aside" aria-label="Amigos, comunidades e conquistas" sx={{ display: "flex", flexDirection: "column", gap: 2, gridColumn: { md: "1 / -1", lg: "auto" }, order: { xs: 3, md: 0 } }}>
+          <Box component="aside" aria-label="Amigos, comunidades e conquistas" sx={{ display: { xs: "flex", sm: "grid", lg: "flex" }, gridTemplateColumns: { sm: "repeat(2, minmax(0,1fr))" }, alignItems: { sm: "start", lg: "stretch" }, flexDirection: "column", gap: 2, gridColumn: { md: "1 / -1", lg: "auto" }, order: { xs: 3, md: 0 } }}>
             {isOwnProfile && (
               <SideBox title="só você vê">
                 <Typography sx={{ fontSize: 13 }}>A aba Animes pode ser ocultada em Configurações. Datas e adiados continuam só seus.</Typography>

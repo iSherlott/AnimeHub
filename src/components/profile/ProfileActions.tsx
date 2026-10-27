@@ -28,7 +28,7 @@ const errorOf = (data: Record<string, unknown>) => (typeof data.error === "strin
 type FriendState = "none" | "friends" | "sent" | "received";
 
 /**
- * Amizade (como no Orkut): adicionar, cancelar o pedido, aceitar ou recusar o recebido, desfazer. Depois da mudança a
+ * Amizade: adicionar, cancelar o pedido, aceitar ou recusar o recebido, desfazer. Depois da mudança a
  * página é recarregada (depoimentos e avaliações dependem da amizade). `inline`: só botões, para a linha de ações do
  * cabeçalho do perfil (ao lado de "Seguir perfil").
  */
@@ -131,7 +131,7 @@ export function FriendButton({ userId, initial, compact = false, inline = false 
   );
 }
 
-/** "Ser fã" (como no Orkut) e a contagem de fãs. */
+/** "Ser fã" e a contagem de fãs. */
 export function FanButton({ userId, initialFan, initialFans, canFan }: { userId: string; initialFan: boolean; initialFans: number; canFan: boolean }) {
   const [fan, setFan] = useState(initialFan);
   const [fans, setFans] = useState(initialFans);
@@ -169,7 +169,7 @@ function Pips({ value, Icon, label }: { value: number; Icon: typeof FavoriteIcon
 }
 
 /**
- * Avaliações (como o confiável/legal/sexy do Orkut, com o tema do Anime Hub): a média de quem avaliou e, para amigos,
+ * Avaliações (com o tema do Anime Hub): a média de quem avaliou e, para amigos,
  * a própria avaliação (clicar no ícone marca até ele; clicar no último marcado volta um).
  */
 export function RatingBox({ userId, initialAverage, initialVotes, initialMine, canRate }: { userId: string; initialAverage: Ratings; initialVotes: number; initialMine: Ratings | null; canRate: boolean }) {
@@ -425,7 +425,7 @@ export function ProfileReportsQueue({ reports }: { reports: ProfileReportView[] 
   );
 }
 
-/** "Responder" um recado recebido: a resposta vai para o perfil de quem escreveu (como no Orkut). */
+/** "Responder" um recado recebido: a resposta vai para o perfil de quem escreveu. */
 export function ScrapReplyButton({ scrapId, authorId, authorName }: { scrapId: string; authorId: string; authorName: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);

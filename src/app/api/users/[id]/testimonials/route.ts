@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
-import { writeTestimonial } from "@/lib/profileOrkut";
+import { writeTestimonial } from "@/lib/profileSocial";
 import { rateLimitedResponse } from "@/lib/rateLimit";
 
 type Params = { params: Promise<{ id: string }> };

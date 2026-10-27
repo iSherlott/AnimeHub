@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireStaff } from "@/lib/auth/session";
-import { resolveProfileReport } from "@/lib/profileOrkut";
+import { resolveProfileReport } from "@/lib/profileSocial";
 
 type Params = { params: Promise<{ id: string }> };
 

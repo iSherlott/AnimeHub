@@ -84,7 +84,8 @@ export type Column<T> = { key: string; label: string; render: (row: T) => ReactN
 export function AdminTable<T>({ columns, rows, rowKey, caption, testId }: { columns: Column<T>[]; rows: T[]; rowKey: (row: T) => string; caption: string; testId?: string }) {
   return (
     <Box sx={{ borderRadius: "12px", border: 1, borderColor: "divider", overflowX: "auto", bgcolor: "background.paper" }} data-testid={testId}>
-      <Box component="table" sx={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
+      {/* Largura mínima pelo número de colunas: em telas estreitas a tabela rola em vez de espremer as colunas. */}
+      <Box component="table" sx={{ width: "100%", borderCollapse: "collapse", minWidth: Math.max(640, columns.length * 150) }}>
         <caption style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>{caption}</caption>
         <Box component="thead" sx={{ bgcolor: "#171820" }}>
           <tr>

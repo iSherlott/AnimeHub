@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Box, Typography } from "@mui/material";
 import { Panel, TopicRow } from "@/components/community/CommunityParts";
-import { DescriptionEditor, EventCard } from "@/components/community/CommunityOrkut";
+import { DescriptionEditor, EventCard } from "@/components/community/CommunityPanels";
 import { can } from "@/lib/auth/permissions";
 import { listEvents, listTopics } from "@/lib/community";
 import { prisma } from "@/lib/prisma";
@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 const KIND: Record<string, string> = { EPISODE: "série", OVA: "OVA", ODA: "ODA", MOVIE: "filme", OTHER: "outro" };
 
 /**
- * Início da comunidade (como no Orkut): descrição, informações, os tópicos mais ativos do fórum, as enquetes e os próximos
+ * Início da comunidade: descrição, informações, os tópicos mais ativos do fórum, as enquetes e os próximos
  * eventos. Qualquer pessoa lê; participar é pelo botão da coluna da esquerda.
  */
 export default async function CommunityHome({ params }: Props) {

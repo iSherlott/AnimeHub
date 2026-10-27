@@ -128,7 +128,7 @@ test.describe("Epic 18 — 18ª rodada de auditoria de UX/UI — repost/comentá
     await expect(allCardsForPost).toHaveCount(2);
     const repostCard = allCardsForPost.filter({ hasText: "repostou" });
 
-    await repostCard.getByRole("button", { name: "Compartilhar internamente" }).click();
+    await repostCard.getByRole("button", { name: "Compartilhar" }).click();
     await page.getByRole("menuitem", { name: "Desfazer repost" }).click();
 
     // A entrada de repost some sozinha; só a "self" continua na tela.

@@ -1,4 +1,4 @@
-# ADR 0011 — Comunidades dos animes (fórum estilo Orkut)
+# ADR 0011 — Comunidades dos animes (fórum)
 
 Status: aceito em 26/10/2026.
 
@@ -6,7 +6,7 @@ Status: aceito em 26/10/2026.
 
 Cada obra tinha duas conversas planas: as "Discussões" (publicações do feed ligadas à obra) e os "Comentários" de quem
 acompanha. Não havia o fórum de cada anime — tópicos com título, respostas dentro do tópico, membros e enquetes — como
-as comunidades do Orkut. Decisões da pessoa usuária:
+os fóruns de comunidade clássicos. Decisões da pessoa usuária:
 
 - uma comunidade por anime, isto é, por **franquia** (temporadas, OVAs e filmes juntos);
 - ler é público; criar tópico, responder e votar exige **entrar na comunidade** ("Participar"), sem exigir acompanhar a obra;
@@ -45,11 +45,11 @@ as comunidades do Orkut. Decisões da pessoa usuária:
   uma rota própria.
 - Pendências possíveis: aviso de resposta nos tópicos em que a pessoa participou; busca dentro do fórum (feitos na revisão "Avisos e busca", abaixo).
 
-## Revisão de 26/10/2026 — formato do Orkut
+## Revisão de 26/10/2026 — formato em três colunas
 
 O menu principal passou a ter **Feed** (as publicações, antes "Comunidade") e **Comunidades** (o fórum de cada anime).
 
-- **Layout em 3 colunas, como no Orkut** (`src/app/comunidades/[key]/layout.tsx`): à esquerda a capa, o nome, os números,
+- **Layout em 3 colunas** (`src/app/comunidades/[key]/layout.tsx`): à esquerda a capa, o nome, os números,
   "Participar" e o menu (Início · Fórum · Enquetes · Eventos · Membros); no centro a seção aberta; à direita a grade de
   membros (9, com "ver todos") e as **comunidades relacionadas** (outras franquias com o mesmo gênero principal, das mais
   populares).
@@ -62,7 +62,7 @@ O menu principal passou a ter **Feed** (as publicações, antes "Comunidade") e 
   "Vou"/"Talvez" (só membros; quem cria já vai); próximos e passados; apagar é de quem criou ou da moderação.
 - **Diretório** (`/comunidades`): Minhas (com novidades desde a última visita), Populares (mais membros) e Buscar (pelo
   nome do anime; cada anime tem a sua comunidade mesmo antes do primeiro membro).
-- Migração `20261107100000_community_orkut`: descrição, `pinnedAt`/`lockedAt`, `CommunityEvent`,
+- Migração `20261107100000_community_events_moderation`: descrição, `pinnedAt`/`lockedAt`, `CommunityEvent`,
   `CommunityEventRsvp` e `CommunityReport`. Só acrescenta.
 
 ## Revisão de 26/10/2026 — avisos e busca

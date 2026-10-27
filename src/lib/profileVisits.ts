@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { blockedUserIdSet, blockRelation } from "@/lib/blocks";
 
 /**
- * Visitas ao perfil (como no Orkut). Guarda a última visita de cada pessoa com conta a cada perfil; só a dona do perfil
+ * Visitas ao perfil. Guarda a última visita de cada pessoa com conta a cada perfil; só a dona do perfil
  * vê quem visitou, nos últimos 90 dias (as mais antigas são apagadas a cada visita nova ao perfil). Reciprocidade: quem
  * desliga "Registrar minhas visitas" (Configurações) não aparece para ninguém — nem nas visitas antigas — e também não
  * vê quem visitou o perfil dela.

@@ -8,7 +8,7 @@ import { Box, Link as MuiLink, Typography } from "@mui/material";
 import { SectionTitle } from "@/components/PageShell";
 import { HashtagRow } from "@/components/HashtagRow";
 import { UserAvatar } from "@/components/UserAvatar";
-import { FriendButton } from "@/components/profile/ProfileOrkut";
+import { FriendButton } from "@/components/profile/ProfileActions";
 import type { RecommendationItem } from "@/lib/animeRecommendations";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { currentSeasonTag } from "@/lib/season";
@@ -187,7 +187,7 @@ export function CommunitySidebar() {
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <SectionTitle>Conversas da temporada</SectionTitle>
         <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
-          {season.label} · {season.labelPt} {season.year}
+          {season.labelPt} {season.year}
         </Typography>
         <HashtagRow tags={[{ key: season.key, display: season.tag }]} />
         <Typography sx={{ fontSize: 14, color: "text.secondary" }}>

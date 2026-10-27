@@ -46,7 +46,7 @@ export default async function AdminFieldUpdatesPage() {
         />
       )}
       <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
-        Fontes: hoje a comparação é com a AniList (títulos, sinopse, gêneros, ficha, imagens e site oficial). Kitsu e AniDB completam episódios; ver docs/arquitetura/fontes.md.
+        Fontes: hoje a comparação é com a AniList (títulos, sinopse, gêneros, ficha, imagens e site oficial). A Kitsu e o AniDB completam os episódios.
       </Typography>
     </>
   );

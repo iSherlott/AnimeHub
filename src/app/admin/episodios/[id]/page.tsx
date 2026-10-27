@@ -134,7 +134,7 @@ export default async function AdminEpisodeDetailPage({ params, searchParams }: {
 
       <AdminPanel title="Histórico de alterações e de datas" testId="episode-detail-history">
         {detail.history.rows.length === 0 && detail.overridesHistory.length === 0 ? (
-          <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Nenhuma alteração registrada desde a Fase 4.</Typography>
+          <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Nenhuma alteração registrada.</Typography>
         ) : (
           <>
             {detail.history.rows.length > 0 && (

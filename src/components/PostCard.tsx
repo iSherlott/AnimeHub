@@ -38,13 +38,14 @@ const actionSx = {
   fontSize: 12,
   color: "text.secondary",
   borderRadius: "6px",
+  whiteSpace: "nowrap",
 } as const;
 
 /**
  * Publicação do feed, no formato "SocialPost / Compacta" do Figma
  * (`13:41204`): sem cartão — identidade (avatar, nome, @identificador ·
  * tempo, menu "···"), texto, obra com link, hashtags e a fileira
- * Curtir · Responder · Compartilhar internamente · Denunciar/Excluir.
+ * Curtir · Responder · Compartilhar · Denunciar/Excluir.
  */
 export function PostCard({
   post,
@@ -374,8 +375,8 @@ export function PostCard({
 
       <HashtagRow tags={trailingTags} />
 
-      {/* Interações: Curtir · Responder · Compartilhar internamente · Denunciar/Excluir */}
-      <Stack direction="row" spacing={3} sx={{ alignItems: "center" }}>
+      {/* Interações: Curtir · Responder · Compartilhar · Denunciar/Excluir; no celular a linha quebra em vez de vazar. */}
+      <Stack direction="row" useFlexGap sx={{ alignItems: "center", flexWrap: "wrap", columnGap: { xs: 2, sm: 3 } }}>
         <LikeToggle postId={post.id} liked={post.likedByMe} likeCount={post.likeCount} onChange={onLikeChange} />
 
         <ButtonBase onClick={() => setCommentsOpen((v) => !v)} aria-expanded={commentsOpen} sx={actionSx}>
@@ -391,7 +392,7 @@ export function PostCard({
           sx={actionSx}
         >
           <RepeatIcon sx={{ fontSize: 16, color: post.repostedByMe ? "primary.main" : undefined }} />
-          <span>Compartilhar internamente</span>
+          <span>Compartilhar</span>
         </ButtonBase>
         <Menu id={shareMenuId} anchorEl={shareAnchor} open={Boolean(shareAnchor)} onClose={() => setShareAnchor(null)}>
           <MenuItem onClick={handleRepostToggle}>{post.repostedByMe ? "Desfazer repost" : "Repostar"}</MenuItem>

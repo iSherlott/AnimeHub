@@ -203,7 +203,7 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 - **Banco.** `20261105100000_catalog_only_community` (só acrescenta colunas e índices e relaxa o AniList ID de `Comment` e `Quiz`).
 - **Testes.** Spec 116.
 
-## Depois: comunidades dos animes (fórum estilo Orkut)
+## Depois: comunidades dos animes (fórum)
 
 - **O que mudou.** Cada anime ganhou uma comunidade: o fórum da franquia inteira (temporadas, OVAs e filmes juntos), em `/comunidades/<chave>`. Detalhes no ADR 0011.
   - Ler é público. Para criar tópico, responder e votar, a pessoa clica "Participar".
@@ -217,10 +217,10 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 - **Testes.** Spec 117 e `src/lib/community.test.ts`.
 - **Fora desta versão.** Denúncia, fixar e trancar tópicos; aviso de resposta.
 
-## Depois: Feed, comunidades no formato do Orkut e correções (26/10)
+## Depois: Feed, comunidades em três colunas e correções (26/10)
 
 - **Feed.** A aba "Comunidade" (as publicações) virou "Feed". A lateral ganhou "Em alta agora": as hashtags com mais publicações nos últimos 7 dias.
-- **Comunidades.** Novo item no menu. O fórum de cada anime ficou em 3 colunas como no Orkut (comunidade, seção, membros e relacionadas). Detalhes no ADR 0011.
+- **Comunidades.** Novo item no menu. O fórum de cada anime ficou em 3 colunas (comunidade, seção, membros e relacionadas). Detalhes no ADR 0011.
   - Moderação: fixar, trancar, descrição e denúncias resolvidas em Acesso e moderação.
   - Eventos com presença ("Vou"/"Talvez").
   - Diretório com Minhas, Populares e Buscar.
@@ -229,10 +229,10 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
   - O "Mais filtros" do Explorar ganhou palavras no título, na sinopse e a excluir, faixa de episódios e nota mínima.
   - O atalho de Configurações saiu do cabeçalho, e "Minhas conquistas" saiu do menu do avatar (fica no perfil).
   - O menu do admin ficou agrupado por tipo.
-- **Banco.** `20261107100000_community_orkut` (só acrescenta).
-- **Testes.** Specs 118 (correções), 119 (Feed) e 120 (Orkut); 117 ajustado.
+- **Banco.** `20261107100000_community_events_moderation` (só acrescenta).
+- **Testes.** Specs 118 (correções), 119 (Feed) e 120 (comunidades completas); 117 ajustado.
 
-## Depois: perfil no formato do Orkut (26/10)
+## Depois: perfil social (26/10)
 
 - **Perfil em 3 colunas** (ADR 0012):
   - à esquerda, o menu, os fãs e as avaliações;
@@ -245,7 +245,7 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 - **Sorte do dia.** Só a dona do perfil vê.
 - **Quem sou eu.** Ganhou anime e personagem favoritos e até 5 gêneros, em Editar perfil.
 - **Notificações.** O sino avisa de recado, depoimento e fã.
-- **Banco.** `20261108100000_profile_orkut` (só acrescenta).
+- **Banco.** `20261108100000_profile_social` (só acrescenta).
 - **Testes.** Spec 121 e `dailyFortune.test.ts`; spec 70 ajustado.
 
 ## Depois: avisos das comunidades e busca no fórum (26/10)
@@ -261,7 +261,7 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 
 ## Depois: amizade separada do seguir (26/10)
 
-- **Pedido de amizade como no Orkut:**
+- **Pedido de amizade:**
   - "Adicionar como amigo" fica no perfil.
   - A página Amigos (`/amigos`, também no menu da conta) tem os pedidos recebidos e os enviados.
   - Dá para aceitar, recusar, cancelar e desfazer.

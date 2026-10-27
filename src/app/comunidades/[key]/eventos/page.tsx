@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { Box, Typography } from "@mui/material";
 import { Panel } from "@/components/community/CommunityParts";
-import { EventCard, NewEventForm } from "@/components/community/CommunityOrkut";
+import { EventCard, NewEventForm } from "@/components/community/CommunityPanels";
 import { can } from "@/lib/auth/permissions";
 import { listEvents } from "@/lib/community";
 import { canonical, getCommunity, getScope, getViewer } from "../data";

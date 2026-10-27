@@ -28,6 +28,7 @@ import TranslateOutlinedIcon from "@mui/icons-material/TranslateOutlined";
 import VideoLibraryOutlinedIcon from "@mui/icons-material/VideoLibraryOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import MenuIcon from "@mui/icons-material/Menu";
 import { Box, ButtonBase, Collapse, Typography } from "@mui/material";
 import { can, type Permission } from "@/lib/auth/permissions";
 
@@ -91,9 +92,9 @@ const linkSx = (active: boolean) => ({
   "&:hover": { color: "text.primary", bgcolor: active ? "#2c111b" : "#171820" },
 });
 
-function NavLink({ item, active }: { item: NavItem; active: boolean }) {
+function NavLink({ item, active, onNavigate }: { item: NavItem; active: boolean; onNavigate: () => void }) {
   return (
-    <Box component={NextLink} href={item.href} aria-current={active ? "page" : undefined} sx={linkSx(active)}>
+    <Box component={NextLink} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} sx={linkSx(active)}>
       {item.icon}
       {item.label}
     </Box>
@@ -112,6 +113,10 @@ export function AdminFrame({ adminName, timeZone, role, children }: { adminName:
   const current = nav.find((item) => isActive(pathname, item.href) && item.href !== "/admin") ?? nav[0] ?? NAV[0];
   // Grupo sem escolha da pessoa: aberto se a página atual está nele (a casca não remonta entre páginas, então segue a rota).
   const [open, setOpen] = useState<Partial<Record<GroupKey, boolean>>>({});
+  // Celular e tablet: o menu fica recolhido atrás do botão "Menu" (com a seção atual) e fecha ao escolher uma página.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = () => setMenuOpen(false);
+  const currentLabel = nav.find((item) => isActive(pathname, item.href))?.label ?? current.label;
   const now = new Date();
   const dateLabel = `${new Intl.DateTimeFormat("pt-BR", { timeZone, weekday: "short" }).format(now).replace(".", "").toUpperCase()} ${new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit" }).format(now)} ${new Intl.DateTimeFormat("pt-BR", { timeZone, month: "short" }).format(now).replace(".", "").toUpperCase()} ${new Intl.DateTimeFormat("pt-BR", { timeZone, year: "numeric" }).format(now)} · ${timeZone}`;
 
@@ -127,10 +132,10 @@ export function AdminFrame({ adminName, timeZone, role, children }: { adminName:
           borderColor: "divider",
           bgcolor: "#0b0b0f",
           px: 3,
-          py: 4,
+          py: { xs: 2, md: 4 },
           display: "flex",
           flexDirection: "column",
-          gap: 3,
+          gap: { xs: 2, md: 3 },
           position: { md: "sticky" },
           top: 0,
           alignSelf: { md: "flex-start" },
@@ -141,79 +146,95 @@ export function AdminFrame({ adminName, timeZone, role, children }: { adminName:
           overflowY: { md: "auto" },
         }}
       >
-        <NextLink href="/admin" style={{ textDecoration: "none", color: "inherit" }}>
-          <Typography sx={{ fontSize: 24, fontWeight: 800, textTransform: "uppercase", lineHeight: 1.3 }}>Anime Hub</Typography>
-        </NextLink>
-        <Box sx={{ alignSelf: "flex-start", px: 1, py: 0.75, borderRadius: "6px", bgcolor: "#171820" }}>
-          <Typography component="span" sx={{ fontSize: 11, fontWeight: 700, color: "text.secondary", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-            Admin / Operações
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+          <NextLink href="/admin" style={{ textDecoration: "none", color: "inherit" }}>
+            <Typography sx={{ fontSize: { xs: 20, md: 24 }, fontWeight: 800, textTransform: "uppercase", lineHeight: 1.3 }}>Anime Hub</Typography>
+          </NextLink>
+          <ButtonBase
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-expanded={menuOpen}
+            aria-controls="admin-menu"
+            data-testid="admin-menu-toggle"
+            sx={{ display: { xs: "inline-flex", md: "none" }, gap: 1, px: 1.5, minHeight: 44, minWidth: 0, borderRadius: "10px", border: 1, borderColor: "divider", fontSize: 14, fontWeight: 700, "& svg": { fontSize: 20 } }}
+          >
+            <MenuIcon />
+            <Box component="span" sx={{ maxWidth: { xs: 150, sm: 260 }, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {currentLabel}
+            </Box>
+          </ButtonBase>
+        </Box>
+        <Box id="admin-menu" sx={{ display: { xs: menuOpen ? "flex" : "none", md: "flex" }, flexDirection: "column", gap: 3, flex: { md: 1 } }}>
+          <Box sx={{ alignSelf: "flex-start", px: 1, py: 0.75, borderRadius: "6px", bgcolor: "#171820" }}>
+            <Typography component="span" sx={{ fontSize: 11, fontWeight: 700, color: "text.secondary", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+              Admin / Operações
+            </Typography>
+          </Box>
+          <Box component="nav" aria-label="Administração" sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+            {nav
+              .filter((item) => item.group === "inicio")
+              .map((item) => (
+                <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} onNavigate={closeMenu} />
+              ))}
+            {GROUPS.map((group) => {
+              const items = nav.filter((item) => item.group === group.key);
+              if (items.length === 0) return null;
+              const hasActive = items.some((item) => isActive(pathname, item.href));
+              const expanded = open[group.key] ?? hasActive;
+              const listId = `admin-group-${group.key}`;
+              return (
+                <Box key={group.key} sx={{ display: "flex", flexDirection: "column" }}>
+                  <ButtonBase
+                    onClick={() => setOpen((o) => ({ ...o, [group.key]: !expanded }))}
+                    aria-expanded={expanded}
+                    aria-controls={listId}
+                    data-testid={`admin-group-toggle-${group.key}`}
+                    sx={{ justifyContent: "space-between", px: 1.5, py: 1, minHeight: 40, borderRadius: "10px", fontSize: 12, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: hasActive ? "text.primary" : "text.secondary", "&:hover": { bgcolor: "#171820", color: "text.primary" } }}
+                  >
+                    {/* Rótulo alinhado à esquerda (os de duas linhas não centralizam, como faria o botão). */}
+                    <span style={{ textAlign: "left" }}>{group.label}</span>
+                    <ExpandMoreIcon sx={{ fontSize: 18, flexShrink: 0, transition: "transform 150ms", transform: expanded ? "rotate(180deg)" : "none" }} />
+                  </ButtonBase>
+                  <Collapse in={expanded} id={listId}>
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, pl: 1, pb: 0.5 }}>
+                      {items.map((item) => (
+                        <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} onNavigate={closeMenu} />
+                      ))}
+                    </Box>
+                  </Collapse>
+                </Box>
+              );
+            })}
+          </Box>
+          <Box
+            component={NextLink}
+            href="/dashboard"
+            data-testid="admin-back-to-site"
+            sx={{
+              mt: { md: "auto" },
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              px: 1.5,
+              minHeight: 44,
+              boxSizing: "border-box",
+              borderRadius: "10px",
+              border: 1,
+              borderColor: "divider",
+              fontSize: 14,
+              fontWeight: 700,
+              color: "text.primary",
+              textDecoration: "none",
+              "& svg": { fontSize: 18 },
+              "&:hover": { bgcolor: "#171820" },
+            }}
+          >
+            <ArrowBackIcon />
+            Voltar ao Anime Hub
+          </Box>
+          <Typography sx={{ fontSize: 12, color: "text.secondary", lineHeight: 1.5 }}>
+            Acesso restrito · Administrador {adminName}
           </Typography>
         </Box>
-        <Box component="nav" aria-label="Administração" sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-          {nav
-            .filter((item) => item.group === "inicio")
-            .map((item) => (
-              <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} />
-            ))}
-          {GROUPS.map((group) => {
-            const items = nav.filter((item) => item.group === group.key);
-            if (items.length === 0) return null;
-            const hasActive = items.some((item) => isActive(pathname, item.href));
-            const expanded = open[group.key] ?? hasActive;
-            const listId = `admin-group-${group.key}`;
-            return (
-              <Box key={group.key} sx={{ display: "flex", flexDirection: "column" }}>
-                <ButtonBase
-                  onClick={() => setOpen((o) => ({ ...o, [group.key]: !expanded }))}
-                  aria-expanded={expanded}
-                  aria-controls={listId}
-                  data-testid={`admin-group-toggle-${group.key}`}
-                  sx={{ justifyContent: "space-between", px: 1.5, py: 1, minHeight: 40, borderRadius: "10px", fontSize: 12, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: hasActive ? "text.primary" : "text.secondary", "&:hover": { bgcolor: "#171820", color: "text.primary" } }}
-                >
-                  {/* Rótulo alinhado à esquerda (os de duas linhas não centralizam, como faria o botão). */}
-                  <span style={{ textAlign: "left" }}>{group.label}</span>
-                  <ExpandMoreIcon sx={{ fontSize: 18, flexShrink: 0, transition: "transform 150ms", transform: expanded ? "rotate(180deg)" : "none" }} />
-                </ButtonBase>
-                <Collapse in={expanded} id={listId}>
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, pl: 1, pb: 0.5 }}>
-                    {items.map((item) => (
-                      <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} />
-                    ))}
-                  </Box>
-                </Collapse>
-              </Box>
-            );
-          })}
-        </Box>
-        <Box
-          component={NextLink}
-          href="/dashboard"
-          data-testid="admin-back-to-site"
-          sx={{
-            mt: { md: "auto" },
-            display: "flex",
-            alignItems: "center",
-            gap: 1.5,
-            px: 1.5,
-            minHeight: 44,
-            boxSizing: "border-box",
-            borderRadius: "10px",
-            border: 1,
-            borderColor: "divider",
-            fontSize: 14,
-            fontWeight: 700,
-            color: "text.primary",
-            textDecoration: "none",
-            "& svg": { fontSize: 18 },
-            "&:hover": { bgcolor: "#171820" },
-          }}
-        >
-          <ArrowBackIcon />
-          Voltar ao Anime Hub
-        </Box>
-        <Typography sx={{ fontSize: 12, color: "text.secondary", lineHeight: 1.5 }}>
-          Acesso restrito · Administrador {adminName}
-        </Typography>
       </Box>
 
       <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>

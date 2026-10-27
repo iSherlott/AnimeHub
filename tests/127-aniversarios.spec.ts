@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_EMAIL, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
 
-// Aniversários (perfil estilo Orkut): só dia e mês, em Editar perfil; só amigos veem; aniversariantes de hoje e dos
+// Aniversários (perfil social): só dia e mês, em Editar perfil; só amigos veem; aniversariantes de hoje e dos
 // próximos dias na página Amigos e na lateral do Feed; e o aviso no sino (um por amigo por dia).
 const adminState = {
   cookies: [{ name: SESSION_COOKIE_NAME, value: TEST_ADMIN_SESSION_TOKEN, domain: "localhost", path: "/", expires: Math.floor(Date.now() / 1000) + 365 * 24 * 3600, httpOnly: true, secure: false, sameSite: "Lax" as const }],

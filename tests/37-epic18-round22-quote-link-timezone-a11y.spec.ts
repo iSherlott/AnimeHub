@@ -33,7 +33,7 @@ test.describe("Epic 18 — 22ª rodada de auditoria de UX/UI — modo citação:
     const card = page.getByTestId(`post-card-${postId}`);
     await expect(card).toBeVisible();
 
-    await card.getByRole("button", { name: "Compartilhar internamente" }).click();
+    await card.getByRole("button", { name: "Compartilhar" }).click();
     await page.getByRole("menuitem", { name: "Citar publicação" }).click();
     await expect(page).toHaveURL(/\/publicar\?.*quotePostId=/);
 

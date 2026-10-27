@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { findCommunity, isMember, scopeForKey } from "@/lib/community";
 
 /**
- * Dados da comunidade compartilhados entre o layout (colunas do Orkut) e as páginas, numa só consulta por requisição.
+ * Dados da comunidade compartilhados entre o layout (as três colunas) e as páginas, numa só consulta por requisição.
  * O endereço canônico é o da franquia: `canonical` redireciona `/comunidades/<outra obra>/…` para ele.
  */
 export const getScope = cache(async (key: string) => scopeForKey(key));

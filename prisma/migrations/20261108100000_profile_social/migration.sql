@@ -1,4 +1,4 @@
--- Perfil estilo Orkut: quem sou eu (favoritos), recados, depoimentos, fãs e avaliações.
+-- Perfil social: quem sou eu (favoritos), recados, depoimentos, fãs e avaliações.
 -- Só acrescenta colunas e tabelas.
 
 -- AlterTable

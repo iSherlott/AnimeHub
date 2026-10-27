@@ -7,7 +7,7 @@ import { CoverImage } from "@/components/CoverImage";
 import { PageContainer, PageIntro } from "@/components/PageShell";
 import { ProfileSection } from "@/components/profile/ProfileSections";
 import { AlbumEditor, AlbumRemoveItem } from "@/components/profile/ProfileAlbums";
-import { ProfileReportButton } from "@/components/profile/ProfileOrkut";
+import { ProfileReportButton } from "@/components/profile/ProfileActions";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { albumCandidates, albumView, type AlbumWork } from "@/lib/profileAlbums";

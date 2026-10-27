@@ -13,7 +13,7 @@ async function send(url: string, method: string, body?: unknown): Promise<{ ok: 
   return { ok: res.ok, data: await res.json().catch(() => ({})) };
 }
 
-/** Menu da coluna da esquerda (como no Orkut): Início, Fórum, Enquetes, Eventos, Membros. */
+/** Menu da coluna da esquerda: Início, Fórum, Enquetes, Eventos, Membros. */
 export function CommunityMenu({ communityKey, counts }: { communityKey: string; counts: { topics: number; polls: number; events: number; members: number } }) {
   const pathname = usePathname();
   const base = `/comunidades/${communityKey}`;

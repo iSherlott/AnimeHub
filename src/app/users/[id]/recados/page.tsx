@@ -3,18 +3,18 @@ import { Box, Typography } from "@mui/material";
 import { Header } from "@/components/Header";
 import { AppLink } from "@/components/AppLink";
 import { PageContainer, PageIntro } from "@/components/PageShell";
-import { ScrapForm } from "@/components/profile/ProfileOrkut";
+import { ScrapForm } from "@/components/profile/ProfileActions";
 import { ProfileSection, ScrapList } from "@/components/profile/ProfileSections";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { can } from "@/lib/auth/permissions";
 import { blockRelation } from "@/lib/blocks";
-import { listScraps, SCRAPS_PAGE } from "@/lib/profileOrkut";
+import { listScraps, SCRAPS_PAGE } from "@/lib/profileSocial";
 import { loginHref } from "@/lib/safeRedirect";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ page?: string }> };
 
-/** Todos os recados do perfil (o "scrapbook" do Orkut), 20 por página. */
+/** Todos os recados do perfil, 20 por página. */
 export default async function ScrapbookPage({ params, searchParams }: Props) {
   const { id } = await params;
   const target = await prisma.user.findUnique({ where: { id }, select: { displayName: true } });

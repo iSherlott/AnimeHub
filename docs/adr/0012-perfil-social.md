@@ -1,11 +1,11 @@
-# ADR 0012 — Perfil no formato do Orkut
+# ADR 0012 — Perfil social
 
 Status: aceito em 26/10/2026.
 
 ## Contexto
 
 O perfil tinha o cabeçalho (capa, avatar, nome, bio, seguir) e as abas Publicações, Discussões e Animes. A pessoa usuária
-pediu o perfil no formato do antigo Orkut, com o tema do Anime Hub, e escolheu:
+pediu um perfil social completo, com o tema do Anime Hub, e escolheu:
 
 - **recados** (scrapbook): qualquer conta deixa um recado no perfil de outra;
 - **depoimentos**: escritos por amigos, aparecem só depois que a pessoa aprova;
@@ -22,7 +22,7 @@ pediu o perfil no formato do antigo Orkut, com o tema do Anime Hub, e escolheu:
   - direita: amigos (9, com "ver todos"), comunidades em que a pessoa entrou e conquistas (títulos dos quizzes).
 - **Quem sou eu.** A bio de antes, mais anime e personagem favoritos (texto livre, até 80 caracteres) e até 5 gêneros
   favoritos (do vocabulário de gêneros, sem Hentai). Tudo opcional, em Editar perfil.
-- **Sorte do dia.** Só a dona do perfil vê, como no Orkut. As 30 frases são do Anime Hub; nenhuma cita uma obra. A frase
+- **Sorte do dia.** Só a dona do perfil vê. As 30 frases são do Anime Hub; nenhuma cita uma obra. A frase
   depende da pessoa e do dia no fuso de quem vê (`src/lib/dailyFortune.ts`).
 - **Recados.** Até 1.000 caracteres, 20 por minuto por conta. Apagar: quem recebeu, quem escreveu ou a moderação; o
   recado fica marcado como apagado. O perfil mostra os 5 últimos; `/users/<id>/recados` mostra todos, 20 por página.
@@ -47,11 +47,11 @@ pediu o perfil no formato do antigo Orkut, com o tema do Anime Hub, e escolheu:
 
 ## Consequências
 
-- **Banco.** `20261108100000_profile_orkut` só acrescenta:
+- **Banco.** `20261108100000_profile_social` só acrescenta:
   - os favoritos em `User`;
   - as tabelas `Scrap`, `Testimonial`, `Fan` e `ProfileRating`.
 - **Código.**
-  - Regras: `src/lib/profileOrkut.ts`.
+  - Regras: `src/lib/profileSocial.ts`.
   - Rotas: `/api/users/<id>/scraps`, `/testimonials`, `/fan`, `/rating`, `/api/scraps/<id>` e `/api/testimonials/<id>`.
 - **Testes.** Spec 121 e `src/lib/dailyFortune.test.ts`. O spec 70 foi ajustado ao novo rótulo "Quem sou eu".
 - **Fora desta versão.**
@@ -61,7 +61,7 @@ pediu o perfil no formato do antigo Orkut, com o tema do Anime Hub, e escolheu:
 
 ## Revisão de 26/10/2026 — amizade separada do seguir
 
-A pessoa usuária escolheu trocar o "amigo = seguir mútuo" por **pedido de amizade**, como no Orkut.
+A pessoa usuária escolheu trocar o "amigo = seguir mútuo" por **pedido de amizade**.
 
 - **Pedir e responder:**
   - "Adicionar como amigo" fica no cabeçalho do perfil, ao lado de "Seguir perfil".
@@ -125,7 +125,7 @@ A pessoa usuária escolheu trocar o "amigo = seguir mútuo" por **pedido de amiz
 ## Revisão de 26/10/2026 — recados mais completos
 
 - **Responder.** No próprio perfil, cada recado recebido tem "Responder".
-  - A resposta vai para o perfil de quem escreveu, como no Orkut.
+  - A resposta vai para o perfil de quem escreveu.
   - Ela fica marcada como "↩ resposta a um recado" (`Scrap.replyToId`).
   - Só quem recebeu responde, e só para quem escreveu.
   - Quem escreveu o original recebe o aviso de recado no sino.
@@ -165,7 +165,7 @@ A pessoa usuária escolheu trocar o "amigo = seguir mútuo" por **pedido de amiz
   - Em `/users/<id>/visitas` estão até 100; para qualquer outra pessoa essa página não existe (404).
   - As visitas valem pelos últimos 90 dias.
   - Visitante que depois teve bloqueio com a dona some da lista.
-- **Reciprocidade, como no Orkut:** Configurações tem "Registrar minhas visitas aos perfis", ligado por padrão.
+- **Reciprocidade:** Configurações tem "Registrar minhas visitas aos perfis", ligado por padrão.
   Desligado, as visitas da pessoa não são registradas e somem da lista de todos, até as antigas; e ela também não vê
   quem visitou o perfil dela.
 - **Banco.** `20261114100000_profile_visits` só acrescenta: `User.recordVisits` e a tabela `ProfileVisit`.

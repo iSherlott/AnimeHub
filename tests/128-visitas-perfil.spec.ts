@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_EMAIL, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
 
-// Visitas ao perfil (como no Orkut): registra a última visita de quem tem conta; só a dona do perfil vê; quem desliga o
+// Visitas ao perfil: registra a última visita de quem tem conta; só a dona do perfil vê; quem desliga o
 // registro some da lista de todos (até das visitas antigas) e também não vê quem o visitou; bloqueio não registra.
 const adminState = {
   cookies: [{ name: SESSION_COOKIE_NAME, value: TEST_ADMIN_SESSION_TOKEN, domain: "localhost", path: "/", expires: Math.floor(Date.now() / 1000) + 365 * 24 * 3600, httpOnly: true, secure: false, sameSite: "Lax" as const }],

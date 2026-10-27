@@ -4,7 +4,7 @@ import { AppLink } from "@/components/AppLink";
 import { AnimeTitle } from "@/components/AnimeTitle";
 import { CoverImage } from "@/components/CoverImage";
 import { UserAvatar } from "@/components/UserAvatar";
-import { DeleteButton, ProfileReportButton, ScrapReplyButton } from "@/components/profile/ProfileOrkut";
+import { DeleteButton, ProfileReportButton, ScrapReplyButton } from "@/components/profile/ProfileActions";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import type { CommunityLink } from "@/lib/community";
 import type { AlbumCard } from "@/lib/profileAlbums";
@@ -12,7 +12,7 @@ import type { AlbumCard } from "@/lib/profileAlbums";
 type Person = { id: string; displayName: string; avatarUrl: string | null };
 export type ScrapView = { id: string; body: string; createdAt: Date; author: Person; authorId: string; profileId: string; replyTo?: { id: string; deletedAt: Date | null } | null };
 
-/** Seção do centro do perfil (recados, depoimentos…): título em minúsculas como no Orkut, contagem e "ver todos". */
+/** Seção do centro do perfil (recados, depoimentos…): título em minúsculas, contagem e "ver todos". */
 export function ProfileSection({ id, title, count, more, testId, children }: { id: string; title: string; count?: number; more?: { href: string; label: string }; testId: string; children: ReactNode }) {
   return (
     <Box component="section" id={id} aria-labelledby={`${id}-title`} data-testid={testId} sx={{ display: "flex", flexDirection: "column", gap: 2, p: { xs: 2, sm: 3 }, borderRadius: "16px", bgcolor: "background.paper", scrollMarginTop: 96 }}>
@@ -102,7 +102,7 @@ export function ScrapList({ scraps, viewerId, canModerate, empty, showProfile }:
   );
 }
 
-/** Grade de pessoas (amigos), 3 por linha como no Orkut. */
+/** Grade de pessoas (amigos), 3 por linha. */
 export function PeopleGrid({ people, size = 48 }: { people: Person[]; size?: number }) {
   return (
     <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 1 }}>

@@ -5,7 +5,7 @@ import { deleteCatalogEntries } from "./catalog-cleanup";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_EMAIL, TEST_ADMIN_SESSION_TOKEN } from "./test-auth";
 
-// Comunidades (estilo Orkut): o fórum de cada anime. Uma por franquia (temporadas juntas), endereço pela franquia, leitura
+// Comunidades: o fórum de cada anime. Uma por franquia (temporadas juntas), endereço pela franquia, leitura
 // pública, participação por "Participar"; tópicos com "Sobre" (a temporada), enquete com um voto por pessoa, respostas,
 // edição só do autor e remoção pelo autor ou pela moderação; "Minhas comunidades" com o que teve atividade depois da
 // última visita; comunidades duplicadas da mesma franquia viram uma só; obra só do AniDB tem a dela e a leva à AniList.

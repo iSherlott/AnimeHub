@@ -72,7 +72,7 @@ export function SelectField({
 }) {
   const id = useId();
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 1, width: { xs: "100%", sm: width }, flex: { xs: "1 1 140px", sm: "0 0 auto" } }}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1, width: { xs: "100%", sm: width }, flex: { xs: "1 1 200px", sm: "0 0 auto" } }}>
       <Typography component="label" htmlFor={id} sx={labelSx}>
         {label}
       </Typography>

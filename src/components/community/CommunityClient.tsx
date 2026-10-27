@@ -13,7 +13,7 @@ async function send(url: string, method: string, body?: unknown): Promise<{ ok: 
   return { ok: res.ok, status: res.status, data: await res.json().catch(() => ({})) };
 }
 
-/** "Participar" / "Sair da comunidade" (como no Orkut). Sem conta, leva ao login e volta para a comunidade. */
+/** "Participar" / "Sair da comunidade". Sem conta, leva ao login e volta para a comunidade. */
 export function JoinButton({ communityKey, member, loggedIn }: { communityKey: string; member: boolean; loggedIn: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);

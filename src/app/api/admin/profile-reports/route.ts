@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireStaff } from "@/lib/auth/session";
-import { openProfileReports } from "@/lib/profileOrkut";
+import { openProfileReports } from "@/lib/profileSocial";
 
 export const dynamic = "force-dynamic";
 

@@ -7,7 +7,7 @@ import { resolveWorkKey } from "@/lib/workRef";
 import { catalogSlug } from "@/lib/workHref";
 
 /**
- * Comunidades (estilo Orkut): o fórum de cada anime. Uma comunidade por franquia do catálogo (`franchiseKey`, Epic 45:
+ * Comunidades: o fórum de cada anime. Uma comunidade por franquia do catálogo (`franchiseKey`, Epic 45:
  * temporadas, OVAs e filmes juntos); obra sem franquia (só do AniDB/Kitsu) tem a dela. Ler é público; criar tópico,
  * responder e votar exige entrar na comunidade. Ela só é criada na primeira participação.
  *
@@ -571,7 +571,7 @@ export async function listEvents(communityId: string, when: "upcoming" | "past",
 
 export const MEMBERS_PAGE = 30;
 
-/** Membros, dos que entraram por último aos primeiros (a grade do Orkut mostra os 9 primeiros desta lista). */
+/** Membros, dos que entraram por último aos primeiros (a grade da comunidade mostra os 9 primeiros desta lista). */
 export async function listMembers(communityId: string, page: number, take = MEMBERS_PAGE) {
   const [total, rows] = await Promise.all([
     prisma.communityMember.count({ where: { communityId } }),
@@ -583,7 +583,7 @@ export async function listMembers(communityId: string, page: number, take = MEMB
 export type CommunityLink = { key: string; titleRomaji: string; titleNative: string | null; titleEnglish: string | null; coverImage: string | null; members: number };
 
 /**
- * Comunidades de que a pessoa participa (a grade do perfil, como no Orkut): as que entrou por último primeiro. Em lote:
+ * Comunidades de que a pessoa participa (a grade do perfil): as que entrou por último primeiro. Em lote:
  * a obra que dá nome e capa vem numa consulta (a raiz da franquia, ou a obra da comunidade sem franquia).
  */
 export async function memberCommunities(userId: string, take = 9): Promise<{ total: number; rows: CommunityLink[] }> {

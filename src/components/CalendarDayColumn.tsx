@@ -36,7 +36,7 @@ export function CalendarDayColumn({
   const dayOfMonth = new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit" }).format(day);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", minWidth: 0 }} data-testid={`calendar-day-${weekday}`}>
+    <Box sx={{ display: "flex", flexDirection: "column", minWidth: 0 }} data-testid={`calendar-day-${weekday}`} data-today={isToday ? "true" : undefined}>
       <Box
         sx={{
           height: "4em",

@@ -83,15 +83,9 @@ export default async function PublishPage({ searchParams }: Props) {
                 <SectionTitle>Antes de compartilhar</SectionTitle>
                 <Typography sx={{ fontSize: 14 }}>Publicação pública. Sua Minha Lista continua privada e não será anexada.</Typography>
                 <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
-                  V1 somente texto. Sem anexos e sem edição após publicar. Você poderá excluir sua própria publicação.
+                  Só texto. Não dá para editar depois de publicar, mas você pode excluir a sua publicação.
                 </Typography>
               </Box>
-              <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
-                Cancelar com texto abre confirmação para descartar. Erro preserva o rascunho; publicar desabilita novo envio e deduplica a solicitação.
-              </Typography>
-              <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
-                Origem também pode ser Meu perfil. Autenticação retorna ao editor com destino e rascunho preservados.
-              </Typography>
             </>
           }
         />

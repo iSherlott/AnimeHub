@@ -36,7 +36,7 @@ export function ProfileHeader({
   avatarUrl: string | null;
   bannerUrl?: string | null;
   bio: string | null;
-  /** Ação de amizade (perfil estilo Orkut), ao lado de "Seguir perfil". */
+  /** Ação de amizade (perfil social), ao lado de "Seguir perfil". */
   friendAction?: ReactNode;
   /** Título equipado (conquista do quiz), se houver. */
   title?: string | null;

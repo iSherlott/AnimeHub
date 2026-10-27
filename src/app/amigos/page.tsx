@@ -5,7 +5,7 @@ import { Header } from "@/components/Header";
 import { AppLink } from "@/components/AppLink";
 import { PageContainer, PageIntro } from "@/components/PageShell";
 import { UserAvatar } from "@/components/UserAvatar";
-import { FriendButton } from "@/components/profile/ProfileOrkut";
+import { FriendButton } from "@/components/profile/ProfileActions";
 import { PeopleGrid, ProfileSection } from "@/components/profile/ProfileSections";
 import { getCurrentUser } from "@/lib/auth/session";
 import { friendRequests, friendSuggestions, listFriends, searchPeople, type PersonCard } from "@/lib/friends";
@@ -38,7 +38,7 @@ function PersonRow({ person, state, detail, testId }: { person: Person; state: P
 }
 
 /**
- * Amigos (como no Orkut): encontrar pessoas (busca por nome ou @identificador), pedidos recebidos para aceitar ou
+ * Amigos: encontrar pessoas (busca por nome ou @identificador), pedidos recebidos para aceitar ou
  * recusar, sugestões (comunidades e animes em comum), pedidos enviados e os amigos. Exige conta.
  */
 export default async function FriendsHomePage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {

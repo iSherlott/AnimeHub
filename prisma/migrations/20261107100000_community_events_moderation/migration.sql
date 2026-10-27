@@ -1,4 +1,4 @@
--- Comunidades estilo Orkut: descrição, tópicos fixados/trancados, eventos com presença e denúncias para a moderação.
+-- Comunidades: descrição, tópicos fixados/trancados, eventos com presença e denúncias para a moderação.
 -- Só acrescenta colunas e tabelas.
 
 -- AlterTable

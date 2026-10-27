@@ -88,6 +88,7 @@ export function LikeToggle({
         fontSize: 12,
         color: liked ? "primary.main" : "text.secondary",
         borderRadius: "6px",
+        whiteSpace: "nowrap",
       }}
     >
       {liked ? <FavoriteIcon sx={{ fontSize: 16 }} /> : <FavoriteBorderIcon sx={{ fontSize: 16 }} />}
