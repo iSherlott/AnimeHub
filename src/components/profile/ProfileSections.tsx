@@ -7,6 +7,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { DeleteButton, ProfileReportButton, ScrapReplyButton } from "@/components/profile/ProfileOrkut";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import type { CommunityLink } from "@/lib/community";
+import type { AlbumCard } from "@/lib/profileAlbums";
 
 type Person = { id: string; displayName: string; avatarUrl: string | null };
 export type ScrapView = { id: string; body: string; createdAt: Date; author: Person; authorId: string; profileId: string; replyTo?: { id: string; deletedAt: Date | null } | null };
@@ -128,6 +129,41 @@ export function CommunityGrid({ communities }: { communities: CommunityLink[] })
             <AnimeTitle titles={{ titleRomaji: c.titleRomaji, titleEnglish: c.titleEnglish, titleNative: c.titleNative }} />
             <Typography component="span" sx={{ fontSize: 10, color: "text.secondary" }}>
               ({c.members})
+            </Typography>
+          </AppLink>
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
+/** Capa do álbum: as primeiras capas em mosaico 2×2 (vazio fica escuro). */
+function AlbumMosaic({ covers }: { covers: string[] }) {
+  return (
+    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: "2px", aspectRatio: "1 / 1", borderRadius: "10px", overflow: "hidden", bgcolor: "#0d0e14" }}>
+      {[0, 1, 2, 3].map((i) => (
+        <Box key={i} sx={{ position: "relative", bgcolor: "#171820" }}>
+          {covers[i] && <CoverImage src={covers[i]} sizes="90px" />}
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
+/** Os álbuns do perfil: automáticos (pelo andamento) e os que a pessoa montou. */
+export function AlbumGrid({ userId, albums }: { userId: string; albums: AlbumCard[] }) {
+  return (
+    <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0,1fr))", sm: "repeat(4, minmax(0,1fr))" }, gap: 2 }}>
+      {albums.map((a) => (
+        <Box component="li" key={a.key} data-testid={`album-${a.key}`}>
+          <AppLink href={`/users/${userId}/albuns/${a.key}`} underline="none" sx={{ display: "flex", flexDirection: "column", gap: 0.75, color: "text.primary", "&:hover .album-name": { textDecoration: "underline" } }}>
+            <AlbumMosaic covers={a.covers} />
+            <Typography className="album-name" sx={{ fontSize: 14, fontWeight: 700, overflowWrap: "anywhere" }}>
+              {a.name}
+            </Typography>
+            <Typography component="span" sx={{ fontSize: 12, color: "text.secondary" }}>
+              {a.count} {a.count === 1 ? "anime" : "animes"}
+              {a.auto ? " · automático" : ""}
             </Typography>
           </AppLink>
         </Box>

@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useState } from "react";
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, ButtonBase, Dialog, IconButton, Typography } from "@mui/material";
 import { ScrollCarousel } from "@/components/ScrollCarousel";
 import { UserAvatar } from "@/components/UserAvatar";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
-import { uploadAvatar } from "@/lib/uploadImage";
 import type { AvatarGroup } from "@/lib/avatarOptions";
 
 /** Laranja do botão e dos links do perfil (referência: a Seleção de Avatar da Crunchyroll). */
@@ -29,8 +28,8 @@ const outlinedButton = (enabled: boolean) => ({
 
 /**
  * "Seleção de Avatar" (e de banner): as imagens das obras que a pessoa acompanha, uma fileira por obra,
- * no estilo da Crunchyroll. Escolher e Salvar grava na hora (PATCH /api/users/me/avatar); a pessoa também
- * pode enviar uma foto própria ou, no avatar, voltar às iniciais.
+ * no estilo da Crunchyroll. Escolher e Salvar grava na hora (PATCH /api/users/me/avatar); no avatar, a pessoa também
+ * pode voltar às iniciais. Não há envio de foto própria: avatar e capa são sempre imagens dos animes acompanhados.
  */
 export function AvatarPickerDialog({
   open,
@@ -55,7 +54,6 @@ export function AvatarPickerDialog({
   const [loadError, setLoadError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
   const isAvatar = kind === "avatar";
 
   useEffect(() => {
@@ -90,23 +88,6 @@ export function AvatarPickerDialog({
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível salvar.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function onFile(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const { avatarUrl } = await uploadAvatar(file);
-      onSaved(avatarUrl);
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao enviar a foto.");
     } finally {
       setBusy(false);
     }
@@ -227,14 +208,6 @@ export function AvatarPickerDialog({
           })
         )}
         <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap", pt: 1, borderTop: 1, borderColor: "#3a3a3a" }}>
-          {isAvatar && (
-            <>
-              <ButtonBase onClick={() => fileRef.current?.click()} disabled={busy} sx={{ color: PROFILE_ACCENT, fontSize: 13, fontWeight: 700, textTransform: "uppercase" }} data-testid="avatar-upload">
-                Enviar minha própria foto
-              </ButtonBase>
-              <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => void onFile(e)} />
-            </>
-          )}
           {current && (
             <ButtonBase onClick={() => void remove()} disabled={busy} sx={{ color: "#c0392b", fontSize: 13, fontWeight: 700, textTransform: "uppercase" }} data-testid="avatar-remove">
               {isAvatar ? "Remover foto (usar iniciais)" : "Remover banner"}

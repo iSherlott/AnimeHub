@@ -12,7 +12,7 @@ import { UserAvatar } from "@/components/UserAvatar";
  * Bloco de identidade do perfil (Figma `13:42598` / `13:42736`, no estilo da Crunchyroll): banner (de uma obra
  * que a pessoa acompanha), avatar redondo sobreposto, nome, @identificador, título equipado, bio, contagens e
  * ações. Cliente só para ajustar "N seguidores" otimisticamente junto do toggle de seguir. O avatar e o banner
- * se escolhem em "Editar perfil" (obras acompanhadas ou foto própria).
+ * se escolhem em "Editar perfil", sempre entre as imagens das obras acompanhadas (não há foto própria).
  */
 export function ProfileHeader({
   userId,

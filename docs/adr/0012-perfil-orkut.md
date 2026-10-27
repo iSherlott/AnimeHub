@@ -170,3 +170,25 @@ A pessoa usuária escolheu trocar o "amigo = seguir mútuo" por **pedido de amiz
   quem visitou o perfil dela.
 - **Banco.** `20261114100000_profile_visits` só acrescenta: `User.recordVisits` e a tabela `ProfileVisit`.
 - **Código e testes.** `src/lib/profileVisits.ts`. Testes: spec 128; o spec 52 foi ajustado.
+
+## Revisão de 26/10/2026 — álbuns de animes e avatar só de anime
+
+A pessoa usuária definiu que **não há fotos nem álbuns de fotos**:
+
+- **Avatar e capa só de anime.** Avatar e capa são sempre imagens dos animes que a pessoa acompanha, escolhidas em
+  Editar perfil. A capa já era assim.
+  - O botão "Enviar minha própria foto" saiu, e o envio (`POST /api/users/me/avatar`) responde 410.
+  - Quem tinha foto enviada volta às iniciais (migração `20261115110000_avatar_from_anime_only`, a pedido da pessoa
+    usuária). Os arquivos continuam no disco; só a referência foi zerada.
+- **Álbuns são coletâneas de animes.** No perfil, a seção "álbuns" fica depois do "quem sou eu", e cada álbum tem a sua
+  página (`/users/<id>/albuns/<álbum>`).
+  - **Automáticos**, pelo andamento de cada anime, com a mesma regra da aba Animes: Assistindo, Terminei, Não terminei e
+    Dropei.
+  - **Personalizados**: a pessoa cria ("+ Novo álbum"), dá nome e descrição e coloca obras da própria lista, com busca.
+    - Pode renomear, tirar obras e apagar o álbum.
+    - Tirar a obra da lista tira do álbum.
+    - Limites: 30 álbuns, 200 obras por álbum e nome de até 60 caracteres, que não pode repetir o de um automático.
+- **Quem vê** segue "Mostrar meus animes": desligado, só a própria pessoa vê, e a página do álbum não existe (404) para
+  quem visita. Bloqueio também esconde.
+- **Banco.** `20261115100000_profile_albums` (`ProfileAlbum`, `ProfileAlbumItem`) só acrescenta.
+- **Código e testes.** `src/lib/profileAlbums.ts`. Testes: spec 130; o spec 46 foi ajustado ao 410.

@@ -9,7 +9,8 @@ import { LinkButton } from "@/components/LinkButton";
 import { PageContainer, PageIntro } from "@/components/PageShell";
 import { SideBox } from "@/components/SideBox";
 import { FanButton, FriendButton, ProfileReportButton, RatingBox, ScrapForm, TestimonialDecision, TestimonialForm, DeleteButton } from "@/components/profile/ProfileOrkut";
-import { CommunityGrid, NoteItem, PeopleGrid, ProfileSection, ScrapList } from "@/components/profile/ProfileSections";
+import { AlbumGrid, CommunityGrid, NoteItem, PeopleGrid, ProfileSection, ScrapList } from "@/components/profile/ProfileSections";
+import { NewAlbumButton } from "@/components/profile/ProfileAlbums";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { can } from "@/lib/auth/permissions";
@@ -23,6 +24,7 @@ import { memberCommunities } from "@/lib/community";
 import { dailyFortune } from "@/lib/dailyFortune";
 import { formatBirthday } from "@/lib/birthdays";
 import { recentVisitors, recordVisit } from "@/lib/profileVisits";
+import { profileAlbums } from "@/lib/profileAlbums";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { resolveTimeZone } from "@/lib/timeZone";
 import { loginHref } from "@/lib/safeRedirect";
@@ -81,6 +83,9 @@ export default async function UserProfilePage({ params }: Params) {
   // Visitas (como no Orkut): registra a de quem tem conta; a dona do perfil vê as recentes (se registra as dela).
   await recordVisit(viewer, id);
   const visitors = isOwnProfile && viewer?.recordVisits ? await recentVisitors(id) : null;
+  // Álbuns (coletâneas de animes): seguem "Mostrar meus animes"; null = escondidos para quem vê.
+  const albums = await profileAlbums(id, viewerId);
+  const albumCards = albums ? [...albums.auto, ...albums.custom] : [];
   const [followerCount, followingCount, postCount, isFollowedByMe, titles, equippedTitles, animeCount, friends, communities, fans, isFan, ratings, scraps, testimonials, friendRel, myTestimonial, pendingRequests] =
     await Promise.all([
       prisma.follow.count({ where: { followingId: id } }),
@@ -113,6 +118,7 @@ export default async function UserProfilePage({ params }: Params) {
 
   const menu = [
     { href: "#quem-sou-eu", label: "Quem sou eu", count: null },
+    ...(albums ? [{ href: "#albuns", label: "Álbuns", count: albumCards.length }] : []),
     { href: "#recados", label: "Recados", count: scraps.total },
     { href: "#depoimentos", label: "Depoimentos", count: approved.length },
     { href: "#amigos", label: "Amigos", count: friends.total },
@@ -220,6 +226,18 @@ export default async function UserProfilePage({ params }: Params) {
                 <AboutRow label="No Anime Hub desde">{target.createdAt.toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: resolveTimeZone(viewer?.timeZone) })}</AboutRow>
               </Box>
             </ProfileSection>
+
+            {albums && (
+              <ProfileSection id="albuns" title="álbuns" count={albumCards.length} testId="profile-albums">
+                {isOwnProfile && (
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, flexWrap: "wrap" }}>
+                    <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Os automáticos seguem o andamento de cada anime; monte os seus com obras da sua lista.</Typography>
+                    <NewAlbumButton userId={id} />
+                  </Box>
+                )}
+                <AlbumGrid userId={id} albums={albumCards} />
+              </ProfileSection>
+            )}
 
             <ProfileSection id="recados" title="recados" count={scraps.total} testId="profile-scraps" more={scraps.total > SCRAPS_ON_PROFILE ? { href: `/users/${id}/recados`, label: "ver todos" } : undefined}>
               {viewer ? (

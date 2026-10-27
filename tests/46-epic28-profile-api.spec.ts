@@ -46,33 +46,17 @@ test.describe("PATCH /api/users/me (bio)", () => {
 });
 
 test.describe("POST/DELETE /api/users/me/avatar", () => {
-  test("envia uma imagem, grava a URL e permite remover", async ({ request }) => {
+  test("o envio de foto própria foi desativado (410); remover continua", async ({ request }) => {
     const file = readFileSync(path.join(FIXTURES, "test-image.png"));
     const up = await request.post("/api/users/me/avatar", {
       multipart: { file: { name: "avatar.png", mimeType: "image/png", buffer: file } },
     });
-    expect(up.status()).toBe(201);
-    const { avatarUrl } = await up.json();
-    expect(avatarUrl).toMatch(/\/api\/uploads\/avatars\/\d{4}-\d{2}\/[0-9a-f-]+\.webp$/);
-
-    const served = await request.get(new URL(avatarUrl).pathname);
-    expect(served.status()).toBe(200);
-    expect(served.headers()["content-type"]).toContain("image/webp");
+    expect(up.status()).toBe(410);
+    expect((await up.json()).error).toContain("escolha uma imagem de um anime");
 
     const del = await request.delete("/api/users/me/avatar");
     expect(del.status()).toBe(200);
     expect((await del.json()).avatarUrl).toBeNull();
-  });
-
-  test("rejeita arquivo que não é imagem e corpo sem arquivo", async ({ request }) => {
-    const text = readFileSync(path.join(FIXTURES, "not-an-image.txt"));
-    const bad = await request.post("/api/users/me/avatar", {
-      multipart: { file: { name: "avatar.png", mimeType: "image/png", buffer: text } },
-    });
-    expect(bad.status()).toBe(400);
-
-    const none = await request.post("/api/users/me/avatar", { multipart: { other: "x" } });
-    expect(none.status()).toBe(400);
   });
 
   test("anônimo recebe 401", async ({ playwright, baseURL }) => {

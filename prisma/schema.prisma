@@ -111,6 +111,7 @@ model User {
   profileReports         ProfileReport[] @relation("ProfileReporter")
   profileVisitsReceived  ProfileVisit[]  @relation("ProfileVisited")
   profileVisitsMade      ProfileVisit[]  @relation("ProfileVisitor")
+  profileAlbums          ProfileAlbum[]  @relation("ProfileAlbums")
   profileReportsResolved ProfileReport[] @relation("ProfileReportResolver")
 
   @@index([email])
@@ -253,6 +254,7 @@ model Anime {
   updatedAt       DateTime  @updatedAt
 
   platformLinks PlatformLink[]
+  albumItems    ProfileAlbumItem[]
 
   @@unique([userId, anilistId])
   @@unique([userId, kitsuId])
@@ -1773,4 +1775,32 @@ model ProfileVisit {
 
   @@id([profileId, visitorId])
   @@index([profileId, visitedAt])
+}
+
+/// Álbum do perfil (como os do Orkut, mas de animes): uma coletânea que a pessoa monta com obras da própria lista. Os
+/// álbuns automáticos (Assistindo, Terminei, Não terminei, Dropei) não são gravados: vêm do andamento de cada obra.
+/// Quem vê segue "Mostrar meus animes" (`User.animeListPublic`).
+model ProfileAlbum {
+  id          String             @id @default(cuid())
+  userId      String
+  user        User               @relation("ProfileAlbums", fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @default(now()) @updatedAt
+  items       ProfileAlbumItem[]
+
+  @@index([userId, createdAt])
+}
+
+/// Obra no álbum: um item da lista da própria pessoa (tirar a obra da lista tira do álbum).
+model ProfileAlbumItem {
+  albumId String
+  album   ProfileAlbum @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  animeId String
+  anime   Anime        @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  addedAt DateTime     @default(now())
+
+  @@id([albumId, animeId])
+  @@index([animeId])
 }

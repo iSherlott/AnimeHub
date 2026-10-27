@@ -333,3 +333,16 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 - **Lateral do Feed.** A caixa "Nas suas comunidades" mostra os tópicos mais ativos das comunidades da pessoa.
 - **Banco.** Sem migração.
 - **Testes.** Spec 129.
+
+## Depois: álbuns de animes e avatar só de anime (26/10)
+
+- **Avatar e capa.** Só imagens dos animes acompanhados: o envio de foto própria saiu, e quem tinha foto enviada volta
+  às iniciais.
+- **Álbuns.** Coletâneas de animes:
+  - automáticos: Assistindo, Terminei, Não terminei e Dropei;
+  - personalizados, com obras da própria lista.
+- **Quem vê os álbuns.** Segue "Mostrar meus animes".
+- **Banco.**
+  - `20261115100000_profile_albums` (só acrescenta);
+  - `20261115110000_avatar_from_anime_only` (zera os avatares enviados).
+- **Testes.** Spec 130; spec 46 ajustado.
