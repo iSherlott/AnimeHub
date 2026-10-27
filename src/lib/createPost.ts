@@ -138,6 +138,7 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
         commentCount: 0,
         quotedPost: post.quotedPost,
         authorTitle: (await equippedTitleNames([user.id])).get(user.id) ?? null,
+        hasCommunity: post.anilistId !== null ? (await prisma.catalogEntry.count({ where: { anilistId: post.anilistId } })) > 0 : post.catalogEntryId !== null,
       }),
     },
     { status: 201 }

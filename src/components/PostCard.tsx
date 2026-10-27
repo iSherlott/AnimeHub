@@ -302,9 +302,9 @@ export function PostCard({
         </>
       )}
 
-      {/* Obra (contexto explícito) — link para o detalhe público */}
+      {/* Obra (contexto explícito) — link para o detalhe público e para a comunidade dela (o endereço da obra leva à da franquia) */}
       {animeTitle !== null && post.workKey !== null && (
-        <Typography component="div" className="font-jp" sx={{ fontSize: 12, color: "text.secondary" }}>
+        <Typography component="div" className="font-jp" sx={{ fontSize: 12, color: "text.secondary", display: "flex", gap: 1.5, flexWrap: "wrap", alignItems: "center" }}>
           <MuiLink component={NextLink} href={`/anime/${post.workKey}`} underline="hover" color="inherit" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
             {post.favoritedByMe && <StarIcon role="img" aria-label="Anime favoritado" sx={{ fontSize: 14, color: "secondary.main" }} />}
             <span lang={post.animeTitleNative && animeTitle === post.animeTitleNative ? "ja" : undefined}>
@@ -312,6 +312,11 @@ export function PostCard({
               {post.animeFormat ? ` · ${post.animeFormat}` : ""} ↗
             </span>
           </MuiLink>
+          {post.hasCommunity && (
+            <MuiLink component={NextLink} href={`/comunidades/${post.workKey}`} underline="hover" color="inherit" data-testid={`post-community-${post.id}`} sx={{ fontWeight: 700 }}>
+              Comunidade →
+            </MuiLink>
+          )}
         </Typography>
       )}
 

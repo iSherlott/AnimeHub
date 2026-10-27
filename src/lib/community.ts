@@ -316,6 +316,27 @@ function topicMatches(word: string, blocked: string[]): Prisma.CommunityTopicWhe
   return { OR: [{ title: contains }, { body: contains }, { replies: { some: { deletedAt: null, body: contains, ...(blocked.length ? { authorId: { notIn: blocked } } : {}) } } }] };
 }
 
+/**
+ * "Nas suas comunidades" (lateral do Feed): os tópicos com atividade mais recente nas comunidades em que a pessoa
+ * participa, sem os de quem tem bloqueio com ela. Cada um com a chave e o nome da comunidade.
+ */
+export async function activeTopicsForMember(userId: string, take = 5) {
+  const memberships = await prisma.communityMember.findMany({ where: { userId }, select: { communityId: true } });
+  if (memberships.length === 0) return [];
+  const blocked = [...(await blockedUserIdSet(userId))];
+  const topics = await prisma.communityTopic.findMany({
+    where: { communityId: { in: memberships.map((m) => m.communityId) }, deletedAt: null, ...(blocked.length ? { authorId: { notIn: blocked } } : {}) },
+    orderBy: [{ lastActivityAt: "desc" }, { id: "desc" }],
+    take,
+    select: { id: true, title: true, replyCount: true, lastActivityAt: true, communityId: true },
+  });
+  const labels = await communityLabels(topics.map((t) => t.communityId));
+  return topics.flatMap((t) => {
+    const label = labels.get(t.communityId);
+    return label ? [{ id: t.id, title: t.title, replyCount: t.replyCount, lastActivityAt: t.lastActivityAt.toISOString(), communityKey: label.key, community: label.title }] : [];
+  });
+}
+
 /** Chave e nome de cada comunidade (para os avisos do sino). */
 export async function communityLabels(communityIds: string[]): Promise<Map<string, { key: string; title: string }>> {
   const rows = await prisma.community.findMany({ where: { id: { in: [...new Set(communityIds)] } }, select: { id: true, franchiseKey: true, catalogEntryId: true } });

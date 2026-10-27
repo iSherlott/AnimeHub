@@ -19,6 +19,7 @@ import type { CalendarItem } from "@/lib/calendarItem";
 
 type Tag = { key: string; display: string };
 type Person = { id: string; displayName: string; handle: string | null; avatarUrl: string | null; detail: string | null };
+type ActiveTopic = { id: string; title: string; replyCount: number; lastActivityAt: string; communityKey: string; community: string };
 type Birthday = { id: string; displayName: string; avatarUrl: string | null; birthDay: number; birthMonth: number; inDays: number };
 const KIND_LABEL: Record<string, string> = { WORK: "Obra", SEASON: "Temporada", GENRE: "Gênero", TOPIC: "Tópico" };
 const GROUPS: Array<{ kind: string; label: string }> = [
@@ -45,6 +46,7 @@ export function CommunitySidebar() {
   const [recommended, setRecommended] = useState<RecommendationItem[] | null>(null);
   const [people, setPeople] = useState<Person[] | null>(null);
   const [birthdays, setBirthdays] = useState<Birthday[] | null>(null);
+  const [topics, setTopics] = useState<ActiveTopic[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +80,21 @@ export function CommunitySidebar() {
           .filter((i) => i.inMyList && new Date(i.airingAt).getTime() >= now)
           .sort((a, b) => a.airingAt.localeCompare(b.airingAt));
         setNext(mine[0] ?? null);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [loggedIn]);
+
+  // "Nas suas comunidades": os tópicos mais ativos das comunidades em que a pessoa participa.
+  useEffect(() => {
+    if (!loggedIn) return;
+    let cancelled = false;
+    fetch("/api/communities/active-topics")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) setTopics(data?.topics ?? []);
       })
       .catch(() => undefined);
     return () => {
@@ -229,6 +246,34 @@ export function CommunitySidebar() {
           )}
           <MuiLink component={NextLink} href="/calendar" underline="hover" sx={{ fontSize: 14, fontWeight: 700, color: "text.primary" }}>
             Consultar calendário ↗
+          </MuiLink>
+        </Box>
+      )}
+
+      {loggedIn && topics && topics.length > 0 && (
+        <Box component="section" aria-labelledby="comunidades-heading" data-testid="sidebar-community-topics" sx={{ borderTop: 1, borderColor: "divider", pt: 3, display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <SectionTitle>
+            <span id="comunidades-heading">Nas suas comunidades</span>
+          </SectionTitle>
+          <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "flex", flexDirection: "column" }}>
+            {topics.map((t, i) => (
+              <Box component="li" key={t.id} sx={{ borderTop: i ? 1 : 0, borderColor: "divider" }} data-testid={`sidebar-topic-${t.id}`}>
+                <MuiLink component={NextLink} href={`/comunidades/${t.communityKey}/topicos/${t.id}?pagina=ultima`} underline="none" sx={{ display: "flex", flexDirection: "column", py: 1, color: "text.primary", "&:hover .topic-title": { textDecoration: "underline" } }}>
+                  <Typography component="span" sx={{ fontSize: 12, color: "text.secondary", overflowWrap: "anywhere" }}>
+                    {t.community}
+                  </Typography>
+                  <Typography component="span" className="topic-title" sx={{ fontSize: 14, fontWeight: 700, overflowWrap: "anywhere" }}>
+                    {t.title}
+                  </Typography>
+                  <Typography component="span" sx={{ fontSize: 12, color: "text.secondary", fontVariantNumeric: "tabular-nums" }}>
+                    {t.replyCount} {t.replyCount === 1 ? "resposta" : "respostas"}
+                  </Typography>
+                </MuiLink>
+              </Box>
+            ))}
+          </Box>
+          <MuiLink component={NextLink} href="/comunidades" underline="hover" sx={{ fontSize: 14, fontWeight: 700, color: "text.primary" }}>
+            Minhas comunidades
           </MuiLink>
         </Box>
       )}

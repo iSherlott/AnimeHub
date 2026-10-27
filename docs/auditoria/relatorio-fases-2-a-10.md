@@ -326,3 +326,10 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
 - **Bloqueio.** Não registra a visita e esconde a já registrada.
 - **Banco.** `20261114100000_profile_visits` (só acrescenta).
 - **Testes.** Spec 128.
+
+## Depois: comunidades no Feed (26/10)
+
+- **Atalho nas publicações.** A publicação sobre uma obra do catálogo ganha "Comunidade →".
+- **Lateral do Feed.** A caixa "Nas suas comunidades" mostra os tópicos mais ativos das comunidades da pessoa.
+- **Banco.** Sem migração.
+- **Testes.** Spec 129.

@@ -112,6 +112,10 @@ export async function toDtoPage(page: PostRow[], viewerId: string | null): Promi
       })
     : [];
   const productionById = new Map(productions.map((p) => [p.anilistId, p]));
+  // Obra no catálogo = tem comunidade (post sem AniList ID já aponta para a obra do catálogo).
+  const inCatalog = new Set(
+    postAnilistIds.length ? (await prisma.catalogEntry.findMany({ where: { anilistId: { in: postAnilistIds } }, select: { anilistId: true } })).map((c) => c.anilistId) : []
+  );
   const authorTitles = await equippedTitleNames(resolved.map((r) => r.effective.user.id));
   const likedSet = new Set(myLikes.map((l) => l.postId));
   const reportedSet = new Set(myOpenReports.map((r) => r.postId));
@@ -129,6 +133,7 @@ export async function toDtoPage(page: PostRow[], viewerId: string | null): Promi
       repostedBy,
       repostedByMe: repostedSet.has(effective.id),
       favoritedByMe: effective.anilistId !== null && favoritedAnilistIdSet.has(effective.anilistId),
+      hasCommunity: effective.anilistId !== null ? inCatalog.has(effective.anilistId) : effective.catalogEntryId !== null,
       production: effective.anilistId !== null ? (productionById.get(effective.anilistId) ?? null) : null,
       authorTitle: authorTitles.get(effective.user.id) ?? null,
     })

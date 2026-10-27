@@ -57,6 +57,8 @@ export type PostDTO = {
    * puramente informativo (não muda quais posts aparecem em nenhuma aba),
    * usado só pra destacar visualmente o chip do anime no card. */
   favoritedByMe: boolean;
+  /** A obra do post está no catálogo e, portanto, tem comunidade (atalho "Comunidade" no card). */
+  hasCommunity: boolean;
 };
 
 type PostWithAuthor = Post & { user: { id: string; displayName: string; handle?: string | null; avatarUrl: string | null }; catalogEntry?: { anidbId: number | null; kitsuId: number | null } | null };
@@ -102,6 +104,7 @@ export function toPostDto(
     repostedBy?: { id: string; displayName: string } | null;
     repostedByMe?: boolean;
     favoritedByMe?: boolean;
+    hasCommunity?: boolean;
     production?: { titleNative: string | null; format: string | null } | null;
     authorTitle?: string | null;
   }
@@ -139,5 +142,6 @@ export function toPostDto(
     repostedBy: opts.repostedBy ?? null,
     repostedByMe: opts.repostedByMe ?? false,
     favoritedByMe: opts.favoritedByMe ?? false,
+    hasCommunity: opts.hasCommunity ?? false,
   };
 }

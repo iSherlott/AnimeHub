@@ -86,3 +86,15 @@ O menu principal passou a ter **Feed** (as publicações, antes "Comunidade") e 
 - Migração `20261109100000_community_notifications`: `User.notifyCommunity` e `topicId`/`replyId`/`eventId` em
   `SocialNotification`. Só acrescenta.
 - Testes: spec 122 e `community.test.ts`; spec 52 ajustado.
+
+## Revisão de 26/10/2026 — comunidades no Feed
+
+- **Atalho nas publicações.** A publicação sobre uma obra mostra "Comunidade →" ao lado do link da obra.
+  - O atalho só aparece quando a obra está no catálogo (`PostDTO.hasCommunity`), porque obra fora do catálogo não tem
+    comunidade.
+  - Ele leva a `/comunidades/<obra>`, que redireciona para o endereço da franquia.
+- **Lateral do Feed.** A caixa "Nas suas comunidades" mostra os 5 tópicos de atividade mais recente nas comunidades em
+  que a pessoa participa, sem autores com bloqueio.
+  - Cada tópico mostra a comunidade, o título e quantas respostas tem, e leva à última página do tópico.
+  - No fim fica o link "Minhas comunidades".
+- **Código e testes.** `activeTopicsForMember` e a rota `/api/communities/active-topics`. Sem migração. Testes: spec 129.
