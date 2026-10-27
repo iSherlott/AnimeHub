@@ -104,7 +104,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
               <SiteScoreChip score={catalog?.siteScore ?? 5} votes={catalog?.siteScoreVotes ?? 0} />
             </Stack>
             {production.titleNative && (
-              <Typography className="font-jp" variant="h6" sx={{ mt: 0.5, color: "text.secondary" }}>
+              <Typography className="font-jp" variant="h6" component="p" sx={{ mt: 0.5, color: "text.secondary" }}>
                 {production.titleNative}
               </Typography>
             )}

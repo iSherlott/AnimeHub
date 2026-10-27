@@ -26,7 +26,7 @@ const outlined = (enabled: boolean, accent: boolean) => ({
   "&:focus-visible": { outline: "2px solid #ffd400", outlineOffset: 2 },
 });
 
-const SELECT_SX = { fontSize: 18, py: 0.75, px: 0.5, bgcolor: "transparent", color: "text.primary", border: 0, borderBottom: "2px solid #6b6b6b", fontFamily: "inherit", "&:focus": { outline: "none", borderBottomColor: PROFILE_ACCENT }, "& option": { bgcolor: "#171820" } } as const;
+const SELECT_SX = { fontSize: 18, py: 0.75, px: 0.5, bgcolor: "transparent", color: "text.primary", border: 0, borderBottom: "2px solid #6b6b6b", fontFamily: "inherit", "&:focus": { outline: "none", borderBottomColor: PROFILE_ACCENT }, "&:focus-visible": { outline: "2px solid #ffd400", outlineOffset: 2 }, "& option": { bgcolor: "#171820" } } as const;
 
 function Field({ id, label, value, onChange, help, placeholder, maxLength, multiline = false }: { id: string; label: string; value: string; onChange: (v: string) => void; help: string; placeholder?: string; maxLength: number; multiline?: boolean }) {
   return (

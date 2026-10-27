@@ -32,7 +32,7 @@ export function SearchField({
 }) {
   const id = useId();
   return (
-    <Box component="form" role="search" onSubmit={(e) => e.preventDefault()} sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0, flex: "1 1 280px" }}>
+    <Box component="form" onSubmit={(e) => e.preventDefault()} sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0, flex: "1 1 280px" }}>
       <Typography component="label" htmlFor={id} sx={labelSx}>
         {label}
       </Typography>

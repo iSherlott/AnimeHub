@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { PrismaClient } from "@prisma/client";
+import { deleteCatalogEntries } from "./catalog-cleanup";
 import { TEST_DB_URL } from "./test-db";
 import { TEST_USER_EMAIL } from "./test-auth";
 
@@ -8,6 +9,8 @@ import { TEST_USER_EMAIL } from "./test-auth";
 // principais + verificações de teclado/landmarks. Só falhas "serious" e
 // "critical" quebram o teste; as demais ficam registradas na saída.
 const PROD_ID = 961000;
+// Obra do catálogo com comunidade (fórum, tópico) para as telas sociais.
+const WORK = 961010;
 
 type AxeViolation = { id: string; impact?: string | null; help: string; nodes: Array<{ target: unknown[]; html: string }> };
 
@@ -40,9 +43,14 @@ test.describe("Acessibilidade", () => {
       create: { anilistId: PROD_ID, franchiseId: franchise.id, titleRomaji: "Obra A11y", titleNative: "アクセシビリティ", format: "TV", fetchedAt: new Date() },
       update: { fetchedAt: new Date() },
     });
+    await prisma.community.deleteMany({ where: { franchiseKey: WORK } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: WORK } });
+    await prisma.catalogEntry.create({ data: { anilistId: WORK, franchiseKey: WORK, timelineOrder: 1, timelineRole: "MAIN", titleRomaji: "Comunidade A11y", source: "anilist", onPlatform: true, kind: "EPISODE", format: "TV" } });
   });
 
   test.afterAll(async () => {
+    await prisma.community.deleteMany({ where: { franchiseKey: WORK } });
+    await deleteCatalogEntries(prisma, { where: { anilistId: WORK } });
     await prisma.$disconnect();
   });
 
@@ -56,6 +64,15 @@ test.describe("Acessibilidade", () => {
     { name: "Busca", path: () => "/buscar?q=anime&scope=posts" },
     { name: "Configurações", path: () => "/configuracoes" },
     { name: "Perfil", path: () => `/users/${userId}` },
+    { name: "Recados", path: () => `/users/${userId}/recados` },
+    { name: "Editar perfil", path: () => "/perfil/editar" },
+    { name: "Amigos", path: () => "/amigos" },
+    { name: "Comunidades", path: () => "/comunidades" },
+    { name: "Comunidade", path: () => `/comunidades/${WORK}` },
+    { name: "Fórum", path: () => `/comunidades/${WORK}/forum` },
+    { name: "Nova publicação", path: () => "/publicar" },
+    { name: "Conquistas", path: () => "/conquistas" },
+    { name: "Para assistir", path: () => "/minha-lista/pendencias" },
   ];
 
   for (const p of PAGES) {
@@ -79,6 +96,28 @@ test.describe("Acessibilidade", () => {
     await ctx.close();
   });
 
+  test("tópico da comunidade: axe e um só <h1> (o nome da comunidade; o tópico vem logo abaixo)", async ({ page, request }) => {
+    expect((await request.post(`/api/communities/${WORK}/membership`)).status()).toBe(200);
+    const { topicId } = await (await request.post(`/api/communities/${WORK}/topics`, { data: { title: "Tópico A11y", body: "Corpo do tópico." } })).json();
+    await page.goto(`/comunidades/${WORK}/topicos/${topicId}`);
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+    await expect(page.getByRole("heading", { level: 2, name: "Tópico A11y" })).toBeVisible();
+    const violations = await audit(page);
+    expect(violations, describeViolations(violations)).toEqual([]);
+  });
+
+  test("teclado: campos de texto e seletores mostram o anel de foco amarelo", async ({ page }) => {
+    await page.goto("/minha-lista");
+    const search = page.getByPlaceholder("Buscar anime...");
+    await search.focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect(search).toBeFocused();
+    const ring = await search.evaluate((el) => getComputedStyle(el.closest(".MuiInputBase-root")!).outlineColor);
+    expect(ring).toBe("rgb(255, 212, 0)");
+  });
+
   test("teclado: primeiro Tab leva ao skip-link, que move o foco para o conteúdo", async ({ page }) => {
     await page.goto("/discover");
     await page.keyboard.press("Tab");
@@ -90,7 +129,7 @@ test.describe("Acessibilidade", () => {
   });
 
   test("landmarks: uma única <main>, navegação principal e um <h1> por tela", async ({ page }) => {
-    for (const path of ["/", "/discover", "/calendar", "/minha-lista", `/obra/${PROD_ID}`]) {
+    for (const path of ["/", "/discover", "/calendar", "/minha-lista", `/obra/${PROD_ID}`, "/login", "/signup"]) {
       await page.goto(path);
       await expect(page.locator("main")).toHaveCount(1);
       await expect(page.getByRole("navigation", { name: "Navegação principal" })).toBeVisible();

@@ -259,3 +259,22 @@ visitante e admin): 201 combinações. Nenhuma transborda mais na horizontal.
   aba "Seguindo" passou a dizer que inclui os amigos, como já fazia.
 - **Franquia com "0 temporadas":** era só dos dados de teste do tour, que não tinham o papel na linha do tempo. No banco,
   toda obra com posição na linha do tempo tem o papel preenchido, então não há o que corrigir.
+
+## Acessibilidade (27/10)
+
+Rodei o axe completo em cerca de 65 páginas, como usuário, visitante e admin, no desktop e no celular. Ele cobriu
+WCAG 2.0, 2.1 e 2.2 AA e as boas práticas, incluindo o contraste e o tamanho dos alvos de toque. Também percorri as
+primeiras 45 paradas de Tab de cada página para conferir o foco visível e a ordem dos títulos. Não apareceu nada sério
+nem crítico. O que apareceu e foi corrigido:
+
+| Achado | Onde | Correção |
+| --- | --- | --- |
+| Foco pelo teclado quase invisível nos campos de texto e nos seletores: o MUI tira o contorno do `<input>` e só sobrava a borda mudando de cinza para cinza. | Em todas as páginas com busca, filtros ou formulários. | O tema põe o anel amarelo do site no campo inteiro (`MuiInputBase` com `:has(:focus-visible)`). Também ganharam o anel os campos próprios da importação, dos quizzes e do aniversário em Editar perfil. |
+| Dois `<main>`, um dentro do outro. | Entrar e Criar conta. | O `<main>` fica só no layout, junto do "Pular para o conteúdo". |
+| Títulos pulando de nível: subtítulo virava `<h6>`. | Página pública da obra (título em japonês) e Acesso e moderação. | Subtítulos agora são texto (`<p>`), no tema e na página da obra. |
+| Dois `<h1>`. | Tópico da comunidade. | O nome da comunidade é o `<h1>`; o tópico vem logo abaixo, como `<h2>`. |
+| Duas "regiões de busca" sem nome na mesma página, o que confunde quem navega por regiões. | Filtros do admin e diretório das comunidades. | O campo de busca dos filtros deixou de ser uma região própria (é só um campo com rótulo); a busca das comunidades ganhou o nome "Buscar comunidades". |
+
+O spec 61 passa a cobrir também recados, Editar perfil, Amigos, Comunidades, a comunidade, o fórum, o tópico, Nova
+publicação, Conquistas e Para assistir. Ele confere ainda que há um só `<main>` em Entrar e Criar conta e que os campos
+mostram o anel de foco.

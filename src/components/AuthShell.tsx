@@ -15,8 +15,8 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
   return (
     <Box sx={{ minHeight: "100%", bgcolor: "background.default", display: "flex", flexDirection: "column" }}>
       <Header />
+      {/* O <main> já vem do layout (com o "Pular para o conteúdo"); aqui é só a área do formulário. */}
       <Box
-        component="main"
         sx={{
           flex: 1,
           width: "100%",

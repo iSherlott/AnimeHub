@@ -62,7 +62,7 @@ export default async function TopicPage({ params, searchParams }: Props) {
           {topic.pinnedAt && <Chip size="small" color="primary" label="Fixado" />}
           {locked && <Chip size="small" label="Trancado" data-testid="topic-locked" />}
         </Box>
-        <Typography component="h1" sx={{ fontSize: { xs: 24, md: 28 }, lineHeight: 1.25, overflowWrap: "anywhere" }} data-testid="topic-title">
+        <Typography component="h2" sx={{ fontSize: { xs: 24, md: 28 }, lineHeight: 1.25, overflowWrap: "anywhere" }} data-testid="topic-title">
           {topic.title}
         </Typography>
         <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>

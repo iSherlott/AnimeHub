@@ -85,7 +85,7 @@ export async function CatalogWork({ entry, signedIn, userId, owned = null }: { e
               {owned && <FavoriteToggle animeId={owned.id} initialFavorite={owned.isFavorite} />}
             </Stack>
             {entry.titleNative && (
-              <Typography className="font-jp" variant="h6" sx={{ mt: 0.5, color: "text.secondary" }}>
+              <Typography className="font-jp" variant="h6" component="p" sx={{ mt: 0.5, color: "text.secondary" }}>
                 {entry.titleNative}
               </Typography>
             )}

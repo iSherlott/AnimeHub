@@ -111,7 +111,7 @@ export default async function CommunitiesPage({ searchParams }: Props) {
 
         {tab === "buscar" && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Box component="form" action="/comunidades" method="get" role="search" sx={{ display: "flex", gap: 1 }}>
+            <Box component="form" action="/comunidades" method="get" role="search" aria-label="Buscar comunidades" sx={{ display: "flex", gap: 1 }}>
               <input type="hidden" name="aba" value="buscar" />
               <Box component="input" name="q" defaultValue={q} placeholder="Nome do anime (romaji, inglês ou japonês)" aria-label="Buscar comunidade pelo nome do anime" data-testid="communities-search" sx={{ flex: 1, minWidth: 0, px: 2, py: 1.25, borderRadius: "10px", border: 1, borderColor: "divider", bgcolor: "#171820", color: "text.primary", fontSize: 15 }} />
               <Button type="submit" variant="contained" data-testid="communities-search-submit">

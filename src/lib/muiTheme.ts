@@ -50,6 +50,17 @@ export const muiTheme = createTheme({
     borderRadius: 10,
   },
   components: {
+    // Subtítulos são texto, não títulos: por padrão o MUI os renderiza como <h6>, o que quebrava a ordem dos títulos.
+    MuiTypography: {
+      defaultProps: { variantMapping: { subtitle1: "p", subtitle2: "p" } },
+    },
+    // Foco pelo teclado nos campos (texto, seletor): o MUI tira o contorno do <input>/<select>, então o anel amarelo do
+    // site vai no contorno do campo inteiro.
+    MuiInputBase: {
+      styleOverrides: {
+        root: { "&:has(:focus-visible)": { outline: "2px solid #ffd400", outlineOffset: 2 } },
+      },
+    },
     // Alvos de toque/clique >= 44 px (VIS/WCAG 2.5.8 AAA recomendado pelo
     // Figma): ícones isolados são os que mais ficavam abaixo disso.
     MuiIconButton: {

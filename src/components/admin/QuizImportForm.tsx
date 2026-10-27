@@ -19,7 +19,7 @@ const EXAMPLE = `{
 type Outcome = { anilistId: number | null; work: string; action: "created" | "replaced"; approved: boolean };
 type Preview = { anilistId: number | null; work: string; scope: string; titleReward: string; questions: number };
 
-const fieldSx = { p: 1.5, bgcolor: "background.paper", color: "text.primary", border: 1, borderColor: "divider", borderRadius: "10px", fontSize: 14, fontFamily: "inherit", "&:focus": { outline: "none", borderColor: "text.secondary" } };
+const fieldSx = { p: 1.5, bgcolor: "background.paper", color: "text.primary", border: 1, borderColor: "divider", borderRadius: "10px", fontSize: 14, fontFamily: "inherit", "&:focus": { outline: "none", borderColor: "text.secondary" }, "&:focus-visible": { outline: "2px solid #ffd400", outlineOffset: 2 } };
 
 /**
  * Carga de perguntas (Admin → Quizzes): cole o JSON (um quiz ou uma lista, vários animes de uma vez) ou um CSV `;`
