@@ -78,7 +78,7 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     await expect(mineLink).toHaveCSS("border-left-width", "3px");
     await expect(mineLink).toHaveCSS("border-left-color", "rgb(255, 22, 79)");
     await expect(otherLink).toHaveCSS("border-left-color", "rgba(0, 0, 0, 0)");
-    await expect(mineLink).not.toContainText("NOVO EPISÓDIO"); // o calendário só avisa "Ao vivo"
+    await expect(mineLink).not.toContainText("PRÓXIMO EPISÓDIO"); // o calendário só avisa "Ao vivo"
   });
 
   test("hover num item da lista mostra sinopse e o botão Acompanhando, que tira a obra da lista ao clicar", async ({

@@ -57,7 +57,7 @@ export function ListRow({
 
   const content = (
     <>
-      <Box data-testid={timeTestId} sx={{ minWidth: 0 }}>
+      <Box data-testid={timeTestId} sx={{ minWidth: 0, gridColumn: { xs: "1 / -1", md: "auto" } }}>
         <Typography suppressHydrationWarning component="div" sx={{ fontSize: { xs: 20, md: 28 }, lineHeight: 1.3, color: "text.primary" }}>
           {time}
         </Typography>
@@ -87,15 +87,22 @@ export function ListRow({
         ))}
       </Box>
       {badge && <Box sx={{ display: { xs: "none", md: "block" } }}>{badge}</Box>}
-      {linkWhole ? <ArrowOutwardIcon aria-hidden sx={{ fontSize: 18, color: "text.secondary" }} /> : trailing}
+      {linkWhole ? (
+        <ArrowOutwardIcon aria-hidden sx={{ fontSize: 18, color: "text.secondary", display: { xs: "none", md: "block" } }} />
+      ) : trailing ? (
+        <Box sx={{ gridColumn: { xs: "1 / -1", md: "auto" }, justifySelf: { xs: "start", md: "auto" } }}>{trailing}</Box>
+      ) : null}
     </>
   );
 
   const sx = {
     display: "grid",
-    gridTemplateColumns: { xs: "84px 48px minmax(0, 1fr) auto", md: "148px 56px minmax(0, 1fr) auto auto" },
+    // No celular: o horário numa linha, a capa e o título na seguinte e a ação embaixo (lado a lado, o título ficava
+    // espremido numa coluna de poucos pixels).
+    gridTemplateColumns: { xs: "56px minmax(0, 1fr)", md: "148px 56px minmax(0, 1fr) auto auto" },
     alignItems: "center",
     columnGap: { xs: 2, md: 3 },
+    rowGap: { xs: 1.5, md: 0 },
     px: { xs: 2, md: 3 },
     py: 2.5,
     minHeight: 120,

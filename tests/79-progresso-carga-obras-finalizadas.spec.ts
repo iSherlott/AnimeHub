@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
 import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
 
-// (1) A carga mostra o andamento enquanto roda; (2) obras já terminadas ganham "Finalizei" / "Pendente" em Minha Lista.
+// (1) A carga mostra o andamento enquanto roda; (2) obras já terminadas ganham "Terminei" / "Não terminei" em Minha Lista.
 const FIN = 979001;
 const adminState = {
   cookies: [
@@ -124,7 +124,7 @@ test.describe("Obras finalizadas em Minha Lista", () => {
 
   const state = () => prisma.anime.findUniqueOrThrow({ where: { id: animeId }, select: { watchState: true, waiting: true } });
 
-  test("Finalizei e Pendente marcam, trocam entre si e desfazem ao clicar de novo", async ({ page }) => {
+  test("Terminei e Não terminei marcam, trocam entre si e desfazem ao clicar de novo", async ({ page }) => {
     await page.goto("/minha-lista");
     // A lista rola aos poucos (30 por vez): a busca deixa só esta obra na tela.
     await page.getByLabel("Buscar na minha lista").fill("Obra Terminada Round79");
@@ -136,7 +136,7 @@ test.describe("Obras finalizadas em Minha Lista", () => {
     await expect(done).toHaveAttribute("aria-pressed", "true");
     expect(await state()).toEqual({ watchState: "FINISHED", waiting: false });
 
-    // Pendente: ainda não terminei — vai para a espera e sai de "Finalizei".
+    // Não terminei: vai para a espera e sai de "Terminei".
     await pending.click();
     await expect(pending).toHaveAttribute("aria-pressed", "true");
     await expect(done).toHaveAttribute("aria-pressed", "false");

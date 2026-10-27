@@ -51,6 +51,10 @@ export type CalendarItem = {
 export type OwnedAnimeCalendarInfo = {
   id: string;
   titlePortuguese: string | null;
+  /** Reservas para quando a linha da agenda (Kitsu/AniDB) veio sem título japonês, inglês ou capa. */
+  titleNative?: string | null;
+  titleEnglish?: string | null;
+  coverImage?: string | null;
   description: string | null;
   descriptionPortuguese: string | null;
   isFavorite: boolean;
@@ -73,10 +77,11 @@ export function calendarItemFromCache(
     episode: entry.episode,
     airingAt: entry.airingAt.toISOString(),
     titleRomaji: entry.titleRomaji,
-    titleEnglish: entry.titleEnglish,
-    titleNative: entry.titleNative,
+    // A linha da agenda vinda da Kitsu/AniDB pode não ter o título japonês, o inglês ou a capa: usa os da obra da lista.
+    titleEnglish: entry.titleEnglish ?? owned?.titleEnglish ?? null,
+    titleNative: entry.titleNative ?? owned?.titleNative ?? null,
     titlePortuguese: owned?.titlePortuguese ?? null,
-    coverImage: entry.coverImage,
+    coverImage: entry.coverImage ?? owned?.coverImage ?? null,
     episodeImage,
     genres: entry.genres ? entry.genres.split(",").filter(Boolean) : [],
     inMyList: owned !== null && !owned.waiting,

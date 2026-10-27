@@ -477,7 +477,12 @@ function DiscoverPageContent() {
                 </Box>
                 {storyItems.length > 0 && (
                   <Box component="section" aria-label="Novas histórias, outros tempos" data-testid="stories-row" sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <SectionHeader title="Novas histórias, outros tempos" note={personalized ? "Terminadas, nos seus gêneros" : "Novidades e o que combina com o que você viu"} chip />
+                    <SectionHeader
+                      title="Novas histórias, outros tempos"
+                      // Com lista: terminadas nos seus gêneros e, quando elas acabam, novidades do catálogo (o selo diz o que está na tela).
+                      note={personalized ? (storyItems.every((i) => i.status === "FINISHED") ? "Terminadas, nos seus gêneros" : "Nos seus gêneros e novidades do catálogo") : "Novidades e o que combina com o que você viu"}
+                      chip
+                    />
                     <CardGrid label="Novas histórias, outros tempos">
                       {storyItems.map((item) => (
                         <ExploreCard key={item.key} item={item} />

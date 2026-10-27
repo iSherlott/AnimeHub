@@ -313,7 +313,8 @@ export default function CalendarPage() {
                   gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
                   gap: "1px",
                   minHeight: "33.93em",
-                  minWidth: { xs: 760, md: 0 },
+                  // No celular cada dia tem ao menos 160 px (o nome do anime cabe ao lado da miniatura); a grade rola.
+                  minWidth: { xs: 1120, md: 0 },
                   borderRadius: "0.857em",
                   overflow: "hidden",
                   bgcolor: "background.default",

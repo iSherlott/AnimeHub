@@ -85,13 +85,13 @@ export async function GET(request: NextRequest) {
     user && weekAnilistIds.length
       ? await prisma.anime.findMany({
           where: { userId: user.id, anilistId: { in: weekAnilistIds } },
-          select: { id: true, anilistId: true, titlePortuguese: true, description: true, descriptionPortuguese: true, isFavorite: true, waiting: true },
+          select: { id: true, anilistId: true, titlePortuguese: true, titleNative: true, titleEnglish: true, coverImage: true, description: true, descriptionPortuguese: true, isFavorite: true, waiting: true },
         })
       : [];
   const myAnimeByAnilistId = new Map(
     myAnime.map((a) => [
       a.anilistId as number, // filtrado por `in: weekAnilistIds`
-      { id: a.id, titlePortuguese: a.titlePortuguese, description: a.description, descriptionPortuguese: a.descriptionPortuguese, isFavorite: a.isFavorite, waiting: a.waiting },
+      { id: a.id, titlePortuguese: a.titlePortuguese, titleNative: a.titleNative, titleEnglish: a.titleEnglish, coverImage: a.coverImage, description: a.description, descriptionPortuguese: a.descriptionPortuguese, isFavorite: a.isFavorite, waiting: a.waiting },
     ])
   );
 

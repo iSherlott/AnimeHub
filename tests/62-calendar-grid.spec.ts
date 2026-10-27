@@ -248,7 +248,7 @@ test.describe("Calendário — 'Ao vivo' e destaque só em 'Todos'", () => {
     await page.getByRole("button", { name: "Todos", exact: true }).click();
     await expect(page.getByTestId("calendar-entry-live-1")).toContainText("AO VIVO");
     await expect(page.getByTestId("calendar-entry-later-1")).not.toContainText("AO VIVO");
-    await expect(page.getByTestId("calendar-entry-later-1")).not.toContainText("NOVO EPISÓDIO");
+    await expect(page.getByTestId("calendar-entry-later-1")).not.toContainText("PRÓXIMO EPISÓDIO");
     await expect(page.getByTestId("calendar-entry-later-1")).not.toContainText("NO AR");
   });
 

@@ -100,15 +100,40 @@ export function discoverItemFromCatalogEntry(
 }
 
 /**
+ * Completa o próximo episódio pela agenda global (a mesma do Calendário, ADR 0009: AniList, Kitsu, AniDB e ajustes do
+ * admin) quando o item não traz um futuro — senão a temporada dizia "Data não definida" para um anime que o
+ * Calendário mostra com horário.
+ */
+export async function withGlobalSchedule(items: DiscoverItem[], now: Date = new Date()): Promise<DiscoverItem[]> {
+  const missing = [...new Set(items.flatMap((i) => (i.anilistId != null && !(i.nextEpisodeAt && new Date(i.nextEpisodeAt).getTime() >= now.getTime()) ? [i.anilistId] : [])))];
+  if (missing.length === 0) return items;
+  const rows = await prisma.airingScheduleEntry.findMany({
+    where: { anilistId: { in: missing }, status: "ACTIVE", airingAt: { gte: now } },
+    orderBy: { airingAt: "asc" },
+    select: { anilistId: true, episode: true, airingAt: true },
+  });
+  const next = new Map<number, { episode: number; airingAt: Date }>();
+  for (const r of rows) if (r.anilistId !== null && r.airingAt && !next.has(r.anilistId)) next.set(r.anilistId, { episode: r.episode, airingAt: r.airingAt });
+  if (next.size === 0) return items;
+  return items.map((i) => {
+    const n = i.anilistId != null && missing.includes(i.anilistId) ? next.get(i.anilistId) : undefined;
+    return n ? { ...i, nextEpisodeAt: n.airingAt.toISOString(), nextEpisodeNumber: n.episode } : i;
+  });
+}
+
+/**
  * Anota cada item com "já está na minha lista?" pro usuário atual — só
  * roda na camada de rota do BFF (nunca dentro do cache-updater, que não
  * tem sessão de usuário nenhuma), depois que os itens já vieram prontos
- * de qualquer fonte (delegado ao serviço ou fallback local).
+ * de qualquer fonte (delegado ao serviço ou fallback local). Antes, completa
+ * o próximo episódio pela agenda global (`withGlobalSchedule`): todas as
+ * listas de obras passam por aqui.
  */
 export async function annotateOwnership(
-  items: DiscoverItem[],
+  rawItems: DiscoverItem[],
   userId: string | null
 ): Promise<DiscoverItem[]> {
+  const items = await withGlobalSchedule(rawItems);
   if (!userId) return items;
 
   const anilistIds = items

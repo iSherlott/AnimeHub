@@ -91,8 +91,9 @@ function WaitButton({ entry }: { entry: MyListEntry }) {
 }
 
 /**
- * Obra que já terminou de ser exibida: em vez de "Espera", a pessoa diz em que pé está — "Finalizei" (já vi tudo) ou
- * "Pendente" (ainda não terminei: fica em espera, fora da agenda e dos alertas). Clicar de novo desfaz.
+ * Obra que já terminou de ser exibida: em vez de "Espera", a pessoa diz em que pé está — "Terminei" (já vi tudo) ou
+ * "Não terminei" (fica em espera, fora da agenda e dos alertas). Os mesmos nomes do andamento no resto do site (álbuns
+ * do perfil). Clicar de novo desfaz.
  */
 function FinishedChoice({ entry }: { entry: MyListEntry }) {
   const router = useRouter();
@@ -133,7 +134,7 @@ function FinishedChoice({ entry }: { entry: MyListEntry }) {
           data-testid={`finished-done-${entry.anilistId ?? entry.id}`}
           sx={{ ...ELEVATED_BUTTON_SX, ...(finished ? { color: "success.main", border: 1, borderColor: "success.main" } : {}) }}
         >
-          Finalizei
+          Terminei
         </Button>
         <Button
           onClick={() => void choose("PENDING")}
@@ -144,7 +145,7 @@ function FinishedChoice({ entry }: { entry: MyListEntry }) {
           data-testid={`finished-pending-${entry.anilistId ?? entry.id}`}
           sx={{ ...ELEVATED_BUTTON_SX, ...(pending ? { color: "warning.main", border: 1, borderColor: "warning.main" } : {}) }}
         >
-          Pendente
+          Não terminei
         </Button>
       </Box>
       {error && (
@@ -156,7 +157,7 @@ function FinishedChoice({ entry }: { entry: MyListEntry }) {
   );
 }
 
-/** O controle certo para cada obra: terminada = Finalizei/Pendente; no ar ou por estrear = Espera. Obra com várias temporadas conta como uma só. */
+/** O controle certo para cada obra: terminada = Terminei/Não terminei; no ar ou por estrear = Espera. Obra com várias temporadas conta como uma só. */
 function EntryAction({ entry }: { entry: MyListEntry }) {
   return (
     <Box sx={{ display: "inline-flex", flexDirection: "column", gap: 0.75, alignItems: "flex-start" }}>

@@ -175,3 +175,32 @@ Nenhum erro de console apareceu fora do 404 do endereço errado de temporada.
 | 6. Visitas antigas | Limpar | A cada visita a um perfil, as visitas dele com mais de 90 dias são apagadas (spec 132). |
 | 7. Desempenho do perfil | Mais leve | De 47 para 36 consultas por abertura do próprio perfil (medido com o registro de consultas do Prisma). A lista de animes é montada uma vez, os bloqueios são guardados por requisição, as comunidades vêm em lote e a média das avaliações pega os amigos numa consulta só. |
 | 8. Aniversários no sino | Uma vez por dia | O cálculo roda na primeira consulta do sino no dia (`User.birthdayCheckedOn`). Uma amizade nova e a mudança da data de um amigo refazem o cálculo (specs 127 e 132). |
+
+## Revisão das telas antigas (27/10)
+
+Telas revisadas no desktop e no celular, com dados de exemplo (obras com capa, lista e episódios da semana): Explorar,
+Calendário, Painel ("Seu dia, em anime"), Minha Lista, página da obra, Temporada, Busca e Admin (painel, obra,
+curadoria, calendário, taxonomia).
+
+| # | Problema | Correção |
+| --- | --- | --- |
+| 1 | **Temporada e Explorar:** um anime em exibição aparecia como "Data não definida". O cartão só olhava o próximo episódio guardado da AniList; o Calendário usa a agenda global, que também traz Kitsu, AniDB e os ajustes do admin. | Toda lista de obras completa o próximo episódio pela agenda global quando o catálogo não traz uma data futura (`withGlobalSchedule`). |
+| 2 | **Selo dos cartões:** dizia "NOVO EPISÓDIO · EP06" para um episódio que ainda vai sair. | O selo agora diz "PRÓXIMO EPISÓDIO". |
+| 3 | **Explorar:** o selo "Terminadas, nos seus gêneros" aparecia também quando a seção era completada com novidades do catálogo que ainda não estrearam. | O selo diz o que está na tela: "Nos seus gêneros e novidades do catálogo" quando há obras não terminadas. |
+| 4 | **Minha Lista no celular:** o título ficava espremido numa coluna de poucos pixels, uma letra por linha. | No celular, a linha empilha: horário, depois capa e título, depois a ação. Vale nos 4 lugares que usam essa linha. |
+| 5 | **Calendário no celular:** as colunas tinham ~108 px e o nome quebrava letra por letra. | Cada dia tem pelo menos 160 px; a grade rola na horizontal. |
+| 6 | **Calendário:** o cabeçalho do dia de hoje ficava desalinhado dos outros por causa do "HOJE". | O cabeçalho do dia é alinhado pelo topo. |
+| 7 | **Calendário e Painel:** o título vinha em romaji e sem capa quando a linha da agenda veio da Kitsu ou do AniDB sem esses dados. | Usam o título japonês, o inglês e a capa da obra da lista como reserva. |
+| 8 | **Página da obra:** aparecia "Sem sinopse disponível" com a sinopse em português guardada no catálogo. | A sinopse recorre à do catálogo (português ou japonês). |
+| 9 | **Página da obra:** o título japonês aparecia duas vezes (o principal e a linha de baixo). | A linha de baixo mostra só os títulos diferentes do principal, que segue a preferência de título. |
+| 10 | **Minha Lista:** os botões "Finalizei" e "Pendente" fugiam do nome único do andamento. | Os botões agora são "Terminei" e "Não terminei". |
+| 11 | **Admin:** os grupos de nome longo quebravam em duas linhas e ficavam centralizados. Numa tela baixa com vários grupos abertos, o fim do menu ficava fora de alcance. | Rótulos alinhados à esquerda; o menu tem no máximo a altura da janela, com rolagem própria. |
+
+**Pontos para decisão:**
+
+- **Temporada com dois nomes.** O site chama a temporada de "Autumn2026" (filtros, URL, importações), mas a página da
+  obra mostra "Outono 2026". Sugestão: um nome só para quem usa o site, por exemplo "Outono 2026", mantendo
+  `autumn2026` na URL.
+- **Três espaços de conversa na página da obra.** Há "Comentários" (de quem acompanha), "Discussões sobre esta obra"
+  (publicações do Feed) e "Comunidade" (o fórum). Vale decidir se "Comentários" continua, já que a comunidade cobre
+  essa conversa.

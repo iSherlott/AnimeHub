@@ -135,6 +135,10 @@ export function AdminFrame({ adminName, timeZone, role, children }: { adminName:
           top: 0,
           alignSelf: { md: "flex-start" },
           minHeight: { md: "100vh" },
+          // Fixa na tela e no máximo da altura da janela: com vários grupos abertos numa tela baixa, o menu rola sozinho
+          // (sem isso, o fim do menu ficava fora de alcance).
+          maxHeight: { md: "100vh" },
+          overflowY: { md: "auto" },
         }}
       >
         <NextLink href="/admin" style={{ textDecoration: "none", color: "inherit" }}>
@@ -166,8 +170,9 @@ export function AdminFrame({ adminName, timeZone, role, children }: { adminName:
                   data-testid={`admin-group-toggle-${group.key}`}
                   sx={{ justifyContent: "space-between", px: 1.5, py: 1, minHeight: 40, borderRadius: "10px", fontSize: 12, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: hasActive ? "text.primary" : "text.secondary", "&:hover": { bgcolor: "#171820", color: "text.primary" } }}
                 >
-                  {group.label}
-                  <ExpandMoreIcon sx={{ fontSize: 18, transition: "transform 150ms", transform: expanded ? "rotate(180deg)" : "none" }} />
+                  {/* Rótulo alinhado à esquerda (os de duas linhas não centralizam, como faria o botão). */}
+                  <span style={{ textAlign: "left" }}>{group.label}</span>
+                  <ExpandMoreIcon sx={{ fontSize: 18, flexShrink: 0, transition: "transform 150ms", transform: expanded ? "rotate(180deg)" : "none" }} />
                 </ButtonBase>
                 <Collapse in={expanded} id={listId}>
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, pl: 1, pb: 0.5 }}>

@@ -10,7 +10,7 @@ import { UnfollowButton } from "@/components/UnfollowButton";
 import { PlatformLinksManager } from "@/components/PlatformLinksManager";
 import { EpisodeGrid } from "@/components/EpisodeGrid";
 import { AnimeMetaEditorsPopover } from "@/components/AnimeMetaEditorsPopover";
-import { AnimeTitle } from "@/components/AnimeTitle";
+import { AnimeAltTitles, AnimeTitle } from "@/components/AnimeTitle";
 import { AnimeDescription } from "@/components/AnimeDescription";
 import { RefreshDataButton } from "@/components/RefreshDataButton";
 import { OtherTitles } from "@/components/OtherTitles";
@@ -207,16 +207,10 @@ export default async function AnimeDetailPage({
               <SiteScoreChip score={catalogMeta?.siteScore ?? 5} votes={catalogMeta?.siteScoreVotes ?? 0} />
               <FavoriteToggle animeId={anime.id} initialFavorite={anime.isFavorite} />
             </Stack>
-            {anime.titleNative && (
-              <Typography className="font-jp" variant="h6" sx={{ mt: 0.5, color: "text.secondary" }}>
-                {anime.titleNative}
-              </Typography>
-            )}
-            {anime.titleEnglish && anime.titleEnglish !== anime.titleRomaji && (
-              <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                {anime.titleEnglish}
-              </Typography>
-            )}
+            {/* Os outros títulos, sem repetir o principal (que segue a preferência de título). */}
+            <Typography component="div" sx={{ color: "text.secondary" }}>
+              <AnimeAltTitles titles={{ titleRomaji: anime.titleRomaji, titleEnglish: anime.titleEnglish, titleNative: anime.titleNative, titlePortuguese: anime.titlePortuguese }} />
+            </Typography>
           </Box>
           <WorkBadgeRow badges={badges} />
           {isAdultContent(genres) && <AdultContentNotice />}
@@ -248,8 +242,9 @@ export default async function AnimeDetailPage({
             <Typography id="sinopse-heading" component="h2" sx={headingSx}>
               Sinopse
             </Typography>
-            {anime.description ? (
-              <AnimeDescription description={anime.description} descriptionPortuguese={anime.descriptionPortuguese} anilistId={anime.anilistId} stored={{ pt: catalogMeta?.descriptionPt, ja: catalogMeta?.descriptionJa }} />
+            {/* A sinopse da lista ou, sem ela, a guardada no catálogo (português ou japonês). */}
+            {anime.description || catalogMeta?.descriptionPt || catalogMeta?.descriptionJa ? (
+              <AnimeDescription description={anime.description ?? catalogMeta?.descriptionPt ?? catalogMeta?.descriptionJa ?? ""} descriptionPortuguese={anime.descriptionPortuguese ?? catalogMeta?.descriptionPt} anilistId={anime.anilistId} stored={{ pt: catalogMeta?.descriptionPt, ja: catalogMeta?.descriptionJa }} />
             ) : (
               <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Sem sinopse disponível.</Typography>
             )}

@@ -43,7 +43,9 @@ export function CalendarDayColumn({
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          justifyContent: "center",
+          // Alinhado pelo topo: o "HOJE" a mais não desloca o dia e o número da coluna de hoje em relação às outras.
+          justifyContent: "flex-start",
+          pt: "0.45em",
           gap: "0.143em",
           bgcolor: isToday ? "#2c111b" : "background.paper",
         }}

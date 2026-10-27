@@ -189,7 +189,8 @@ export function ExploreCard({ item }: { item: DiscoverItem }) {
         >
           <AutoAwesomeIcon sx={{ fontSize: 14 }} />
           <Typography component="span" sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1.5, color: "inherit", whiteSpace: "nowrap" }}>
-            NOVO EPISÓDIO · EP{String(info.kind === "scheduled" ? info.episode : 0).padStart(2, "0")}
+            {/* É o próximo episódio (ainda vai sair), não um que já saiu. */}
+            PRÓXIMO EPISÓDIO · EP{String(info.kind === "scheduled" ? info.episode : 0).padStart(2, "0")}
           </Typography>
         </Box>
       )}
