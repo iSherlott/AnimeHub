@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { blockedUserIdSet, blockRelation } from "@/lib/blocks";
 import { isBlank } from "@/lib/text";
 import { notifySocial } from "@/lib/socialNotifications";
-import { areFriends, listFriends } from "@/lib/friends";
+import { areFriends } from "@/lib/friends";
 import { isReportReason, REPORT_REASON_LABELS } from "@/lib/reportReasons";
 
 /**
@@ -197,7 +197,7 @@ export async function rate(raterId: string, targetId: string, input: unknown): P
  * guardada, mas sai da média).
  */
 export async function ratingSummary(targetId: string, viewerId: string | null) {
-  const friendIds = (await listFriends(targetId, null, 10_000)).rows.map((f) => f.id);
+  const friendIds = (await prisma.friendship.findMany({ where: { OR: [{ userAId: targetId }, { userBId: targetId }] }, select: { userAId: true, userBId: true } })).map((f) => (f.userAId === targetId ? f.userBId : f.userAId));
   const [agg, mine] = await Promise.all([
     prisma.profileRating.aggregate({ where: { targetId, raterId: { in: friendIds } }, _avg: { otaku: true, gentil: true, semSpoiler: true }, _count: { _all: true } }),
     viewerId ? prisma.profileRating.findUnique({ where: { raterId_targetId: { raterId: viewerId, targetId } }, select: { otaku: true, gentil: true, semSpoiler: true } }) : Promise.resolve(null),
@@ -208,7 +208,7 @@ export async function ratingSummary(targetId: string, viewerId: string | null) {
 
 // ---------- Moderação (denúncias de recados e depoimentos) ----------
 
-export type ProfileContentKind = "scrap" | "testimonial";
+export type ProfileContentKind = "scrap" | "testimonial" | "album";
 
 /**
  * Denunciar um recado ou um depoimento aprovado, com um dos motivos fixos. Quem escreveu não denuncia o próprio. Uma
@@ -219,10 +219,12 @@ export async function reportProfileContent(reporterId: string, kind: ProfileCont
   const content =
     kind === "scrap"
       ? await prisma.scrap.findFirst({ where: { id: contentId, deletedAt: null }, select: { authorId: true } })
-      : await prisma.testimonial.findFirst({ where: { id: contentId, status: "APPROVED" }, select: { authorId: true } });
-  if (!content) return { ok: false, status: 404, error: kind === "scrap" ? "Recado não encontrado." : "Depoimento não encontrado." };
+      : kind === "testimonial"
+        ? await prisma.testimonial.findFirst({ where: { id: contentId, status: "APPROVED" }, select: { authorId: true } })
+        : await prisma.profileAlbum.findFirst({ where: { id: contentId, removedAt: null }, select: { userId: true } }).then((a) => (a ? { authorId: a.userId } : null));
+  if (!content) return { ok: false, status: 404, error: kind === "scrap" ? "Recado não encontrado." : kind === "testimonial" ? "Depoimento não encontrado." : "Álbum não encontrado." };
   if (content.authorId === reporterId) return { ok: false, status: 400, error: "Não dá para denunciar o que você mesmo escreveu." };
-  const ref = kind === "scrap" ? { scrapId: contentId } : { testimonialId: contentId };
+  const ref = kind === "scrap" ? { scrapId: contentId } : kind === "testimonial" ? { testimonialId: contentId } : { albumId: contentId };
   const open = await prisma.profileReport.findFirst({ where: { reporterId, ...ref, resolvedAt: null }, select: { id: true } });
   if (!open) await prisma.profileReport.create({ data: { reporterId, ...ref, reason } });
   return { ok: true };
@@ -239,18 +241,24 @@ export async function openProfileReports() {
       reporter: person,
       scrap: { select: { id: true, body: true, deletedAt: true, author: person, profile: person } },
       testimonial: { select: { id: true, body: true, status: true, author: person, profile: person } },
+      album: { select: { id: true, name: true, description: true, removedAt: true, user: person } },
     },
   });
   return rows.flatMap((r) => {
+    const reason = isReportReason(r.reason) ? REPORT_REASON_LABELS[r.reason] : r.reason;
+    const base = { id: r.id, reason, reporter: r.reporter.displayName };
+    if (r.album) {
+      // O álbum é do próprio dono do perfil: o "autor" e o perfil são a mesma pessoa.
+      const a = r.album;
+      return [{ ...base, kind: "album" as ProfileContentKind, author: a.user.displayName, profile: a.user.displayName, body: [a.name, a.description].filter(Boolean).join(" — "), removed: a.removedAt !== null, href: `/users/${a.user.id}/albuns/${a.id}` }];
+    }
     const c = r.scrap ?? r.testimonial;
     if (!c) return [];
     const kind: ProfileContentKind = r.scrap ? "scrap" : "testimonial";
     return [
       {
-        id: r.id,
+        ...base,
         kind,
-        reason: isReportReason(r.reason) ? REPORT_REASON_LABELS[r.reason] : r.reason,
-        reporter: r.reporter.displayName,
         author: c.author.displayName,
         profile: c.profile.displayName,
         body: c.body,
@@ -261,18 +269,19 @@ export async function openProfileReports() {
   });
 }
 
-/** Resolver (moderação): remover esconde o recado/depoimento; as denúncias abertas do mesmo conteúdo fecham juntas. */
+/** Resolver (moderação): remover esconde o recado, o depoimento ou o álbum; as denúncias abertas do mesmo conteúdo fecham juntas. */
 export async function resolveProfileReport(reportId: string, action: "remove" | "keep", moderatorId: string): Promise<{ ok: true } | ProfileError> {
-  const r = await prisma.profileReport.findUnique({ where: { id: reportId }, select: { scrapId: true, testimonialId: true, resolvedAt: true } });
+  const r = await prisma.profileReport.findUnique({ where: { id: reportId }, select: { scrapId: true, testimonialId: true, albumId: true, resolvedAt: true } });
   if (!r) return { ok: false, status: 404, error: "Denúncia não encontrada." };
   if (r.resolvedAt) return { ok: false, status: 409, error: "Denúncia já resolvida." };
   const now = new Date();
   if (action === "remove") {
     if (r.scrapId) await prisma.scrap.updateMany({ where: { id: r.scrapId, deletedAt: null }, data: { deletedAt: now } });
     if (r.testimonialId) await prisma.testimonial.update({ where: { id: r.testimonialId }, data: { status: "REMOVED", decidedAt: now } });
+    if (r.albumId) await prisma.profileAlbum.update({ where: { id: r.albumId }, data: { removedAt: now } });
   }
   await prisma.profileReport.updateMany({
-    where: { resolvedAt: null, ...(r.scrapId ? { scrapId: r.scrapId } : { testimonialId: r.testimonialId }) },
+    where: { resolvedAt: null, ...(r.scrapId ? { scrapId: r.scrapId } : r.testimonialId ? { testimonialId: r.testimonialId } : { albumId: r.albumId }) },
     data: { resolvedAt: now, resolvedById: moderatorId, action: action === "remove" ? "REMOVED" : "KEPT" },
   });
   return { ok: true };

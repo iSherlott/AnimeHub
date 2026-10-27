@@ -189,18 +189,19 @@ A migração `20261106100000_communities` (o fórum de cada anime, ADR 0011) só
 também só acrescenta, assim como a `20261109100000_community_notifications` (avisos das comunidades no sino). A `20261110100000_friendships` cria a
 amizade separada do seguir e transforma em amizade quem já se seguia mutuamente (só acrescenta linhas). A `20261111100000_profile_reports` (denúncias de recados e depoimentos) só cria uma tabela. A `20261112100000_scrap_replies` (responder recado) só acrescenta uma coluna. A `20261113100000_birthdays` (aniversário no perfil) só acrescenta duas colunas. A `20261114100000_profile_visits` (visitas ao perfil) só acrescenta uma coluna e uma tabela. A `20261115100000_profile_albums` (álbuns de animes) só cria tabelas. A
 `20261115110000_avatar_from_anime_only` **altera dados**: quem tinha foto própria enviada volta às iniciais (decisão da
-pessoa usuária; os arquivos continuam em `storage/uploads/avatars`).
+pessoa usuária; os arquivos continuam em `storage/uploads/avatars`). A `20261116100000_reports_events_albums`
+(denúncia de evento e de álbum, aniversários uma vez por dia) só acrescenta.
 
 Para o lote do AniDB funcionar, o servidor precisa de `ANIDB_CLIENT_NAME` e `ANIDB_CLIENT_VERSION` (o client registrado no
 AniDB). Opcional: `ANIDB_REQUEST_GAP_MS` (intervalo entre obras, padrão 4000 ms; não baixe de 2000).
 
-#### Ordem segura desta atualização (23 migrações, de `20261025100000` a `20261115110000`)
+#### Ordem segura desta atualização (24 migrações, de `20261025100000` a `20261116100000`)
 
 O site do cluster e o desenvolvimento no Windows usam o **mesmo banco**. O código antigo ainda lê a tabela `Episode`, que
 a migração de 02/11 arquiva: migrar o banco sem atualizar o cluster derruba as páginas de obra do site antigo. Por isso,
 banco e site sobem juntos, pelo próprio Job de migração:
 
-1. Backup do schema (passo acima). Ensaio de 26/10: as 12 primeiras migrações (as 11 últimas, das comunidades e do perfil, só acrescentam, exceto a `20261115110000`, que zera os avatares enviados) rodaram numa cópia restaurada do banco em ~12 s, sem
+1. Backup do schema (passo acima). Ensaio de 26/10: as 12 primeiras migrações (as 12 últimas, das comunidades e do perfil, só acrescentam, exceto a `20261115110000`, que zera os avatares enviados) rodaram numa cópia restaurada do banco em ~12 s, sem
    erro; 800 itens de lista e 7.952 produções ficaram ligados ao catálogo, 209 episódios vieram da tabela antiga e
    nenhum ficou sem obra.
 2. No Windows, pare o `npm run dev` e o `npm run services` (eles gravariam no banco durante a migração).

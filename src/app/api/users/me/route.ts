@@ -65,6 +65,10 @@ export async function PATCH(request: Request) {
     if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: 400 });
     data.birthDay = checked.value.birthDay;
     data.birthMonth = checked.value.birthMonth;
+    // A data mudou: os aniversários do dia voltam a ser calculados para os amigos (pode ser hoje).
+    const friendships = await prisma.friendship.findMany({ where: { OR: [{ userAId: user.id }, { userBId: user.id }] }, select: { userAId: true, userBId: true } });
+    const friendIds = friendships.map((f) => (f.userAId === user.id ? f.userBId : f.userAId));
+    if (friendIds.length) await prisma.user.updateMany({ where: { id: { in: friendIds } }, data: { birthdayCheckedOn: null } });
   }
 
   if ("displayName" in body) {

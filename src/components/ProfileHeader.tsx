@@ -104,11 +104,14 @@ export function ProfileHeader({
                 <ProfileSafetyMenu userId={userId} displayName={displayName} />
               </>
             ) : (
-              <Tooltip title="Entre para seguir">
-                <span>
-                  <FollowToggle userId={userId} initialFollowing={false} disabled />
-                </span>
-              </Tooltip>
+              <>
+                <Tooltip title="Entre para seguir">
+                  <span>
+                    <FollowToggle userId={userId} initialFollowing={false} disabled />
+                  </span>
+                </Tooltip>
+                {friendAction}
+              </>
             )}
           </Stack>
         </Box>

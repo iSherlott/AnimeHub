@@ -161,3 +161,17 @@ As páginas que dependem de um registro que o banco de teste não tinha naquele 
 - episódio e quiz no admin: 105 e 71.
 
 Nenhum erro de console apareceu fora do 404 do endereço errado de temporada.
+
+## Decisões e o que foi feito depois (27/10)
+
+| Ponto | Decisão | Feito |
+| --- | --- | --- |
+| 1. Bloqueio no Feed | Igual ao perfil | O comentário de quem o autor da publicação bloqueou some para todos (spec 132). |
+| 2. Avatar de anime não acompanhado | Volta ao padrão | Ao tirar um anime da lista, e ao abrir o Editar perfil, o avatar e a capa que não são de nenhum anime acompanhado voltam às iniciais e ficam sem capa (spec 132). |
+| 3 e 4. Nome e sobreposição | Fica um só: os álbuns | A aba Animes perdeu os filtros de andamento e virou a lista completa com busca e gênero. O andamento fica nos álbuns automáticos, e o nome é um só em todo o site: Assistindo, Terminei, Não terminei, Dropei (specs 77 e 82). |
+| 5. Denúncias | Vão para o painel do admin | Eventos das comunidades vão para a fila das comunidades: remover apaga o evento. Álbuns vão para a fila dos perfis: remover esconde o álbum de todos, e o dono vê o aviso e só pode apagar (spec 132). |
+| 9. Amigos no "Seguindo" | Entram | "Seguindo" mostra quem a pessoa segue e os amigos dela (spec 132). |
+| 10. Visitante sem conta | Mostrar o botão | "Adicionar como amigo" leva ao login e volta ao perfil (spec 132). |
+| 6. Visitas antigas | Limpar | A cada visita a um perfil, as visitas dele com mais de 90 dias são apagadas (spec 132). |
+| 7. Desempenho do perfil | Mais leve | De 47 para 36 consultas por abertura do próprio perfil (medido com o registro de consultas do Prisma). A lista de animes é montada uma vez, os bloqueios são guardados por requisição, as comunidades vêm em lote e a média das avaliações pega os amigos numa consulta só. |
+| 8. Aniversários no sino | Uma vez por dia | O cálculo roda na primeira consulta do sino no dia (`User.birthdayCheckedOn`). Uma amizade nova e a mudança da data de um amigo refazem o cálculo (specs 127 e 132). |

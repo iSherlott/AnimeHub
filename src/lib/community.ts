@@ -413,18 +413,23 @@ export async function updateDescription(scope: CommunityScope, text: unknown): P
   return { ok: true };
 }
 
-/** Denunciar um tópico ou uma resposta (uma denúncia aberta por pessoa e conteúdo). Vai para Acesso e moderação. */
+/** Denunciar um tópico, uma resposta ou um evento (uma denúncia aberta por pessoa e conteúdo). Vai para Acesso e moderação. */
 export async function report(userId: string, input: unknown): Promise<{ ok: true } | CommunityError> {
   const body = (input ?? {}) as Record<string, unknown>;
   const reason = clean(body.reason);
   if (isBlank(reason) || reason.length > 300) return { ok: false, status: 400, error: "Diga o motivo da denúncia (até 300 caracteres).", errors: { reason: "motivo obrigatório" } };
   const topicId = typeof body.topicId === "string" ? body.topicId : null;
   const replyId = typeof body.replyId === "string" ? body.replyId : null;
-  if (!topicId === !replyId) return { ok: false, status: 400, error: "Denuncie um tópico ou uma resposta." };
-  const exists = topicId ? await prisma.communityTopic.findFirst({ where: { id: topicId, deletedAt: null }, select: { id: true } }) : await prisma.communityReply.findFirst({ where: { id: replyId as string, deletedAt: null }, select: { id: true } });
+  const eventId = typeof body.eventId === "string" ? body.eventId : null;
+  if ([topicId, replyId, eventId].filter(Boolean).length !== 1) return { ok: false, status: 400, error: "Denuncie um tópico, uma resposta ou um evento." };
+  const exists = topicId
+    ? await prisma.communityTopic.findFirst({ where: { id: topicId, deletedAt: null }, select: { id: true } })
+    : replyId
+      ? await prisma.communityReply.findFirst({ where: { id: replyId, deletedAt: null }, select: { id: true } })
+      : await prisma.communityEvent.findFirst({ where: { id: eventId as string, deletedAt: null }, select: { id: true } });
   if (!exists) return { ok: false, status: 404, error: "Conteúdo não encontrado." };
-  const open = await prisma.communityReport.findFirst({ where: { reporterId: userId, topicId, replyId, resolvedAt: null }, select: { id: true } });
-  if (!open) await prisma.communityReport.create({ data: { reporterId: userId, topicId, replyId, reason } });
+  const open = await prisma.communityReport.findFirst({ where: { reporterId: userId, topicId, replyId, eventId, resolvedAt: null }, select: { id: true } });
+  if (!open) await prisma.communityReport.create({ data: { reporterId: userId, topicId, replyId, eventId, reason } });
   return { ok: true };
 }
 
@@ -438,24 +443,25 @@ export async function openReports() {
       reporter: { select: { displayName: true } },
       topic: { select: { id: true, title: true, body: true, deletedAt: true, community: true, author: { select: { displayName: true } } } },
       reply: { select: { id: true, body: true, deletedAt: true, topic: { select: { id: true, title: true, community: true } }, author: { select: { displayName: true } } } },
+      event: { select: { id: true, title: true, description: true, deletedAt: true, community: true, author: { select: { displayName: true } } } },
     },
   });
   const out = [];
   for (const r of rows) {
-    const community = r.topic?.community ?? r.reply?.topic.community;
+    const community = r.topic?.community ?? r.reply?.topic.community ?? r.event?.community;
     const scope = community ? await scopeOfCommunity(community) : null;
     const topicId = r.topic?.id ?? r.reply?.topic.id ?? null;
     out.push({
       id: r.id,
-      kind: r.topicId ? ("topic" as const) : ("reply" as const),
+      kind: r.topicId ? ("topic" as const) : r.replyId ? ("reply" as const) : ("event" as const),
       reason: r.reason,
       reporter: r.reporter.displayName,
       createdAt: r.createdAt.toISOString(),
-      author: r.topic?.author.displayName ?? r.reply?.author.displayName ?? "—",
-      title: r.topic?.title ?? r.reply?.topic.title ?? "",
-      body: r.topic?.body ?? r.reply?.body ?? "",
-      removed: Boolean(r.topic?.deletedAt ?? r.reply?.deletedAt),
-      href: scope && topicId ? `/comunidades/${scope.key}/topicos/${topicId}` : null,
+      author: r.topic?.author.displayName ?? r.reply?.author.displayName ?? r.event?.author.displayName ?? "—",
+      title: r.topic?.title ?? r.reply?.topic.title ?? r.event?.title ?? "",
+      body: r.topic?.body ?? r.reply?.body ?? r.event?.description ?? "",
+      removed: Boolean(r.topic?.deletedAt ?? r.reply?.deletedAt ?? r.event?.deletedAt),
+      href: scope && topicId ? `/comunidades/${scope.key}/topicos/${topicId}` : scope && r.event ? `/comunidades/${scope.key}/eventos#evento-${r.event.id}` : null,
       community: scope ? scope.root.titleNative ?? scope.root.titleRomaji : "—",
     });
   }
@@ -464,15 +470,16 @@ export async function openReports() {
 
 /** Resolver: "remove" apaga o conteúdo (some da comunidade); "keep" mantém. Fecha todas as denúncias do mesmo conteúdo. */
 export async function resolveReport(reportId: string, action: "remove" | "keep", moderatorId: string): Promise<{ ok: true } | CommunityError> {
-  const r = await prisma.communityReport.findUnique({ where: { id: reportId }, select: { topicId: true, replyId: true, resolvedAt: true } });
+  const r = await prisma.communityReport.findUnique({ where: { id: reportId }, select: { topicId: true, replyId: true, eventId: true, resolvedAt: true } });
   if (!r) return { ok: false, status: 404, error: "Denúncia não encontrada." };
   if (r.resolvedAt) return { ok: false, status: 409, error: "Denúncia já resolvida." };
   if (action === "remove") {
     if (r.topicId) await deleteTopic(r.topicId, { id: moderatorId, canModerate: true });
     if (r.replyId) await deleteReply(r.replyId, { id: moderatorId, canModerate: true });
+    if (r.eventId) await prisma.communityEvent.updateMany({ where: { id: r.eventId, deletedAt: null }, data: { deletedAt: new Date() } });
   }
   await prisma.communityReport.updateMany({
-    where: { resolvedAt: null, ...(r.topicId ? { topicId: r.topicId } : { replyId: r.replyId }) },
+    where: { resolvedAt: null, ...(r.topicId ? { topicId: r.topicId } : r.replyId ? { replyId: r.replyId } : { eventId: r.eventId }) },
     data: { resolvedAt: new Date(), resolvedById: moderatorId, action: action === "remove" ? "REMOVED" : "KEPT" },
   });
   return { ok: true };
@@ -575,16 +582,32 @@ export async function listMembers(communityId: string, page: number, take = MEMB
 
 export type CommunityLink = { key: string; titleRomaji: string; titleNative: string | null; titleEnglish: string | null; coverImage: string | null; members: number };
 
-/** Comunidades de que a pessoa participa (a grade do perfil, como no Orkut): as que entrou por último primeiro. */
+/**
+ * Comunidades de que a pessoa participa (a grade do perfil, como no Orkut): as que entrou por último primeiro. Em lote:
+ * a obra que dá nome e capa vem numa consulta (a raiz da franquia, ou a obra da comunidade sem franquia).
+ */
 export async function memberCommunities(userId: string, take = 9): Promise<{ total: number; rows: CommunityLink[] }> {
   const [total, memberships] = await Promise.all([
     prisma.communityMember.count({ where: { userId } }),
     prisma.communityMember.findMany({ where: { userId }, orderBy: { joinedAt: "desc" }, take, include: { community: { select: { franchiseKey: true, catalogEntryId: true, _count: { select: { members: true } } } } } }),
   ]);
+  const franchiseKeys = memberships.flatMap((m) => (m.community.franchiseKey !== null ? [m.community.franchiseKey] : []));
+  const entryIds = memberships.flatMap((m) => (m.community.franchiseKey === null && m.community.catalogEntryId ? [m.community.catalogEntryId] : []));
+  const select = { id: true, anilistId: true, anidbId: true, kitsuId: true, titleRomaji: true, titleNative: true, titleEnglish: true, coverImage: true } as const;
+  const roots = await prisma.catalogEntry.findMany({ where: { OR: [...(franchiseKeys.length ? [{ anilistId: { in: franchiseKeys } }] : []), ...(entryIds.length ? [{ id: { in: entryIds } }] : [])] }, select });
+  const byAnilist = new Map(roots.flatMap((r) => (r.anilistId !== null ? [[r.anilistId, r] as const] : [])));
+  const byId = new Map(roots.map((r) => [r.id, r]));
   const rows: CommunityLink[] = [];
   for (const m of memberships) {
-    const scope = await scopeOfCommunity(m.community);
-    if (scope) rows.push({ key: scope.key, titleRomaji: scope.root.titleRomaji, titleNative: scope.root.titleNative, titleEnglish: scope.root.titleEnglish, coverImage: scope.root.coverImage, members: m.community._count.members });
+    const c = m.community;
+    const root = c.franchiseKey !== null ? byAnilist.get(c.franchiseKey) : c.catalogEntryId ? byId.get(c.catalogEntryId) : undefined;
+    if (root) {
+      rows.push({ key: c.franchiseKey !== null ? String(c.franchiseKey) : workKeyOf(root), titleRomaji: root.titleRomaji, titleNative: root.titleNative, titleEnglish: root.titleEnglish, coverImage: root.coverImage, members: c._count.members });
+      continue;
+    }
+    // Raiz fora do catálogo (franquia cuja chave mudou): o caminho completo.
+    const scope = await scopeOfCommunity(c);
+    if (scope) rows.push({ key: scope.key, titleRomaji: scope.root.titleRomaji, titleNative: scope.root.titleNative, titleEnglish: scope.root.titleEnglish, coverImage: scope.root.coverImage, members: c._count.members });
   }
   return { total, rows };
 }

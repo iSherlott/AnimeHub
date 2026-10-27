@@ -357,8 +357,8 @@ export function DeleteButton({ url, testId, label = "Apagar" }: { url: string; t
   );
 }
 
-/** "Denunciar" um recado ou um depoimento (motivo fixo e confirmação, como nas publicações). */
-export function ProfileReportButton({ kind, id }: { kind: "scrap" | "testimonial"; id: string }) {
+/** "Denunciar" um recado, um depoimento ou um álbum (motivo fixo e confirmação, como nas publicações). */
+export function ProfileReportButton({ kind, id }: { kind: "scrap" | "testimonial" | "album"; id: string }) {
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState(false);
   if (done)
@@ -372,12 +372,12 @@ export function ProfileReportButton({ kind, id }: { kind: "scrap" | "testimonial
       <Button size="small" color="inherit" onClick={() => setOpen(true)} sx={{ fontSize: 12, color: "text.secondary", minWidth: 0 }} data-testid={`report-${kind}-${id}`}>
         Denunciar
       </Button>
-      <ReportDialog open={open} onClose={() => setOpen(false)} target={{ kind, id }} targetLabel={kind === "scrap" ? "recado" : "depoimento"} onReported={() => setDone(true)} />
+      <ReportDialog open={open} onClose={() => setOpen(false)} target={{ kind, id }} targetLabel={kind === "scrap" ? "recado" : kind === "testimonial" ? "depoimento" : "álbum"} onReported={() => setDone(true)} />
     </>
   );
 }
 
-export type ProfileReportView = { id: string; kind: "scrap" | "testimonial"; reason: string; reporter: string; author: string; profile: string; body: string; removed: boolean; href: string };
+export type ProfileReportView = { id: string; kind: "scrap" | "testimonial" | "album"; reason: string; reporter: string; author: string; profile: string; body: string; removed: boolean; href: string };
 
 /** Fila de denúncias de recados e depoimentos (Admin → Acesso e moderação): remover o conteúdo ou mantê-lo. */
 export function ProfileReportsQueue({ reports }: { reports: ProfileReportView[] }) {
@@ -403,7 +403,7 @@ export function ProfileReportsQueue({ reports }: { reports: ProfileReportView[] 
       {reports.map((r) => (
         <Box component="li" key={r.id} data-testid={`profile-report-${r.id}`} sx={{ p: 1.5, border: 1, borderColor: "divider", borderRadius: "10px", display: "flex", flexDirection: "column", gap: 0.75 }}>
           <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
-            {r.kind === "scrap" ? "Recado" : "Depoimento"} de {r.author} no perfil de{" "}
+            {r.kind === "scrap" ? "Recado" : r.kind === "testimonial" ? "Depoimento" : "Álbum"} de {r.author} no perfil de{" "}
             <NextLink href={r.href} style={{ color: "inherit" }}>
               {r.profile}
             </NextLink>{" "}

@@ -49,8 +49,6 @@ function Chip({ selected, onClick, children, testId }: { selected: boolean; onCl
   );
 }
 
-const CATEGORY_ORDER = ["watching", "unfinished", "finished", "dropped"] as const;
-
 /** Escolha do andamento na própria lista: "Automático" devolve a decisão à plataforma. */
 function StateSelect({ entry, onChange }: { entry: ProfileAnimeEntry; onChange: (animeId: string, state: WatchState | null) => void }) {
   if (!entry.animeId) return null;
@@ -109,7 +107,6 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
   // A busca só vai ao servidor 250 ms depois da última tecla.
   const [debounced, setDebounced] = useState("");
   const [genre, setGenre] = useState("");
-  const [category, setCategory] = useState("");
   const [reloads, setReloads] = useState(0);
   const [saveError, setSaveError] = useState(false);
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -124,13 +121,12 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
 
   // Rolagem infinita: as obras chegam 48 por vez, conforme a pessoa desce a lista.
   const pager = usePagedList<ProfileAnimeEntry>({
-    resetKey: `${userId}|${debounced}|${genre}|${category}|${reloads}`,
+    resetKey: `${userId}|${debounced}|${genre}|${reloads}`,
     keyOf: (entry) => entry.key,
     fetchPage: async (cursor) => {
       const params = new URLSearchParams();
       if (debounced) params.set("q", debounced);
       if (genre) params.set("genre", genre);
-      if (category) params.set("category", category);
       if (cursor) params.set("cursor", cursor);
       const res = await fetch(`/api/users/${userId}/animes?${params.toString()}`);
       if (res.status === 403) {
@@ -174,7 +170,7 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
       </Typography>
     );
   }
-  const filtering = Boolean(debounced || genre || category);
+  const filtering = Boolean(debounced || genre);
   const matched = pager.total ?? pager.items.length;
 
   return (
@@ -185,16 +181,6 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
         </Typography>
       ) : (
         <>
-          <Box role="group" aria-label="Andamento" sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-            <Chip selected={category === ""} onClick={() => setCategory("")} testId="category-all">
-              Todos{meta ? ` · ${meta.total}` : ""}
-            </Chip>
-            {CATEGORY_ORDER.map((key) => (
-              <Chip key={key} selected={category === key} onClick={() => setCategory(category === key ? "" : key)} testId={`category-${key}`}>
-                {CATEGORY_LABELS[key]}{meta ? ` · ${meta.categories[key]}` : ""}
-              </Chip>
-            ))}
-          </Box>
           {saveError && (
             <Typography role="alert" sx={{ fontSize: 13, color: "primary.main" }}>
               Não foi possível salvar o andamento. Tente novamente.

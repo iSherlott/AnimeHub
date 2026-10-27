@@ -113,19 +113,19 @@ export function ModerationButtons({ topicId, pinned, locked }: { topicId: string
   );
 }
 
-/** Denunciar um tópico ou uma resposta: o motivo vai para a fila de Acesso e moderação. */
-export function ReportButton({ topicId, replyId }: { topicId?: string; replyId?: string }) {
+/** Denunciar um tópico, uma resposta ou um evento: o motivo vai para a fila de Acesso e moderação. */
+export function ReportButton({ topicId, replyId, eventId }: { topicId?: string; replyId?: string; eventId?: string }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const id = topicId ?? replyId;
+  const id = topicId ?? replyId ?? eventId;
   async function submit() {
     setBusy(true);
     setError(null);
     try {
-      const r = await send("/api/communities/reports", "POST", { topicId, replyId, reason });
+      const r = await send("/api/communities/reports", "POST", { topicId, replyId, eventId, reason });
       if (!r.ok) setError(String(r.data.error ?? "Não foi possível denunciar."));
       else {
         setDone(true);
@@ -142,7 +142,7 @@ export function ReportButton({ topicId, replyId }: { topicId?: string; replyId?:
         Denunciar
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Denunciar {topicId ? "tópico" : "resposta"}</DialogTitle>
+        <DialogTitle>Denunciar {topicId ? "tópico" : replyId ? "resposta" : "evento"}</DialogTitle>
         <DialogContent>
           <TextField fullWidth multiline minRows={3} label="Motivo" value={reason} onChange={(e) => setReason(e.target.value)} helperText={error ?? "Ofensa, spam, spoiler sem aviso…"} error={Boolean(error)} slotProps={{ htmlInput: { maxLength: 300, "data-testid": "report-reason" } }} sx={{ mt: 1 }} />
         </DialogContent>
@@ -228,7 +228,7 @@ export function NewEventForm({ communityKey }: { communityKey: string }) {
 export type EventView = { id: string; title: string; description: string; startsAt: string; endsAt: string | null; place: string | null; author: { id: string; displayName: string }; going: number; maybe: number; mine: string | null };
 
 /** Um evento: quando (no fuso de quem vê), onde, quem vai e os botões de presença. */
-export function EventCard({ event, canRsvp, canDelete }: { event: EventView; canRsvp: boolean; canDelete: boolean }) {
+export function EventCard({ event, canRsvp, canDelete, canReport = false }: { event: EventView; canRsvp: boolean; canDelete: boolean; canReport?: boolean }) {
   const router = useRouter();
   const timeZone = useTimeZone();
   const [busy, setBusy] = useState(false);
@@ -264,7 +264,7 @@ export function EventCard({ event, canRsvp, canDelete }: { event: EventView; can
       <Typography sx={{ fontSize: 12, color: "text.secondary", fontVariantNumeric: "tabular-nums" }} data-testid={`event-count-${event.id}`}>
         {event.going} {event.going === 1 ? "vai" : "vão"} · {event.maybe} talvez · criado por {event.author.displayName}
       </Typography>
-      {(canRsvp || canDelete) && (
+      {(canRsvp || canDelete || canReport) && (
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           {canRsvp && (
             <>
@@ -281,13 +281,14 @@ export function EventCard({ event, canRsvp, canDelete }: { event: EventView; can
               Apagar
             </Button>
           )}
+          {canReport && <ReportButton eventId={event.id} />}
         </Box>
       )}
     </Box>
   );
 }
 
-export type ReportView = { id: string; kind: "topic" | "reply"; reason: string; reporter: string; author: string; title: string; body: string; removed: boolean; href: string | null; community: string };
+export type ReportView = { id: string; kind: "topic" | "reply" | "event"; reason: string; reporter: string; author: string; title: string; body: string; removed: boolean; href: string | null; community: string };
 
 /** Fila de denúncias das comunidades (Admin → Acesso e moderação): remover o conteúdo ou mantê-lo. */
 export function CommunityReportsQueue({ reports }: { reports: ReportView[] }) {
@@ -308,7 +309,7 @@ export function CommunityReportsQueue({ reports }: { reports: ReportView[] }) {
       {reports.map((r) => (
         <Box component="li" key={r.id} data-testid={`community-report-${r.id}`} sx={{ p: 1.5, border: 1, borderColor: "divider", borderRadius: "10px", display: "flex", flexDirection: "column", gap: 0.75 }}>
           <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
-            {r.kind === "topic" ? "Tópico" : "Resposta"} de {r.author} · comunidade {r.community} · denunciado por {r.reporter}
+            {r.kind === "topic" ? "Tópico" : r.kind === "reply" ? "Resposta" : "Evento"} de {r.author} · comunidade {r.community} · denunciado por {r.reporter}
           </Typography>
           <Typography sx={{ fontSize: 14, fontWeight: 700, overflowWrap: "anywhere" }}>
             {r.href ? (

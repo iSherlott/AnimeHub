@@ -98,3 +98,11 @@ O menu principal passou a ter **Feed** (as publicações, antes "Comunidade") e 
   - Cada tópico mostra a comunidade, o título e quantas respostas tem, e leva à última página do tópico.
   - No fim fica o link "Minhas comunidades".
 - **Código e testes.** `activeTopicsForMember` e a rota `/api/communities/active-topics`. Sem migração. Testes: spec 129.
+
+## Revisão de 27/10/2026 — denúncia de eventos
+
+- **Denunciar eventos.** Eventos podem ser denunciados, com o motivo escrito, como os tópicos.
+- **Fila.** A denúncia vai para a fila das comunidades em Acesso e moderação.
+- **Remover.** Apaga o evento e fecha todas as denúncias dele.
+- **Banco.** Coluna `CommunityReport.eventId`, na migração `20261116100000_reports_events_albums`.
+- **Testes.** Spec 132.

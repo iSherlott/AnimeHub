@@ -23,13 +23,15 @@ export type ReportTarget =
   | { kind: "comment"; id: string; postId: string }
   | { kind: "profile"; id: string }
   | { kind: "scrap"; id: string }
-  | { kind: "testimonial"; id: string };
+  | { kind: "testimonial"; id: string }
+  | { kind: "album"; id: string };
 
 function endpointFor(target: ReportTarget): string {
   if (target.kind === "post") return `/api/posts/${target.id}/report`;
   if (target.kind === "comment") return `/api/posts/${target.postId}/comments/${target.id}/report`;
   if (target.kind === "scrap") return `/api/scraps/${target.id}/report`;
   if (target.kind === "testimonial") return `/api/testimonials/${target.id}/report`;
+  if (target.kind === "album") return `/api/albums/${target.id}/report`;
   return `/api/users/${target.id}/report`;
 }
 
@@ -39,6 +41,7 @@ const KIND_NOUN: Record<ReportTargetKind, string> = {
   profile: "deste perfil",
   scrap: "deste recado",
   testimonial: "deste depoimento",
+  album: "deste álbum",
 };
 
 /**

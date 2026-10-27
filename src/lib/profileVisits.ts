@@ -3,8 +3,9 @@ import { blockedUserIdSet, blockRelation } from "@/lib/blocks";
 
 /**
  * Visitas ao perfil (como no Orkut). Guarda a última visita de cada pessoa com conta a cada perfil; só a dona do perfil
- * vê quem visitou, nos últimos 90 dias. Reciprocidade: quem desliga "Registrar minhas visitas" (Configurações) não
- * aparece para ninguém — nem nas visitas antigas — e também não vê quem visitou o perfil dela.
+ * vê quem visitou, nos últimos 90 dias (as mais antigas são apagadas a cada visita nova ao perfil). Reciprocidade: quem
+ * desliga "Registrar minhas visitas" (Configurações) não aparece para ninguém — nem nas visitas antigas — e também não
+ * vê quem visitou o perfil dela.
  */
 export const VISITS_WINDOW_DAYS = 90;
 
@@ -15,6 +16,8 @@ export async function recordVisit(visitor: { id: string; recordVisits: boolean }
     if ((await blockRelation(visitor.id, profileId)) !== "none") return;
     const now = new Date();
     await prisma.profileVisit.upsert({ where: { profileId_visitorId: { profileId, visitorId: visitor.id } }, create: { profileId, visitorId: visitor.id, visitedAt: now }, update: { visitedAt: now } });
+    // Limpeza: as visitas deste perfil com mais de 90 dias saem do banco (a lista só mostra 90 dias).
+    await prisma.profileVisit.deleteMany({ where: { profileId, visitedAt: { lt: new Date(now.getTime() - VISITS_WINDOW_DAYS * 86_400_000) } } });
   } catch (error) {
     console.error("[profileVisits] falhou:", error);
   }

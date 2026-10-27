@@ -38,6 +38,8 @@ async function accept(fromId: string, toId: string): Promise<void> {
   await prisma.$transaction([
     prisma.friendship.upsert({ where: { userAId_userBId: friendPair(fromId, toId) }, create: friendPair(fromId, toId), update: {} }),
     prisma.friendRequest.deleteMany({ where: { OR: [{ fromId, toId }, { fromId: toId, toId: fromId }] } }),
+    // Amigo novo pode fazer aniversário hoje: os aniversários do dia voltam a ser calculados para os dois.
+    prisma.user.updateMany({ where: { id: { in: [fromId, toId] } }, data: { birthdayCheckedOn: null } }),
   ]);
   await notifySocial({ type: "FRIEND_ACCEPTED", recipientId: fromId, actorId: toId });
 }

@@ -192,3 +192,22 @@ A pessoa usuária definiu que **não há fotos nem álbuns de fotos**:
   quem visita. Bloqueio também esconde.
 - **Banco.** `20261115100000_profile_albums` (`ProfileAlbum`, `ProfileAlbumItem`) só acrescenta.
 - **Código e testes.** `src/lib/profileAlbums.ts`. Testes: spec 130; o spec 46 foi ajustado ao 410.
+
+## Revisão de 27/10/2026 — decisões depois da auditoria
+
+Detalhes em `docs/auditoria/auditoria-regras-e-paginas.md`.
+
+- **Andamento com um nome só, nos álbuns.** A aba Animes é a lista completa, com busca e gênero, sem os filtros de
+  andamento. O recorte por andamento fica nos álbuns automáticos. Os nomes são os mesmos em todo o site: Assistindo,
+  Terminei, Não terminei, Dropei.
+- **Avatar e capa.** Se a pessoa deixa de acompanhar o anime da imagem, o avatar volta às iniciais e a capa some.
+- **Álbum denunciado.** O álbum vai para a fila dos perfis em Acesso e moderação. Removido, ele some para todos; o dono
+  vê o aviso e só pode apagar.
+- **Bloqueio.** Como no perfil, o comentário de quem o autor de uma publicação bloqueou some para todos.
+- **"Seguindo".** Inclui as publicações dos amigos.
+- **Visitante sem conta.** Vê "Adicionar como amigo", que leva ao login.
+- **Visitas.** As de mais de 90 dias são apagadas.
+- **Aniversários.** O aviso é calculado uma vez por dia (`User.birthdayCheckedOn`); uma amizade nova ou uma data
+  mudada refazem o cálculo.
+- **Banco.** `20261116100000_reports_events_albums` só acrescenta.
+- **Testes.** Spec 132; os specs 77, 82 e 127 foram ajustados.

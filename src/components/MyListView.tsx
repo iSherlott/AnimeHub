@@ -503,7 +503,7 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
                     sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 2.5, borderRadius: "12px", border: 1, borderColor: "divider", minWidth: 0 }}
                   >
                     <EntryTitle entry={entry} />
-                    <Chip icon={<PauseCircleOutlineIcon />}>{entry.watchState === "DROPPED" ? "Dropado" : "Em espera"}</Chip>
+                    <Chip icon={<PauseCircleOutlineIcon />}>{entry.watchState === "DROPPED" ? "Dropei" : "Em espera"}</Chip>
                     <Box>
                       <EntryAction entry={entry} />
                     </Box>

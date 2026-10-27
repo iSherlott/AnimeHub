@@ -39,6 +39,8 @@ test.describe.serial("Aniversários", () => {
     await prisma.user.update({ where: { id: adminId }, data: { birthDay: today.day, birthMonth: today.month } });
     for (const other of [adminId, otherId]) await prisma.friendship.upsert({ where: { userAId_userBId: pair(userId, other) }, create: pair(userId, other), update: {} });
     await prisma.socialNotification.deleteMany({ where: { userId, type: "FRIEND_BIRTHDAY" } });
+    // Amizades criadas direto no banco: a marca "aniversários de hoje já calculados" precisa ser apagada à mão.
+    await prisma.user.update({ where: { id: userId }, data: { birthdayCheckedOn: null } });
   });
 
   test.afterAll(async () => {
@@ -90,6 +92,7 @@ test.describe.serial("Aniversários", () => {
   });
 
   test("sino: um aviso por amigo por dia; a preferência desliga", async ({ request }) => {
+    await prisma.user.update({ where: { id: userId }, data: { birthdayCheckedOn: null } });
     type Item = { type: string; href: string; actor: { id: string } };
     const first = ((await (await request.get("/api/notifications")).json()).social as Item[]).filter((n) => n.type === "FRIEND_BIRTHDAY");
     expect(first).toHaveLength(1);
@@ -98,7 +101,7 @@ test.describe.serial("Aniversários", () => {
     expect(await prisma.socialNotification.count({ where: { userId, type: "FRIEND_BIRTHDAY" } })).toBe(1);
 
     await prisma.socialNotification.deleteMany({ where: { userId, type: "FRIEND_BIRTHDAY" } });
-    await prisma.user.update({ where: { id: userId }, data: { notifyFollowers: false } });
+    await prisma.user.update({ where: { id: userId }, data: { notifyFollowers: false, birthdayCheckedOn: null } });
     await request.get("/api/notifications");
     expect(await prisma.socialNotification.count({ where: { userId, type: "FRIEND_BIRTHDAY" } })).toBe(0);
     await prisma.user.update({ where: { id: userId }, data: { notifyFollowers: true } });

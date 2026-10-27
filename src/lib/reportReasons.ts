@@ -17,4 +17,4 @@ export function isReportReason(value: unknown): value is ReportReason {
   return typeof value === "string" && (REPORT_REASONS as readonly string[]).includes(value);
 }
 
-export type ReportTargetKind = "post" | "comment" | "profile" | "scrap" | "testimonial";
+export type ReportTargetKind = "post" | "comment" | "profile" | "scrap" | "testimonial" | "album";

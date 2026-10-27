@@ -31,6 +31,8 @@ model User {
   /// Aniversário (perfil estilo Orkut): só dia e mês, sem o ano. Só amigos veem; entra nos "aniversariantes" deles.
   birthDay          Int?
   birthMonth        Int?
+  /// Último dia (AAAA-MM-DD, no fuso da pessoa) em que os aniversários dos amigos já viraram aviso: calcula uma vez por dia.
+  birthdayCheckedOn String?
   /// "ADMIN" | "MEMBER". A primeira conta criada no sistema vira admin
   /// automaticamente (mesmo bootstrap que já herda os dados órfãos).
   role         String    @default("MEMBER")
@@ -1611,6 +1613,7 @@ model CommunityEvent {
   deletedAt   DateTime?
   rsvps       CommunityEventRsvp[]
 
+  reports     CommunityReport[]
   @@index([communityId, deletedAt, startsAt])
 }
 
@@ -1635,6 +1638,9 @@ model CommunityReport {
   topic        CommunityTopic? @relation(fields: [topicId], references: [id], onDelete: Cascade)
   replyId      String?
   reply        CommunityReply? @relation(fields: [replyId], references: [id], onDelete: Cascade)
+  /// Evento denunciado (o tópico e a resposta ficam nulos).
+  eventId      String?
+  event        CommunityEvent? @relation(fields: [eventId], references: [id], onDelete: Cascade)
   reason       String
   createdAt    DateTime        @default(now())
   resolvedAt   DateTime?
@@ -1751,6 +1757,9 @@ model ProfileReport {
   scrap         Scrap?       @relation(fields: [scrapId], references: [id], onDelete: Cascade)
   testimonialId String?
   testimonial   Testimonial? @relation(fields: [testimonialId], references: [id], onDelete: Cascade)
+  /// Álbum denunciado (nome ou descrição).
+  albumId       String?
+  album         ProfileAlbum? @relation(fields: [albumId], references: [id], onDelete: Cascade)
   /// SPAM | HARASSMENT | UNMARKED_SPOILER | OTHER
   reason        String
   createdAt     DateTime     @default(now())
@@ -1763,6 +1772,7 @@ model ProfileReport {
   @@index([resolvedAt])
   @@index([scrapId])
   @@index([testimonialId])
+  @@index([albumId])
 }
 
 /// Visita ao perfil (como no Orkut): a última visita de cada pessoa com conta a cada perfil. Só a dona do perfil vê.
@@ -1788,7 +1798,10 @@ model ProfileAlbum {
   description String?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @default(now()) @updatedAt
+  /// Removido pela moderação (denúncia): some para todos; o dono vê o aviso e pode apagar.
+  removedAt   DateTime?
   items       ProfileAlbumItem[]
+  reports     ProfileReport[]
 
   @@index([userId, createdAt])
 }

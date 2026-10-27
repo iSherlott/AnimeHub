@@ -78,7 +78,7 @@ export function NewAlbumButton({ userId }: { userId: string }) {
  * Editar o álbum personalizado: renomear, apagar, tirar obras e colocar obras da própria lista (com busca). `inAlbum`
  * são as chaves das obras (não das temporadas) que já estão no álbum.
  */
-export function AlbumEditor({ userId, albumId, name, description, inAlbum, candidates }: { userId: string; albumId: string; name: string; description: string | null; inAlbum: string[]; candidates: AlbumWork[] }) {
+export function AlbumEditor({ userId, albumId, name, description, inAlbum, candidates, removed = false }: { userId: string; albumId: string; name: string; description: string | null; inAlbum: string[]; candidates: AlbumWork[]; removed?: boolean }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [query, setQuery] = useState("");
@@ -106,10 +106,17 @@ export function AlbumEditor({ userId, albumId, name, description, inAlbum, candi
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }} data-testid="album-editor">
+      {removed && (
+        <Typography role="status" sx={{ fontSize: 14, p: 1.5, borderRadius: "10px", bgcolor: "#2c111b" }} data-testid="album-removed-notice">
+          Este álbum foi removido pela moderação: só você o vê. Dá para apagá-lo, mas não editar.
+        </Typography>
+      )}
       <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-        <Button size="small" onClick={() => setEditing(true)} sx={ELEVATED_BUTTON_SX} data-testid="album-edit">
-          Renomear
-        </Button>
+        {!removed && (
+          <Button size="small" onClick={() => setEditing(true)} sx={ELEVATED_BUTTON_SX} data-testid="album-edit">
+            Renomear
+          </Button>
+        )}
         <Button size="small" color="error" onClick={() => void remove()} data-testid="album-delete">
           Apagar álbum
         </Button>
@@ -130,7 +137,7 @@ export function AlbumEditor({ userId, albumId, name, description, inAlbum, candi
           }}
         />
       )}
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, p: 2, borderRadius: "12px", bgcolor: "#171820" }}>
+      {!removed && <Box sx={{ display: "flex", flexDirection: "column", gap: 1, p: 2, borderRadius: "12px", bgcolor: "#171820" }}>
         <Typography sx={{ fontSize: 14, fontWeight: 700 }}>Colocar animes da sua lista</Typography>
         <TextField size="small" placeholder="Buscar na sua lista" value={query} onChange={(e) => setQuery(e.target.value)} slotProps={{ htmlInput: { "aria-label": "Buscar na sua lista", "data-testid": "album-search" } }} />
         {error && (
@@ -155,7 +162,7 @@ export function AlbumEditor({ userId, albumId, name, description, inAlbum, candi
             ))}
           </Box>
         )}
-      </Box>
+      </Box>}
     </Box>
   );
 }

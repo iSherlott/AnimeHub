@@ -50,34 +50,29 @@ test.describe.serial("Andamento dos animes no perfil", () => {
 
   test("a plataforma deduz a categoria dos 4 cenários", async ({ page }) => {
     const list = await openAnimes(page);
-    await expect(list.getByTestId(`profile-anime-category-${AIRING}`)).toHaveText("Acompanhando nesta temporada");
+    await expect(list.getByTestId(`profile-anime-category-${AIRING}`)).toHaveText("Assistindo");
     await expect(list.getByTestId(`profile-anime-category-${FINISHED}`)).toHaveText("Terminei");
     await expect(list.getByTestId(`profile-anime-category-${BEHIND}`)).toHaveText("Não terminei");
     await expect(list.getByTestId(`profile-anime-category-${UPCOMING}`)).toHaveText("Em breve"); // só em "Todos"
   });
 
-  test("os filtros de categoria separam as obras e mostram a contagem", async ({ page }) => {
+  test("os álbuns automáticos separam as obras pelo andamento (a aba Animes não repete os filtros)", async ({ page }) => {
     const list = await openAnimes(page);
-    await list.getByTestId("category-watching").click();
-    await expect(list.getByTestId(`profile-anime-${AIRING}`)).toBeVisible();
-    await expect(list.getByTestId(`profile-anime-${FINISHED}`)).toHaveCount(0);
-    await expect(list.getByTestId(`profile-anime-${BEHIND}`)).toHaveCount(0);
-
-    await list.getByTestId("category-unfinished").click();
-    await expect(list.getByTestId(`profile-anime-${BEHIND}`)).toBeVisible();
-    await expect(list.getByTestId(`profile-anime-${AIRING}`)).toHaveCount(0);
-
-    await list.getByTestId("category-finished").click();
-    await expect(list.getByTestId(`profile-anime-${FINISHED}`)).toBeVisible();
-    await expect(list.getByTestId(`profile-anime-${UPCOMING}`)).toHaveCount(0);
-
-    await list.getByTestId("category-all").click();
-    for (const id of IDS) await expect(list.getByTestId(`profile-anime-${id}`)).toBeVisible();
+    await expect(list.getByTestId("category-watching")).toHaveCount(0);
+    await page.goto(`/users/${userId}/albuns/assistindo`);
+    await expect(page.getByTestId(`album-work-${AIRING}`)).toBeVisible();
+    await expect(page.getByTestId(`album-work-${FINISHED}`)).toHaveCount(0);
+    await page.goto(`/users/${userId}/albuns/nao-terminei`);
+    await expect(page.getByTestId(`album-work-${BEHIND}`)).toBeVisible();
+    await expect(page.getByTestId(`album-work-${AIRING}`)).toHaveCount(0);
+    await page.goto(`/users/${userId}/albuns/terminei`);
+    await expect(page.getByTestId(`album-work-${FINISHED}`)).toBeVisible();
+    await expect(page.getByTestId(`album-work-${UPCOMING}`)).toHaveCount(0);
   });
 
   test("marcar na mão vale mais que a dedução; 'automático' devolve à plataforma", async ({ page }) => {
     const list = await openAnimes(page);
-    // Terminei de ver o que ainda está no ar: sai de "Acompanhando" e a marcação fica salva.
+    // Terminei de ver o que ainda está no ar: sai de "Assistindo" e a marcação fica salva.
     await list.getByTestId(`watch-state-${AIRING}`).selectOption("FINISHED");
     await expect(list.getByTestId(`profile-anime-category-${AIRING}`)).toHaveText("Terminei");
     expect((await prisma.anime.findFirstOrThrow({ where: { userId, anilistId: AIRING } })).watchState).toBe("FINISHED");
@@ -93,11 +88,11 @@ test.describe.serial("Andamento dos animes no perfil", () => {
 
     // Sequência futura que quero acompanhar já.
     await list.getByTestId(`watch-state-${UPCOMING}`).selectOption("WATCHING");
-    await expect(list.getByTestId(`profile-anime-category-${UPCOMING}`)).toHaveText("Acompanhando nesta temporada");
+    await expect(list.getByTestId(`profile-anime-category-${UPCOMING}`)).toHaveText("Assistindo");
 
     // Automático: volta a ser deduzido.
     await list.getByTestId(`watch-state-${AIRING}`).selectOption("");
-    await expect(list.getByTestId(`profile-anime-category-${AIRING}`)).toHaveText("Acompanhando nesta temporada");
+    await expect(list.getByTestId(`profile-anime-category-${AIRING}`)).toHaveText("Assistindo");
     expect((await prisma.anime.findFirstOrThrow({ where: { userId, anilistId: AIRING } })).watchState).toBeNull();
   });
 
@@ -128,7 +123,8 @@ test.describe.serial("Andamento dos animes no perfil", () => {
     await page.goto(`/users/${userId}`);
     await page.getByTestId("tab-animes").click();
     const list = page.getByTestId("profile-anime-list");
-    await expect(list.getByTestId("category-finished")).toBeVisible();
+    await expect(list.getByTestId(`profile-anime-${FINISHED}`)).toBeVisible();
+    await expect(page.getByTestId("profile-albums").getByTestId("album-terminei")).toBeVisible();
     await expect(list.locator("select")).toHaveCount(0);
     await anon.close();
   });

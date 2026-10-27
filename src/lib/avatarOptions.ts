@@ -70,3 +70,17 @@ export type ImageKind = "avatar" | "banner";
 export function isAllowedImage(groups: AvatarGroup[], kind: ImageKind, url: string): boolean {
   return groups.some((g) => (kind === "avatar" ? g.avatars : g.banners).some((i) => i.url === url));
 }
+
+/**
+ * Avatar e capa são sempre imagens dos animes que a pessoa acompanha: se ela deixou de acompanhar o anime da imagem, a
+ * imagem volta ao padrão (iniciais no avatar, sem capa). Chamado ao tirar um anime da lista e ao abrir o Editar perfil.
+ */
+export async function dropStaleProfileImages(userId: string): Promise<{ avatarUrl: string | null; bannerUrl: string | null }> {
+  const me = await prisma.user.findUnique({ where: { id: userId }, select: { avatarUrl: true, bannerUrl: true } });
+  if (!me || (!me.avatarUrl && !me.bannerUrl)) return { avatarUrl: me?.avatarUrl ?? null, bannerUrl: me?.bannerUrl ?? null };
+  const groups = await buildAvatarOptions(userId);
+  const avatarUrl = me.avatarUrl && isAllowedImage(groups, "avatar", me.avatarUrl) ? me.avatarUrl : null;
+  const bannerUrl = me.bannerUrl && isAllowedImage(groups, "banner", me.bannerUrl) ? me.bannerUrl : null;
+  if (avatarUrl !== me.avatarUrl || bannerUrl !== me.bannerUrl) await prisma.user.update({ where: { id: userId }, data: { avatarUrl, bannerUrl } });
+  return { avatarUrl, bannerUrl };
+}

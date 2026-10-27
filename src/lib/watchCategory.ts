@@ -16,18 +16,19 @@ export function isWatchState(value: unknown): value is WatchState {
 /** Categorias do perfil. `other` aparece só em "Todos" (em espera, ainda por estrear fora desta temporada…). */
 export type WatchCategory = "watching" | "unfinished" | "finished" | "dropped" | "other";
 
+/** Um nome só para o andamento em todo o site (álbuns automáticos do perfil, cartões e marcação). */
 export const CATEGORY_LABELS: Record<Exclude<WatchCategory, "other">, string> = {
-  watching: "Acompanhando nesta temporada",
+  watching: "Assistindo",
   unfinished: "Não terminei",
   finished: "Terminei",
-  dropped: "Dropado",
+  dropped: "Dropei",
 };
 
 export const STATE_LABELS: Record<WatchState, string> = {
-  WATCHING: "Acompanhando",
+  WATCHING: "Assistindo",
   UNFINISHED: "Não terminei",
   FINISHED: "Terminei",
-  DROPPED: "Dropei (parei aqui)",
+  DROPPED: "Dropei",
 };
 
 const FROM_STATE: Record<WatchState, WatchCategory> = { WATCHING: "watching", UNFINISHED: "unfinished", FINISHED: "finished", DROPPED: "dropped" };

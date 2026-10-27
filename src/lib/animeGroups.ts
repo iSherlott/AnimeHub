@@ -59,9 +59,3 @@ export async function groupAnimes<T extends GroupableAnime>(rows: T[]): Promise<
   }
   return Array.from(groups, ([key, members]) => ({ key, members: members.sort((a, b) => a.seasonNumber - b.seasonNumber) }));
 }
-
-/** Quantas obras (não temporadas) a pessoa tem na lista. */
-export async function countAnimeGroups(userId: string): Promise<number> {
-  const rows = await prisma.anime.findMany({ where: { userId }, select: { anilistId: true, seriesKey: true, seasonNumber: true, titleRomaji: true } });
-  return (await groupAnimes(rows)).length;
-}

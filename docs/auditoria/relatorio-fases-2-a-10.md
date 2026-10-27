@@ -346,3 +346,20 @@ O resultado de cada verificação está em "Resultado dos testes", logo abaixo.
   - `20261115100000_profile_albums` (só acrescenta);
   - `20261115110000_avatar_from_anime_only` (zera os avatares enviados).
 - **Testes.** Spec 130; spec 46 ajustado.
+
+## Depois: auditoria e decisões (27/10)
+
+- **Auditoria.** Regras de negócio, falhas de lógica, fluxos e as páginas uma a uma, em
+  `docs/auditoria/auditoria-regras-e-paginas.md`. As falhas encontradas foram corrigidas (spec 131).
+- **Decisões aplicadas:**
+  - o bloqueio no Feed vale para todos;
+  - o avatar de anime não acompanhado volta ao padrão;
+  - o andamento tem um nome só e fica nos álbuns;
+  - eventos e álbuns podem ser denunciados;
+  - "Seguindo" inclui os amigos;
+  - o visitante vê "Adicionar como amigo";
+  - as visitas antigas são apagadas;
+  - o perfil ficou mais leve (47 → 36 consultas);
+  - os aniversários são calculados uma vez por dia.
+- **Banco.** `20261116100000_reports_events_albums` (só acrescenta).
+- **Testes.** Spec 132; specs 77, 82 e 127 ajustados.

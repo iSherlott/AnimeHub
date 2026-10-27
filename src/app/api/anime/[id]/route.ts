@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { dropStaleProfileImages } from "@/lib/avatarOptions";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { recomputeSiteScore } from "@/lib/siteScoreDb";
@@ -51,6 +52,8 @@ export async function DELETE(_request: Request, { params }: Params) {
     ]);
     // A nota de quem sai da lista deixa de contar na nota do site.
     await recomputeSiteScore(existing).catch(() => undefined);
+    // Avatar/capa daquele anime voltam ao padrão (só valem imagens dos animes acompanhados).
+    await dropStaleProfileImages(user.id).catch(() => undefined);
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Falha ao remover o anime" }, { status: 500 });

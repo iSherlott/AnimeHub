@@ -34,13 +34,18 @@ export async function friendsBirthdays(viewerId: string, timeZone: string = DEFA
 }
 
 /**
- * Cria os avisos de aniversário de hoje (um por amigo por dia), quando o sino é consultado. Respeita a preferência de
- * amizade e seguidores (`notifyFollowers`).
+ * Cria os avisos de aniversário de hoje (um por amigo por dia), na primeira consulta do sino no dia (`birthdayCheckedOn`).
+ * Respeita a preferência de amizade e seguidores (`notifyFollowers`). Uma amizade nova e a mudança da data de aniversário
+ * de um amigo apagam a marca do dia (src/lib/friends.ts, PATCH /api/users/me), e o cálculo é refeito.
  */
 export async function ensureBirthdayNotifications(userId: string, timeZone: string = DEFAULT_TIME_ZONE, now: Date = new Date()): Promise<void> {
   try {
-    const me = await prisma.user.findUnique({ where: { id: userId }, select: { notifyFollowers: true } });
+    const me = await prisma.user.findUnique({ where: { id: userId }, select: { notifyFollowers: true, birthdayCheckedOn: true } });
     if (!me?.notifyFollowers) return;
+    // Uma vez por dia (no fuso da pessoa): o sino consulta a cada minuto, o aniversário muda uma vez por dia.
+    const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone }).format(now);
+    if (me.birthdayCheckedOn === dayKey) return;
+    await prisma.user.update({ where: { id: userId }, data: { birthdayCheckedOn: dayKey } });
     const today = (await friendsBirthdays(userId, timeZone, 1, now)).map((p) => p.id);
     if (today.length === 0) return;
     const since = startOfDayInZone(now, timeZone);

@@ -164,6 +164,7 @@ export function AlbumGrid({ userId, albums }: { userId: string; albums: AlbumCar
             <Typography component="span" sx={{ fontSize: 12, color: "text.secondary" }}>
               {a.count} {a.count === 1 ? "anime" : "animes"}
               {a.auto ? " · automático" : ""}
+              {a.removed ? " · removido pela moderação" : ""}
             </Typography>
           </AppLink>
         </Box>

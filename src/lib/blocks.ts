@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -7,8 +8,11 @@ import { prisma } from "@/lib/prisma";
  * mensagem neutra "Perfil indisponível", sem motivo.
  */
 
-/** Ids com quem existe bloqueio em QUALQUER direção com o viewer. */
-export async function blockedUserIdSet(viewerId: string | null): Promise<Set<string>> {
+/**
+ * Ids com quem existe bloqueio em QUALQUER direção com o viewer. Guardado por requisição (`cache` do React): a página
+ * do perfil pergunta pelas mesmas pessoas em várias seções. Fora da renderização do servidor, não guarda nada.
+ */
+export const blockedUserIdSet = cache(async function blockedUserIdSet(viewerId: string | null): Promise<Set<string>> {
   if (!viewerId) return new Set();
   const rows = await prisma.block.findMany({
     where: { OR: [{ blockerId: viewerId }, { blockedId: viewerId }] },
@@ -17,12 +21,12 @@ export async function blockedUserIdSet(viewerId: string | null): Promise<Set<str
   const ids = new Set<string>();
   for (const row of rows) ids.add(row.blockerId === viewerId ? row.blockedId : row.blockerId);
   return ids;
-}
+});
 
 export type BlockRelation = "none" | "blocked-by-me" | "blocked-me";
 
-/** Estado entre o viewer e outra pessoa (a direção importa para a mensagem). */
-export async function blockRelation(viewerId: string | null, otherId: string): Promise<BlockRelation> {
+/** Estado entre o viewer e outra pessoa (a direção importa para a mensagem). Guardado por requisição, como acima. */
+export const blockRelation = cache(async function blockRelation(viewerId: string | null, otherId: string): Promise<BlockRelation> {
   if (!viewerId || viewerId === otherId) return "none";
   const rows = await prisma.block.findMany({
     where: {
@@ -35,4 +39,4 @@ export async function blockRelation(viewerId: string | null, otherId: string): P
   });
   if (rows.some((r) => r.blockerId === viewerId)) return "blocked-by-me";
   return rows.length > 0 ? "blocked-me" : "none";
-}
+});

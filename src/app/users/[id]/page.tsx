@@ -17,7 +17,7 @@ import { can } from "@/lib/auth/permissions";
 import { blockRelation } from "@/lib/blocks";
 import { BlockedProfileNotice } from "@/components/BlockedProfileNotice";
 import { equippedTitleNames } from "@/lib/quiz";
-import { visibleAnimeCount } from "@/lib/profileAnimeList";
+import { loadProfileAnimeList } from "@/lib/profileAnimeList";
 import { listFans, listScraps, listTestimonials, ratingSummary } from "@/lib/profileOrkut";
 import { friendState, friendSuggestions, listFriends, pendingReceivedCount } from "@/lib/friends";
 import { memberCommunities } from "@/lib/community";
@@ -83,10 +83,7 @@ export default async function UserProfilePage({ params }: Params) {
   // Visitas (como no Orkut): registra a de quem tem conta; a dona do perfil vê as recentes (se registra as dela).
   await recordVisit(viewer, id);
   const visitors = isOwnProfile && viewer?.recordVisits ? await recentVisitors(id) : null;
-  // Álbuns (coletâneas de animes): seguem "Mostrar meus animes"; null = escondidos para quem vê.
-  const albums = await profileAlbums(id, viewerId);
-  const albumCards = albums ? [...albums.auto, ...albums.custom] : [];
-  const [followerCount, followingCount, postCount, isFollowedByMe, titles, equippedTitles, animeCount, friends, communities, fans, isFan, ratings, scraps, testimonials, friendRel, myTestimonial, pendingRequests] =
+  const [followerCount, followingCount, postCount, isFollowedByMe, titles, equippedTitles, animeList, friends, communities, fans, isFan, ratings, scraps, testimonials, friendRel, myTestimonial, pendingRequests] =
     await Promise.all([
       prisma.follow.count({ where: { followingId: id } }),
       prisma.follow.count({ where: { followerId: id } }),
@@ -94,7 +91,7 @@ export default async function UserProfilePage({ params }: Params) {
       viewerId ? prisma.follow.findUnique({ where: { followerId_followingId: { followerId: viewerId, followingId: id } } }).then((f) => f !== null) : Promise.resolve(false),
       prisma.userTitle.findMany({ where: { userId: id }, orderBy: { awardedAt: "desc" }, select: { id: true, quiz: { select: { titleReward: true } } } }),
       equippedTitleNames([id]),
-      visibleAnimeCount(id, viewerId),
+      loadProfileAnimeList(id, viewerId),
       listFriends(id, viewerId),
       memberCommunities(id),
       listFans(id, viewerId, 0).then((f) => f.total),
@@ -107,6 +104,11 @@ export default async function UserProfilePage({ params }: Params) {
       isOwnProfile ? pendingReceivedCount(id) : Promise.resolve(0),
     ]);
   const friendOfViewer = friendRel === "friends";
+  // Álbuns (coletâneas de animes): seguem "Mostrar meus animes"; null = escondidos para quem vê. A lista de animes
+  // já montada acima serve à contagem da aba e aos álbuns.
+  const albums = await profileAlbums(id, viewerId, animeList);
+  const animeCount = animeList.kind === "ok" ? animeList.list.total : null;
+  const albumCards = albums ? [...albums.auto, ...albums.custom] : [];
   // Perfil próprio ainda sem amigos: a caixa de amigos mostra quem a pessoa talvez conheça.
   const peopleYouMayKnow = isOwnProfile && friends.total === 0 ? await friendSuggestions(id, 3) : [];
 
@@ -184,7 +186,15 @@ export default async function UserProfilePage({ params }: Params) {
               isOwnProfile={isOwnProfile}
               viewerLoggedIn={Boolean(viewer)}
               initialFollowing={isFollowedByMe}
-              friendAction={friendRel && friendRel !== "self" ? <FriendButton userId={id} initial={friendRel} inline /> : null}
+              friendAction={
+                friendRel && friendRel !== "self" ? (
+                  <FriendButton userId={id} initial={friendRel} inline />
+                ) : !viewer ? (
+                  <LinkButton href={loginHref(`/users/${id}`)} variant="contained" data-testid="friend-add-login">
+                    Adicionar como amigo
+                  </LinkButton>
+                ) : null
+              }
             />
 
             {fortune && (

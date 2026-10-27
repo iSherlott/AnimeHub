@@ -7,6 +7,7 @@ import { CoverImage } from "@/components/CoverImage";
 import { PageContainer, PageIntro } from "@/components/PageShell";
 import { ProfileSection } from "@/components/profile/ProfileSections";
 import { AlbumEditor, AlbumRemoveItem } from "@/components/profile/ProfileAlbums";
+import { ProfileReportButton } from "@/components/profile/ProfileOrkut";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { albumCandidates, albumView, type AlbumWork } from "@/lib/profileAlbums";
@@ -38,7 +39,7 @@ export default async function AlbumPage({ params }: Props) {
   const viewer = await getCurrentUser();
   const view = await albumView(id, viewer?.id ?? null, album);
   if (!view) notFound();
-  const editable = view.isOwn && !view.auto;
+  const editable = view.isOwn && !view.auto && !view.removed;
   const candidates = editable ? await albumCandidates(id) : [];
 
   return (
@@ -49,7 +50,12 @@ export default async function AlbumPage({ params }: Props) {
         <AppLink href={`/users/${id}#albuns`} underline="hover" sx={{ fontSize: 14, color: "text.secondary", alignSelf: "flex-start" }}>
           ← {view.isOwn ? "Meu perfil" : `Perfil de ${owner.displayName}`}
         </AppLink>
-        {editable && <AlbumEditor userId={id} albumId={album} name={view.name} description={view.description} inAlbum={view.works.map((w) => w.key)} candidates={candidates} />}
+        {view.isOwn && !view.auto && <AlbumEditor userId={id} albumId={album} name={view.name} description={view.description} inAlbum={view.works.map((w) => w.key)} candidates={candidates} removed={view.removed} />}
+        {viewer && !view.isOwn && !view.auto && (
+          <Box sx={{ alignSelf: "flex-start" }}>
+            <ProfileReportButton kind="album" id={album} />
+          </Box>
+        )}
         <ProfileSection id="obras" title="animes" count={view.works.length} testId="album-works">
           {view.works.length === 0 ? (
             <Typography sx={{ fontSize: 14, color: "text.secondary" }}>{editable ? "Álbum vazio: coloque animes da sua lista acima." : "Nenhum anime neste álbum."}</Typography>

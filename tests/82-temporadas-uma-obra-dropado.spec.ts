@@ -105,10 +105,10 @@ test.describe.serial("Temporadas de uma obra: lista única, anteriores automáti
     await expect(page.getByTestId(`season-dropped-note-${D2}`)).toBeVisible();
     await expect.poll(async () => (await prisma.anime.findUniqueOrThrow({ where: { id: d2.id } })).watchState).toBe("DROPPED");
     expect((await prisma.anime.findUniqueOrThrow({ where: { id: d2.id } })).waiting).toBe(true); // fora do calendário e dos avisos
-    // No perfil a obra vira "Dropado".
+    // No perfil a obra vira "Dropei".
     await page.goto(`/users/${userId}`);
     await page.getByTestId("tab-animes").click();
-    await expect(page.getByTestId(`profile-anime-category-${D2}`)).toHaveText("Dropado");
+    await expect(page.getByTestId(`profile-anime-category-${D2}`)).toHaveText("Dropei");
   });
 
   test("com uma temporada dropada, a nova temporada não entra na lista nem avisa", async ({ playwright, baseURL }) => {

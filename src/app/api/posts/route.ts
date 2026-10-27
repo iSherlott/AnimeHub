@@ -11,12 +11,13 @@ import { resolveWorkKey, type WorkRef } from "@/lib/workRef";
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
 
+/** "Seguindo": publicações de quem a pessoa segue e dos amigos dela (amizade e seguir são separados, mas os dois entram aqui). */
 async function loadFollowingPage(userId: string, cursor: string | null, limit: number) {
-  const followed = await prisma.follow.findMany({
-    where: { followerId: userId },
-    select: { followingId: true },
-  });
-  const followingIds = followed.map((f) => f.followingId);
+  const [followed, friendships] = await Promise.all([
+    prisma.follow.findMany({ where: { followerId: userId }, select: { followingId: true } }),
+    prisma.friendship.findMany({ where: { OR: [{ userAId: userId }, { userBId: userId }] }, select: { userAId: true, userBId: true } }),
+  ]);
+  const followingIds = [...new Set([...followed.map((f) => f.followingId), ...friendships.map((f) => (f.userAId === userId ? f.userBId : f.userAId))])];
 
   if (followingIds.length === 0) {
     return { page: [], nextCursor: null as string | null };

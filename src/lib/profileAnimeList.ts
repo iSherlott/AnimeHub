@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { blockRelation } from "@/lib/blocks";
 import { currentSeasonRef } from "@/lib/exploreGroups";
-import { countAnimeGroups, groupAnimes } from "@/lib/animeGroups";
+import { groupAnimes } from "@/lib/animeGroups";
 import { deriveCategory, isWatchState, type WatchCategory, type WatchState } from "@/lib/watchCategory";
 import { catalogSlug, workHref } from "@/lib/workHref";
 
@@ -76,14 +76,6 @@ export function genreFacets(entries: ProfileAnimeEntry[]): GenreFacet[] {
   const counts = new Map<string, number>();
   for (const e of entries) for (const g of e.genres) counts.set(g, (counts.get(g) ?? 0) + 1);
   return Array.from(counts, ([genre, count]) => ({ genre, count })).sort((a, b) => b.count - a.count || a.genre.localeCompare(b.genre, "pt-BR"));
-}
-
-/** Quantas obras o perfil de `targetId` mostra para `viewerId` (null quando a lista é oculta/indisponível). */
-export async function visibleAnimeCount(targetId: string, viewerId: string | null): Promise<number | null> {
-  const target = await prisma.user.findUnique({ where: { id: targetId }, select: { animeListPublic: true } });
-  if (!target) return null;
-  if (viewerId !== targetId && !target.animeListPublic) return null;
-  return countAnimeGroups(targetId);
 }
 
 /** Categoria da obra inteira: o que está acontecendo agora pesa mais que o já passado (acompanhando, não terminei, dropado, terminei). */

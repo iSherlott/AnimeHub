@@ -33,10 +33,12 @@ export async function GET(_request: Request, { params }: Params) {
   }
 
   const user = await getCurrentUser();
-  const blocked = await blockedUserIdSet(user?.id ?? null);
-  if (blocked.has(post.userId)) {
+  const viewerBlocked = await blockedUserIdSet(user?.id ?? null);
+  if (viewerBlocked.has(post.userId)) {
     return NextResponse.json({ error: "Post não encontrado" }, { status: 404 });
   }
+  // Mesma regra do perfil: o comentário de quem o autor da publicação bloqueou some para todos, não só para o autor.
+  const blocked = new Set([...viewerBlocked, ...(await blockedUserIdSet(post.userId))]);
   const comments = await prisma.postComment.findMany({
     where: { postId, deletedAt: null, userId: { notIn: [...blocked] } },
     orderBy: { createdAt: "asc" },
