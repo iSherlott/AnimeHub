@@ -74,7 +74,10 @@ export function NewAlbumButton({ userId }: { userId: string }) {
   );
 }
 
-/** Editar o álbum personalizado: renomear, apagar, tirar obras e colocar obras da própria lista (com busca). */
+/**
+ * Editar o álbum personalizado: renomear, apagar, tirar obras e colocar obras da própria lista (com busca). `inAlbum`
+ * são as chaves das obras (não das temporadas) que já estão no álbum.
+ */
 export function AlbumEditor({ userId, albumId, name, description, inAlbum, candidates }: { userId: string; albumId: string; name: string; description: string | null; inAlbum: string[]; candidates: AlbumWork[] }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -84,7 +87,7 @@ export function AlbumEditor({ userId, albumId, name, description, inAlbum, candi
   const inSet = useMemo(() => new Set(inAlbum), [inAlbum]);
   const available = useMemo(() => {
     const q = normalize(query.trim());
-    return candidates.filter((c) => c.animeId && !inSet.has(c.animeId) && (!q || normalize([c.titleRomaji, c.titleEnglish, c.titleNative].filter(Boolean).join(" ")).includes(q)));
+    return candidates.filter((c) => c.animeId && !inSet.has(c.key) && (!q || normalize([c.titleRomaji, c.titleEnglish, c.titleNative].filter(Boolean).join(" ")).includes(q)));
   }, [candidates, inSet, query]);
 
   async function add(animeId: string) {

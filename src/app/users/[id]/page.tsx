@@ -18,7 +18,7 @@ import { blockRelation } from "@/lib/blocks";
 import { BlockedProfileNotice } from "@/components/BlockedProfileNotice";
 import { equippedTitleNames } from "@/lib/quiz";
 import { visibleAnimeCount } from "@/lib/profileAnimeList";
-import { listScraps, listTestimonials, ratingSummary } from "@/lib/profileOrkut";
+import { listFans, listScraps, listTestimonials, ratingSummary } from "@/lib/profileOrkut";
 import { friendState, friendSuggestions, listFriends, pendingReceivedCount } from "@/lib/friends";
 import { memberCommunities } from "@/lib/community";
 import { dailyFortune } from "@/lib/dailyFortune";
@@ -97,7 +97,7 @@ export default async function UserProfilePage({ params }: Params) {
       visibleAnimeCount(id, viewerId),
       listFriends(id, viewerId),
       memberCommunities(id),
-      prisma.fan.count({ where: { targetId: id } }),
+      listFans(id, viewerId, 0).then((f) => f.total),
       viewerId && !isOwnProfile ? prisma.fan.findUnique({ where: { fanId_targetId: { fanId: viewerId, targetId: id } } }).then((f) => f !== null) : Promise.resolve(false),
       ratingSummary(id, viewerId),
       listScraps(id, 0, viewerId, SCRAPS_ON_PROFILE),

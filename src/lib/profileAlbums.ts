@@ -81,8 +81,10 @@ export async function deleteAlbum(albumId: string, userId: string): Promise<{ ok
 export async function addAlbumItem(albumId: string, userId: string, animeId: unknown): Promise<{ ok: true } | AlbumError> {
   const denied = await ownAlbum(albumId, userId);
   if (denied) return denied;
-  const anime = typeof animeId === "string" ? await prisma.anime.findUnique({ where: { id: animeId }, select: { userId: true } }) : null;
+  const anime = typeof animeId === "string" ? await prisma.anime.findUnique({ where: { id: animeId }, select: { userId: true, seriesKey: true, anilistId: true } }) : null;
   if (!anime || anime.userId !== userId) return { ok: false, status: 400, error: "Só dá para colocar no álbum obras da sua lista." };
+  // A mesma obra (outra temporada) já está no álbum?
+  if (anime.seriesKey && (await prisma.profileAlbumItem.count({ where: { albumId, animeId: { not: animeId as string }, anime: { seriesKey: anime.seriesKey } } })) > 0) return { ok: false, status: 409, error: "Essa obra já está no álbum." };
   if ((await prisma.profileAlbumItem.count({ where: { albumId } })) >= MAX_ALBUM_ITEMS) return { ok: false, status: 409, error: `Limite de ${MAX_ALBUM_ITEMS} obras por álbum.` };
   await prisma.profileAlbumItem.upsert({ where: { albumId_animeId: { albumId, animeId: animeId as string } }, create: { albumId, animeId: animeId as string }, update: {} });
   await prisma.profileAlbum.update({ where: { id: albumId }, data: { updatedAt: new Date() } });
@@ -130,7 +132,10 @@ export async function albumView(targetId: string, viewerId: string | null, key: 
   }
   const album = await prisma.profileAlbum.findFirst({ where: { id: key, userId: targetId }, include: { items: { orderBy: { addedAt: "desc" }, include: { anime: ITEM_ANIME } } } });
   if (!album) return null;
-  return { key, name: album.name, description: album.description, auto: false, isOwn: list.isOwn, works: album.items.map((i) => toWork(i.anime)) };
+  // Uma obra com várias temporadas pode ter entrado por temporadas diferentes: aparece uma vez só.
+  const seen = new Set<string>();
+  const works = album.items.map((i) => toWork(i.anime)).filter((w) => (seen.has(w.key) ? false : (seen.add(w.key), true)));
+  return { key, name: album.name, description: album.description, auto: false, isOwn: list.isOwn, works };
 }
 
 /** As obras da própria lista (uma por obra, como na aba Animes) para escolher o que entra no álbum. */

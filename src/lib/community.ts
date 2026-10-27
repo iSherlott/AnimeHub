@@ -222,7 +222,7 @@ export async function createReply(topicId: string, userId: string, input: unknow
     prisma.communityReply.findMany({ where: { topicId, deletedAt: null }, distinct: ["authorId"], select: { authorId: true } }),
     prisma.communityTopic.findUniqueOrThrow({ where: { id: topicId }, select: { authorId: true } }),
   ]);
-  await notifyCommunity({ type: "COMMUNITY_REPLY", topicId, replyId: reply.id, actorId: userId, recipientIds: [author.authorId, ...repliers.map((r) => r.authorId)] });
+  await notifyCommunity({ type: "COMMUNITY_REPLY", topicId, replyId: reply.id, actorId: userId, communityId: topic.communityId, recipientIds: [author.authorId, ...repliers.map((r) => r.authorId)] });
   await markVisit(topic.communityId, userId);
   return { ok: true, replyId: reply.id };
 }
@@ -511,7 +511,7 @@ export async function createEvent(scope: CommunityScope, userId: string, input: 
   await prisma.communityEventRsvp.create({ data: { eventId: event.id, userId, status: "GOING" } });
   // Avisa os membros da comunidade.
   const members = await prisma.communityMember.findMany({ where: { communityId: community.id }, select: { userId: true } });
-  await notifyCommunity({ type: "COMMUNITY_EVENT", eventId: event.id, actorId: userId, recipientIds: members.map((m) => m.userId) });
+  await notifyCommunity({ type: "COMMUNITY_EVENT", eventId: event.id, actorId: userId, communityId: community.id, recipientIds: members.map((m) => m.userId) });
   return { ok: true, eventId: event.id };
 }
 

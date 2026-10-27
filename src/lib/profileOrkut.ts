@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { blockedUserIdSet, blockRelation } from "@/lib/blocks";
 import { isBlank } from "@/lib/text";
 import { notifySocial } from "@/lib/socialNotifications";
-import { areFriends } from "@/lib/friends";
+import { areFriends, listFriends } from "@/lib/friends";
 import { isReportReason, REPORT_REASON_LABELS } from "@/lib/reportReasons";
 
 /**
@@ -30,10 +30,19 @@ async function canInteract(viewerId: string, profileId: string): Promise<Profile
   return null;
 }
 
+/**
+ * Quem não aparece no perfil para quem vê: quem tem bloqueio com quem vê e quem tem bloqueio com a dona do perfil (o
+ * que a pessoa bloqueada escreveu some do perfil para todos, não só para a dona).
+ */
+async function hiddenAuthors(profileId: string, viewerId: string | null): Promise<string[]> {
+  const [mine, owner] = await Promise.all([blockedUserIdSet(viewerId), blockedUserIdSet(profileId)]);
+  return [...new Set([...mine, ...owner])];
+}
+
 // ---------- Recados ----------
 
 export async function listScraps(profileId: string, page: number, viewerId: string | null, take = SCRAPS_PAGE) {
-  const blocked = [...(await blockedUserIdSet(viewerId))];
+  const blocked = await hiddenAuthors(profileId, viewerId);
   const where = { profileId, deletedAt: null, ...(blocked.length ? { authorId: { notIn: blocked } } : {}) };
   const [total, rows] = await Promise.all([prisma.scrap.count({ where }), prisma.scrap.findMany({ where, orderBy: { createdAt: "desc" }, skip: page * take, take, include: { author: AUTHOR, replyTo: { select: { id: true, deletedAt: true } } } })]);
   return { total, rows };
@@ -93,7 +102,7 @@ export async function scrapConversation(aId: string, bId: string, viewerId: stri
 
 /** Aprovados para todos; a dona do perfil vê também os que esperam aprovação. */
 export async function listTestimonials(profileId: string, viewerId: string | null) {
-  const blocked = [...(await blockedUserIdSet(viewerId))];
+  const blocked = await hiddenAuthors(profileId, viewerId);
   const own = viewerId === profileId;
   return prisma.testimonial.findMany({
     where: { profileId, status: own ? { in: ["APPROVED", "PENDING"] } : "APPROVED", ...(blocked.length ? { authorId: { notIn: blocked } } : {}) },
@@ -109,6 +118,9 @@ export async function writeTestimonial(profileId: string, authorId: string, inpu
   const denied = await canInteract(authorId, profileId);
   if (denied) return denied;
   if (!(await areFriends(authorId, profileId))) return { ok: false, status: 403, error: "Só amigos escrevem depoimentos." };
+  // Depoimento removido pela moderação não volta reescrito (seria um jeito de contornar a decisão).
+  const existing = await prisma.testimonial.findUnique({ where: { profileId_authorId: { profileId, authorId } }, select: { status: true } });
+  if (existing?.status === "REMOVED") return { ok: false, status: 403, error: "Este depoimento foi removido pela moderação e não pode ser reescrito." };
   await prisma.testimonial.upsert({
     where: { profileId_authorId: { profileId, authorId } },
     create: { profileId, authorId, body },
@@ -149,12 +161,12 @@ export async function setFan(fanId: string, targetId: string, fan: boolean): Pro
   } else {
     await prisma.fan.deleteMany({ where: { fanId, targetId } });
   }
-  return { ok: true, fans: await prisma.fan.count({ where: { targetId } }) };
+  return { ok: true, fans: (await listFans(targetId, fanId, 0)).total };
 }
 
-/** Fãs da pessoa (os mais recentes primeiro), sem quem tem bloqueio com quem vê. */
+/** Fãs da pessoa (os mais recentes primeiro), sem quem tem bloqueio com quem vê ou com a dona do perfil. */
 export async function listFans(targetId: string, viewerId: string | null, take = 60) {
-  const blocked = [...(await blockedUserIdSet(viewerId))];
+  const blocked = await hiddenAuthors(targetId, viewerId);
   const where = { targetId, ...(blocked.length ? { fanId: { notIn: blocked } } : {}) };
   const [total, rows] = await Promise.all([prisma.fan.count({ where }), prisma.fan.findMany({ where, orderBy: { createdAt: "desc" }, take, include: { fan: AUTHOR } })]);
   return { total, rows: rows.map((r) => r.fan) };
@@ -179,10 +191,15 @@ export async function rate(raterId: string, targetId: string, input: unknown): P
   return { ok: true };
 }
 
-/** Média de cada avaliação (0 a 3, arredondada para o ícone) e quantos avaliaram; e a avaliação de quem vê. */
+/**
+ * Média de cada avaliação (0 a 3, arredondada para o ícone) e quantos avaliaram; e a avaliação de quem vê. Só contam
+ * as notas de quem AINDA é amigo (a regra é "só amigos avaliam": a nota de quem desfez a amizade ou foi bloqueado fica
+ * guardada, mas sai da média).
+ */
 export async function ratingSummary(targetId: string, viewerId: string | null) {
+  const friendIds = (await listFriends(targetId, null, 10_000)).rows.map((f) => f.id);
   const [agg, mine] = await Promise.all([
-    prisma.profileRating.aggregate({ where: { targetId }, _avg: { otaku: true, gentil: true, semSpoiler: true }, _count: { _all: true } }),
+    prisma.profileRating.aggregate({ where: { targetId, raterId: { in: friendIds } }, _avg: { otaku: true, gentil: true, semSpoiler: true }, _count: { _all: true } }),
     viewerId ? prisma.profileRating.findUnique({ where: { raterId_targetId: { raterId: viewerId, targetId } }, select: { otaku: true, gentil: true, semSpoiler: true } }) : Promise.resolve(null),
   ]);
   const avg = (k: RatingKey) => Math.round((agg._avg[k] ?? 0) * 10) / 10;

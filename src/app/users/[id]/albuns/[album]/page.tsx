@@ -49,7 +49,7 @@ export default async function AlbumPage({ params }: Props) {
         <AppLink href={`/users/${id}#albuns`} underline="hover" sx={{ fontSize: 14, color: "text.secondary", alignSelf: "flex-start" }}>
           ← {view.isOwn ? "Meu perfil" : `Perfil de ${owner.displayName}`}
         </AppLink>
-        {editable && <AlbumEditor userId={id} albumId={album} name={view.name} description={view.description} inAlbum={view.works.flatMap((w) => (w.animeId ? [w.animeId] : []))} candidates={candidates} />}
+        {editable && <AlbumEditor userId={id} albumId={album} name={view.name} description={view.description} inAlbum={view.works.map((w) => w.key)} candidates={candidates} />}
         <ProfileSection id="obras" title="animes" count={view.works.length} testId="album-works">
           {view.works.length === 0 ? (
             <Typography sx={{ fontSize: 14, color: "text.secondary" }}>{editable ? "Álbum vazio: coloque animes da sua lista acima." : "Nenhum anime neste álbum."}</Typography>

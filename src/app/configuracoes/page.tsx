@@ -25,8 +25,8 @@ type Draft = Pick<
 
 const SOCIAL_TOGGLES: Array<{ key: keyof Draft; label: string; hint: string }> = [
   { key: "notifyReplies", label: "Respostas às minhas publicações", hint: "Avisos sem trecho sensível. Padrão ativado." },
-  { key: "notifyComments", label: "Respostas aos meus comentários", hint: "Abrir a resposta exata na discussão. Padrão ativado." },
-  { key: "notifyFollowers", label: "Novos seguidores", hint: "Padrão ativado; seguir perfil não acompanha anime." },
+  { key: "notifyComments", label: "Respostas aos meus comentários e recados", hint: "Respostas nas discussões, recados e depoimentos no seu perfil. Padrão ativado." },
+  { key: "notifyFollowers", label: "Seguidores, amizade e fãs", hint: "Novos seguidores, pedidos de amizade aceitos ou recebidos, novos fãs e aniversários dos amigos. Padrão ativado." },
   { key: "notifyLikes", label: "Curtidas", hint: "Padrão desativado para reduzir ruído." },
   { key: "notifyCommunity", label: "Comunidades", hint: "Respostas nos tópicos em que você participa e eventos novos nas suas comunidades. Padrão ativado." },
 ];

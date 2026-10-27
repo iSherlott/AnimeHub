@@ -216,7 +216,8 @@ export function AdminFrame({ adminName, timeZone, role, children }: { adminName:
           <Typography component="span" sx={{ fontSize: 12, color: "text.secondary" }}>
             ADMIN / {current.crumb}
           </Typography>
-          <Typography component="span" suppressHydrationWarning sx={{ fontSize: 12, color: "text.secondary", whiteSpace: "nowrap" }}>
+          {/* No celular não cabe junto do caminho (ADMIN / …): a data com o fuso fica só a partir do tablet. */}
+          <Typography component="span" suppressHydrationWarning sx={{ fontSize: 12, color: "text.secondary", whiteSpace: "nowrap", display: { xs: "none", sm: "inline" } }}>
             {dateLabel}
           </Typography>
         </Box>

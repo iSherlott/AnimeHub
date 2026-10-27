@@ -36,7 +36,13 @@ const PREFERENCE_BY_TYPE = {
 } as const;
 
 /** Tipos que não se repetem: a mesma pessoa curtindo/seguindo de novo não gera outro aviso. */
-const DEDUPED: ReadonlySet<SocialNotificationType> = new Set(["NEW_FOLLOWER", "POST_LIKE", "PROFILE_FAN", "FRIEND_REQUEST", "FRIEND_ACCEPTED"]);
+const DEDUPED: ReadonlySet<SocialNotificationType> = new Set(["NEW_FOLLOWER", "POST_LIKE", "PROFILE_FAN"]);
+/**
+ * Tipos que não se repetem só enquanto o aviso anterior (da mesma pessoa) não foi lido: um pedido de amizade reenviado
+ * depois de recusado, uma amizade refeita ou um depoimento reescrito voltam a avisar — mas reescrever o depoimento três
+ * vezes seguidas não gera três avisos.
+ */
+const DEDUPED_WHILE_UNREAD: ReadonlySet<SocialNotificationType> = new Set(["FRIEND_REQUEST", "FRIEND_ACCEPTED", "PROFILE_TESTIMONIAL"]);
 
 /**
  * Registra uma notificação social para `recipientId`. Nunca lança: o aviso
@@ -63,9 +69,9 @@ export async function notifySocial(input: {
     });
     if (!recipient || !recipient[PREFERENCE_BY_TYPE[type]]) return;
 
-    if (DEDUPED.has(type)) {
+    if (DEDUPED.has(type) || DEDUPED_WHILE_UNREAD.has(type)) {
       const existing = await prisma.socialNotification.findFirst({
-        where: { userId: recipientId, actorId, type, postId: input.postId ?? null },
+        where: { userId: recipientId, actorId, type, postId: input.postId ?? null, ...(DEDUPED_WHILE_UNREAD.has(type) ? { readAt: null } : {}) },
         select: { id: true },
       });
       if (existing) return;
@@ -87,13 +93,16 @@ const MAX_RECIPIENTS = 1000;
  * respeita a preferência). Respostas num tópico não se acumulam: enquanto o aviso daquele tópico não foi lido, ele só
  * é atualizado (quem respondeu por último, a resposta e a hora), em vez de criar outro.
  */
-export async function notifyCommunity(input: { type: "COMMUNITY_REPLY"; topicId: string; replyId: string; actorId: string; recipientIds: string[] } | { type: "COMMUNITY_EVENT"; eventId: string; actorId: string; recipientIds: string[] }): Promise<void> {
+export async function notifyCommunity(
+  input: ({ type: "COMMUNITY_REPLY"; topicId: string; replyId: string } | { type: "COMMUNITY_EVENT"; eventId: string }) & { actorId: string; recipientIds: string[]; communityId: string }
+): Promise<void> {
   try {
     const { type, actorId } = input;
     const blocked = await blockedUserIdSet(actorId);
     const candidates = [...new Set(input.recipientIds)].filter((id) => id !== actorId && !blocked.has(id)).slice(0, MAX_RECIPIENTS);
     if (candidates.length === 0) return;
-    const recipients = (await prisma.user.findMany({ where: { id: { in: candidates }, notifyCommunity: true }, select: { id: true } })).map((u) => u.id);
+    // Só quem ainda é membro (quem saiu da comunidade deixa de receber avisos dela) e quer os avisos.
+    const recipients = (await prisma.user.findMany({ where: { id: { in: candidates }, notifyCommunity: true, communityMemberships: { some: { communityId: input.communityId } } }, select: { id: true } })).map((u) => u.id);
     if (recipients.length === 0) return;
     const now = new Date();
 
