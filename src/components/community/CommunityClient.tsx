@@ -244,7 +244,7 @@ export function PollBox({ topicId, options, myVote, canVote }: { topicId: string
                 </Typography>
               )}
             </Box>
-            <LinearProgress variant="determinate" value={pct} aria-label={`${o.label}: ${pct}%`} sx={{ height: 6, borderRadius: 3 }} />
+            <LinearProgress variant="determinate" value={pct} aria-label={`${o.label}: ${pct}%`} sx={{ height: 6, borderRadius: 3, bgcolor: "rgba(255,255,255,0.1)", "& .MuiLinearProgress-bar": { borderRadius: 3 } }} />
           </Box>
         );
       })}

@@ -168,7 +168,7 @@ export function ProfileEditor({ me, genreOptions = [] }: { me: Me; genreOptions?
             maxLength={21}
             help="3 a 20 caracteres: letras sem acento, números e _. Aparece como @identificador e é único."
           />
-          <Field id="profile-bio" label="Quem sou eu (opcional)" value={bio} onChange={setBio} multiline maxLength={300} placeholder="uma frase sobre você" help="Até 300 caracteres. Aparece no seu perfil público." />
+          <Field id="profile-bio" label="Quem sou eu (opcional)" value={bio} onChange={setBio} multiline maxLength={300} placeholder="uma frase sobre você" help="Até 300 caracteres. Aparece no seu perfil." />
           <Field id="profile-favorite-anime" label="Anime favorito (opcional)" value={favoriteAnime} onChange={setFavoriteAnime} maxLength={80} placeholder="ex.: Frieren" help="Aparece no quem sou eu do seu perfil." />
           <Field id="profile-favorite-character" label="Personagem favorito (opcional)" value={favoriteCharacter} onChange={setFavoriteCharacter} maxLength={80} placeholder="ex.: Himmel" help="Aparece no quem sou eu do seu perfil." />
           <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>

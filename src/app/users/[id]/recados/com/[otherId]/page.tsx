@@ -44,7 +44,7 @@ export default async function ScrapConversationPage({ params }: Props) {
               <ScrapForm userId={partner.id} label={`Recado para ${partner.displayName}`} />
             </Box>
           ) : (
-            <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Recados são públicos; só as duas pessoas escrevem nesta conversa.</Typography>
+            <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Recados ficam à vista de quem tem conta no AnimeHub; só as duas pessoas escrevem nesta conversa.</Typography>
           )}
         </ProfileSection>
       </PageContainer>

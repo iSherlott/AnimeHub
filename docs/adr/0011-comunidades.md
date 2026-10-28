@@ -115,3 +115,11 @@ O menu principal passou a ter **Feed** (as publicações, antes "Comunidade") e 
 - **Dados preservados.** Nada foi apagado: os comentários continuam no banco e na API, e as publicações sobre a obra
   continuam no Feed.
 - **Testes.** Spec 133; os specs 18, 21 (removido), 42, 55, 81 e 116 foram ajustados.
+
+## Revisão de 28/10/2026 — sistema fechado e validação
+
+- **Leitura só para quem tem conta.** O AnimeHub ficou fechado (contas criadas pelo admin): "ler é público", da decisão
+  original, passou a ser "qualquer pessoa com conta lê". Quem não entrou vai ao login, e as rotas de leitura das
+  comunidades exigem sessão. Para escrever, continua sendo preciso participar.
+- **Validação contra a referência do Orkut:** `docs/auditoria/validacao-social.md`. Ficaram para decidir: dono e
+  moderadores por comunidade, banir membro e "última resposta por fulano" na lista do fórum.

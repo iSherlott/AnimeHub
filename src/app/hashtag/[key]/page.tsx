@@ -34,8 +34,8 @@ export default async function HashtagPage({ params }: Params) {
   const season = currentSeasonTag(new Date());
   const subtitle =
     key === season.key
-      ? `Conversas públicas sobre a temporada ${season.label} / ${season.labelPt} ${season.year}.`
-      : `Conversas públicas com #${display}.`;
+      ? `Conversas sobre a temporada ${season.label} / ${season.labelPt} ${season.year}.`
+      : `Conversas com #${display}.`;
 
   return (
     <Box sx={{ minHeight: "100%", bgcolor: "background.default" }}>

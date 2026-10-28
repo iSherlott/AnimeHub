@@ -136,7 +136,7 @@ export default async function UserProfilePage({ params }: Params) {
         <PageIntro
           kicker="プロフィール / PERFIL"
           title={isOwnProfile ? "Meu perfil" : target.displayName}
-          subtitle={isOwnProfile ? "Seu espaço público: recados, depoimentos, amigos e comunidades. Sua organização pessoal continua privada." : target.handle ? `@${target.handle}` : "Perfil público"}
+          subtitle={isOwnProfile ? "Seu espaço no AnimeHub: recados, depoimentos, amigos e comunidades, à vista de quem tem conta. Sua organização pessoal continua privada." : target.handle ? `@${target.handle}` : "Perfil"}
         />
         <AppLink href="/" underline="hover" sx={{ fontSize: 14, color: "text.secondary", alignSelf: "flex-start" }}>
           ← Feed
@@ -361,7 +361,7 @@ export default async function UserProfilePage({ params }: Params) {
                 ) : visitors.rows.length === 0 ? (
                   <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Ninguém visitou seu perfil nos últimos 90 dias.</Typography>
                 ) : (
-                  <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 1 }}>
+                  <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: 1 }}>
                     {visitors.rows.map((v) => (
                       <Box component="li" key={v.id} data-testid={`visitor-${v.id}`}>
                         <AppLink href={`/users/${v.id}`} underline="hover" sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5, color: "text.primary", fontSize: 11, textAlign: "center", overflowWrap: "anywhere" }}>

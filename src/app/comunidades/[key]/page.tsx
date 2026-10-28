@@ -43,7 +43,7 @@ export default async function CommunityHome({ params }: Props) {
     ["categoria", `Anime${kinds ? ` · ${kinds}` : ""}`],
     ["franquia", `${scope.works.length} ${scope.works.length === 1 ? "obra" : "obras"}`],
     ["idioma", "Português"],
-    ["tipo", "pública (qualquer pessoa lê; para escrever, participe)"],
+    ["tipo", "aberta a quem tem conta no AnimeHub (todos leem; para escrever, participe)"],
     ["criada em", community ? community.createdAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }) : "na primeira participação"],
   ];
 

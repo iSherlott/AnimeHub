@@ -19,8 +19,8 @@ const EXPLAINERS: Record<FeedTab, string[]> = {
   ],
   following: ["Publicações dos seus amigos e dos perfis que você segue, da mais nova para a mais antiga."],
   recent: [
-    "Conversas públicas em ordem cronológica, da mais nova para a mais antiga.",
-    "Primeira visita? Comece por uma pergunta ou explore uma hashtag. Não precisamos conhecer seus interesses para mostrar conversas públicas.",
+    "Todas as conversas do AnimeHub em ordem cronológica, da mais nova para a mais antiga.",
+    "Primeira visita? Comece por uma pergunta ou explore uma hashtag. Não precisamos conhecer seus interesses para mostrar as conversas.",
   ],
 };
 

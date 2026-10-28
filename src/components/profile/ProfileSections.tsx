@@ -105,7 +105,7 @@ export function ScrapList({ scraps, viewerId, canModerate, empty, showProfile }:
 /** Grade de pessoas (amigos), 3 por linha. */
 export function PeopleGrid({ people, size = 48 }: { people: Person[]; size?: number }) {
   return (
-    <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 1 }}>
+    <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: 1 }}>
       {people.map((p) => (
         <Box component="li" key={p.id}>
           <AppLink href={`/users/${p.id}`} underline="hover" sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5, color: "text.primary", fontSize: 11, textAlign: "center", overflowWrap: "anywhere" }}>
@@ -121,14 +121,14 @@ export function PeopleGrid({ people, size = 48 }: { people: Person[]; size?: num
 /** Grade de comunidades (capas), 3 por linha. */
 export function CommunityGrid({ communities }: { communities: CommunityLink[] }) {
   return (
-    <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 1 }}>
+    <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: 1 }}>
       {communities.map((c) => (
         <Box component="li" key={c.key}>
           <AppLink href={`/comunidades/${c.key}`} underline="hover" sx={{ display: "flex", flexDirection: "column", gap: 0.5, color: "text.primary", fontSize: 11, overflowWrap: "anywhere" }}>
             <Box sx={{ position: "relative", width: "100%", aspectRatio: "2 / 3", borderRadius: "6px", overflow: "hidden", bgcolor: "#171820" }}>{c.coverImage && <CoverImage src={c.coverImage} sizes="80px" />}</Box>
             <AnimeTitle titles={{ titleRomaji: c.titleRomaji, titleEnglish: c.titleEnglish, titleNative: c.titleNative }} />
             <Typography component="span" sx={{ fontSize: 10, color: "text.secondary" }}>
-              ({c.members})
+              {c.members} {c.members === 1 ? "membro" : "membros"}
             </Typography>
           </AppLink>
         </Box>

@@ -211,3 +211,12 @@ Detalhes em `docs/auditoria/auditoria-regras-e-paginas.md`.
   mudada refazem o cálculo.
 - **Banco.** `20261116100000_reports_events_albums` só acrescenta.
 - **Testes.** Spec 132; os specs 77, 82 e 127 foram ajustados.
+
+## Revisão de 28/10/2026 — sistema fechado e validação
+
+- **Perfis só para quem tem conta.** Com o AnimeHub fechado, "quem visita" passou a ser outra pessoa com conta.
+  - Quem não entrou vai ao login, e as rotas de leitura do perfil (recados, publicações, animes) exigem sessão.
+  - Deixaram de valer o "Visitante sem conta vê 'Adicionar como amigo'" (revisão de 27/10) e o "quem visita só lê, porque
+    recados são públicos" (recados mais completos). Os recados ficam à vista de quem tem conta.
+- **Validação contra a referência do Orkut:** `docs/auditoria/validacao-social.md`. Ficaram para decidir: mensagens
+  privadas e amigos em comum no perfil de outra pessoa.

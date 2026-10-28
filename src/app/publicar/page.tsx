@@ -81,7 +81,7 @@ export default async function PublishPage({ searchParams }: Props) {
             <>
               <Box sx={{ bgcolor: "background.paper", borderRadius: "16px", p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
                 <SectionTitle>Antes de compartilhar</SectionTitle>
-                <Typography sx={{ fontSize: 14 }}>Publicação pública. Sua Minha Lista continua privada e não será anexada.</Typography>
+                <Typography sx={{ fontSize: 14 }}>Visível para quem tem conta no AnimeHub. Sua Minha Lista continua privada e não será anexada.</Typography>
                 <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
                   Só texto. Não dá para editar depois de publicar, mas você pode excluir a sua publicação.
                 </Typography>

@@ -233,6 +233,9 @@ export function EventCard({ event, canRsvp, canDelete, canReport = false }: { ev
   const timeZone = useTimeZone();
   const [busy, setBusy] = useState(false);
   const day = (iso: string) => `${new Intl.DateTimeFormat("pt-BR", { timeZone, weekday: "short", day: "2-digit", month: "short", year: "numeric" }).format(new Date(iso))} · ${formatTimeInZone(new Date(iso), timeZone)}`;
+  // Começa e termina no mesmo dia (no fuso de quem vê): o fim mostra só o horário.
+  const civil = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+  const sameDay = (a: string, b: string) => civil(a) === civil(b);
   async function act(status: "GOING" | "MAYBE" | null) {
     setBusy(true);
     try {
@@ -257,7 +260,7 @@ export function EventCard({ event, canRsvp, canDelete, canReport = false }: { ev
       <Typography sx={{ fontSize: 16, fontWeight: 700, overflowWrap: "anywhere" }}>{event.title}</Typography>
       <Typography suppressHydrationWarning sx={{ fontSize: 13, color: "primary.light" }}>
         {day(event.startsAt)}
-        {event.endsAt ? ` até ${day(event.endsAt)}` : ""}
+        {event.endsAt ? (sameDay(event.startsAt, event.endsAt) ? ` às ${formatTimeInZone(new Date(event.endsAt), timeZone)}` : ` até ${day(event.endsAt)}`) : ""}
       </Typography>
       {event.place && <Typography sx={{ fontSize: 13, color: "text.secondary", overflowWrap: "anywhere" }}>Onde: {event.place}</Typography>}
       <Typography sx={{ fontSize: 14, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{event.description}</Typography>

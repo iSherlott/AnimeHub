@@ -53,6 +53,9 @@ test.describe.serial("Comunidades em três colunas", () => {
     await expect(page.getByTestId("community-members-box")).toContainText("membros (1)");
     await expect(page.getByTestId("community-members-box")).toContainText("E2E");
     await expect(page.getByTestId("community-related").getByRole("link", { name: new RegExp(`Vizinha ${TAG}`) })).toHaveAttribute("href", `/comunidades/${OTHER}`);
+    // A contagem diz o que conta (antes era um "(0)" solto) e o tipo diz quem lê num sistema fechado.
+    await expect(page.getByTestId("community-related")).toContainText(/\d+ membros?/);
+    await expect(page.getByTestId("community-info")).toContainText("aberta a quem tem conta no AnimeHub");
     await page.screenshot({ path: test.info().outputPath("comunidade-colunas.png"), fullPage: true });
     await page.getByTestId("community-menu-membros").click();
     await expect(page.getByTestId(`member-${id.user}`)).toBeVisible();
@@ -65,6 +68,7 @@ test.describe.serial("Comunidades em três colunas", () => {
     await page.getByTestId("new-event-title").fill(`Maratona ${TAG}`);
     await page.getByTestId("new-event-description").fill("Todos os episódios de uma vez.");
     await page.getByTestId("new-event-start").fill("2031-03-14T20:00");
+    await page.getByTestId("new-event-end").fill("2031-03-14T23:30");
     await page.getByTestId("new-event-place").fill("Sala do Discord");
     await page.getByTestId("new-event-submit").click();
     await expect.poll(async () => prisma.communityEvent.count({ where: { title: `Maratona ${TAG}` } })).toBe(1);
@@ -72,6 +76,9 @@ test.describe.serial("Comunidades em três colunas", () => {
     // O horário digitado no fuso da conta (America/Sao_Paulo) vira instante: 20:00 em Brasília = 23:00 UTC.
     expect(event.startsAt.toISOString()).toBe("2031-03-14T23:00:00.000Z");
     await expect(page.getByTestId(`event-count-${event.id}`)).toContainText("1 vai · 0 talvez");
+    // Termina no mesmo dia: o fim mostra só o horário, sem repetir a data.
+    await expect(page.getByTestId(`event-${event.id}`)).toContainText("· 20:00 às 23:30");
+    await expect(page.getByTestId(`event-${event.id}`)).not.toContainText(" até ");
     await page.getByTestId(`event-maybe-${event.id}`).click();
     await expect(page.getByTestId(`event-count-${event.id}`)).toContainText("0 vão · 1 talvez");
     await page.goto(`/comunidades/${S1}`);

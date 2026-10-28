@@ -67,13 +67,14 @@ export default async function CommunityLayout({ children, params }: { children: 
           {/* Centro: a seção aberta */}
           <Box sx={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>{children}</Box>
 
-          {/* Coluna da direita: membros e comunidades relacionadas */}
+          {/* Coluna da direita: membros e comunidades relacionadas. As grades usam colunas de largura fixa (repetidas conforme
+              o espaço): no tablet a coluna ocupa a largura toda e 3 colunas esticadas deixavam a capa gigante. */}
           <Box component="aside" aria-label="Membros e comunidades relacionadas" sx={{ display: "flex", flexDirection: "column", gap: 2, gridColumn: { md: "1 / -1", lg: "auto" } }}>
             <SideBox title="membros" count={membersSample.total} more={membersSample.total > 9 ? { href: `/comunidades/${scope.key}/membros`, label: "ver todos" } : undefined} testId="community-members-box">
               {membersSample.rows.length === 0 ? (
                 <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Ainda sem membros. Seja a primeira pessoa a participar.</Typography>
               ) : (
-                <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 1 }}>
+                <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: 1 }}>
                   {membersSample.rows.map((m) => (
                     <Box component="li" key={m.id}>
                       <AppLink href={`/users/${m.id}`} underline="hover" sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5, color: "text.primary", fontSize: 11, textAlign: "center", overflowWrap: "anywhere" }}>
@@ -87,14 +88,14 @@ export default async function CommunityLayout({ children, params }: { children: 
             </SideBox>
             {related.length > 0 && (
               <SideBox title="comunidades relacionadas" count={related.length} testId="community-related">
-                <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 1 }}>
+                <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: 1 }}>
                   {related.map((c) => (
                     <Box component="li" key={c.key}>
                       <AppLink href={`/comunidades/${c.key}`} underline="hover" sx={{ display: "flex", flexDirection: "column", gap: 0.5, color: "text.primary", fontSize: 11, overflowWrap: "anywhere" }}>
                         <Box sx={{ position: "relative", width: "100%", aspectRatio: "2 / 3", borderRadius: "6px", overflow: "hidden", bgcolor: "#171820" }}>{c.coverImage && <CoverImage src={c.coverImage} sizes="80px" />}</Box>
                         <AnimeTitle titles={{ titleRomaji: c.titleRomaji, titleEnglish: c.titleEnglish, titleNative: c.titleNative }} />
                         <Typography component="span" sx={{ fontSize: 10, color: "text.secondary" }}>
-                          ({c.members})
+                          {c.members} {c.members === 1 ? "membro" : "membros"}
                         </Typography>
                       </AppLink>
                     </Box>

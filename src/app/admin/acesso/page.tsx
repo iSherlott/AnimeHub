@@ -17,7 +17,7 @@ export default async function AdminAccessPage() {
     <>
       <AdminPageHeader
         title="Acesso e moderação"
-        subtitle="Cadastro é só por convite. Gere um código, compartilhe fora daqui, e quem receber usa em /signup."
+        subtitle="As contas nascem aqui, com senha provisória (o AnimeHub é fechado). Abaixo, as denúncias das comunidades e dos perfis e os papéis de cada pessoa."
       />
       <AdminPanel title={`Denúncias das comunidades (${communityReports.length})`} testId="admin-community-reports">
         <CommunityReportsQueue reports={communityReports} />
