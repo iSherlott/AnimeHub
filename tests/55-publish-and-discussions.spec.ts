@@ -94,7 +94,9 @@ test.describe("Publicar, Recentes e discussões", () => {
     await expect(page.getByRole("tab", { name: "Recentes" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Para você" })).toBeVisible();
 
-    await page.getByRole("link", { name: "+ Nova publicação" }).click();
+    // O Feed publica pelo campo do topo; o editor completo fica a um clique, na barra do campo.
+    await page.getByRole("textbox", { name: "O que está acontecendo?" }).click();
+    await page.getByRole("link", { name: "Abrir editor completo" }).click();
     await expect(page).toHaveURL(/\/publicar$/);
 
     const publish = page.getByRole("button", { name: "Publicar", exact: true });

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import NextLink from "next/link";
 import { Alert, Box, Button, Link as MuiLink, Stack, Tab, Tabs, Typography } from "@mui/material";
 import { PostFeedList } from "@/components/PostFeedList";
+import { FeedComposer } from "@/components/FeedComposer";
 import { FollowToggle } from "@/components/FollowToggle";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
@@ -26,8 +27,8 @@ const EXPLAINERS: Record<FeedTab, string[]> = {
 /**
  * Feed da Comunidade (Figma `13:41181` / `13:41417` / `13:41628`): abas Para
  * você · Seguindo · Recentes com texto explicando a ordem, publicações sem
- * cartão e rolagem infinita. A criação de publicação fica na página
- * própria `/publicar` (botão "+ Nova publicação" do topo).
+ * cartão e rolagem infinita. Publicar é no campo do topo, como no X
+ * (`FeedComposer`); o editor completo continua em `/publicar`.
  */
 export function FeedView() {
   const user = useCurrentUser();
@@ -171,6 +172,9 @@ export function FeedView() {
         {user && <Tab label="Seguindo" value="following" />}
         <Tab label="Recentes" value="recent" />
       </Tabs>
+
+      {/* A publicação nova aparece no topo da aba aberta, sem recarregar o Feed. */}
+      <FeedComposer onPosted={(post) => setPosts((prev) => [post, ...prev.filter((p) => p.id !== post.id)])} />
 
       <Stack spacing={2} sx={{ mt: 2, mb: 1 }}>
         {EXPLAINERS[tab].map((text, i) => (
