@@ -78,7 +78,7 @@ test.describe.serial("Perfil social", () => {
     await expect(page.getByTestId("profile-friends")).toContainText("amigos (1)");
     await expect(page.getByTestId("profile-friends").getByRole("link", { name: /E2E Admin/ })).toHaveAttribute("href", `/users/${adminId}`);
     await expect(page.getByTestId("profile-friends").getByRole("link", { name: "gerenciar" })).toHaveAttribute("href", "/amigos");
-    await expect(page.getByTestId("profile-achievements").getByRole("link", { name: "ver conquistas" })).toHaveAttribute("href", "/conquistas");
+    await expect(page.getByTestId("profile-achievements").getByRole("link", { name: "minhas conquistas" })).toHaveAttribute("href", "/conquistas");
     await expect(page.getByRole("link", { name: /Minha Lista privada/ })).toHaveAttribute("href", "/minha-lista");
     await page.screenshot({ path: test.info().outputPath("perfil-social.png"), fullPage: true });
   });

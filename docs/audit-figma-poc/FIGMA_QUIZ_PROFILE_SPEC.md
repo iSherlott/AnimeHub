@@ -21,7 +21,7 @@ Referência de estilo do perfil/avatar: Crunchyroll `/pt-br/discover` ("Editar P
 ## Títulos (conquistas)
 - Persistem na coleção independentemente de acompanhar a obra. Equipar é opcional; **um título por vez, ou nenhum**. "Remover do perfil" não apaga da coleção.
 - `AchievementTitleBadge`: pílula roxa (`#1b152b`, texto `#8b5cf6`, 12 semibold, raio 10) com "称号 · <título>"; aparece sob o autor (`ProfilePreview`: identidade + badge) em perfil, postagens e respostas. Sem título: nenhum badge (sem wrapper vazio).
-- "Minhas conquistas" (aba do perfil "Minhas conquistas · N"): `AchievementCard` — capa 120×180, "✓ EQUIPADO"/"DESBLOQUEADO", título 26, obra JP 18 / EN 14, requisito, ação "Remover do perfil" / "Equipar título"; painel lateral "No seu perfil agora" + "Escolher título".
+- "Minhas conquistas" (página `/conquistas`, pelo link da caixa de conquistas do perfil; era a aba "Minhas conquistas · N"): `AchievementCard` — capa 120×180, "✓ EQUIPADO"/"DESBLOQUEADO", título 26, obra JP 18 / EN 14, requisito, ação "Remover do perfil" / "Equipar título"; painel lateral "No seu perfil agora" + "Escolher título".
 
 ## Avatar
 - Foto de perfil escolhida entre imagens das obras que a pessoa acompanha (capa e personagens), agrupadas por anime; fica independente do título equipado.

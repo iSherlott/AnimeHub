@@ -255,7 +255,10 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
               Não foi possível salvar o andamento. Tente novamente.
             </Typography>
           )}
-          <SearchField label="Buscar animes" value={query} onChange={setQuery} placeholder="Buscar anime..." />
+          {/* Numa linha, como nos outros filtros: solto nesta coluna, a base de 280px do campo virava altura. */}
+          <Box sx={{ display: "flex" }}>
+            <SearchField label="Buscar animes" value={query} onChange={setQuery} placeholder="Buscar anime..." />
+          </Box>
           {facets.length > 0 && (
             <Box role="group" aria-label="Filtrar por gênero" sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
               <Chip selected={genre === ""} onClick={() => setGenre("")} testId="genre-all">

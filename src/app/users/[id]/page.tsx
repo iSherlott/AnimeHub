@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { Box, Chip, Typography } from "@mui/material";
 import { Header } from "@/components/Header";
 import { ProfileHeader } from "@/components/ProfileHeader";
-import { ProfileTabs } from "@/components/ProfileTabs";
+import { ProfileAnimesSwitch, ProfilePostTabs } from "@/components/ProfileTabs";
 import { AppLink } from "@/components/AppLink";
 import { UserAvatar } from "@/components/UserAvatar";
 import { LinkButton } from "@/components/LinkButton";
@@ -105,7 +105,7 @@ export default async function UserProfilePage({ params }: Params) {
     ]);
   const friendOfViewer = friendRel === "friends";
   // Álbuns (coletâneas de animes): seguem "Mostrar meus animes"; null = escondidos para quem vê. A lista de animes
-  // já montada acima serve à contagem da aba e aos álbuns.
+  // já montada acima serve à contagem da seção e aos álbuns.
   const albums = await profileAlbums(id, viewerId, animeList);
   const animeCount = animeList.kind === "ok" ? animeList.list.total : null;
   const albumCards = albums ? [...albums.auto, ...albums.custom] : [];
@@ -120,7 +120,7 @@ export default async function UserProfilePage({ params }: Params) {
 
   const menu = [
     { href: "#quem-sou-eu", label: "Quem sou eu", count: null },
-    ...(albums ? [{ href: "#albuns", label: "Álbuns", count: albumCards.length }] : []),
+    ...(albums ? [{ href: "#albuns", label: "Animes", count: animeCount }] : []),
     { href: "#recados", label: "Recados", count: scraps.total },
     { href: "#depoimentos", label: "Depoimentos", count: approved.length },
     { href: "#amigos", label: "Amigos", count: friends.total },
@@ -238,14 +238,24 @@ export default async function UserProfilePage({ params }: Params) {
             </ProfileSection>
 
             {albums && (
-              <ProfileSection id="albuns" title="álbuns" count={albumCards.length} testId="profile-albums">
-                {isOwnProfile && (
-                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, flexWrap: "wrap" }}>
-                    <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Os automáticos seguem o andamento de cada anime; monte os seus com obras da sua lista.</Typography>
-                    <NewAlbumButton userId={id} />
-                  </Box>
-                )}
-                <AlbumGrid userId={id} albums={albumCards} />
+              <ProfileSection id="albuns" title="animes" count={animeCount ?? undefined} testId="profile-albums">
+                <ProfileAnimesSwitch
+                  userId={id}
+                  isOwnProfile={isOwnProfile}
+                  albumCount={albumCards.length}
+                  animeCount={animeCount}
+                  albums={
+                    <>
+                      {isOwnProfile && (
+                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, flexWrap: "wrap" }}>
+                          <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Os automáticos seguem o andamento de cada anime; monte os seus com obras da sua lista.</Typography>
+                          <NewAlbumButton userId={id} />
+                        </Box>
+                      )}
+                      <AlbumGrid userId={id} albums={albumCards} />
+                    </>
+                  }
+                />
               </ProfileSection>
             )}
 
@@ -301,16 +311,16 @@ export default async function UserProfilePage({ params }: Params) {
               )}
             </ProfileSection>
 
-            <Box id="publicacoes" sx={{ scrollMarginTop: 96 }}>
-              <ProfileTabs userId={id} isOwnProfile={isOwnProfile} titleCount={titles.length} animeCount={animeCount} />
-            </Box>
+            <ProfileSection id="publicacoes" title="publicações" count={postCount} testId="profile-posts">
+              <ProfilePostTabs userId={id} isOwnProfile={isOwnProfile} />
+            </ProfileSection>
           </Box>
 
           {/* Direita: amigos, comunidades e conquistas */}
           <Box component="aside" aria-label="Amigos, comunidades e conquistas" sx={{ display: { xs: "flex", sm: "grid", lg: "flex" }, gridTemplateColumns: { sm: "repeat(2, minmax(0,1fr))" }, alignItems: { sm: "start", lg: "stretch" }, flexDirection: "column", gap: 2, gridColumn: { md: "1 / -1", lg: "auto" }, order: { xs: 3, md: 0 } }}>
             {isOwnProfile && (
               <SideBox title="só você vê">
-                <Typography sx={{ fontSize: 13 }}>A aba Animes pode ser ocultada em Configurações. Datas e adiados continuam só seus.</Typography>
+                <Typography sx={{ fontSize: 13 }}>Seus animes e álbuns podem ser ocultados em Configurações. Datas e adiados continuam só seus.</Typography>
                 <Box>
                   <LinkButton href="/minha-lista" size="small" sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}>
                     🔒 Abrir Minha Lista privada
@@ -378,7 +388,7 @@ export default async function UserProfilePage({ params }: Params) {
                 )}
               </SideBox>
             )}
-            <SideBox id="conquistas" title="conquistas" count={titles.length} testId="profile-achievements" more={isOwnProfile ? { href: "/conquistas", label: "ver conquistas" } : undefined}>
+            <SideBox id="conquistas" title="conquistas" count={titles.length} testId="profile-achievements" more={isOwnProfile ? { href: "/conquistas", label: "minhas conquistas" } : undefined}>
               {titles.length === 0 ? (
                 <Typography sx={{ fontSize: 13, color: "text.secondary" }}>{isOwnProfile ? "Acerte 10 de 10 num quiz para ganhar um título." : "Nenhum título ainda."}</Typography>
               ) : (

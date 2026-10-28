@@ -127,8 +127,10 @@ test.describe.serial("Andamento dos animes no perfil", () => {
     await page.getByTestId("tab-animes").click();
     const list = page.getByTestId("profile-anime-list");
     await expect(list.getByTestId(`profile-anime-${FINISHED}`)).toBeVisible();
-    await expect(page.getByTestId("profile-albums").getByTestId("album-terminei")).toBeVisible();
     await expect(list.locator("select")).toHaveCount(0);
+    // Álbuns e lista são as duas vistas da mesma seção.
+    await page.getByTestId("tab-albums").click();
+    await expect(page.getByTestId("profile-albums").getByTestId("album-terminei")).toBeVisible();
     await anon.close();
   });
 });

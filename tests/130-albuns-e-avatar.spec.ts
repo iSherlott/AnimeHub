@@ -54,7 +54,8 @@ test.describe.serial("Álbuns e avatar só de anime", () => {
     await page.goto(`/users/${userId}`);
     const section = page.getByTestId("profile-albums");
     for (const key of ["assistindo", "terminei", "nao-terminei", "dropei"]) await expect(section.getByTestId(`album-${key}`)).toBeVisible();
-    await expect(page.getByTestId("profile-menu")).toContainText("Álbuns");
+    await expect(page.getByTestId("profile-menu")).toContainText("Animes");
+    await expect(section.getByTestId("tab-albums")).toHaveAttribute("aria-selected", "true");
 
     await section.getByTestId("album-terminei").getByRole("link").click();
     await expect(page).toHaveURL(new RegExp(`/users/${userId}/albuns/terminei$`));

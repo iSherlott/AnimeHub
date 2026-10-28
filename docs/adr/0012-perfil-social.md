@@ -220,3 +220,19 @@ Detalhes em `docs/auditoria/auditoria-regras-e-paginas.md`.
     recados são públicos" (recados mais completos). Os recados ficam à vista de quem tem conta.
 - **Validação contra a referência do Orkut:** `docs/auditoria/validacao-social.md`. Ficaram para decidir: mensagens
   privadas e amigos em comum no perfil de outra pessoa.
+
+## Revisão de 28/10/2026 — animes junto dos álbuns
+
+A pessoa usuária pediu que as abas do fim do perfil (Publicações, Discussões iniciadas, Animes, Minhas conquistas)
+encaixassem no resto do perfil e que a lista de animes ficasse junto dos álbuns.
+
+- **Seção "animes".** É a antiga seção de álbuns, no mesmo lugar (`#albuns`), com duas vistas: **Álbuns · N** (a
+  primeira) e **Todos · N** (a lista completa, com busca e gênero). `?aba=animes` ainda abre a lista, também ao voltar
+  da página de uma obra. No menu do perfil, o item passou a se chamar "Animes", com o total de obras.
+- **Lista oculta.** Quem visita não vê a seção inteira, nem a lista nem os álbuns. Antes, quem visitava via a aba
+  Animes com o aviso de lista oculta.
+- **Seção "publicações".** Ganhou o mesmo card das outras seções, com o total no título e as abas "Todas" e
+  "Discussões iniciadas". `?aba=discussoes` abre a segunda.
+- **"Minhas conquistas"** deixou de ser uma aba que levava para fora do perfil. O caminho agora é o link "minhas
+  conquistas" da caixa de conquistas.
+- **Testes.** Os specs 69, 72, 77, 121 e 130 foram ajustados.

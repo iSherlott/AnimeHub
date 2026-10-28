@@ -190,7 +190,8 @@ test.describe.serial("Quiz, títulos e conquistas", () => {
   test("o título equipado aparece sob o nome no perfil, nas postagens e nas respostas", async ({ page, request }) => {
     await page.goto(`/users/${userId}`);
     await expect(page.getByTestId("title-badge").first()).toContainText("称号");
-    await expect(page.getByTestId("tab-achievements")).toContainText("Minhas conquistas · 1");
+    await expect(page.getByTestId("profile-achievements")).toContainText("conquistas (1)");
+    await expect(page.getByTestId("profile-achievements").getByRole("link", { name: "minhas conquistas" })).toHaveAttribute("href", "/conquistas");
 
     const res = await request.post("/api/posts", { data: { body: "Postagem com título equipado Round69" } });
     expect(res.status()).toBe(201);

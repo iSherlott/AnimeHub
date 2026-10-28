@@ -245,13 +245,14 @@ test.describe.serial("Adiar, Para assistir e Animes no perfil", () => {
     expect((await request.get(`/api/users/${userId}/animes`)).status()).toBe(200);
     const visitor = await anon.newPage();
     await visitor.goto(`/users/${userId}`);
-    await expect(visitor.getByTestId("tab-animes")).toHaveText("Animes");
-    await visitor.getByTestId("tab-animes").click();
-    await expect(visitor.getByTestId("profile-anime-hidden")).toBeVisible();
+    // Oculta para quem visita: a seção de animes (álbuns e lista) some do perfil.
+    await expect(visitor.getByTestId("profile-posts")).toBeVisible();
+    await expect(visitor.getByTestId("tab-animes")).toHaveCount(0);
+    await expect(visitor.getByTestId("profile-albums")).toHaveCount(0);
     await anon.close();
 
     await page.goto(`/users/${userId}`);
-    await expect(page.getByTestId("tab-animes")).toContainText(/Animes · \d+/);
+    await expect(page.getByTestId("tab-animes")).toContainText(/Todos · \d+/);
   });
 
   test("seletor de avatar: as obras usam carrossel com setas, e barras de rolagem seguem o tema", async ({ page }) => {
