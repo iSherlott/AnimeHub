@@ -15,16 +15,20 @@ import {
   DialogTitle,
   InputBase,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
 import { AnimeContextPicker, type RelatedAnime } from "@/components/AnimeContextPicker";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import { HashtagRow } from "@/components/HashtagRow";
 import { PostImageAttachments } from "@/components/PostImageAttachments";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { canonicalHashtagKey, extractHashtags, MAX_HASHTAGS_PER_POST } from "@/lib/hashtags";
 import { DRAFT_IMAGES_KEY, MAX_COMPOSER_IMAGES, usePostImages } from "@/lib/usePostImages";
+import { parseSpoilerEpisode, spoilerLabel } from "@/lib/spoilers";
+import { wrapSpoilerSelection } from "@/lib/wrapSpoiler";
 
 const MAX_BODY_LENGTH = 500;
 const DRAFT_KEY = "anime-hub:draft:new-post";
@@ -73,6 +77,8 @@ export function PostComposer({
   const [tagInput, setTagInput] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [spoiler, setSpoiler] = useState(false);
+  const [spoilerEpisode, setSpoilerEpisode] = useState("");
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null);
   const [quoted, setQuoted] = useState<ComposerQuote | null>(quote);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -173,6 +179,11 @@ export function PostComposer({
   async function publish() {
     if (postingRef.current || !canPublish) return;
     const text = body.trim();
+    const episode = spoiler ? parseSpoilerEpisode(spoilerEpisode) : null;
+    if (episode === undefined) {
+      setError("O episódio do spoiler vai de 1 a 9999.");
+      return;
+    }
     postingRef.current = true;
     setBusy(true);
     setError(null);
@@ -182,7 +193,7 @@ export function PostComposer({
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: full, imageUrls: images.urls, imageAlts: images.alts, anilistId: anime?.anilistId ?? undefined, work: anime && anime.anilistId === null ? anime.work : undefined, isSpoiler: spoiler, quotedPostId: quoted?.id }),
+        body: JSON.stringify({ body: full, imageUrls: images.urls, imageAlts: images.alts, imageSpoilers: images.spoilers, anilistId: anime?.anilistId ?? undefined, work: anime && anime.anilistId === null ? anime.work : undefined, isSpoiler: spoiler, spoilerEpisode: episode ?? undefined, quotedPostId: quoted?.id }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -213,7 +224,7 @@ export function PostComposer({
         {user && <UserAvatar id={user.id} displayName={displayName} avatarUrl={user.avatarUrl} size={28} />}
         <Typography sx={{ fontWeight: 700, fontSize: 12 }}>{displayName}</Typography>
         <Typography sx={{ fontSize: 12, color: "text.secondary" }}>
-          {user?.handle ? `@${user.handle} · ` : ""}Publicação pública
+          {user?.handle ? `@${user.handle} · ` : ""}Visível para quem tem conta no AnimeHub
         </Typography>
       </Stack>
 
@@ -236,6 +247,7 @@ export function PostComposer({
         </Typography>
         <InputBase
           id="post-body"
+          inputRef={bodyRef}
           value={body}
           onChange={(e) => setBody(e.target.value.slice(0, MAX_BODY_LENGTH))}
           onPaste={(e) => {
@@ -254,9 +266,30 @@ export function PostComposer({
           inputProps={{ "aria-label": "Sua publicação" }}
           sx={{ fontSize: 16, p: 0, alignItems: "flex-start" }}
         />
-        <Typography sx={{ fontSize: 14, color: body.length >= MAX_BODY_LENGTH ? "error.main" : "text.secondary" }}>
-          {body.length}/{MAX_BODY_LENGTH} caracteres · limite provisório
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
+          <Typography sx={{ fontSize: 14, color: body.length >= MAX_BODY_LENGTH ? "error.main" : "text.secondary" }}>
+            {body.length}/{MAX_BODY_LENGTH} caracteres · limite provisório
+          </Typography>
+          {/* Esconde só um trecho: selecione e toque (ou escreva ||assim||). Na publicação, o trecho fica coberto. */}
+          <Button
+            size="small"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              const el = bodyRef.current;
+              const wrapped = wrapSpoilerSelection(body, el?.selectionStart ?? body.length, el?.selectionEnd ?? body.length, MAX_BODY_LENGTH);
+              if (!wrapped) return;
+              setBody(wrapped.value);
+              requestAnimationFrame(() => {
+                el?.focus();
+                el?.setSelectionRange(wrapped.caretStart, wrapped.caretEnd);
+              });
+            }}
+            startIcon={<VisibilityOffOutlinedIcon />}
+            sx={{ color: "text.secondary" }}
+          >
+            Esconder trecho (spoiler)
+          </Button>
+        </Box>
       </Box>
 
       {/* Imagens */}
@@ -265,7 +298,7 @@ export function PostComposer({
           Opcional. Até {MAX_COMPOSER_IMAGES} imagens (JPG, PNG, WebP, AVIF ou GIF, que continua animado), de até 8 MB cada.
           Também dá para colar uma imagem no campo do texto.
         </Typography>
-        <PostImageAttachments items={images.items} onRemove={images.remove} onAltChange={images.setAlt} disabled={busy} />
+        <PostImageAttachments items={images.items} onRemove={images.remove} onAltChange={images.setAlt} onToggleSpoiler={images.toggleSpoiler} disabled={busy} />
         {images.notice && (
           <Typography role="status" sx={{ fontSize: 13, color: "warning.main" }}>
             {images.notice}
@@ -373,8 +406,19 @@ export function PostComposer({
           </Typography>
         </Stack>
         <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
-          Desmarcado por padrão. Ative quando o texto revelar acontecimentos. Essa escolha não depende de episódios assistidos.
+          Desmarcado por padrão. Ative quando o texto revelar acontecimentos. Para esconder só uma parte, use &ldquo;Esconder trecho
+          (spoiler)&rdquo; no texto; para uma imagem, o botão Spoiler nela.
         </Typography>
+        {spoiler && (
+          <TextField
+            label="Até o episódio (opcional)"
+            value={spoilerEpisode}
+            onChange={(e) => setSpoilerEpisode(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            helperText="Aparece no aviso, para quem ainda não chegou lá decidir se vê."
+            slotProps={{ htmlInput: { inputMode: "numeric", "data-testid": "editor-spoiler-episode" } }}
+            sx={{ maxWidth: 280 }}
+          />
+        )}
       </Box>
 
       {spoiler && (
@@ -383,7 +427,10 @@ export function PostComposer({
           <Box sx={{ bgcolor: "background.paper", borderRadius: "12px", p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
             <Typography sx={{ fontWeight: 700, fontSize: 14 }}>Conteúdo com spoilers</Typography>
             <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
-              {anime ? `${anime.native ?? anime.title} · ` : ""}O texto fica oculto até você escolher revelar.
+              <Box component="span" sx={{ color: "warning.main", fontWeight: 700 }}>
+                {spoilerLabel({ work: anime ? (anime.native ?? anime.title) : null, episode: parseSpoilerEpisode(spoilerEpisode) ?? null })}
+              </Box>
+              {" · "}O texto fica oculto até você escolher revelar.
             </Typography>
           </Box>
         </Box>

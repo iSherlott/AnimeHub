@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import NextLink from "next/link";
+import { SpoilerBlock, SpoilerRichText } from "@/components/Spoiler";
 import { Box, Button, Checkbox, FormControlLabel, LinearProgress, MenuItem, TextField, Typography } from "@mui/material";
 import { ELEVATED_BUTTON_SX } from "@/components/ExploreCard";
 
@@ -50,25 +51,39 @@ export function JoinButton({ communityKey, member, loggedIn }: { communityKey: s
   );
 }
 
-/** Texto com spoiler: fica escondido até a pessoa escolher mostrar. */
-export function SpoilerText({ text, isSpoiler, testId }: { text: string; isSpoiler: boolean; testId?: string }) {
-  const [shown, setShown] = useState(!isSpoiler);
-  if (!shown) {
-    return (
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", p: 1.5, borderRadius: "10px", bgcolor: "#171820" }} data-testid={testId ? `${testId}-spoiler` : undefined}>
-        <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Contém spoiler.</Typography>
-        <Button size="small" onClick={() => setShown(true)}>
-          Mostrar
-        </Button>
-      </Box>
-    );
-  }
+/**
+ * Texto de tópico, resposta ou evento. Marcado como spoiler, fica coberto até a pessoa escolher ver; trechos
+ * `||assim||` ficam cobertos dentro do texto. `label` é o aviso: de qual anime e até onde ("Spoiler de Frieren · até o
+ * episódio 18").
+ */
+export function SpoilerText({ text, isSpoiler, testId, label = "Spoiler" }: { text: string; isSpoiler: boolean; testId?: string; label?: string }) {
   return (
-    <Typography data-testid={testId} sx={{ fontSize: 15, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-      {text}
-    </Typography>
+    <SpoilerBlock isSpoiler={isSpoiler} label={label} testId={testId}>
+      <Typography data-testid={testId} sx={{ fontSize: 15, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+        <SpoilerRichText text={text} label={label} />
+      </Typography>
+    </SpoilerBlock>
   );
 }
+
+/** Campo "Até o episódio" do spoiler (opcional), que aparece ao marcar "Contém spoiler". */
+function SpoilerEpisodeField({ value, onChange, error, testId }: { value: string; onChange: (v: string) => void; error?: string; testId: string }) {
+  return (
+    <TextField
+      size="small"
+      label="Até o episódio (opcional)"
+      value={value}
+      onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 4))}
+      error={Boolean(error)}
+      helperText={error ?? "Aparece no aviso, para quem ainda não chegou lá decidir se vê."}
+      slotProps={{ htmlInput: { inputMode: "numeric", "data-testid": testId } }}
+      sx={{ maxWidth: 280 }}
+    />
+  );
+}
+
+/** Dica dos trechos de spoiler nos campos de texto das comunidades. */
+const SPOILER_HINT = "Para esconder só um trecho, escreva ||assim||: ele fica coberto até a pessoa tocar.";
 
 /** Novo tópico: título, mensagem, de qual obra da franquia fala (opcional), spoiler e enquete (opcional). */
 export function NewTopicForm({ communityKey, works }: { communityKey: string; works: Array<{ id: string; label: string }> }) {
@@ -78,6 +93,7 @@ export function NewTopicForm({ communityKey, works }: { communityKey: string; wo
   const [body, setBody] = useState("");
   const [about, setAbout] = useState("");
   const [spoiler, setSpoiler] = useState(false);
+  const [spoilerEpisode, setSpoilerEpisode] = useState("");
   const [withPoll, setWithPoll] = useState(false);
   const [options, setOptions] = useState<string[]>(["", ""]);
   const [busy, setBusy] = useState(false);
@@ -99,7 +115,7 @@ export function NewTopicForm({ communityKey, works }: { communityKey: string; wo
     setErrors({});
     setMessage(null);
     try {
-      const r = await send(`/api/communities/${communityKey}/topics`, "POST", { title, body, isSpoiler: spoiler, catalogEntryId: about || null, poll: withPoll ? options : undefined });
+      const r = await send(`/api/communities/${communityKey}/topics`, "POST", { title, body, isSpoiler: spoiler, spoilerEpisode: spoiler && spoilerEpisode ? spoilerEpisode : undefined, catalogEntryId: about || null, poll: withPoll ? options : undefined });
       if (!r.ok) {
         setErrors((r.data.errors as Errors) ?? {});
         setMessage(String(r.data.error ?? "Não foi possível criar o tópico."));
@@ -117,7 +133,7 @@ export function NewTopicForm({ communityKey, works }: { communityKey: string; wo
         Novo tópico
       </Typography>
       <TextField label="Título" value={title} onChange={(e) => setTitle(e.target.value)} error={Boolean(errors.title)} helperText={errors.title} slotProps={{ htmlInput: { maxLength: 120, "data-testid": "new-topic-title" } }} />
-      <TextField label="Mensagem" value={body} onChange={(e) => setBody(e.target.value)} multiline minRows={4} error={Boolean(errors.body)} helperText={errors.body} slotProps={{ htmlInput: { maxLength: 5000, "data-testid": "new-topic-body" } }} />
+      <TextField label="Mensagem" value={body} onChange={(e) => setBody(e.target.value)} multiline minRows={4} error={Boolean(errors.body)} helperText={errors.body ?? SPOILER_HINT} slotProps={{ htmlInput: { maxLength: 5000, "data-testid": "new-topic-body" } }} />
       {works.length > 1 && (
         <TextField select label="Sobre" value={about} onChange={(e) => setAbout(e.target.value)} error={Boolean(errors.catalogEntryId)} helperText={errors.catalogEntryId ?? "Opcional: de qual temporada, filme ou OVA o tópico fala."} slotProps={{ htmlInput: { "data-testid": "new-topic-about" } }}>
           <MenuItem value="">A franquia toda</MenuItem>
@@ -128,7 +144,8 @@ export function NewTopicForm({ communityKey, works }: { communityKey: string; wo
           ))}
         </TextField>
       )}
-      <FormControlLabel control={<Checkbox checked={spoiler} onChange={(e) => setSpoiler(e.target.checked)} />} label="Contém spoiler" data-testid="new-topic-spoiler" />
+      <FormControlLabel control={<Checkbox checked={spoiler} onChange={(e) => setSpoiler(e.target.checked)} />} label="Contém spoiler (o título continua à vista)" data-testid="new-topic-spoiler" />
+      {spoiler && <SpoilerEpisodeField value={spoilerEpisode} onChange={setSpoilerEpisode} error={errors.spoilerEpisode} testId="new-topic-spoiler-episode" />}
       <FormControlLabel control={<Checkbox checked={withPoll} onChange={(e) => setWithPoll(e.target.checked)} />} label="Incluir enquete" data-testid="new-topic-poll" />
       {withPoll && (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }} data-testid="new-topic-poll-options">
@@ -168,19 +185,21 @@ export function ReplyForm({ topicId, topicHref }: { topicId: string; topicHref: 
   const router = useRouter();
   const [body, setBody] = useState("");
   const [spoiler, setSpoiler] = useState(false);
+  const [spoilerEpisode, setSpoilerEpisode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   async function submit() {
     setBusy(true);
     setError(null);
     try {
-      const r = await send(`/api/communities/topics/${topicId}/replies`, "POST", { body, isSpoiler: spoiler });
+      const r = await send(`/api/communities/topics/${topicId}/replies`, "POST", { body, isSpoiler: spoiler, spoilerEpisode: spoiler && spoilerEpisode ? spoilerEpisode : undefined });
       if (!r.ok) {
         setError(String(r.data.error ?? "Não foi possível responder."));
         return;
       }
       setBody("");
       setSpoiler(false);
+      setSpoilerEpisode("");
       router.push(`${topicHref}?pagina=ultima#resposta-${r.data.replyId}`);
       router.refresh();
     } finally {
@@ -189,8 +208,9 @@ export function ReplyForm({ topicId, topicHref }: { topicId: string; topicHref: 
   }
   return (
     <Box component="form" data-testid="reply-form" onSubmit={(e) => { e.preventDefault(); void submit(); }} sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-      <TextField label="Sua resposta" value={body} onChange={(e) => setBody(e.target.value)} multiline minRows={3} slotProps={{ htmlInput: { maxLength: 3000, "data-testid": "reply-body" } }} />
-      <FormControlLabel control={<Checkbox checked={spoiler} onChange={(e) => setSpoiler(e.target.checked)} />} label="Contém spoiler" />
+      <TextField label="Sua resposta" value={body} onChange={(e) => setBody(e.target.value)} multiline minRows={3} helperText={SPOILER_HINT} slotProps={{ htmlInput: { maxLength: 3000, "data-testid": "reply-body" } }} />
+      <FormControlLabel control={<Checkbox checked={spoiler} onChange={(e) => setSpoiler(e.target.checked)} />} label="Contém spoiler" data-testid="reply-spoiler" />
+      {spoiler && <SpoilerEpisodeField value={spoilerEpisode} onChange={setSpoilerEpisode} testId="reply-spoiler-episode" />}
       {error && (
         <Typography role="alert" sx={{ fontSize: 13, color: "error.main" }}>
           {error}

@@ -25,6 +25,7 @@ import { formatTimeInZone } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
 import { resolveTitleTextLenient, useTitlePreference } from "@/lib/titlePreference";
 import type { PostDTO } from "@/lib/postDto";
+import { spoilerLabel, truncateKeepingSpoilers } from "@/lib/spoilers";
 
 // Ponto de corte do "ver mais" pra legenda de post com imagem (lote 1 do
 // Epic 27, mesmo corte dos comentários longos).
@@ -116,6 +117,9 @@ export function PostCard({
   // Fileira final de hashtags separada do texto (Figma: texto primeiro,
   // hashtags numa linha própria); hashtags no meio do texto seguem inline.
   const { body: displayBody, tags: trailingTags } = useMemo(() => splitTrailingHashtags(post.body), [post.body]);
+  const captionCut = useMemo(() => truncateKeepingSpoilers(displayBody, LONG_CAPTION_THRESHOLD), [displayBody]);
+  // "Spoiler de Frieren · até o episódio 18": o aviso dos spoilers desta publicação (inteira, trechos e imagens).
+  const postSpoilerLabel = spoilerLabel({ work: animeTitle, episode: post.spoilerEpisode });
 
   async function handleDelete() {
     try {
@@ -269,32 +273,32 @@ export function PostCard({
         </Box>
       )}
 
-      {/* Corpo: spoiler fechado, imagens + legenda, ou texto */}
+      {/* Corpo: spoiler fechado, imagens + legenda, ou texto. O aviso de spoiler diz de qual obra e até onde. */}
       {post.isSpoiler ? (
-        <SpoilerGate<{ body: string; imageUrls: string[]; imageAlts?: string[] }>
+        <SpoilerGate<{ body: string; imageUrls: string[]; imageAlts?: string[]; imageSpoilers?: boolean[] }>
           revealUrl={`/api/posts/${post.id}/reveal`}
-          context={animeTitle ?? undefined}
+          label={postSpoilerLabel}
           render={(d) => (
             <Box>
               {d.imageUrls.length > 0 && <PostImageCarousel imageUrls={d.imageUrls} imageAlts={d.imageAlts} />}
-              <Typography sx={{ whiteSpace: "pre-wrap", fontSize: 16, mt: d.imageUrls.length > 0 ? 1.5 : 0 }}>{d.body}</Typography>
+              <Typography sx={{ whiteSpace: "pre-wrap", fontSize: 16, mt: d.imageUrls.length > 0 ? 1.5 : 0, overflowWrap: "anywhere" }}>
+                <PostBodyText text={d.body} spoilerLabel={postSpoilerLabel} />
+              </Typography>
             </Box>
           )}
         />
       ) : (
         <>
-          {hasImages && <PostImageCarousel imageUrls={post.imageUrls} imageAlts={post.imageAlts} />}
+          {hasImages && <PostImageCarousel imageUrls={post.imageUrls} imageAlts={post.imageAlts} imageSpoilers={post.imageSpoilers} spoilerLabel={postSpoilerLabel} />}
           <Box>
             <Typography sx={{ whiteSpace: "pre-wrap", fontSize: 16, color: "text.primary", overflowWrap: "anywhere" }}>
               <PostBodyText
-                text={
-                  hasImages && !captionExpanded && displayBody.length > LONG_CAPTION_THRESHOLD
-                    ? `${displayBody.slice(0, LONG_CAPTION_THRESHOLD)}…`
-                    : displayBody
-                }
+                // O corte da legenda longa nunca parte um trecho de spoiler ao meio (partido, apareceria descoberto).
+                text={hasImages && !captionExpanded && captionCut.truncated ? `${captionCut.text}…` : displayBody}
+                spoilerLabel={postSpoilerLabel}
               />
             </Typography>
-            {hasImages && displayBody.length > LONG_CAPTION_THRESHOLD && (
+            {hasImages && captionCut.truncated && (
               <Button onClick={() => setCaptionExpanded((v) => !v)} size="small" sx={{ px: 0, minWidth: 0, minHeight: 0, color: "text.secondary" }}>
                 {captionExpanded ? "ver menos" : "ver mais"}
               </Button>
@@ -376,7 +380,12 @@ export function PostCard({
               {post.quotedPost.isSpoiler ? (
                 <SpoilerGate<{ body: string }>
                   revealUrl={`/api/posts/${post.quotedPost.id}/reveal`}
-                  render={(d) => <Typography sx={{ fontSize: 14, whiteSpace: "pre-wrap" }}>{d.body}</Typography>}
+                  label={spoilerLabel({ work: post.quotedPost.animeTitleEnglish ?? post.quotedPost.animeTitleRomaji })}
+                  render={(d) => (
+                    <Typography sx={{ fontSize: 14, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                      <PostBodyText text={d.body} spoilerLabel={spoilerLabel({ work: post.quotedPost?.animeTitleEnglish ?? post.quotedPost?.animeTitleRomaji })} />
+                    </Typography>
+                  )}
                 />
               ) : (
                 <Typography
@@ -440,7 +449,7 @@ export function PostCard({
       />
 
       {commentsOpen && (
-        <PostComments postId={post.id} commentCount={post.commentCount} onCountChange={handleCommentCountChange} withHeading={commentsHeading} />
+        <PostComments postId={post.id} commentCount={post.commentCount} onCountChange={handleCommentCountChange} withHeading={commentsHeading} spoilerWork={animeTitle} />
       )}
 
       {error && (

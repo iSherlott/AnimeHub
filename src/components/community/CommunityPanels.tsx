@@ -3,7 +3,9 @@
 import { useState } from "react";
 import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography } from "@mui/material";
+import { Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, TextField, Typography } from "@mui/material";
+import { SpoilerText } from "@/components/community/CommunityClient";
+import { spoilerLabel } from "@/lib/spoilers";
 import { ELEVATED_BUTTON_SX } from "@/components/ExploreCard";
 import { useTimeZone } from "@/lib/useTimeZone";
 import { formatTimeInZone, timeZoneLabel, zonedLocalToUtc } from "@/lib/timeZone";
@@ -163,6 +165,7 @@ export function NewEventForm({ communityKey }: { communityKey: string }) {
   const timeZone = useTimeZone();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", start: "", end: "", place: "" });
+  const [spoiler, setSpoiler] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
@@ -183,7 +186,7 @@ export function NewEventForm({ communityKey }: { communityKey: string }) {
     try {
       const startsAt = zonedLocalToUtc(form.start, timeZone);
       const endsAt = form.end ? zonedLocalToUtc(form.end, timeZone) : null;
-      const r = await send(`/api/communities/${communityKey}/events`, "POST", { title: form.title, description: form.description, place: form.place, startsAt: startsAt?.toISOString() ?? "", endsAt: endsAt?.toISOString() ?? undefined });
+      const r = await send(`/api/communities/${communityKey}/events`, "POST", { title: form.title, description: form.description, isSpoiler: spoiler, place: form.place, startsAt: startsAt?.toISOString() ?? "", endsAt: endsAt?.toISOString() ?? undefined });
       if (!r.ok) {
         setErrors((r.data.errors as Record<string, string>) ?? {});
         setMessage(String(r.data.error ?? "Não foi possível criar o evento."));
@@ -191,6 +194,7 @@ export function NewEventForm({ communityKey }: { communityKey: string }) {
       }
       setOpen(false);
       setForm({ title: "", description: "", start: "", end: "", place: "" });
+      setSpoiler(false);
       router.refresh();
     } finally {
       setBusy(false);
@@ -203,6 +207,7 @@ export function NewEventForm({ communityKey }: { communityKey: string }) {
       </Typography>
       <TextField label="Título" value={form.title} onChange={(e) => set("title", e.target.value)} error={Boolean(errors.title)} helperText={errors.title ?? "Ex.: maratona da 1ª temporada, estreia do filme"} slotProps={{ htmlInput: { maxLength: 120, "data-testid": "new-event-title" } }} />
       <TextField label="Descrição" value={form.description} onChange={(e) => set("description", e.target.value)} multiline minRows={3} error={Boolean(errors.description)} helperText={errors.description} slotProps={{ htmlInput: { maxLength: 2000, "data-testid": "new-event-description" } }} />
+      <FormControlLabel control={<Checkbox checked={spoiler} onChange={(e) => setSpoiler(e.target.checked)} />} label="A descrição contém spoiler" data-testid="new-event-spoiler" />
       <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
         <TextField type="datetime-local" label={`Início (${timeZoneLabel(timeZone)})`} value={form.start} onChange={(e) => set("start", e.target.value)} error={Boolean(errors.startsAt)} helperText={errors.startsAt} sx={{ flex: "1 1 220px" }} slotProps={{ inputLabel: { shrink: true }, htmlInput: { "data-testid": "new-event-start" } }} />
         <TextField type="datetime-local" label="Fim (opcional)" value={form.end} onChange={(e) => set("end", e.target.value)} error={Boolean(errors.endsAt)} helperText={errors.endsAt} sx={{ flex: "1 1 220px" }} slotProps={{ inputLabel: { shrink: true }, htmlInput: { "data-testid": "new-event-end" } }} />
@@ -225,10 +230,10 @@ export function NewEventForm({ communityKey }: { communityKey: string }) {
   );
 }
 
-export type EventView = { id: string; title: string; description: string; startsAt: string; endsAt: string | null; place: string | null; author: { id: string; displayName: string }; going: number; maybe: number; mine: string | null };
+export type EventView = { id: string; title: string; description: string; isSpoiler?: boolean; startsAt: string; endsAt: string | null; place: string | null; author: { id: string; displayName: string }; going: number; maybe: number; mine: string | null };
 
 /** Um evento: quando (no fuso de quem vê), onde, quem vai e os botões de presença. */
-export function EventCard({ event, canRsvp, canDelete, canReport = false }: { event: EventView; canRsvp: boolean; canDelete: boolean; canReport?: boolean }) {
+export function EventCard({ event, canRsvp, canDelete, canReport = false, spoilerWork = null }: { event: EventView; canRsvp: boolean; canDelete: boolean; canReport?: boolean; /** O anime da comunidade, para o aviso de spoiler da descrição. */ spoilerWork?: string | null }) {
   const router = useRouter();
   const timeZone = useTimeZone();
   const [busy, setBusy] = useState(false);
@@ -263,7 +268,8 @@ export function EventCard({ event, canRsvp, canDelete, canReport = false }: { ev
         {event.endsAt ? (sameDay(event.startsAt, event.endsAt) ? ` às ${formatTimeInZone(new Date(event.endsAt), timeZone)}` : ` até ${day(event.endsAt)}`) : ""}
       </Typography>
       {event.place && <Typography sx={{ fontSize: 13, color: "text.secondary", overflowWrap: "anywhere" }}>Onde: {event.place}</Typography>}
-      <Typography sx={{ fontSize: 14, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{event.description}</Typography>
+      {/* A descrição pode contar um ponto da história: marcada como spoiler, fica coberta até tocar. */}
+      <SpoilerText text={event.description} isSpoiler={Boolean(event.isSpoiler)} testId={`event-description-${event.id}`} label={spoilerLabel({ work: spoilerWork })} />
       <Typography sx={{ fontSize: 12, color: "text.secondary", fontVariantNumeric: "tabular-nums" }} data-testid={`event-count-${event.id}`}>
         {event.going} {event.going === 1 ? "vai" : "vão"} · {event.maybe} talvez · criado por {event.author.displayName}
       </Typography>

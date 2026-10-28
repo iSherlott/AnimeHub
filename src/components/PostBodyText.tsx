@@ -3,6 +3,7 @@
 import NextLink from "next/link";
 import { Link as MuiLink } from "@mui/material";
 import { splitBodyByHashtags } from "@/lib/hashtags";
+import { SpoilerRichText } from "@/components/Spoiler";
 
 /** Só https; a pontuação final da frase não entra no link. */
 const URL_PATTERN = /(https:\/\/[^\s<>"]+[^\s<>".,;:!?)\]])/g;
@@ -23,15 +24,10 @@ function TextWithLinks({ value }: { value: string }) {
   );
 }
 
-/**
- * Texto de uma publicação com as hashtags como LINKS para a página da
- * hashtag (fluxo A, Figma `13:44169`). Só texto + links: nada de HTML do
- * autor. A cor herda do contexto (o bloco só-texto do card usa branco).
- */
-export function PostBodyText({ text }: { text: string }) {
+function TextWithHashtags({ value }: { value: string }) {
   return (
     <>
-      {splitBodyByHashtags(text).map((segment, i) =>
+      {splitBodyByHashtags(value).map((segment, i) =>
         segment.type === "text" ? (
           <TextWithLinks key={i} value={segment.value} />
         ) : (
@@ -50,4 +46,15 @@ export function PostBodyText({ text }: { text: string }) {
       )}
     </>
   );
+}
+
+/**
+ * Texto de uma publicação com as hashtags como LINKS para a página da
+ * hashtag (fluxo A, Figma `13:44169`). Só texto + links: nada de HTML do
+ * autor. A cor herda do contexto (o bloco só-texto do card usa branco).
+ * Trechos entre `||barras duplas||` são spoiler: ficam cobertos até a pessoa tocar (`spoilerLabel` diz de qual obra);
+ * hashtag de dentro deles não vira link (nem é contada pelo servidor), para não revelar o trecho.
+ */
+export function PostBodyText({ text, spoilerLabel = "Spoiler" }: { text: string; spoilerLabel?: string }) {
+  return <SpoilerRichText text={text} label={spoilerLabel} renderText={(value, key) => <TextWithHashtags key={key} value={value} />} />;
 }

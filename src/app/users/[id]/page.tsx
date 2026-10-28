@@ -100,7 +100,7 @@ export default async function UserProfilePage({ params }: Params) {
       listScraps(id, 0, viewerId, SCRAPS_ON_PROFILE),
       listTestimonials(id, viewerId),
       viewerId ? friendState(viewerId, id) : Promise.resolve(null),
-      viewerId && !isOwnProfile ? prisma.testimonial.findUnique({ where: { profileId_authorId: { profileId: id, authorId: viewerId } }, select: { body: true, status: true } }) : Promise.resolve(null),
+      viewerId && !isOwnProfile ? prisma.testimonial.findUnique({ where: { profileId_authorId: { profileId: id, authorId: viewerId } }, select: { body: true, status: true, isSpoiler: true } }) : Promise.resolve(null),
       isOwnProfile ? pendingReceivedCount(id) : Promise.resolve(0),
     ]);
   const friendOfViewer = friendRel === "friends";
@@ -266,12 +266,12 @@ export default async function UserProfilePage({ params }: Params) {
                   <Typography sx={{ fontSize: 13, fontWeight: 700 }}>Esperando a sua aprovação ({pending.length})</Typography>
                   <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none" }}>
                     {pending.map((t) => (
-                      <NoteItem key={t.id} author={t.author} when={t.updatedAt} body={t.body} testId={`testimonial-${t.id}`} actions={<TestimonialDecision id={t.id} />} />
+                      <NoteItem key={t.id} author={t.author} when={t.updatedAt} body={t.body} isSpoiler={t.isSpoiler} testId={`testimonial-${t.id}`} actions={<TestimonialDecision id={t.id} />} />
                     ))}
                   </Box>
                 </Box>
               )}
-              {friendOfViewer && <TestimonialForm userId={id} displayName={firstName} initial={myTestimonial?.body ?? ""} status={myTestimonial?.status ?? null} />}
+              {friendOfViewer && <TestimonialForm userId={id} displayName={firstName} initial={myTestimonial?.body ?? ""} initialSpoiler={myTestimonial?.isSpoiler ?? false} status={myTestimonial?.status ?? null} />}
               {viewer && !isOwnProfile && !friendOfViewer && (
                 <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Só amigos escrevem depoimentos.</Typography>
               )}
@@ -285,6 +285,7 @@ export default async function UserProfilePage({ params }: Params) {
                       author={t.author}
                       when={t.decidedAt ?? t.updatedAt}
                       body={t.body}
+                      isSpoiler={t.isSpoiler}
                       testId={`testimonial-${t.id}`}
                       actions={
                         viewerId ? (

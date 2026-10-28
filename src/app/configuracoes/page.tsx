@@ -21,7 +21,7 @@ import { SOCIAL_OFF_PATCH, type UserPreferences } from "@/lib/userSettings";
  */
 type Draft = Pick<
   UserPreferences,
-  "notifyReleases" | "notifyReplies" | "notifyComments" | "notifyFollowers" | "notifyLikes" | "notifyCommunity" | "animeListPublic" | "recordVisits"
+  "notifyReleases" | "notifyReplies" | "notifyComments" | "notifyFollowers" | "notifyLikes" | "notifyCommunity" | "animeListPublic" | "recordVisits" | "showSpoilers"
 > & { titleFormat: "ja" | "romaji"; synopsisLanguage: "pt" | "ja"; timeZone: string };
 
 const SOCIAL_TOGGLES: Array<{ key: keyof Draft; label: string; hint: string }> = [
@@ -149,6 +149,7 @@ export default function SettingsPage() {
         notifyCommunity: p.notifyCommunity,
         animeListPublic: p.animeListPublic,
         recordVisits: p.recordVisits,
+        showSpoilers: p.showSpoilers,
       });
     }
   }, [user, draft]);
@@ -282,6 +283,19 @@ export default function SettingsPage() {
               <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
                 Publicações são vistas por quem tem conta no AnimeHub. Acompanhar uma obra e seguir uma pessoa nunca publicam uma mensagem por conta própria.
               </Typography>
+            </Card>
+
+            <Card title="Spoilers" labelledBy="spoilers-heading">
+              <Typography sx={{ fontSize: 16 }}>
+                Publicações, comentários, tópicos, recados e imagens podem vir marcados como spoiler, inteiros ou só num trecho. O aviso diz de qual
+                anime e até onde vai.
+              </Typography>
+              <PillToggle
+                label="Mostrar spoilers sem perguntar"
+                hint="Desativado (o padrão), o spoiler fica coberto até você tocar. Ativado, aparece direto, mas continua com a marca de spoiler."
+                checked={draft.showSpoilers}
+                onChange={(v) => update("showSpoilers", v)}
+              />
             </Card>
 
             <Card title="Senha" labelledBy="password-heading">

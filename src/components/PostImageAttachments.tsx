@@ -3,6 +3,7 @@
 import { useState } from "react";
 import CloseIcon from "@mui/icons-material/Close";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import { Box, Button, ButtonBase, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, TextField, Typography } from "@mui/material";
 import { MAX_IMAGE_ALT_LENGTH, type PostImage } from "@/lib/usePostImages";
 
@@ -69,17 +70,20 @@ function DescribeDialog({ item, index, onSave, onClose }: { item: PostImage; ind
 /**
  * Miniaturas das imagens de uma publicação nova, no arranjo do X: o bloco tem sempre a mesma altura (16:9), não importa
  * quantas imagens, para o campo não crescer. Cada uma tem o X para remover, a roda enquanto envia, o aviso se falhou e
- * o botão ALT para escrever a descrição (texto alternativo) — "ALT ✓" quando já tem uma.
+ * o botão ALT para escrever a descrição (texto alternativo) — "ALT ✓" quando já tem uma — e o botão "Spoiler", que marca a
+ * imagem para ficar borrada na publicação até a pessoa tocar (a miniatura marcada aparece borrada aqui também).
  */
 export function PostImageAttachments({
   items,
   onRemove,
   onAltChange,
+  onToggleSpoiler,
   disabled = false,
 }: {
   items: PostImage[];
   onRemove: (id: string) => void;
   onAltChange?: (id: string, alt: string) => void;
+  onToggleSpoiler?: (id: string) => void;
   disabled?: boolean;
 }) {
   const [describing, setDescribing] = useState<string | null>(null);
@@ -115,7 +119,7 @@ export function PostImageAttachments({
             sx={{ position: "relative", minHeight: 0, overflow: "hidden", bgcolor: "#171820", ...cellSx(count, i) }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- prévia local (blob:) ou imagem enviada, fora do otimizador. */}
-            <img src={item.preview} alt={item.alt || `Imagem ${i + 1} de ${count}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: item.status === "done" ? 1 : 0.5 }} />
+            <img src={item.preview} alt={item.alt || `Imagem ${i + 1} de ${count}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: item.status === "done" ? 1 : 0.5, ...(item.spoiler ? { filter: "blur(10px)", transform: "scale(1.08)" } : {}) }} />
             {item.status === "uploading" && (
               <Box role="status" aria-label={`Enviando a imagem ${i + 1}`} sx={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
                 <CircularProgress size={28} />
@@ -127,17 +131,34 @@ export function PostImageAttachments({
                 <Typography sx={{ fontSize: 12 }}>{item.error} Remova para publicar.</Typography>
               </Box>
             )}
-            {onAltChange && item.status !== "error" && (
-              <ButtonBase
-                onClick={() => setDescribing(item.id)}
-                disabled={disabled}
-                aria-haspopup="dialog"
-                aria-label={item.alt ? `Editar a descrição da imagem ${i + 1}` : `Descrever a imagem ${i + 1}`}
-                data-testid="describe-image"
-                sx={{ ...chipSx, position: "absolute", left: 6, bottom: 6 }}
-              >
-                {item.alt ? "ALT ✓" : "+ ALT"}
-              </ButtonBase>
+            {item.status !== "error" && (onAltChange || onToggleSpoiler) && (
+              <Box sx={{ position: "absolute", left: 6, bottom: 6, display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                {onAltChange && (
+                  <ButtonBase
+                    onClick={() => setDescribing(item.id)}
+                    disabled={disabled}
+                    aria-haspopup="dialog"
+                    aria-label={item.alt ? `Editar a descrição da imagem ${i + 1}` : `Descrever a imagem ${i + 1}`}
+                    data-testid="describe-image"
+                    sx={chipSx}
+                  >
+                    {item.alt ? "ALT ✓" : "+ ALT"}
+                  </ButtonBase>
+                )}
+                {onToggleSpoiler && (
+                  <ButtonBase
+                    onClick={() => onToggleSpoiler(item.id)}
+                    disabled={disabled}
+                    aria-pressed={item.spoiler}
+                    aria-label={`Imagem ${i + 1} contém spoiler`}
+                    data-testid="image-spoiler-toggle"
+                    sx={{ ...chipSx, gap: 0.5, ...(item.spoiler ? { bgcolor: "warning.main", color: "#0b0b0d", "&:hover": { bgcolor: "warning.light" } } : {}) }}
+                  >
+                    <VisibilityOffOutlinedIcon sx={{ fontSize: 14 }} aria-hidden />
+                    Spoiler
+                  </ButtonBase>
+                )}
+              </Box>
             )}
             <IconButton
               aria-label={`Remover a imagem ${i + 1}`}

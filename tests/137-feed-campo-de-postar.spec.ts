@@ -31,7 +31,7 @@ test.describe.serial("Feed: campo de postar", () => {
     await expect(page.getByRole("toolbar", { name: "Opções da publicação" })).toHaveCount(0);
     await field.click();
     const toolbar = page.getByRole("toolbar", { name: "Opções da publicação" });
-    for (const name of ["Anime relacionado", "Inserir hashtag", "Contém spoilers", "Abrir editor completo"]) await expect(toolbar.getByRole(/editor/.test(name) ? "link" : "button", { name })).toBeVisible();
+    for (const name of ["Anime relacionado", "Inserir hashtag", "Spoiler", "Abrir editor completo"]) await expect(toolbar.getByRole(/editor/.test(name) ? "link" : "button", { name })).toBeVisible();
     await expect(page.getByTestId("composer-post")).toBeDisabled();
     await field.fill("   ");
     await expect(page.getByTestId("composer-post")).toBeDisabled();
@@ -45,8 +45,10 @@ test.describe.serial("Feed: campo de postar", () => {
     await page.getByRole("button", { name: "Inserir hashtag" }).click();
     await page.keyboard.type(TAG);
     await expect(field).toHaveValue(`Primeira impressão ${TAG} #${TAG}`);
-    const spoiler = page.getByRole("toolbar", { name: "Opções da publicação" }).getByRole("button", { name: "Contém spoilers" });
+    // O botão Spoiler abre o menu: a publicação inteira ou um trecho.
+    const spoiler = page.getByRole("toolbar", { name: "Opções da publicação" }).getByRole("button", { name: "Spoiler", exact: true });
     await spoiler.click();
+    await page.getByRole("menuitemcheckbox", { name: /A publicação inteira tem spoiler/ }).click();
     await expect(spoiler).toHaveAttribute("aria-pressed", "true");
     await page.getByTestId("composer-post").click();
 
@@ -91,8 +93,8 @@ test.describe.serial("Feed: campo de postar", () => {
     const composer = page.getByTestId("feed-composer");
     const box = (await composer.boundingBox())!;
     expect(box.x + box.width).toBeLessThanOrEqual(375);
-    for (const name of ["Anime relacionado", "Inserir hashtag", "Contém spoilers"]) {
-      const b = (await page.getByRole("toolbar", { name: "Opções da publicação" }).getByRole("button", { name }).boundingBox())!;
+    for (const name of ["Anime relacionado", "Inserir hashtag", "Spoiler"]) {
+      const b = (await page.getByRole("toolbar", { name: "Opções da publicação" }).getByRole("button", { name, exact: true }).boundingBox())!;
       expect(b.width, name).toBeGreaterThanOrEqual(44);
       expect(b.height, name).toBeGreaterThanOrEqual(44);
     }

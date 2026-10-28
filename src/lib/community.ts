@@ -1,4 +1,5 @@
 import type { CatalogEntry, Community, Prisma } from "@prisma/client";
+import { parseSpoilerEpisode } from "@/lib/spoilers";
 import { prisma } from "@/lib/prisma";
 import { blockedUserIdSet } from "@/lib/blocks";
 import { notifyCommunity } from "@/lib/socialNotifications";
@@ -147,7 +148,7 @@ export type CommunityError = { ok: false; status: 400 | 403 | 404 | 409; error: 
 
 const clean = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 
-export function validateTopic(input: unknown, works: CommunityWork[]): { ok: true; value: { title: string; body: string; isSpoiler: boolean; catalogEntryId: string | null; poll: string[] | null } } | { ok: false; errors: Record<string, string> } {
+export function validateTopic(input: unknown, works: CommunityWork[]): { ok: true; value: { title: string; body: string; isSpoiler: boolean; spoilerEpisode: number | null; catalogEntryId: string | null; poll: string[] | null } } | { ok: false; errors: Record<string, string> } {
   const body = (input ?? {}) as Record<string, unknown>;
   const errors: Record<string, string> = {};
   const title = clean(body.title);
@@ -169,8 +170,12 @@ export function validateTopic(input: unknown, works: CommunityWork[]): { ok: tru
     else if (new Set(options.map((o) => o.toLowerCase())).size !== options.length) errors.poll = "há opções repetidas";
     else poll = options;
   }
+  // "Até o episódio N" do spoiler: só com o tópico marcado como spoiler.
+  const spoilerEpisode = parseSpoilerEpisode(body.spoilerEpisode);
+  if (spoilerEpisode === undefined) errors.spoilerEpisode = "episódio de 1 a 9999";
   if (Object.keys(errors).length) return { ok: false, errors };
-  return { ok: true, value: { title, body: text, isSpoiler: body.isSpoiler === true, catalogEntryId, poll } };
+  const isSpoiler = body.isSpoiler === true;
+  return { ok: true, value: { title, body: text, isSpoiler, spoilerEpisode: isSpoiler ? (spoilerEpisode ?? null) : null, catalogEntryId, poll } };
 }
 
 export async function createTopic(scope: CommunityScope, userId: string, input: unknown): Promise<{ ok: true; topicId: string } | CommunityError> {
@@ -208,13 +213,15 @@ export async function createReply(topicId: string, userId: string, input: unknow
   const text = clean(body.body);
   if (isBlank(text)) return { ok: false, status: 400, error: "Escreva a resposta.", errors: { body: "escreva a resposta" } };
   if (text.length > LIMITS.reply) return { ok: false, status: 400, error: `Resposta com até ${LIMITS.reply.toLocaleString("pt-BR")} caracteres.`, errors: { body: `até ${LIMITS.reply.toLocaleString("pt-BR")} caracteres` } };
+  const spoilerEpisode = parseSpoilerEpisode(body.spoilerEpisode);
+  if (spoilerEpisode === undefined) return { ok: false, status: 400, error: "Episódio do spoiler de 1 a 9999.", errors: { spoilerEpisode: "episódio de 1 a 9999" } };
   const topic = await prisma.communityTopic.findUnique({ where: { id: topicId }, select: { id: true, communityId: true, deletedAt: true, lockedAt: true } });
   if (!topic || topic.deletedAt) return { ok: false, status: 404, error: "Tópico não encontrado." };
   if (topic.lockedAt) return { ok: false, status: 409, error: "Tópico trancado pela moderação: não aceita respostas." };
   if (!(await isMember(topic.communityId, userId))) return { ok: false, status: 403, error: "Entre na comunidade para responder." };
   const now = new Date();
   const [reply] = await prisma.$transaction([
-    prisma.communityReply.create({ data: { topicId, authorId: userId, body: text, isSpoiler: body.isSpoiler === true, createdAt: now }, select: { id: true } }),
+    prisma.communityReply.create({ data: { topicId, authorId: userId, body: text, isSpoiler: body.isSpoiler === true, spoilerEpisode: body.isSpoiler === true ? spoilerEpisode : null, createdAt: now }, select: { id: true } }),
     prisma.communityTopic.update({ where: { id: topicId }, data: { replyCount: { increment: 1 }, lastActivityAt: now } }),
   ]);
   // Avisa quem participa do tópico: quem o criou e quem já respondeu.
@@ -233,7 +240,7 @@ export async function editTopic(topicId: string, userId: string, input: unknown)
   if (!loaded) return { ok: false, status: 404, error: "Tópico não encontrado." };
   if (loaded.topic.authorId !== userId) return { ok: false, status: 403, error: "Só quem criou o tópico pode editá-lo." };
   const body = (input ?? {}) as Record<string, unknown>;
-  const parsed = validateTopic({ title: body.title ?? loaded.topic.title, body: body.body ?? loaded.topic.body, isSpoiler: body.isSpoiler ?? loaded.topic.isSpoiler, catalogEntryId: body.catalogEntryId === undefined ? loaded.topic.catalogEntryId : body.catalogEntryId }, loaded.scope.works);
+  const parsed = validateTopic({ title: body.title ?? loaded.topic.title, body: body.body ?? loaded.topic.body, isSpoiler: body.isSpoiler ?? loaded.topic.isSpoiler, spoilerEpisode: body.spoilerEpisode === undefined ? loaded.topic.spoilerEpisode : body.spoilerEpisode, catalogEntryId: body.catalogEntryId === undefined ? loaded.topic.catalogEntryId : body.catalogEntryId }, loaded.scope.works);
   if (!parsed.ok) return { ok: false, status: 400, error: "Corrija os campos indicados.", errors: parsed.errors };
   const { poll: _poll, ...data } = parsed.value;
   void _poll;
@@ -487,7 +494,7 @@ export async function resolveReport(reportId: string, action: "remove" | "keep",
 
 // ---------- Eventos ----------
 
-export function validateEvent(input: unknown, now: Date = new Date()): { ok: true; value: { title: string; description: string; startsAt: Date; endsAt: Date | null; place: string | null } } | { ok: false; errors: Record<string, string> } {
+export function validateEvent(input: unknown, now: Date = new Date()): { ok: true; value: { title: string; description: string; isSpoiler: boolean; startsAt: Date; endsAt: Date | null; place: string | null } } | { ok: false; errors: Record<string, string> } {
   const body = (input ?? {}) as Record<string, unknown>;
   const errors: Record<string, string> = {};
   const title = clean(body.title);
@@ -505,7 +512,7 @@ export function validateEvent(input: unknown, now: Date = new Date()): { ok: tru
   if (body.endsAt && !endsAt) errors.endsAt = "data e hora de fim inválidas";
   else if (startsAt && endsAt && endsAt <= startsAt) errors.endsAt = "o fim precisa ser depois do início";
   if (Object.keys(errors).length) return { ok: false, errors };
-  return { ok: true, value: { title, description, startsAt: startsAt as Date, endsAt, place: place || null } };
+  return { ok: true, value: { title, description, isSpoiler: body.isSpoiler === true, startsAt: startsAt as Date, endsAt, place: place || null } };
 }
 
 export async function createEvent(scope: CommunityScope, userId: string, input: unknown): Promise<{ ok: true; eventId: string } | CommunityError> {
@@ -557,6 +564,7 @@ export async function listEvents(communityId: string, when: "upcoming" | "past",
     id: e.id,
     title: e.title,
     description: e.description,
+    isSpoiler: e.isSpoiler,
     startsAt: e.startsAt.toISOString(),
     endsAt: e.endsAt?.toISOString() ?? null,
     place: e.place,

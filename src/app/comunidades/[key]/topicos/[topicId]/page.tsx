@@ -1,3 +1,4 @@
+import { spoilerLabel } from "@/lib/spoilers";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { Box, Chip, Typography } from "@mui/material";
@@ -34,6 +35,8 @@ export default async function TopicPage({ params, searchParams }: Props) {
   if ((await blockedUserIdSet(user?.id ?? null)).has(topic.authorId)) notFound();
   const member = await isMember(topic.communityId, user?.id ?? null);
   const canModerate = Boolean(user && can(user.role, "moderation"));
+  // Aviso de spoiler: a obra de que o tópico fala ("Sobre") ou a da comunidade.
+  const spoilerWork = topic.catalogEntry ? (topic.catalogEntry.titleNative ?? topic.catalogEntry.titleRomaji) : (scope.root.titleNative ?? scope.root.titleRomaji);
 
   // `pagina=ultima` (depois de responder) vai para a última página, onde a resposta nova aparece.
   const rawPage = (await searchParams).pagina;
@@ -76,7 +79,7 @@ export default async function TopicPage({ params, searchParams }: Props) {
           </Typography>
           {topic.catalogEntry && <Chip size="small" label={`Sobre: ${topic.catalogEntry.titleNative ?? topic.catalogEntry.titleRomaji}`} data-testid="topic-about" />}
         </Box>
-        <SpoilerText text={topic.body} isSpoiler={topic.isSpoiler} testId="topic-body" />
+        <SpoilerText text={topic.body} isSpoiler={topic.isSpoiler} testId="topic-body" label={spoilerLabel({ work: spoilerWork, episode: topic.spoilerEpisode })} />
         {topic.poll && <PollBox topicId={topic.id} options={topic.poll.options.map((o) => ({ id: o.id, label: o.label, votes: o._count.votes }))} myVote={myVote} canVote={member && !locked} />}
         <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start", flexWrap: "wrap" }}>
           <ContentActions kind="topic" id={topic.id} canEdit={user?.id === topic.authorId} canDelete={user?.id === topic.authorId || canModerate} initial={{ title: topic.title, body: topic.body }} afterDeleteHref={`${communityHref}/forum`} />
@@ -102,7 +105,7 @@ export default async function TopicPage({ params, searchParams }: Props) {
                   {r.editedAt ? " · editada" : ""}
                 </Typography>
               </Box>
-              <SpoilerText text={r.body} isSpoiler={r.isSpoiler} testId={`reply-body-${r.id}`} />
+              <SpoilerText text={r.body} isSpoiler={r.isSpoiler} testId={`reply-body-${r.id}`} label={spoilerLabel({ work: spoilerWork, episode: r.spoilerEpisode })} />
               <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start", flexWrap: "wrap" }}>
                 <ContentActions kind="reply" id={r.id} canEdit={user?.id === r.authorId} canDelete={user?.id === r.authorId || canModerate} initial={{ body: r.body }} />
                 {user && user.id !== r.authorId && <ReportButton replyId={r.id} />}

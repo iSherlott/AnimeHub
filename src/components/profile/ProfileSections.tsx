@@ -5,12 +5,13 @@ import { AnimeTitle } from "@/components/AnimeTitle";
 import { CoverImage } from "@/components/CoverImage";
 import { UserAvatar } from "@/components/UserAvatar";
 import { DeleteButton, ProfileReportButton, ScrapReplyButton } from "@/components/profile/ProfileActions";
+import { SpoilerBlock, SpoilerRichText } from "@/components/Spoiler";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import type { CommunityLink } from "@/lib/community";
 import type { AlbumCard } from "@/lib/profileAlbums";
 
 type Person = { id: string; displayName: string; avatarUrl: string | null };
-export type ScrapView = { id: string; body: string; createdAt: Date; author: Person; authorId: string; profileId: string; replyTo?: { id: string; deletedAt: Date | null } | null };
+export type ScrapView = { id: string; body: string; isSpoiler?: boolean; createdAt: Date; author: Person; authorId: string; profileId: string; replyTo?: { id: string; deletedAt: Date | null } | null };
 
 /** Seção do centro do perfil (recados, depoimentos…): título em minúsculas, contagem e "ver todos". */
 export function ProfileSection({ id, title, count, more, testId, children }: { id: string; title: string; count?: number; more?: { href: string; label: string }; testId: string; children: ReactNode }) {
@@ -37,7 +38,7 @@ export function ProfileSection({ id, title, count, more, testId, children }: { i
 }
 
 /** Um recado (ou depoimento): avatar e nome de quem escreveu, quando, o texto, as ações e uma linha de contexto. */
-export function NoteItem({ author, when, body, actions, footer, testId }: { author: Person; when: Date; body: string; actions?: ReactNode; footer?: ReactNode; testId: string }) {
+export function NoteItem({ author, when, body, isSpoiler = false, actions, footer, testId }: { author: Person; when: Date; body: string; isSpoiler?: boolean; actions?: ReactNode; footer?: ReactNode; testId: string }) {
   return (
     <Box component="li" data-testid={testId} sx={{ display: "flex", gap: 1.5, py: 1.5, borderTop: 1, borderColor: "divider", "&:first-of-type": { borderTop: 0, pt: 0 } }}>
       <AppLink href={`/users/${author.id}`} aria-label={author.displayName} sx={{ flexShrink: 0 }}>
@@ -53,7 +54,12 @@ export function NoteItem({ author, when, body, actions, footer, testId }: { auth
           </Typography>
           {actions && <Box sx={{ ml: "auto", display: "flex", gap: 0.5, alignItems: "center" }}>{actions}</Box>}
         </Box>
-        <Typography sx={{ fontSize: 15, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{body}</Typography>
+        {/* Spoiler: o recado/depoimento inteiro fica coberto até tocar; trechos `||assim||`, dentro do texto. */}
+        <SpoilerBlock isSpoiler={isSpoiler} label="Spoiler" testId={`${testId}-body`}>
+          <Typography sx={{ fontSize: 15, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+            <SpoilerRichText text={body} label="Spoiler" />
+          </Typography>
+        </SpoilerBlock>
         {footer && <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", fontSize: 12, color: "text.secondary" }}>{footer}</Box>}
       </Box>
     </Box>
@@ -75,6 +81,7 @@ export function ScrapList({ scraps, viewerId, canModerate, empty, showProfile }:
           author={s.author}
           when={s.createdAt}
           body={s.body}
+          isSpoiler={s.isSpoiler}
           testId={`scrap-${s.id}`}
           footer={
             <>

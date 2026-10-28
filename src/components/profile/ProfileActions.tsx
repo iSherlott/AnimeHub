@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Box, Button, Dialog, DialogContent, DialogTitle, TextField, Typography } from "@mui/material";
+import { Box, Button, Checkbox, Dialog, DialogContent, DialogTitle, FormControlLabel, TextField, Typography } from "@mui/material";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
@@ -233,17 +233,22 @@ export function RatingBox({ userId, initialAverage, initialVotes, initialMine, c
 }
 
 /** Caixa de texto com o botão de enviar (recado e depoimento). */
-function Composer({ label, placeholder, max, initial = "", submitLabel, onSubmit, testId }: { label: string; placeholder: string; max: number; initial?: string; submitLabel: string; onSubmit: (text: string) => Promise<string | null>; testId: string }) {
+function Composer({ label, placeholder, max, initial = "", initialSpoiler = false, submitLabel, onSubmit, testId }: { label: string; placeholder: string; max: number; initial?: string; initialSpoiler?: boolean; submitLabel: string; onSubmit: (text: string, isSpoiler: boolean) => Promise<string | null>; testId: string }) {
   const [text, setText] = useState(initial);
+  // Spoiler: o texto inteiro fica coberto até quem lê tocar; trechos `||assim||` ficam cobertos dentro do texto.
+  const [spoiler, setSpoiler] = useState(initialSpoiler);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   async function submit() {
     setBusy(true);
     setError(null);
-    const err = await onSubmit(text);
+    const err = await onSubmit(text, spoiler);
     setBusy(false);
     if (err) setError(err);
-    else if (!initial) setText("");
+    else if (!initial) {
+      setText("");
+      setSpoiler(false);
+    }
   }
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
@@ -256,9 +261,10 @@ function Composer({ label, placeholder, max, initial = "", submitLabel, onSubmit
         minRows={2}
         size="small"
         error={Boolean(error)}
-        helperText={error ?? `${text.length}/${max.toLocaleString("pt-BR")}`}
+        helperText={error ?? `${text.length}/${max.toLocaleString("pt-BR")} · para esconder só um trecho, escreva ||assim||`}
         slotProps={{ htmlInput: { maxLength: max, "data-testid": `${testId}-input` } }}
       />
+      <FormControlLabel control={<Checkbox size="small" checked={spoiler} onChange={(e) => setSpoiler(e.target.checked)} />} label="Contém spoiler" data-testid={`${testId}-spoiler`} sx={{ "& .MuiFormControlLabel-label": { fontSize: 13 } }} />
       <Box>
         <Button variant="contained" size="small" onClick={submit} disabled={busy || text.trim().length === 0} data-testid={`${testId}-send`}>
           {submitLabel}
@@ -278,8 +284,8 @@ export function ScrapForm({ userId, label = "Escreva um recado" }: { userId: str
       max={1000}
       submitLabel="Enviar recado"
       testId="scrap"
-      onSubmit={async (body) => {
-        const r = await send(`/api/users/${userId}/scraps`, "POST", { body });
+      onSubmit={async (body, isSpoiler) => {
+        const r = await send(`/api/users/${userId}/scraps`, "POST", { body, isSpoiler });
         if (!r.ok) return errorOf(r.data);
         router.refresh();
         return null;
@@ -291,7 +297,7 @@ export function ScrapForm({ userId, label = "Escreva um recado" }: { userId: str
 const STATUS_TEXT: Record<string, string> = { PENDING: "Esperando a aprovação.", APPROVED: "Aprovado e visível no perfil.", REJECTED: "Não foi aprovado. Você pode reescrever." };
 
 /** Escrever (ou reescrever) o depoimento para um amigo; reescrever volta a esperar a aprovação. */
-export function TestimonialForm({ userId, displayName, initial, status }: { userId: string; displayName: string; initial: string; status: string | null }) {
+export function TestimonialForm({ userId, displayName, initial, initialSpoiler = false, status }: { userId: string; displayName: string; initial: string; initialSpoiler?: boolean; status: string | null }) {
   const router = useRouter();
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }} data-testid="testimonial-form">
@@ -305,10 +311,11 @@ export function TestimonialForm({ userId, displayName, initial, status }: { user
         placeholder="Conte o que torna essa pessoa uma ótima companhia de maratona."
         max={2000}
         initial={initial}
+        initialSpoiler={initialSpoiler}
         submitLabel={initial ? "Reescrever depoimento" : "Enviar depoimento"}
         testId="testimonial"
-        onSubmit={async (body) => {
-          const r = await send(`/api/users/${userId}/testimonials`, "PUT", { body });
+        onSubmit={async (body, isSpoiler) => {
+          const r = await send(`/api/users/${userId}/testimonials`, "PUT", { body, isSpoiler });
           if (!r.ok) return errorOf(r.data);
           router.refresh();
           return null;
@@ -451,8 +458,8 @@ export function ScrapReplyButton({ scrapId, authorId, authorName }: { scrapId: s
             max={1000}
             submitLabel="Enviar resposta"
             testId="scrap-reply"
-            onSubmit={async (body) => {
-              const r = await send(`/api/users/${authorId}/scraps`, "POST", { body, replyToId: scrapId });
+            onSubmit={async (body, isSpoiler) => {
+              const r = await send(`/api/users/${authorId}/scraps`, "POST", { body, isSpoiler, replyToId: scrapId });
               if (!r.ok) return errorOf(r.data);
               setOpen(false);
               setSent(true);

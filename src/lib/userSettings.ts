@@ -25,11 +25,13 @@ export type UserPreferences = {
   animeListPublic: boolean;
   /** Visitas ao perfil: registrar as minhas (desligado, também não vejo quem visitou o meu). */
   recordVisits: boolean;
+  /** Spoilers: false = perguntar antes de mostrar (padrão); true = mostrar direto, ainda com a marca de spoiler. */
+  showSpoilers: boolean;
 };
 
 export type UserPreferencesPatch = Partial<UserPreferences>;
 
-const BOOLEAN_KEYS = ["notifyReleases", "notifyReplies", "notifyComments", "notifyFollowers", "notifyLikes", "notifyCommunity", "animeListPublic", "recordVisits"] as const;
+const BOOLEAN_KEYS = ["notifyReleases", "notifyReplies", "notifyComments", "notifyFollowers", "notifyLikes", "notifyCommunity", "animeListPublic", "recordVisits", "showSpoilers"] as const;
 
 export type ValidationResult = { ok: true; patch: UserPreferencesPatch } | { ok: false; error: string };
 

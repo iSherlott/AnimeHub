@@ -3,6 +3,8 @@
 import { useState } from "react";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import { SpoilerMark, useShowSpoilers } from "@/components/Spoiler";
 import { Box, ButtonBase, IconButton, Popover, Typography } from "@mui/material";
 
 /**
@@ -15,18 +17,37 @@ import { Box, ButtonBase, IconButton, Popover, Typography } from "@mui/material"
  *
  * A descrição de cada imagem (`imageAlts`, escrita por quem postou) é o texto alternativo lido pelo leitor de tela e,
  * como no X, aparece num selo ALT no canto da imagem, que mostra o texto a quem tocar.
+ *
+ * Imagem marcada como spoiler (`imageSpoilers`) fica borrada, com o aviso (`spoilerLabel`: de qual anime e até onde),
+ * até a pessoa tocar em "Ver imagem"; a descrição dela também só aparece depois. Quem escolheu mostrar spoilers direto
+ * vê a imagem, com a marca de spoiler no canto.
  */
-export function PostImageCarousel({ imageUrls, imageAlts = [] }: { imageUrls: string[]; imageAlts?: string[] }) {
+export function PostImageCarousel({
+  imageUrls,
+  imageAlts = [],
+  imageSpoilers = [],
+  spoilerLabel = "Spoiler",
+}: {
+  imageUrls: string[];
+  imageAlts?: string[];
+  imageSpoilers?: boolean[];
+  spoilerLabel?: string;
+}) {
   const [index, setIndex] = useState(0);
   const [brokenIndexes, setBrokenIndexes] = useState<Set<number>>(new Set());
   const [altAnchor, setAltAnchor] = useState<HTMLElement | null>(null);
+  const [revealed, setRevealed] = useState<Set<number>>(new Set());
+  const showSpoilers = useShowSpoilers();
 
   if (imageUrls.length === 0) return null;
 
   const clampedIndex = Math.min(index, imageUrls.length - 1);
   const hasMultiple = imageUrls.length > 1;
   const current = imageUrls[clampedIndex];
-  const currentAlt = (imageAlts[clampedIndex] ?? "").trim();
+  const isSpoilerImage = imageSpoilers[clampedIndex] === true;
+  const covered = isSpoilerImage && !showSpoilers && !revealed.has(clampedIndex);
+  // Coberta, nem a descrição sai: ela contaria o spoiler.
+  const currentAlt = covered ? "" : (imageAlts[clampedIndex] ?? "").trim();
   const isBroken = brokenIndexes.has(clampedIndex);
 
   function go(e: React.MouseEvent, delta: number) {
@@ -52,9 +73,38 @@ export function PostImageCarousel({ imageUrls, imageAlts = [] }: { imageUrls: st
         <img
           src={current}
           alt={currentAlt}
+          aria-hidden={covered || undefined}
           onError={() => setBrokenIndexes((prev) => new Set(prev).add(clampedIndex))}
-          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", ...(covered ? { filter: "blur(28px) brightness(0.6)", transform: "scale(1.15)" } : {}) }}
         />
+      )}
+
+      {covered && !isBroken && (
+        <Box
+          role="group"
+          aria-label={`${spoilerLabel}: imagem coberta`}
+          data-testid="image-spoiler-cover"
+          sx={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1.5, p: 3, textAlign: "center", color: "#fff" }}
+        >
+          <VisibilityOffOutlinedIcon sx={{ fontSize: 32 }} aria-hidden />
+          <Typography sx={{ fontSize: 15, fontWeight: 800, textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>{spoilerLabel}</Typography>
+          <ButtonBase
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setRevealed((prev) => new Set(prev).add(clampedIndex));
+            }}
+            sx={{ minHeight: 44, px: 2.5, borderRadius: 999, bgcolor: "rgba(0,0,0,0.65)", color: "#fff", fontWeight: 700, fontSize: 14, border: "1px solid rgba(255,255,255,0.35)", "&:hover": { bgcolor: "rgba(0,0,0,0.8)" }, "&.Mui-focusVisible": { outline: "2px solid #ffd400", outlineOffset: 2 } }}
+          >
+            Ver imagem
+          </ButtonBase>
+        </Box>
+      )}
+
+      {isSpoilerImage && !covered && !isBroken && (
+        <Box sx={{ position: "absolute", top: 8, left: 8, px: 1, py: 0.5, borderRadius: "6px", bgcolor: "rgba(0,0,0,0.72)" }}>
+          <SpoilerMark label={spoilerLabel} />
+        </Box>
       )}
 
       {currentAlt && !isBroken && (

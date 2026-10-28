@@ -450,3 +450,38 @@ Spec 138; teste de unidade do GIF animado em `processImageUpload.test.ts`.
 - **Rascunho:** a descrição vai junto da imagem do campo do Feed para o editor completo.
 
 Spec 139.
+
+## Sistema de spoiler (28/10)
+
+**Pedido:** a pessoa escolhe ler ou ver o spoiler, com o aviso de que é spoiler. Escolhido: trecho e imagem, onde
+ainda não tinha, a preferência da pessoa e o aviso por obra. Antes, só publicações, comentários, tópicos e respostas
+podiam ser marcados inteiros como spoiler.
+
+- **Trecho do texto:**
+  - Escrito `||assim||`, fica coberto por uma tarja até a pessoa tocar. Para o leitor de tela, a tarja diz "Spoiler de
+    …: toque para ver".
+  - Vale em publicações, comentários, tópicos, respostas, recados, depoimentos e eventos (`src/lib/spoilers.ts`,
+    `src/components/Spoiler.tsx`).
+  - No campo do Feed, o botão Spoiler virou menu: "A publicação inteira tem spoiler" ou "Esconder um trecho do texto (o
+    selecionado)". O editor completo tem "Esconder trecho (spoiler)"; os formulários das comunidades e do perfil
+    explicam o `||assim||`.
+  - Hashtag dentro do trecho não vira link nem é contada, porque revelaria o trecho.
+  - A citação de uma publicação mostra "[spoiler]" no lugar do trecho.
+  - A legenda longa nunca é cortada no meio de um trecho; partido, ele apareceria descoberto.
+- **Imagem:**
+  - Cada miniatura tem o botão "Spoiler". Na publicação, a imagem fica borrada, com o aviso e "Ver imagem".
+  - A descrição (ALT) só aparece depois, porque contaria o spoiler. A miniatura da citação também some.
+- **Aviso por obra:** "Spoiler de Frieren · até o episódio 18" (`spoilerLabel`).
+  - A obra é a da publicação, a do tópico ("Sobre") ou a da comunidade.
+  - O episódio é opcional, informado por quem escreve, ao marcar o conteúdo inteiro, em publicações, tópicos e
+    respostas.
+- **Onde ainda não tinha:** recados, depoimentos e eventos das comunidades ganharam "Contém spoiler". O conteúdo fica
+  coberto até "Mostrar".
+- **Preferência:** Configurações → Spoilers → "Mostrar spoilers sem perguntar" (desligada por padrão). Ligada, tudo
+  aparece direto, mas sempre com a marca do aviso.
+- **Banco:** migração `20261119100000_spoilers`, que só acrescenta:
+  - `Post.imageSpoilers` e `Post.spoilerEpisode`;
+  - `spoilerEpisode` em tópicos e respostas;
+  - `isSpoiler` em recados, depoimentos e eventos;
+  - `User.showSpoilers`.
+- **Testes:** spec 140 e `spoilers.test.ts`; spec 137 ajustado ao menu do spoiler.

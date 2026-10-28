@@ -6,6 +6,7 @@ import { blockedUserIdSet } from "@/lib/blocks";
 import { isValidHttpUrl } from "@/lib/url";
 import { isBlank } from "@/lib/text";
 import { extractHashtags, MAX_HASHTAGS_PER_POST } from "@/lib/hashtags";
+import { parseSpoilerEpisode, stripSpoilers } from "@/lib/spoilers";
 import { linkHashtagsToPost } from "@/lib/postHashtags";
 import { equippedTitleNames } from "@/lib/quiz";
 
@@ -44,7 +45,8 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
   }
 
   // Hashtags: Unicode, ID canônico, limite por publicação (D-13, provisório).
-  const hashtags = extractHashtags(text);
+  // Hashtag de dentro de um trecho de spoiler (`||…||`) não conta: viraria link e revelaria o trecho.
+  const hashtags = extractHashtags(stripSpoilers(text));
   if (hashtags.length > MAX_HASHTAGS_PER_POST) {
     return NextResponse.json(
       { error: `No máximo ${MAX_HASHTAGS_PER_POST} hashtags por publicação` },
@@ -59,6 +61,9 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
     return NextResponse.json({ error: "imageAlts deve ser uma lista" }, { status: 400 });
   }
   const imageAlts: string[] = [];
+  // Imagem marcada como spoiler (fica borrada até tocar), na mesma posição de `imageUrls` no pedido.
+  const rawImageSpoilers: unknown[] = Array.isArray(body.imageSpoilers) ? body.imageSpoilers : [];
+  const imageSpoilers: boolean[] = [];
   if (body.imageUrls !== undefined) {
     if (!Array.isArray(body.imageUrls)) {
       return NextResponse.json({ error: "imageUrls deve ser uma lista" }, { status: 400 });
@@ -85,6 +90,7 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
       }
       imageUrls.push(trimmed);
       imageAlts.push(altText);
+      imageSpoilers.push(rawImageSpoilers[index] === true);
     }
   }
 
@@ -92,6 +98,12 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
   // publicação pode ser só imagem; vazia de tudo, não.
   if (isBlank(text) && imageUrls.length === 0) {
     return NextResponse.json({ error: "Post não pode ser vazio" }, { status: 400 });
+  }
+
+  // "Até o episódio N" só faz sentido numa publicação marcada como spoiler.
+  const spoilerEpisode = parseSpoilerEpisode(body.spoilerEpisode);
+  if (spoilerEpisode === undefined) {
+    return NextResponse.json({ error: "Episódio do spoiler inválido (de 1 a 9999)" }, { status: 400 });
   }
 
   // Citação (Epic 25) — confirma que o post citado existe, não foi apagado
@@ -134,6 +146,8 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
       animeCoverImage: anime?.coverImage ?? null,
       body: text,
       isSpoiler: body.isSpoiler === true,
+      spoilerEpisode: body.isSpoiler === true ? spoilerEpisode : null,
+      imageSpoilers,
       imageUrls,
       imageAlts,
       quotedPostId,

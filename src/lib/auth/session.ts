@@ -43,6 +43,7 @@ export function toPublicUser(user: User): PublicUser {
       notifyCommunity: user.notifyCommunity,
       animeListPublic: user.animeListPublic,
       recordVisits: user.recordVisits,
+      showSpoilers: user.showSpoilers,
     },
   };
 }

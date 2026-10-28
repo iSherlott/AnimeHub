@@ -8,13 +8,15 @@ import LiveTvOutlinedIcon from "@mui/icons-material/LiveTvOutlined";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import TagIcon from "@mui/icons-material/Tag";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
-import { Alert, Box, Button, Chip, Dialog, DialogContent, DialogTitle, IconButton, InputBase, Tooltip, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, Dialog, DialogContent, DialogTitle, IconButton, InputBase, Menu, MenuItem, TextField, Tooltip, Typography } from "@mui/material";
 import { AnimeContextPicker, type RelatedAnime } from "@/components/AnimeContextPicker";
 import { PostImageAttachments } from "@/components/PostImageAttachments";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { PostDTO } from "@/lib/postDto";
 import { DRAFT_IMAGES_KEY, MAX_COMPOSER_IMAGES, usePostImages } from "@/lib/usePostImages";
+import { parseSpoilerEpisode } from "@/lib/spoilers";
+import { wrapSpoilerSelection } from "@/lib/wrapSpoiler";
 
 const MAX_BODY_LENGTH = 500;
 /** O mesmo rascunho do editor completo (/publicar): "Abrir editor completo" leva o texto junto. */
@@ -36,6 +38,9 @@ export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }
   const [anime, setAnime] = useState<RelatedAnime | null>(null);
   const [pickingAnime, setPickingAnime] = useState(false);
   const [spoiler, setSpoiler] = useState(false);
+  // "Até o episódio N" do spoiler (opcional); o menu do spoiler escolhe entre a publicação inteira e um trecho.
+  const [spoilerEpisode, setSpoilerEpisode] = useState("");
+  const [spoilerMenu, setSpoilerMenu] = useState<HTMLElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const postingRef = useRef(false);
@@ -90,8 +95,26 @@ export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }
     });
   }
 
+  function hideSelectionAsSpoiler() {
+    const el = inputRef.current;
+    const wrapped = wrapSpoilerSelection(body, el?.selectionStart ?? body.length, el?.selectionEnd ?? body.length, MAX_BODY_LENGTH);
+    setSpoilerMenu(null);
+    if (!wrapped) return;
+    setBody(wrapped.value);
+    setExpanded(true);
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(wrapped.caretStart, wrapped.caretEnd);
+    });
+  }
+
   async function post() {
     if (postingRef.current || !canPost) return;
+    const episode = spoiler ? parseSpoilerEpisode(spoilerEpisode) : null;
+    if (episode === undefined) {
+      setError("O episódio do spoiler vai de 1 a 9999.");
+      return;
+    }
     postingRef.current = true;
     setBusy(true);
     setError(null);
@@ -99,7 +122,7 @@ export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: text, imageUrls: images.urls, imageAlts: images.alts, anilistId: anime?.anilistId ?? undefined, work: anime && anime.anilistId === null ? anime.work : undefined, isSpoiler: spoiler }),
+        body: JSON.stringify({ body: text, imageUrls: images.urls, imageAlts: images.alts, imageSpoilers: images.spoilers, anilistId: anime?.anilistId ?? undefined, work: anime && anime.anilistId === null ? anime.work : undefined, isSpoiler: spoiler, spoilerEpisode: episode ?? undefined }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.post) {
@@ -111,6 +134,7 @@ export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }
       setBody("");
       setAnime(null);
       setSpoiler(false);
+      setSpoilerEpisode("");
       setExpanded(false);
     } catch {
       setError("Não foi possível publicar. O texto continua aqui para você tentar de novo.");
@@ -156,7 +180,7 @@ export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }
           sx={{ fontSize: { xs: 18, sm: 20 }, lineHeight: 1.4, py: 0.75, alignItems: "flex-start", "& textarea::placeholder": { color: "text.secondary", opacity: 1 } }}
         />
 
-        <PostImageAttachments items={images.items} onRemove={images.remove} onAltChange={images.setAlt} disabled={busy} />
+        <PostImageAttachments items={images.items} onRemove={images.remove} onAltChange={images.setAlt} onToggleSpoiler={images.toggleSpoiler} disabled={busy} />
         {images.notice && (
           <Typography role="status" sx={{ fontSize: 13, color: "warning.main" }}>
             {images.notice}
@@ -167,6 +191,17 @@ export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
             {anime && <Chip data-testid="composer-anime" label={`Sobre: ${anime.title}`} onDelete={() => setAnime(null)} size="small" sx={{ fontWeight: 700 }} />}
             {spoiler && <Chip label="Contém spoilers" onDelete={() => setSpoiler(false)} size="small" color="warning" variant="outlined" sx={{ fontWeight: 700 }} />}
+            {spoiler && (
+              <TextField
+                size="small"
+                label="Até o episódio"
+                value={spoilerEpisode}
+                onChange={(e) => setSpoilerEpisode(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                placeholder="opcional"
+                slotProps={{ htmlInput: { inputMode: "numeric", "data-testid": "composer-spoiler-episode" } }}
+                sx={{ width: 140, "& input": { py: 0.5 } }}
+              />
+            )}
           </Box>
         )}
 
@@ -208,11 +243,33 @@ export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }
                   <TagIcon />
                 </IconButton>
               </Tooltip>
-              <Tooltip title={spoiler ? "Contém spoilers (ligado)" : "Contém spoilers"}>
-                <IconButton aria-label="Contém spoilers" aria-pressed={spoiler} onClick={() => setSpoiler((v) => !v)} disabled={busy} sx={toolSx}>
+              <Tooltip title="Spoiler: a publicação inteira ou um trecho">
+                <IconButton
+                  aria-label="Spoiler"
+                  aria-haspopup="menu"
+                  aria-expanded={Boolean(spoilerMenu)}
+                  aria-pressed={spoiler}
+                  onMouseDown={(e) => e.preventDefault() /* mantém a seleção do texto para "esconder um trecho" */}
+                  onClick={(e) => setSpoilerMenu(e.currentTarget)}
+                  disabled={busy}
+                  sx={toolSx}
+                >
                   <VisibilityOffOutlinedIcon />
                 </IconButton>
               </Tooltip>
+              <Menu anchorEl={spoilerMenu} open={Boolean(spoilerMenu)} onClose={() => setSpoilerMenu(null)} disableRestoreFocus>
+                <MenuItem
+                  role="menuitemcheckbox"
+                  aria-checked={spoiler}
+                  onClick={() => {
+                    setSpoiler((v) => !v);
+                    setSpoilerMenu(null);
+                  }}
+                >
+                  {spoiler ? "✓ A publicação inteira tem spoiler" : "A publicação inteira tem spoiler"}
+                </MenuItem>
+                <MenuItem onClick={hideSelectionAsSpoiler}>Esconder um trecho do texto (o selecionado)</MenuItem>
+              </Menu>
               <Tooltip title="Editor completo (citação, hashtags sugeridas, prévia do spoiler)">
                 <IconButton component={NextLink} href={fullEditorHref} aria-label="Abrir editor completo" sx={toolSx}>
                   <OpenInFullIcon fontSize="small" />

@@ -19,6 +19,8 @@ export type PostImage = {
   error?: string;
   /** Descrição da imagem (texto alternativo), escrita por quem posta; "" = sem descrição. */
   alt: string;
+  /** Imagem marcada como spoiler: na publicação, fica borrada até a pessoa tocar. */
+  spoiler: boolean;
 };
 
 /** Limite da descrição de uma imagem (o mesmo do servidor, `MAX_IMAGE_ALT_LENGTH`, e do ALT do X). */
@@ -46,15 +48,15 @@ export function usePostImages(storageKey: string) {
       const saved = JSON.parse(sessionStorage.getItem(storageKey) ?? "[]") as unknown;
       if (Array.isArray(saved) && saved.length) {
         const restored = saved
-          .map((entry): { url: string; alt: string } | null => {
-            if (typeof entry === "string") return { url: entry, alt: "" };
-            const e = entry as { url?: unknown; alt?: unknown } | null;
-            return e && typeof e.url === "string" ? { url: e.url, alt: typeof e.alt === "string" ? e.alt.slice(0, MAX_IMAGE_ALT_LENGTH) : "" } : null;
+          .map((entry): { url: string; alt: string; spoiler: boolean } | null => {
+            if (typeof entry === "string") return { url: entry, alt: "", spoiler: false };
+            const e = entry as { url?: unknown; alt?: unknown; spoiler?: unknown } | null;
+            return e && typeof e.url === "string" ? { url: e.url, alt: typeof e.alt === "string" ? e.alt.slice(0, MAX_IMAGE_ALT_LENGTH) : "", spoiler: e.spoiler === true } : null;
           })
-          .filter((e): e is { url: string; alt: string } => e !== null)
+          .filter((e): e is { url: string; alt: string; spoiler: boolean } => e !== null)
           .slice(0, MAX_COMPOSER_IMAGES);
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setItems(restored.map(({ url, alt }) => ({ id: nextId(), preview: url, url, status: "done", alt })));
+        setItems(restored.map(({ url, alt, spoiler }) => ({ id: nextId(), preview: url, url, status: "done", alt, spoiler })));
       }
     } catch {
       // sessionStorage indisponível ou rascunho estragado: começa sem imagens.
@@ -63,7 +65,8 @@ export function usePostImages(storageKey: string) {
   const done = items.filter((i) => i.status === "done" && i.url);
   const doneUrls = done.map((i) => i.url as string);
   const doneAlts = done.map((i) => i.alt.trim());
-  const draft = JSON.stringify(done.map((i) => ({ url: i.url, alt: i.alt })));
+  const doneSpoilers = done.map((i) => i.spoiler);
+  const draft = JSON.stringify(done.map((i) => ({ url: i.url, alt: i.alt, spoiler: i.spoiler })));
   useEffect(() => {
     try {
       if (draft !== "[]") sessionStorage.setItem(storageKey, draft);
@@ -104,7 +107,7 @@ export function usePostImages(storageKey: string) {
           problems.push(`"${file.name}" passa de 8 MB.`);
           continue;
         }
-        accepted.push({ id: nextId(), preview: URL.createObjectURL(file), url: null, status: "uploading", alt: "" });
+        accepted.push({ id: nextId(), preview: URL.createObjectURL(file), url: null, status: "uploading", alt: "", spoiler: false });
         void upload(accepted[accepted.length - 1].id, file);
       }
       setNotice(problems.length ? problems.join(" ") : null);
@@ -126,6 +129,10 @@ export function usePostImages(storageKey: string) {
     setItems((list) => list.map((i) => (i.id === id ? { ...i, alt: alt.slice(0, MAX_IMAGE_ALT_LENGTH) } : i)));
   }, []);
 
+  const toggleSpoiler = useCallback((id: string) => {
+    setItems((list) => list.map((i) => (i.id === id ? { ...i, spoiler: !i.spoiler } : i)));
+  }, []);
+
   const clear = useCallback(() => {
     setItems((list) => {
       list.forEach((i) => i.preview.startsWith("blob:") && URL.revokeObjectURL(i.preview));
@@ -139,6 +146,8 @@ export function usePostImages(storageKey: string) {
     urls: doneUrls,
     /** Descrições na mesma ordem de `urls` (vão juntas para o servidor). */
     alts: doneAlts,
+    /** Marca de spoiler na mesma ordem de `urls`. */
+    spoilers: doneSpoilers,
     uploading: items.some((i) => i.status === "uploading"),
     failed: items.some((i) => i.status === "error"),
     full: items.length >= MAX_COMPOSER_IMAGES,
@@ -146,6 +155,7 @@ export function usePostImages(storageKey: string) {
     addFiles,
     remove,
     setAlt,
+    toggleSpoiler,
     clear,
   };
 }

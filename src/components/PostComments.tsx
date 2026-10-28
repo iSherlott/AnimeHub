@@ -20,6 +20,8 @@ import { InfiniteFooter } from "@/components/InfiniteFooter";
 import { UserAvatar } from "@/components/UserAvatar";
 import { AchievementTitleBadge } from "@/components/AchievementTitleBadge";
 import { SpoilerGate } from "@/components/SpoilerGate";
+import { SpoilerRichText } from "@/components/Spoiler";
+import { spoilerLabel } from "@/lib/spoilers";
 import { ReportDialog } from "@/components/ReportDialog";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { formatRelativeTime } from "@/lib/relativeTime";
@@ -71,8 +73,11 @@ export function PostComments({
   commentCount,
   onCountChange,
   withHeading = false,
+  spoilerWork = null,
 }: {
   postId: string;
+  /** A obra da publicação: o aviso dos spoilers dos comentários diz de qual anime ("Spoiler de Frieren"). */
+  spoilerWork?: string | null;
   /** Página de discussão: mostra "Respostas · Ordem da conversa" acima da lista. */
   withHeading?: boolean;
   /** Contagem "oficial" do post, levantada até FeedView/UserPostList —
@@ -318,10 +323,17 @@ export function PostComments({
                 {c.isSpoiler ? (
                   <SpoilerGate<{ body: string }>
                     revealUrl={`/api/posts/${postId}/comments/${c.id}/reveal`}
-                    render={(d) => <Typography sx={{ whiteSpace: "pre-wrap", fontSize: 16 }}>{d.body}</Typography>}
+                    label={spoilerLabel({ work: spoilerWork })}
+                    render={(d) => (
+                      <Typography sx={{ whiteSpace: "pre-wrap", fontSize: 16, overflowWrap: "anywhere" }}>
+                        <SpoilerRichText text={d.body} label={spoilerLabel({ work: spoilerWork })} />
+                      </Typography>
+                    )}
                   />
                 ) : (
-                  <Typography sx={{ whiteSpace: "pre-wrap", fontSize: 16, overflowWrap: "anywhere" }}>{c.body}</Typography>
+                  <Typography sx={{ whiteSpace: "pre-wrap", fontSize: 16, overflowWrap: "anywhere" }}>
+                    <SpoilerRichText text={c.body} label={spoilerLabel({ work: spoilerWork })} />
+                  </Typography>
                 )}
                 <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
                   {!loggedOut && (

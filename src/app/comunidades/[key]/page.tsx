@@ -93,7 +93,7 @@ export default async function CommunityHome({ params }: Props) {
         ) : (
           <Box component="ul" sx={{ m: 0, p: 0, display: "flex", flexDirection: "column", gap: 1 }}>
             {events.map((e) => (
-              <EventCard key={e.id} event={e} canRsvp={false} canDelete={false} />
+              <EventCard key={e.id} event={e} spoilerWork={scope.root.titleNative ?? scope.root.titleRomaji} canRsvp={false} canDelete={false} />
             ))}
           </Box>
         )}

@@ -11,11 +11,16 @@ const works = [
 
 describe("tópico da comunidade", () => {
   it("aceita título, mensagem, obra da franquia, spoiler e enquete (sem opções vazias)", () => {
-    expect(validateTopic({ title: "  Teoria  ", body: " O final ", catalogEntryId: "s2", isSpoiler: true, poll: ["Sim", " Não ", ""] }, works)).toEqual({
+    expect(validateTopic({ title: "  Teoria  ", body: " O final ", catalogEntryId: "s2", isSpoiler: true, spoilerEpisode: "12", poll: ["Sim", " Não ", ""] }, works)).toEqual({
       ok: true,
-      value: { title: "Teoria", body: "O final", catalogEntryId: "s2", isSpoiler: true, poll: ["Sim", "Não"] },
+      value: { title: "Teoria", body: "O final", catalogEntryId: "s2", isSpoiler: true, spoilerEpisode: 12, poll: ["Sim", "Não"] },
     });
-    expect(validateTopic({ title: "T", body: "M" }, works)).toMatchObject({ ok: true, value: { catalogEntryId: null, poll: null, isSpoiler: false } });
+    expect(validateTopic({ title: "T", body: "M" }, works)).toMatchObject({ ok: true, value: { catalogEntryId: null, poll: null, isSpoiler: false, spoilerEpisode: null } });
+  });
+
+  it("o episódio do spoiler: só com o tópico marcado como spoiler, de 1 a 9999", () => {
+    expect(validateTopic({ title: "T", body: "M", spoilerEpisode: 5 }, works)).toMatchObject({ ok: true, value: { isSpoiler: false, spoilerEpisode: null } });
+    expect(validateTopic({ title: "T", body: "M", isSpoiler: true, spoilerEpisode: 0 }, works)).toMatchObject({ ok: false, errors: { spoilerEpisode: expect.any(String) } });
   });
 
   it("recusa título/mensagem vazios, obra de fora da franquia e enquete inválida", () => {

@@ -53,7 +53,7 @@ export async function listScraps(profileId: string, page: number, viewerId: stri
  * o original (só quem recebeu responde, e só para quem escreveu).
  */
 export async function createScrap(profileId: string, authorId: string, input: unknown): Promise<{ ok: true; id: string } | ProfileError> {
-  const raw = (input ?? {}) as { body?: unknown; replyToId?: unknown };
+  const raw = (input ?? {}) as { body?: unknown; replyToId?: unknown; isSpoiler?: unknown };
   const body = clean(raw.body);
   if (isBlank(body) || body.length > SCRAP_MAX) return { ok: false, status: 400, error: `Recado de 1 a ${SCRAP_MAX.toLocaleString("pt-BR")} caracteres.` };
   const denied = await canInteract(authorId, profileId);
@@ -64,7 +64,7 @@ export async function createScrap(profileId: string, authorId: string, input: un
     if (!original || original.profileId !== authorId || original.authorId !== profileId) return { ok: false, status: 400, error: "Só dá para responder um recado que você recebeu, no perfil de quem o escreveu." };
     replyToId = original.id;
   }
-  const scrap = await prisma.scrap.create({ data: { profileId, authorId, body, replyToId }, select: { id: true } });
+  const scrap = await prisma.scrap.create({ data: { profileId, authorId, body, replyToId, isSpoiler: raw.isSpoiler === true }, select: { id: true } });
   await notifySocial({ type: "PROFILE_SCRAP", recipientId: profileId, actorId: authorId });
   return { ok: true, id: scrap.id };
 }
@@ -114,6 +114,7 @@ export async function listTestimonials(profileId: string, viewerId: string | nul
 /** Escrever (ou reescrever) o depoimento: só amigos; volta a esperar a aprovação de quem recebe. */
 export async function writeTestimonial(profileId: string, authorId: string, input: unknown): Promise<{ ok: true } | ProfileError> {
   const body = clean((input as { body?: unknown } | null)?.body);
+  const isSpoiler = (input as { isSpoiler?: unknown } | null)?.isSpoiler === true;
   if (isBlank(body) || body.length > TESTIMONIAL_MAX) return { ok: false, status: 400, error: `Depoimento de 1 a ${TESTIMONIAL_MAX.toLocaleString("pt-BR")} caracteres.` };
   const denied = await canInteract(authorId, profileId);
   if (denied) return denied;
@@ -123,8 +124,8 @@ export async function writeTestimonial(profileId: string, authorId: string, inpu
   if (existing?.status === "REMOVED") return { ok: false, status: 403, error: "Este depoimento foi removido pela moderação e não pode ser reescrito." };
   await prisma.testimonial.upsert({
     where: { profileId_authorId: { profileId, authorId } },
-    create: { profileId, authorId, body },
-    update: { body, status: "PENDING", decidedAt: null },
+    create: { profileId, authorId, body, isSpoiler },
+    update: { body, isSpoiler, status: "PENDING", decidedAt: null },
   });
   await notifySocial({ type: "PROFILE_TESTIMONIAL", recipientId: profileId, actorId: authorId });
   return { ok: true };

@@ -32,7 +32,7 @@ export default async function CommunityEvents({ params }: Props) {
         ) : (
           <Box component="ul" sx={{ m: 0, p: 0, display: "flex", flexDirection: "column", gap: 1 }}>
             {upcoming.map((e) => (
-              <EventCard key={e.id} event={e} canRsvp={member} canDelete={user?.id === e.author.id || canModerate} canReport={Boolean(user) && user?.id !== e.author.id} />
+              <EventCard key={e.id} event={e} spoilerWork={scope.root.titleNative ?? scope.root.titleRomaji} canRsvp={member} canDelete={user?.id === e.author.id || canModerate} canReport={Boolean(user) && user?.id !== e.author.id} />
             ))}
           </Box>
         )}
@@ -41,7 +41,7 @@ export default async function CommunityEvents({ params }: Props) {
         <Panel title="Eventos que já passaram" testId="community-past-events">
           <Box component="ul" sx={{ m: 0, p: 0, display: "flex", flexDirection: "column", gap: 1 }}>
             {past.map((e) => (
-              <EventCard key={e.id} event={e} canRsvp={false} canDelete={canModerate} canReport={Boolean(user) && user?.id !== e.author.id} />
+              <EventCard key={e.id} event={e} spoilerWork={scope.root.titleNative ?? scope.root.titleRomaji} canRsvp={false} canDelete={canModerate} canReport={Boolean(user) && user?.id !== e.author.id} />
             ))}
           </Box>
         </Panel>

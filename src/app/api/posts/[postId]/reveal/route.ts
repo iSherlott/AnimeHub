@@ -18,11 +18,11 @@ export async function GET(_request: Request, { params }: Params) {
   const { postId } = await params;
   const post = await prisma.post.findUnique({
     where: { id: postId },
-    select: { body: true, imageUrls: true, imageAlts: true, deletedAt: true, isSpoiler: true, userId: true },
+    select: { body: true, imageUrls: true, imageAlts: true, imageSpoilers: true, deletedAt: true, isSpoiler: true, userId: true },
   });
   const viewer = await getCurrentUser();
   if (!post || post.deletedAt || (await blockedUserIdSet(viewer?.id ?? null)).has(post.userId)) {
     return NextResponse.json({ error: "Conteúdo indisponível" }, { status: 404 });
   }
-  return NextResponse.json({ body: post.body, imageUrls: post.imageUrls, imageAlts: post.imageUrls.map((_, i) => post.imageAlts[i] ?? "") });
+  return NextResponse.json({ body: post.body, imageUrls: post.imageUrls, imageAlts: post.imageUrls.map((_, i) => post.imageAlts[i] ?? ""), imageSpoilers: post.imageUrls.map((_, i) => post.imageSpoilers[i] ?? false) });
 }

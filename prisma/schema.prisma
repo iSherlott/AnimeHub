@@ -54,6 +54,8 @@ model User {
   /// Visitas ao perfil: registrar as minhas visitas. Desligado, ninguém vê que a pessoa visitou e ela
   /// também não vê quem visitou o perfil dela.
   recordVisits    Boolean @default(true)
+  /// Spoilers: false = pergunta antes de mostrar (padrão); true = mostra direto, ainda com a marca de spoiler.
+  showSpoilers    Boolean @default(false)
   notifyReleases  Boolean  @default(true)
   notifyReplies   Boolean  @default(true)
   notifyComments  Boolean  @default(true)
@@ -828,6 +830,10 @@ model Post {
   /// Descrição de cada imagem (texto alternativo, como o ALT do X), na mesma ordem de `imageUrls`; "" = sem descrição.
   /// Lida por leitores de tela e mostrada no selo ALT da publicação.
   imageAlts         String[]  @default([])
+  /// Imagem marcada como spoiler (fica borrada até a pessoa tocar), na mesma ordem de `imageUrls`.
+  imageSpoilers     Boolean[] @default([])
+  /// Até onde vai o spoiler ("até o episódio 18"), dito por quem escreveu; só com `isSpoiler`.
+  spoilerEpisode    Int?
   createdAt         DateTime  @default(now())
   /// Soft delete pelo autor ou por admin via fila de denúncia — mesmo
   /// padrão do Comment (Epic 15).
@@ -1532,6 +1538,8 @@ model CommunityTopic {
   title          String
   body           String
   isSpoiler      Boolean          @default(false)
+  /// Até onde vai o spoiler ("até o episódio 18"); só com `isSpoiler`.
+  spoilerEpisode Int?
   replyCount     Int              @default(0)
   /// Criação ou última resposta: a lista de tópicos ordena por aqui.
   lastActivityAt DateTime         @default(now())
@@ -1559,6 +1567,8 @@ model CommunityReply {
   author    User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
   body      String
   isSpoiler Boolean        @default(false)
+  /// Até onde vai o spoiler; só com `isSpoiler`.
+  spoilerEpisode Int?
   createdAt DateTime       @default(now())
   editedAt  DateTime?
   deletedAt DateTime?
@@ -1610,6 +1620,8 @@ model CommunityEvent {
   author      User                 @relation(fields: [authorId], references: [id], onDelete: Cascade)
   title       String
   description String
+  /// A descrição do evento fala de um ponto da história: fica coberta até a pessoa tocar.
+  isSpoiler   Boolean              @default(false)
   startsAt    DateTime
   endsAt      DateTime?
   /// Onde: texto livre ou um link (sala de chat, transmissão…).
@@ -1667,6 +1679,8 @@ model Scrap {
   authorId  String
   author    User      @relation("ScrapAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   body      String
+  /// Recado marcado como spoiler: fica coberto até a pessoa tocar.
+  isSpoiler Boolean   @default(false)
   createdAt DateTime  @default(now())
   deletedAt DateTime?
   reports   ProfileReport[]
@@ -1688,6 +1702,8 @@ model Testimonial {
   authorId   String
   author     User      @relation("TestimonialAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   body       String
+  /// Depoimento marcado como spoiler: fica coberto até a pessoa tocar.
+  isSpoiler  Boolean   @default(false)
   /// PENDING | APPROVED | REJECTED | REMOVED (removido pela moderação)
   status     String    @default("PENDING")
   createdAt  DateTime  @default(now())

@@ -1,4 +1,5 @@
 import type { Post } from "@prisma/client";
+import { maskSpoilers } from "@/lib/spoilers";
 
 /**
  * Pré-visualização só-leitura de um post citado (Epic 25) — nunca mais
@@ -28,6 +29,10 @@ export type PostDTO = {
   imageUrls: string[];
   /** Descrição de cada imagem (texto alternativo), na mesma ordem; "" = sem descrição. Vazia com spoiler, como as imagens. */
   imageAlts: string[];
+  /** Imagem marcada como spoiler (borrada até tocar), na mesma ordem. Vazia com spoiler, como as imagens. */
+  imageSpoilers: boolean[];
+  /** Até onde vai o spoiler ("até o episódio 18"); só com `isSpoiler`. */
+  spoilerEpisode: number | null;
   createdAt: string;
   /** null = publicação sem obra associada (Figma 13:41840: contexto opcional). */
   anilistId: number | null;
@@ -79,9 +84,9 @@ export function toPostSummaryDto(post: PostWithAuthor): PostSummaryDTO {
   return {
     id: post.id,
     author: { id: post.user.id, displayName: post.user.displayName, handle: post.user.handle ?? null, avatarUrl: post.user.avatarUrl },
-    body: post.isSpoiler ? "" : post.body,
+    body: post.isSpoiler ? "" : maskSpoilers(post.body),
     isSpoiler: post.isSpoiler,
-    imageUrl: post.isSpoiler ? null : (post.imageUrls[0] ?? null),
+    imageUrl: post.isSpoiler || post.imageSpoilers?.[0] ? null : (post.imageUrls[0] ?? null),
     imageAlt: post.isSpoiler ? "" : (post.imageAlts?.[0] ?? ""),
     animeTitleRomaji: post.animeTitleRomaji,
     animeTitleEnglish: post.animeTitleEnglish,
@@ -120,6 +125,8 @@ export function toPostDto(
     isSpoiler: post.isSpoiler,
     imageUrls: post.isSpoiler ? [] : post.imageUrls,
     imageAlts: post.isSpoiler ? [] : post.imageUrls.map((_, i) => post.imageAlts?.[i] ?? ""),
+    imageSpoilers: post.isSpoiler ? [] : post.imageUrls.map((_, i) => post.imageSpoilers?.[i] ?? false),
+    spoilerEpisode: post.isSpoiler ? (post.spoilerEpisode ?? null) : null,
     createdAt: post.createdAt.toISOString(),
     anilistId: post.anilistId,
     workKey: postWorkKey(post),
