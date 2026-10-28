@@ -23,33 +23,22 @@ function entry(overrides: Partial<AiringScheduleEntry> & { airingAt?: Date; anil
 const owned: OwnedAnimeCalendarInfo = {
   id: "a1",
   titlePortuguese: "Diários",
-  description: "Sinopse da lista",
   descriptionPortuguese: "Sinopse em português",
   isFavorite: true,
 };
 
 describe("calendarItemFromCache", () => {
-  it("uses the cached description for anime outside the user's list (Epic 29)", () => {
+  it("does not carry the synopsis: the preview fetches the work's own on open", () => {
     const item = calendarItemFromCache(entry(), new Map());
     expect(item.inMyList).toBe(false);
-    expect(item.description).toBe("Sinopse do cache");
+    expect(item).not.toHaveProperty("description");
     expect(item.descriptionPortuguese).toBeNull();
   });
 
-  it("prefers the user's own description over the cache when the anime is in the list", () => {
+  it("keeps the user's own Portuguese synopsis when the anime is in the list", () => {
     const item = calendarItemFromCache(entry(), new Map([[10, owned]]));
     expect(item.inMyList).toBe(true);
-    expect(item.description).toBe("Sinopse da lista");
     expect(item.descriptionPortuguese).toBe("Sinopse em português");
-  });
-
-  it("falls back to the cache when the owned row has no description", () => {
-    const item = calendarItemFromCache(entry(), new Map([[10, { ...owned, description: null }]]));
-    expect(item.description).toBe("Sinopse do cache");
-  });
-
-  it("returns null when neither source has a description", () => {
-    expect(calendarItemFromCache(entry({ description: null }), new Map()).description).toBeNull();
   });
 
   it("splits genres and tolerates an empty list", () => {

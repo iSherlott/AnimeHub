@@ -216,7 +216,12 @@ function DiscoverPageContent() {
   const [keywordFilters, setKeywordFilters] = useState(saved?.keywords ?? EMPTY_KEYWORDS);
   const [draft, setDraft] = useState({ status: "", availability: "" as "" | "scheduled" | "unscheduled", sort: "popular" as SortKey, ...EMPTY_KEYWORDS });
 
+  // Espera saber quem está olhando (`undefined` = ainda carregando): sem isso, as fileiras eram buscadas duas vezes
+  // ao abrir a página — uma como visitante e outra já com a pessoa.
+  const viewerKnown = user !== undefined;
   useEffect(() => {
+    if (!viewerKnown) return;
+    let cancelled = false;
     // A cada nova tentativa volta ao estado "carregando" antes da busca terminar.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingRows(true);
@@ -225,6 +230,7 @@ function DiscoverPageContent() {
     fetch(`/api/explore?tz=${encodeURIComponent(timeZone)}&recent=${recent}`)
       .then(async (res) => {
         const data = await res.json();
+        if (cancelled) return;
         if (!res.ok) {
           setRowsError(data.error ?? "Falha ao carregar o Explorar");
           return;
@@ -233,9 +239,12 @@ function DiscoverPageContent() {
         setStoryItems(data.stories ?? []);
         setPersonalized(Boolean(data.personalized));
       })
-      .catch(() => setRowsError("Falha ao carregar o Explorar"))
-      .finally(() => setLoadingRows(false));
-  }, [reloadKey, timeZone, user?.id]);
+      .catch(() => !cancelled && setRowsError("Falha ao carregar o Explorar"))
+      .finally(() => !cancelled && setLoadingRows(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey, timeZone, user?.id, viewerKnown]);
 
   useEffect(() => {
     fetch("/api/catalog/facets")

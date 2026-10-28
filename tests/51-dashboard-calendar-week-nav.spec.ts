@@ -69,11 +69,11 @@ test.describe("Dashboard, calendário e navegação", () => {
       await expect(page).toHaveURL(/\/login\?next=%2Fdashboard/);
     });
 
-    test("o logo leva o visitante a Explorar e a navegação segue a ordem do Figma", async ({ page }) => {
+    test("o logo leva o visitante a Explorar e a navegação segue a ordem escolhida (Feed primeiro)", async ({ page }) => {
       await page.goto("/calendar");
       await expect(page.getByRole("link", { name: "Anime Hub" })).toHaveAttribute("href", "/discover");
       const nav = page.getByRole("link", { name: /^(Explorar|Calendário|Meus animes|Feed|Comunidades)$/ });
-      await expect(nav).toHaveText(["Explorar", "Calendário", "Meus animes", "Feed", "Comunidades"]);
+      await expect(nav).toHaveText(["Feed", "Calendário", "Explorar", "Meus animes", "Comunidades"]);
     });
   });
 

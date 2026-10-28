@@ -71,7 +71,8 @@ export function CommunitySidebar() {
   useEffect(() => {
     if (!loggedIn) return;
     let cancelled = false;
-    fetch("/api/calendar?weekOffset=0")
+    // Só o próximo episódio da lista: `mine=1` traz só os da pessoa, não a semana inteira.
+    fetch("/api/calendar?weekOffset=0&mine=1")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (cancelled || !data) return;

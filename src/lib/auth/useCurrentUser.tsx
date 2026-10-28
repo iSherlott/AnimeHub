@@ -19,22 +19,33 @@ const SetCurrentUserContext = createContext<(user: CurrentUser) => void>(() => {
  * Epic 20). Refaz a busca a cada troca de rota — mesmo gatilho que o
  * Header já usava sozinho, preservado aqui pra continuar refletindo
  * login/logout ao navegar sem precisar recarregar a página.
+ *
+ * `initialUser` vem do servidor (RootLayout lê a sessão): a página já nasce sabendo quem está olhando. Antes, toda tela
+ * que depende da pessoa esperava o JavaScript montar e o `/api/auth/me` voltar para só então pedir os próprios dados —
+ * uma ida e volta a mais no celular — e o cabeçalho piscava "deslogado".
  */
-export function CurrentUserProvider({ children }: { children: ReactNode }) {
+export function CurrentUserProvider({ children, initialUser }: { children: ReactNode; initialUser?: PublicUser | null }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<CurrentUser>(undefined);
+  const [user, setUser] = useState<CurrentUser>(initialUser);
   const userRef = useRef(user);
   useEffect(() => {
     userRef.current = user;
   });
 
+  // Na primeira montagem com o usuário vindo do servidor não precisa perguntar de novo.
+  const skipFirstCheck = useRef(initialUser !== undefined);
   useEffect(() => {
+    if (skipFirstCheck.current) {
+      skipFirstCheck.current = false;
+      return;
+    }
     let cancelled = false;
     fetch("/api/auth/me")
       .then((res) => res.json())
       .then((data) => {
-        if (!cancelled) setUser(data.user);
+        // Mesma pessoa, mesmos dados: mantém o objeto — telas que dependem de `user` não buscam tudo de novo.
+        if (!cancelled) setUser((prev) => (prev && data.user && JSON.stringify(prev) === JSON.stringify(data.user) ? prev : data.user));
       })
       .catch(() => {
         if (!cancelled) setUser(null);

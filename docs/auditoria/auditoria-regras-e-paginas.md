@@ -326,3 +326,47 @@ da história), da hashtag e da comunidade, e os resultados da busca do cabeçalh
 - **Feed e publicações do perfil:** o nome da obra numa publicação abre a prévia, com "Ver página da obra" e a
   comunidade dela, em vez de tirar a pessoa do Feed.
 - **Spec 135** cobre a rota, a sinopse no Explorar e no Feed, ← →, ‹ › e o arraste.
+
+## Desempenho no celular (28/10)
+
+**Como foi medido.** Um spec temporário semeou um volume realista no banco de teste: 3.000 obras, 300 episódios na
+semana, 80 obras na lista e 150 publicações. Cada página foi aberta como num celular médio: tela de 375 px, CPU 4×
+mais lenta e rede de 1,6 Mbps com 150 ms de latência. O spec anotou tamanhos, chamadas e tempos, e apagou tudo no
+fim. O bloqueio da CPU (TBT) variou de 470 a 1.160 ms entre rodadas iguais nesta máquina e não serve de régua. O
+tempo até o conteúdo e os bytes são estáveis.
+
+| página | pronto (antes → depois) | maior pintura (LCP) | dados das APIs |
+|---|---|---|---|
+| Explorar | 5,3 → 4,4 s | 3,9 → 1,8 s | 144 → 75 KB |
+| Calendário | 5,8 → 3,9 s | 2,8 → 1,7 s | 340 → 107 KB |
+| Feed | 4,3 → 4,2 s | 2,9 → 1,7 s | 370 → 50 KB |
+| Dashboard | 3,1 → 2,5 s | 2,8 → 1,7 s | 378 → 67 KB |
+| Perfil | 3,4 → 2,8 s | 3,1 → 1,9 s | 15 → 14 KB |
+| Minha Lista | 3,2 → 2,6 s | 2,9 → 1,9 s | — |
+| Página da obra | 3,4 → 2,9 s | 3,0 → 1,8 s | — |
+| Temporada | 3,7 → 2,6 s | 3,2 → 1,7 s | 43 → 42 KB |
+
+**O que pesava e o que mudou:**
+
+- **Fontes:** a Noto Sans JP, com três pesos listados um a um, virava 372 `@font-face` num CSS de 100 KB que travava
+  a primeira pintura de toda página. Ela e a Inter passaram a ser variáveis (um arquivo cobre os pesos). A japonesa
+  não é mais pré-carregada, porque só os títulos em japonês a usam. O CSS caiu de 106 para 39 KB e as fontes
+  pré-carregadas de 87 para 60 KB.
+- **Quem está olhando vem com a página:** a pessoa logada só era descoberta no navegador (`/api/auth/me`), e toda tela
+  que depende dela esperava essa resposta para pedir os próprios dados. O RootLayout lê a sessão e entrega o usuário
+  ao `CurrentUserProvider`. Isso tira uma ida e volta de cada página e o cabeçalho não pisca mais "deslogado". Ao
+  navegar, o provider continua conferindo a sessão, mas mantém o mesmo objeto quando nada mudou, para as telas que
+  dependem de `user` não buscarem tudo de novo. Feed, calendário, Dashboard, Explorar e Configurações deixam de ser
+  estáticas: custa uma leitura de sessão por página.
+- **Agenda sem sinopses:** `/api/calendar` mandava a sinopse (e as traduções guardadas) de cada episódio da semana. A
+  prévia pede só a da obra aberta (`/api/catalog/preview`, que agora prefere a sinopse da lista da pessoa e usa a da
+  agenda para obra só do calendário). `?mine=1` devolve só os episódios da lista, sem o resto da semana nem o "fora da
+  grade". Dashboard e lateral do Feed usam esse modo, já que só mostram a lista.
+- **Chamadas em dobro:** o Explorar buscava as fileiras duas vezes ao abrir (antes e depois de saber quem está
+  logado). O sino e o Dashboard pediam os avisos ao mesmo tempo e agora dividem a mesma resposta
+  (`src/lib/notificationsClient.ts`).
+- **Sem vazamento:** 20 navegações seguidas na mesma aba mantêm a memória em cerca de 7,5 MB.
+
+**O que fica de fora:** o JavaScript inicial (cerca de 300 KB comprimidos) é quase todo React, Next e MUI. No Explorar,
+as fileiras só aparecem depois que o JavaScript monta e a busca volta; o próximo ganho seria renderizar as fileiras no
+servidor, uma reestruturação maior.

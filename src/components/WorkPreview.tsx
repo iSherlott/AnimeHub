@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import NextLink from "next/link";
 import ArrowOutwardIcon from "@mui/icons-material/ArrowOutward";
 import { Box, Button, ButtonBase, Typography, type SxProps, type Theme } from "@mui/material";
@@ -9,6 +9,7 @@ import { lineLang, PrimaryTitle, useTitleLines } from "@/components/ExploreCard"
 import { useSynopsis } from "@/components/SynopsisText";
 import { WORK_TRIGGER, WorkPreviewShell } from "@/components/WorkPreviewShell";
 import type { TitleSet } from "@/lib/titlePreference";
+import { useWorkDetails } from "@/lib/useWorkDetails";
 
 const actionSx = { bgcolor: "#171820", color: "text.primary", border: 1, borderColor: "divider", "&:hover": { bgcolor: "#1d1e28" } };
 
@@ -25,44 +26,14 @@ export type WorkPreviewInfo = {
   meta?: Array<string | null | undefined>;
 };
 
-type WorkDetails = { anilistId: number | null; description: string | null; descriptionPt: string | null; descriptionJa: string | null; genres: string[] };
-// Uma busca por obra por visita: abrir a mesma prévia de novo (ou voltar a ela pelas setas) não pede de novo.
-const detailsCache = new Map<string, Promise<WorkDetails | null>>();
-
-/**
- * Sinopse e gêneros de quem não veio com eles no cartão (Explorar paginado, Minha Lista, perfil, Feed): pedidos só ao
- * abrir a prévia, pela chave do endereço da obra.
- */
-function useWorkDetails(info: WorkPreviewInfo): WorkDetails | null {
-  const key = !info.description && info.href?.startsWith("/anime/") ? info.href.slice("/anime/".length) : null;
-  const [details, setDetails] = useState<{ key: string; value: WorkDetails | null } | null>(null);
-  useEffect(() => {
-    if (!key) return;
-    let cancelled = false;
-    let request = detailsCache.get(key);
-    if (!request) {
-      request = fetch(`/api/catalog/preview?work=${encodeURIComponent(key)}`)
-        .then((r) => (r.ok ? (r.json() as Promise<WorkDetails>) : null))
-        .catch(() => null);
-      detailsCache.set(key, request);
-      // Falhou: a próxima abertura tenta de novo.
-      request.then((v) => v ?? detailsCache.delete(key));
-    }
-    request.then((value) => !cancelled && setDetails({ key, value }));
-    return () => {
-      cancelled = true;
-    };
-  }, [key]);
-  return key && details?.key === key ? details.value : null;
-}
-
 /**
  * Conteúdo da prévia de uma obra (Explorar, temporada, Dashboard, Minha Lista, álbuns, relacionadas): capa, títulos,
  * informações, sinopse, gêneros, as ações do lugar e o botão "Ver página da obra".
  */
 export function WorkPreview({ info, actions, testId }: { info: WorkPreviewInfo; actions?: ReactNode; testId?: string }) {
   const lines = useTitleLines(info.titles);
-  const fetched = useWorkDetails(info);
+  // Sem sinopse no cartão (listas paginadas, Feed, calendário): pede a da obra ao abrir.
+  const { details: fetched } = useWorkDetails(!info.description && info.href?.startsWith("/anime/") ? info.href.slice("/anime/".length) : null);
   const synopsis = useSynopsis(info.description || fetched?.description, info.anilistId ?? fetched?.anilistId, null, fetched ? { pt: fetched.descriptionPt, ja: fetched.descriptionJa } : undefined);
   const genres = info.genres?.length ? info.genres : (fetched?.genres ?? []);
   const meta = (info.meta ?? []).filter((m): m is string => Boolean(m));

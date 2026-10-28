@@ -18,6 +18,7 @@ import { resolveTitleTextLenient, useTitlePreference } from "@/lib/titlePreferen
 import { formatTimeInZone } from "@/lib/timeZone";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { useTimeZone } from "@/lib/useTimeZone";
+import { fetchNotifications } from "@/lib/notificationsClient";
 
 type AiringAlertItem = {
   id: string;
@@ -139,16 +140,11 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
 
     let cancelled = false;
     async function load() {
-      try {
-        const res = await fetch("/api/notifications");
-        if (!res.ok) return;
-        const data = await res.json();
-        if (cancelled) return;
-        setAlerts(data.alerts ?? []);
-        setSocial(data.social ?? []);
-      } catch {
-        // Silencioso — o sino simplesmente não atualiza nesta rodada.
-      }
+      // Falhou: silencioso — o sino simplesmente não atualiza nesta rodada.
+      const data = await fetchNotifications();
+      if (!data || cancelled) return;
+      setAlerts((data.alerts ?? []) as AiringAlertItem[]);
+      setSocial((data.social ?? []) as SocialItem[]);
     }
 
     load();

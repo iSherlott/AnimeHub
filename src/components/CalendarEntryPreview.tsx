@@ -12,13 +12,14 @@ import EventRepeatIcon from "@mui/icons-material/EventRepeat";
 import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
 import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
 import { useSynopsis } from "@/components/SynopsisText";
-import { Box, Button, Typography } from "@mui/material";
+import { Box, Button, Skeleton, Typography } from "@mui/material";
 import type { CalendarItem } from "@/lib/calendarItem";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { loginHref } from "@/lib/safeRedirect";
 import { formatTimeInZone, weekdayName } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
+import { useWorkDetails } from "@/lib/useWorkDetails";
 
 const buttonSx = { bgcolor: "#171820", color: "text.primary", border: 1, borderColor: "divider", "&:hover": { bgcolor: "#1d1e28" } };
 
@@ -47,7 +48,10 @@ export function CalendarEntryPreview({
   const user = useCurrentUser();
   const timeZone = useTimeZone();
   const title = resolveTitleText(preference, item) || "Sem título";
-  const description = useSynopsis(item.description, item.anilistId, item.descriptionPortuguese, item.storedSynopsis);
+  // A semana não traz a sinopse de cada episódio (pesava centenas de KB): a prévia pede a da obra ao abrir.
+  const { details, loading: loadingSynopsis } = useWorkDetails(item.description ? null : String(item.anilistId));
+  const original = item.description ?? details?.description ?? null;
+  const description = useSynopsis(original, item.anilistId, item.descriptionPortuguese, details ? { pt: details.descriptionPt, ja: details.descriptionJa } : undefined);
   const [coverBroken, setCoverBroken] = useState(false);
   const hasImage = Boolean(item.episodeImage ?? item.coverImage) && !coverBroken;
 
@@ -217,7 +221,7 @@ export function CalendarEntryPreview({
           </Box>
         </Box>
 
-        {item.description ? (
+        {original || item.descriptionPortuguese ? (
           <Typography
             sx={{
               fontSize: 12,
@@ -231,6 +235,8 @@ export function CalendarEntryPreview({
           >
             {description}
           </Typography>
+        ) : loadingSynopsis ? (
+          <Skeleton data-testid="calendar-preview-synopsis-loading" variant="text" animation="wave" width="90%" sx={{ fontSize: 12 }} />
         ) : (
           <Typography sx={{ fontSize: 12, color: "text.secondary" }}>
             {item.inMyList ? "Sem sinopse salva." : "Sem sinopse — abra pra ver mais."}

@@ -16,6 +16,7 @@ import { WorkPreviewTrigger } from "@/components/WorkPreview";
 import { SectionHeader } from "@/components/ExploreParts";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { CalendarItem } from "@/lib/calendarItem";
+import { fetchNotifications } from "@/lib/notificationsClient";
 import type { MyListEntry } from "@/lib/myList";
 import { dayKeyInZone, formatTimeInZone, startOfWeekMondayInZone, weekdayName } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
@@ -65,18 +66,19 @@ export default function DashboardPage() {
     let cancelled = false;
     const now = new Date();
     const weekStart = (offset: number) => Math.floor(startOfWeekMondayInZone(now, offset, timeZone).getTime() / 1000);
-    // Semana atual + próxima: "Depois de hoje" pode cruzar o domingo.
+    // Semana atual + próxima: "Depois de hoje" pode cruzar o domingo. Só os episódios da lista (`mine=1`): o painel não
+    // mostra o resto da semana.
     Promise.all([
-      fetch(`/api/calendar?weekOffset=0&weekStart=${weekStart(0)}`),
-      fetch(`/api/calendar?weekOffset=1&weekStart=${weekStart(1)}`),
+      fetch(`/api/calendar?weekOffset=0&weekStart=${weekStart(0)}&mine=1`),
+      fetch(`/api/calendar?weekOffset=1&weekStart=${weekStart(1)}&mine=1`),
       fetch("/api/my-list"),
-      // Alertas são complemento: se falharem, o resto do painel continua valendo.
-      fetch("/api/notifications").catch(() => null),
+      // Alertas são complemento: se falharem, o resto do painel continua valendo. A mesma busca do sino.
+      fetchNotifications(),
     ])
       .then(async ([w0, w1, list, notifications]) => {
         if (!w0.ok || !w1.ok || !list.ok) throw new Error("falha");
         const [a, b, l] = await Promise.all([w0.json(), w1.json(), list.json()]);
-        const alerts: AlertItem[] = notifications && notifications.ok ? ((await notifications.json()).alerts ?? []) : [];
+        const alerts = (notifications?.alerts ?? []) as AlertItem[];
         if (cancelled) return;
         const items: CalendarItem[] = [...(a.results ?? []), ...(b.results ?? [])];
         setState({ kind: "ready", items, entries: l.entries ?? [], alerts });

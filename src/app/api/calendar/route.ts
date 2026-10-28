@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
   const cached = await getCachedAiringSchedule(new Date(from * 1000), new Date(to * 1000));
   // Só obras da plataforma (trazidas pelo admin) e nunca conteúdo adulto — o cache pode guardar mais do que isso.
   const hiddenIds = await hiddenAnilistIds();
-  const entries = cached.filter((e) => !hiddenIds.has(e.anilistId) && !hasBlockedGenre(e.genres));
+  const visible = cached.filter((e) => !hiddenIds.has(e.anilistId) && !hasBlockedGenre(e.genres));
 
   // Navegar o calendário nunca exige login — sem sessão, ninguém aparece
   // marcado como "já está na minha lista" (não existe "minha lista" pra
@@ -80,26 +80,25 @@ export async function GET(request: NextRequest) {
   // pro preview do lote 2 do Epic 27 tornaria essa query pesada demais se
   // buscasse todo mundo da lista a cada carregamento do calendário.
   const user = await getCurrentUser();
-  const weekAnilistIds = Array.from(new Set(entries.map((e) => e.anilistId)));
+  const weekAnilistIds = Array.from(new Set(visible.map((e) => e.anilistId)));
   const myAnime =
     user && weekAnilistIds.length
       ? await prisma.anime.findMany({
           where: { userId: user.id, anilistId: { in: weekAnilistIds } },
-          select: { id: true, anilistId: true, titlePortuguese: true, titleNative: true, titleEnglish: true, coverImage: true, description: true, descriptionPortuguese: true, isFavorite: true, waiting: true },
+          select: { id: true, anilistId: true, titlePortuguese: true, titleNative: true, titleEnglish: true, coverImage: true, descriptionPortuguese: true, isFavorite: true, waiting: true },
         })
       : [];
   const myAnimeByAnilistId = new Map(
     myAnime.map((a) => [
       a.anilistId as number, // filtrado por `in: weekAnilistIds`
-      { id: a.id, titlePortuguese: a.titlePortuguese, titleNative: a.titleNative, titleEnglish: a.titleEnglish, coverImage: a.coverImage, description: a.description, descriptionPortuguese: a.descriptionPortuguese, isFavorite: a.isFavorite, waiting: a.waiting },
+      { id: a.id, titlePortuguese: a.titlePortuguese, titleNative: a.titleNative, titleEnglish: a.titleEnglish, coverImage: a.coverImage, descriptionPortuguese: a.descriptionPortuguese, isFavorite: a.isFavorite, waiting: a.waiting },
     ])
   );
 
-  // Sinopse já traduzida (português/japonês) guardada no catálogo: o preview nasce no idioma certo.
-  const storedRows = weekAnilistIds.length
-    ? await prisma.catalogEntry.findMany({ where: { anilistId: { in: weekAnilistIds }, OR: [{ descriptionPt: { not: null } }, { descriptionJa: { not: null } }] }, select: { anilistId: true, descriptionPt: true, descriptionJa: true } })
-    : [];
-  const storedByAnilistId = new Map(storedRows.map((r) => [r.anilistId as number, { pt: r.descriptionPt, ja: r.descriptionJa }]));
+  // `mine=1`: só os episódios da lista da pessoa (Dashboard, lateral do Feed) — sem o resto da semana nem o "fora da
+  // grade", que essas telas não mostram e que eram a maior parte da resposta.
+  const mineOnly = request.nextUrl.searchParams.get("mine") === "1";
+  const entries = mineOnly ? visible.filter((e) => myAnimeByAnilistId.get(e.anilistId)?.waiting === false) : visible;
 
   // "Adiado": em que episódio a pessoa parou, por obra da semana (só quem está logado).
   const postponedIds = user && myAnime.length ? await postponedSet(user.id, myAnime.flatMap((a) => (a.anilistId !== null ? [a.anilistId] : []))) : new Set<number>();
@@ -135,7 +134,7 @@ export async function GET(request: NextRequest) {
   // tem data confiável ("undated") ou está em hiato ("postponed").
   const weekMid = new Date((weekStart + WEEK_SECONDS / 2) * 1000);
   const { season, year } = animeSeasonOf(weekMid);
-  const offGridRows = await prisma.catalogEntry.findMany({
+  const offGridRows = mineOnly ? [] : await prisma.catalogEntry.findMany({
     where: {
       anilistId: { not: null, notIn: weekAnilistIds },
       onPlatform: true,
@@ -186,8 +185,7 @@ export async function GET(request: NextRequest) {
         myAnimeByAnilistId,
         isDelayed(e.airingAt, e.episode, catalogNextById.get(e.anilistId), now),
         episodeImages.get(`${e.anilistId}-${e.episode}`) ?? null,
-        postponedIds.has(e.anilistId),
-        storedByAnilistId.get(e.anilistId) ?? null
+        postponedIds.has(e.anilistId)
       );
       const delay = delays.get(e.anilistId);
       return delay ? { ...item, streamingSite: delay.site, tvAiringAt: tvAiringAt(e.airingAt, delay.minutes).toISOString() } : item;

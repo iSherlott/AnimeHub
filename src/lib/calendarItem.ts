@@ -19,16 +19,11 @@ export type CalendarItem = {
   episodeImage: string | null;
   genres: string[];
   inMyList: boolean;
-  /** Sinopse (Epic 29) — vem da própria linha de Anime do usuário
-   * quando está na lista, senão do cache de calendário
-   * (AiringScheduleEntry.description, pedido na mesma busca AniList
-   * que já traz o resto da entrada). `descriptionPortuguese` continua
-   * só disponível na lista — não existe onde guardar uma tradução
-   * manual pra anime sem dono. */
-  description: string | null;
+  /** Sinopse original. A semana do calendário NÃO a traz (pesava centenas de KB): a prévia pede a da obra ao abrir
+   * (/api/catalog/preview, que dá preferência à da lista da pessoa). Fica opcional para quem já a tiver em mãos. */
+  description?: string | null;
+  /** Tradução manual da pessoa (só obras da lista — não existe onde guardar uma para anime sem dono). */
   descriptionPortuguese: string | null;
-  /** Sinopse já traduzida guardada no catálogo (português e japonês), para o preview nascer no idioma certo. */
-  storedSynopsis?: { pt: string | null; ja: string | null };
   isFavorite: boolean;
   /** Está na lista mas em modo "Espera" (não conta como `inMyList`). */
   waiting?: boolean;
@@ -55,7 +50,6 @@ export type OwnedAnimeCalendarInfo = {
   titleNative?: string | null;
   titleEnglish?: string | null;
   coverImage?: string | null;
-  description: string | null;
   descriptionPortuguese: string | null;
   isFavorite: boolean;
   waiting?: boolean;
@@ -66,8 +60,7 @@ export function calendarItemFromCache(
   myAnimeByAnilistId: Map<number, OwnedAnimeCalendarInfo>,
   delayed = false,
   episodeImage: string | null = null,
-  postponed = false,
-  storedSynopsis: { pt: string | null; ja: string | null } | null = null
+  postponed = false
 ): CalendarItem {
   const owned = myAnimeByAnilistId.get(entry.anilistId) ?? null;
   return {
@@ -86,9 +79,7 @@ export function calendarItemFromCache(
     genres: entry.genres ? entry.genres.split(",").filter(Boolean) : [],
     inMyList: owned !== null && !owned.waiting,
     waiting: owned?.waiting ?? false,
-    description: owned?.description ?? entry.description ?? null,
     descriptionPortuguese: owned?.descriptionPortuguese ?? null,
-    ...(storedSynopsis && (storedSynopsis.pt || storedSynopsis.ja) ? { storedSynopsis } : {}),
     isFavorite: owned?.isFavorite ?? false,
     postponed: Boolean(owned && !owned.waiting && postponed),
     delayed,
