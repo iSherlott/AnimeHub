@@ -16,6 +16,17 @@ async function scrollToEnd(page: Page) {
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
 }
 
+/**
+ * Rola até chegarem `count` cartões. Os primeiros já vêm prontos do servidor: uma rolagem feita antes de a página
+ * terminar de montar (ou antes de ela crescer) pode deixar o fim fora do alcance — como uma pessoa, rola de novo.
+ */
+async function scrollUntil(page: Page, cards: import("@playwright/test").Locator, count: number) {
+  await expect(async () => {
+    await scrollToEnd(page);
+    await expect(cards).toHaveCount(count, { timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
+}
+
 test.describe.serial("Rolagem infinita", () => {
   let prisma: PrismaClient;
   let userId: string;
@@ -149,8 +160,7 @@ test.describe.serial("Rolagem infinita", () => {
     await page.goto(`/discover?genre=${GENRE}`);
     const cards = page.locator('[data-testid^="explore-card-anilist-"]');
     await expect(cards).toHaveCount(48);
-    await scrollToEnd(page);
-    await expect(cards).toHaveCount(96);
+    await scrollUntil(page, cards, 96);
     await page.getByLabel("Tipo").selectOption("EPISODE");
     await expect(cards).toHaveCount(48);
     await expect(page.getByText(`${TOTAL} resultados`)).toBeVisible();

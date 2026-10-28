@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Nenhum arquivo enviado" }, { status: 400 });
   }
 
-  const result = await processImageUpload(file, request, { kind: "posts", maxDimension: MAX_DIMENSION });
+  const result = await processImageUpload(file, request, { kind: "posts", maxDimension: MAX_DIMENSION, animated: true });
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }

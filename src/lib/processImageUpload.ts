@@ -19,7 +19,8 @@ export type ProcessImageUploadResult =
 export async function processImageUpload(
   file: File,
   request: Request,
-  opts: { kind: string; maxDimension: number }
+  /** `animated`: GIF/WebP animados continuam animados (todas as quadros vão para o WebP). Sem ele, só o 1º quadro. */
+  opts: { kind: string; maxDimension: number; animated?: boolean }
 ): Promise<ProcessImageUploadResult> {
   if (!isWithinMaxSize(file.size)) {
     return {
@@ -38,7 +39,7 @@ export async function processImageUpload(
   let outBuffer: Buffer;
   let info: { width: number; height: number };
   try {
-    const image = sharp(buffer);
+    const image = sharp(buffer, { animated: opts.animated ?? false });
     const metadata = await image.metadata();
     if (!isAllowedImageFormat(metadata.format)) {
       return { ok: false, error: "Arquivo não é uma imagem válida", status: 400 };
@@ -48,7 +49,8 @@ export async function processImageUpload(
       .webp({ quality: 82 })
       .toBuffer({ resolveWithObject: true });
     outBuffer = result.data;
-    info = result.info;
+    // Animado, `info.height` é a altura da tira com todos os quadros: a de um quadro é `pageHeight`.
+    info = { width: result.info.width, height: (result.info as { pageHeight?: number }).pageHeight ?? result.info.height };
   } catch {
     return { ok: false, error: "Arquivo não é uma imagem válida", status: 400 };
   }

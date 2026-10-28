@@ -40,10 +40,11 @@ test.describe("Nova publicação — contexto de obra opcional e explícito", ()
     await expect(page.getByTestId("related-anime-chip")).toHaveCount(0);
   });
 
-  test("é somente texto na V1: não há anexo de imagem", async ({ page }) => {
+  // Era só texto na V1; desde 28/10 a publicação aceita imagens (ver 138-imagens-nas-publicacoes.spec.ts).
+  test("tem a seção de imagens, com um seletor de arquivo só de imagens", async ({ page }) => {
     await page.goto("/publicar");
-    await expect(page.getByRole("button", { name: "Anexar imagem" })).toHaveCount(0);
-    await expect(page.locator('input[type="file"]')).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Adicionar imagem" })).toBeVisible();
+    await expect(page.getByTestId("editor-image-input")).toHaveAttribute("accept", /image\/gif/);
   });
 
   test("modo citação anuncia (role=status) e foca o corpo do texto", async ({ page, request }) => {

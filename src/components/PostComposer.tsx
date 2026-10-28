@@ -18,10 +18,13 @@ import {
   Typography,
 } from "@mui/material";
 import { AnimeContextPicker, type RelatedAnime } from "@/components/AnimeContextPicker";
+import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import { HashtagRow } from "@/components/HashtagRow";
+import { PostImageAttachments } from "@/components/PostImageAttachments";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { canonicalHashtagKey, extractHashtags, MAX_HASHTAGS_PER_POST } from "@/lib/hashtags";
+import { DRAFT_IMAGES_KEY, MAX_COMPOSER_IMAGES, usePostImages } from "@/lib/usePostImages";
 
 const MAX_BODY_LENGTH = 500;
 const DRAFT_KEY = "anime-hub:draft:new-post";
@@ -48,7 +51,7 @@ function EditorSection({ title, children }: { title: string; children: React.Rea
  * campo "SUA PUBLICAÇÃO", associação EXPLÍCITA e opcional de obra, hashtags
  * com sugestões, proteção de spoilers e Cancelar/Publicar.
  *
- * - V1 somente texto (sem anexos), conforme o Figma.
+ * - Imagens: até 4 (GIF continua animado), enviadas na hora; o rascunho delas vem junto do campo do Feed.
  * - Cancelar com texto pede confirmação para descartar; erro preserva o
  *   rascunho; publicar desabilita novo envio (guarda síncrona anti-duplicidade).
  * - O rascunho vive em sessionStorage (sobrevive ao login e à navegação).
@@ -75,6 +78,10 @@ export function PostComposer({
   const [error, setError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const postingRef = useRef(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const images = usePostImages(DRAFT_IMAGES_KEY);
+  // Imagem que falhou bloqueia o Publicar até ser removida: senão a pessoa acharia que ela foi junto.
+  const canPublish = (Boolean(body.trim()) || images.urls.length > 0) && !images.uploading && !images.failed && !busy;
 
   // Rascunho preservado entre navegações/login (sessionStorage; falha em silêncio).
   useEffect(() => {
@@ -151,11 +158,12 @@ export function PostComposer({
     } catch {
       // nada a limpar
     }
+    images.clear();
     router.push("/");
   }
 
   function requestCancel() {
-    if (body.trim() || tags.length > 0) {
+    if (body.trim() || tags.length > 0 || images.items.length > 0) {
       setConfirmDiscard(true);
       return;
     }
@@ -163,19 +171,18 @@ export function PostComposer({
   }
 
   async function publish() {
-    if (postingRef.current) return;
+    if (postingRef.current || !canPublish) return;
     const text = body.trim();
-    if (!text) return;
     postingRef.current = true;
     setBusy(true);
     setError(null);
     try {
       const extra = tags.filter((t) => !bodyTags.some((b) => b.key === t.key));
-      const full = extra.length ? `${text}\n${extra.map((t) => `#${t.display}`).join(" ")}` : text;
+      const full = extra.length ? `${text}\n${extra.map((t) => `#${t.display}`).join(" ")}`.trim() : text;
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: full, anilistId: anime?.anilistId ?? undefined, work: anime && anime.anilistId === null ? anime.work : undefined, isSpoiler: spoiler, quotedPostId: quoted?.id }),
+        body: JSON.stringify({ body: full, imageUrls: images.urls, anilistId: anime?.anilistId ?? undefined, work: anime && anime.anilistId === null ? anime.work : undefined, isSpoiler: spoiler, quotedPostId: quoted?.id }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -187,6 +194,7 @@ export function PostComposer({
       } catch {
         // nada a limpar
       }
+      images.clear();
       router.push(`/publicacao/${data.post.id}`);
     } catch {
       setError("Não foi possível publicar. Texto, associação e escolha de spoilers foram mantidos. Você pode tentar novamente.");
@@ -230,6 +238,13 @@ export function PostComposer({
           id="post-body"
           value={body}
           onChange={(e) => setBody(e.target.value.slice(0, MAX_BODY_LENGTH))}
+          onPaste={(e) => {
+            const files = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith("image/"));
+            if (files.length) {
+              e.preventDefault();
+              images.addFiles(files);
+            }
+          }}
           placeholder="Que conversa você quer começar?"
           autoFocus
           multiline
@@ -243,6 +258,42 @@ export function PostComposer({
           {body.length}/{MAX_BODY_LENGTH} caracteres · limite provisório
         </Typography>
       </Box>
+
+      {/* Imagens */}
+      <EditorSection title="Imagens">
+        <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+          Opcional. Até {MAX_COMPOSER_IMAGES} imagens (JPG, PNG, WebP, AVIF ou GIF, que continua animado), de até 8 MB cada.
+          Também dá para colar uma imagem no campo do texto.
+        </Typography>
+        <PostImageAttachments items={images.items} onRemove={images.remove} disabled={busy} />
+        {images.notice && (
+          <Typography role="status" sx={{ fontSize: 13, color: "warning.main" }}>
+            {images.notice}
+          </Typography>
+        )}
+        <Box>
+          <Button
+            onClick={() => fileRef.current?.click()}
+            disabled={busy || images.full}
+            startIcon={<ImageOutlinedIcon />}
+            sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}
+          >
+            {images.full ? `${MAX_COMPOSER_IMAGES} imagens (o máximo)` : "Adicionar imagem"}
+          </Button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+            multiple
+            hidden
+            data-testid="editor-image-input"
+            onChange={(e) => {
+              if (e.target.files) images.addFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+        </Box>
+      </EditorSection>
 
       {/* Anime relacionado */}
       <EditorSection title="Anime relacionado">
@@ -348,8 +399,8 @@ export function PostComposer({
         <Button onClick={requestCancel} sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}>
           Cancelar
         </Button>
-        <Button onClick={publish} disabled={busy || !body.trim()} variant="contained" data-testid="publish-send">
-          Publicar
+        <Button onClick={publish} disabled={!canPublish} variant="contained" data-testid="publish-send">
+          {images.uploading ? "Enviando imagens…" : "Publicar"}
         </Button>
       </Stack>
 

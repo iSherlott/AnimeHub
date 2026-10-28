@@ -418,3 +418,23 @@ está acontecendo?". Ao focar, aparece a barra com anime relacionado, hashtag (i
 editor completo (`/publicar`, que leva o texto junto pelo mesmo rascunho), e o botão Postar, que só acende com texto.
 Ctrl/⌘+Enter também posta. A publicação nova entra no topo da lista sem sair do Feed. Sem foto nem GIF: as publicações
 são só de texto, como no editor completo. Spec 137.
+
+## Imagens nas publicações (28/10)
+
+O servidor já guardava imagens de publicação (`POST /api/uploads`: reduz a 2048 px e grava em WebP), mas nenhuma tela
+usava. Agora o campo do Feed e o editor completo anexam imagens:
+
+- **Como anexar:** até 4 imagens, pelo botão de imagem ou colando no campo do texto. Cada uma sobe na hora, com prévia
+  local enquanto envia (`src/lib/usePostImages.ts`, `src/components/PostImageAttachments.tsx`).
+- **Postar:** espera o envio terminar e não deixa seguir com imagem que falhou ("Remova para publicar."). Dá para postar
+  só imagem, sem texto, como no X; o servidor passou a aceitar.
+- **GIF:** continua animado (`processImageUpload` com `animated`, só para publicação; avatar segue com o 1º quadro).
+- **Miniaturas:** no arranjo do X, num bloco 16:9 fixo (1 inteira; 2 lado a lado; 3 com uma alta e duas empilhadas;
+  4 em 2×2), para o campo não crescer.
+- **No celular:** o contador de caracteres só aparece perto do limite, e a barra cabe numa linha com alvos de 44 px.
+- **Rascunho:** as imagens já enviadas vão junto do campo do Feed para o editor completo.
+
+O que fica de fora: as imagens não ganharam descrição (texto alternativo) escrita pela pessoa. Na exibição, o
+carrossel continua sem descrição (`alt` vazio), e quem usa leitor de tela não sabe o que a imagem mostra.
+
+Spec 138; teste de unidade do GIF animado em `processImageUpload.test.ts`.

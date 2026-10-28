@@ -34,11 +34,6 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
   const body = (rawBody && typeof rawBody === "object" ? rawBody : {}) as Record<string, unknown>;
 
   const text = typeof body.body === "string" ? body.body.trim() : "";
-  // isBlank (não só !text) — ver src/lib/text.ts (achado real da 11ª
-  // rodada de auditoria, Epic 18).
-  if (isBlank(text)) {
-    return NextResponse.json({ error: "Post não pode ser vazio" }, { status: 400 });
-  }
   if (text.length > MAX_POST_BODY_LENGTH) {
     return NextResponse.json(
       { error: `Post muito longo (máximo ${MAX_POST_BODY_LENGTH} caracteres)` },
@@ -74,6 +69,12 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
       }
       imageUrls.push(trimmed);
     }
+  }
+
+  // isBlank (não só !text) — ver src/lib/text.ts (achado real da 11ª rodada de auditoria, Epic 18). Como no X, uma
+  // publicação pode ser só imagem; vazia de tudo, não.
+  if (isBlank(text) && imageUrls.length === 0) {
+    return NextResponse.json({ error: "Post não pode ser vazio" }, { status: 400 });
   }
 
   // Citação (Epic 25) — confirma que o post citado existe, não foi apagado

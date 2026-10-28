@@ -3,15 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import NextLink from "next/link";
 import CloseIcon from "@mui/icons-material/Close";
+import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import LiveTvOutlinedIcon from "@mui/icons-material/LiveTvOutlined";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import TagIcon from "@mui/icons-material/Tag";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import { Alert, Box, Button, Chip, Dialog, DialogContent, DialogTitle, IconButton, InputBase, Tooltip, Typography } from "@mui/material";
 import { AnimeContextPicker, type RelatedAnime } from "@/components/AnimeContextPicker";
+import { PostImageAttachments } from "@/components/PostImageAttachments";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { PostDTO } from "@/lib/postDto";
+import { DRAFT_IMAGES_KEY, MAX_COMPOSER_IMAGES, usePostImages } from "@/lib/usePostImages";
 
 const MAX_BODY_LENGTH = 500;
 /** O mesmo rascunho do editor completo (/publicar): "Abrir editor completo" leva o texto junto. */
@@ -22,8 +25,9 @@ const toolSx = { width: 44, height: 44, color: "primary.light", "&[aria-pressed=
 /**
  * Campo de publicar no topo do Feed (no lugar do botão "+ Nova publicação"), no jeito do X: avatar e "O que está
  * acontecendo?"; ao focar, a barra com o que uma publicação do AnimeHub tem — anime relacionado, hashtag, spoiler e o
- * editor completo (que leva o texto junto) — e o botão Postar. A publicação nova entra no topo da lista, sem sair do Feed.
- * As publicações são só de texto (sem imagem ou GIF), como no editor completo.
+ * editor completo (que leva o texto e as imagens junto) — e o botão Postar. Imagem: até 4, pelo botão ou colando no campo;
+ * cada uma sobe na hora (GIF continua animado) e o Postar espera o envio terminar. Pode postar só imagem. A publicação
+ * nova entra no topo da lista, sem sair do Feed.
  */
 export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }) {
   const user = useCurrentUser();
@@ -36,6 +40,8 @@ export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }
   const [error, setError] = useState<string | null>(null);
   const postingRef = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const images = usePostImages(DRAFT_IMAGES_KEY);
 
   // Rascunho compartilhado com o editor completo (sessionStorage; falha em silêncio).
   useEffect(() => {
@@ -63,6 +69,8 @@ export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }
   if (!user) return null;
 
   const text = body.trim();
+  // Imagem que falhou bloqueia o Postar até ser removida: senão a pessoa acharia que ela foi junto.
+  const canPost = (Boolean(text) || images.urls.length > 0) && !images.uploading && !images.failed && !busy;
   const remaining = MAX_BODY_LENGTH - body.length;
   const fullEditorHref = `/publicar${anime ? (anime.anilistId !== null ? `?anilistId=${anime.anilistId}` : `?obra=${encodeURIComponent(anime.work)}`) : ""}`;
 
@@ -83,7 +91,7 @@ export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }
   }
 
   async function post() {
-    if (postingRef.current || !text) return;
+    if (postingRef.current || !canPost) return;
     postingRef.current = true;
     setBusy(true);
     setError(null);
@@ -91,7 +99,7 @@ export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: text, anilistId: anime?.anilistId ?? undefined, work: anime && anime.anilistId === null ? anime.work : undefined, isSpoiler: spoiler }),
+        body: JSON.stringify({ body: text, imageUrls: images.urls, anilistId: anime?.anilistId ?? undefined, work: anime && anime.anilistId === null ? anime.work : undefined, isSpoiler: spoiler }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.post) {
@@ -99,6 +107,7 @@ export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }
         return;
       }
       onPosted(data.post as PostDTO);
+      images.clear();
       setBody("");
       setAnime(null);
       setSpoiler(false);
@@ -122,6 +131,15 @@ export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }
           value={body}
           onChange={(e) => setBody(e.target.value.slice(0, MAX_BODY_LENGTH))}
           onFocus={() => setExpanded(true)}
+          // Colar uma imagem (print, cópia do navegador) anexa como se tivesse escolhido o arquivo.
+          onPaste={(e) => {
+            const files = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith("image/"));
+            if (files.length) {
+              e.preventDefault();
+              images.addFiles(files);
+              setExpanded(true);
+            }
+          }}
           onKeyDown={(e) => {
             // Ctrl/⌘ + Enter publica, como no editor completo dos outros sites.
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
@@ -138,6 +156,13 @@ export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }
           sx={{ fontSize: { xs: 18, sm: 20 }, lineHeight: 1.4, py: 0.75, alignItems: "flex-start", "& textarea::placeholder": { color: "text.secondary", opacity: 1 } }}
         />
 
+        <PostImageAttachments items={images.items} onRemove={images.remove} disabled={busy} />
+        {images.notice && (
+          <Typography role="status" sx={{ fontSize: 13, color: "warning.main" }}>
+            {images.notice}
+          </Typography>
+        )}
+
         {(anime || spoiler) && (
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
             {anime && <Chip data-testid="composer-anime" label={`Sobre: ${anime.title}`} onDelete={() => setAnime(null)} size="small" sx={{ fontWeight: 700 }} />}
@@ -151,9 +176,28 @@ export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }
           </Alert>
         )}
 
-        {(expanded || text) && (
+        {(expanded || text || images.items.length > 0) && (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, borderTop: 1, borderColor: "divider", pt: 1 }}>
-            <Box role="toolbar" aria-label="Opções da publicação" sx={{ display: "flex", flexWrap: "wrap", ml: -1 }}>
+            <Box role="toolbar" aria-label="Opções da publicação" sx={{ display: "flex", flexWrap: "nowrap", ml: -1, minWidth: 0 }}>
+              <Tooltip title={images.full ? `No máximo ${MAX_COMPOSER_IMAGES} imagens` : "Imagem ou GIF"}>
+                <span>
+                  <IconButton aria-label="Adicionar imagem" onClick={() => fileRef.current?.click()} disabled={busy || images.full} sx={toolSx}>
+                    <ImageOutlinedIcon />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                multiple
+                hidden
+                data-testid="composer-image-input"
+                onChange={(e) => {
+                  if (e.target.files) images.addFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
               <Tooltip title="Anime relacionado">
                 <IconButton aria-label="Anime relacionado" aria-haspopup="dialog" onClick={() => setPickingAnime(true)} disabled={busy} sx={toolSx}>
                   <LiveTvOutlinedIcon />
@@ -176,13 +220,14 @@ export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }
               </Tooltip>
             </Box>
             <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1.5 }}>
-              {body.length > 0 && (
+              {/* Como no X: o contador só aparece perto do limite (e assim a barra cabe numa linha no celular). */}
+              {remaining <= 50 && (
                 <Typography aria-live="polite" sx={{ fontSize: 13, fontVariantNumeric: "tabular-nums", color: remaining <= 20 ? "error.main" : "text.secondary" }}>
                   {remaining}
                 </Typography>
               )}
-              <Button onClick={post} disabled={busy || !text} variant="contained" data-testid="composer-post" sx={{ borderRadius: 999, px: 2.5, minHeight: 40, fontWeight: 700, "&.Mui-disabled": { bgcolor: "rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.45)" } }}>
-                {busy ? "Postando…" : "Postar"}
+              <Button onClick={post} disabled={!canPost} variant="contained" data-testid="composer-post" sx={{ borderRadius: 999, px: { xs: 2, sm: 2.5 }, minHeight: 40, flexShrink: 0, fontWeight: 700, "&.Mui-disabled": { bgcolor: "rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.45)" } }}>
+                {busy ? "Postando…" : images.uploading ? "Enviando…" : "Postar"}
               </Button>
             </Box>
           </Box>
