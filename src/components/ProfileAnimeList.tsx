@@ -95,10 +95,12 @@ function AnimePreview({ entry, title, onChangeState }: { entry: ProfileAnimeEntr
             </Typography>
           ))}
         </Box>
-        <Typography sx={{ fontSize: 12, color: entry.category === "other" ? "text.secondary" : "primary.light", fontWeight: 700 }}>
-          {categoryText(entry)}
-          {entry.seasonsCount > 1 ? ` · ${entry.seasonsCount} temporadas` : ""}
-        </Typography>
+        {/* Sem andamento nem situação conhecida, a linha some (um "—" sozinho não diz nada). */}
+        {(categoryText(entry) !== "—" || entry.seasonsCount > 1) && (
+          <Typography sx={{ fontSize: 12, color: entry.category === "other" ? "text.secondary" : "primary.light", fontWeight: 700 }}>
+            {[categoryText(entry), entry.seasonsCount > 1 ? `${entry.seasonsCount} temporadas` : null].filter((t) => t && t !== "—").join(" · ")}
+          </Typography>
+        )}
         {entry.genres.length > 0 && (
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
             {entry.genres.slice(0, 3).map((g) => (
