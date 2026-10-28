@@ -205,6 +205,8 @@ AniDB). Opcional: `ANIDB_REQUEST_GAP_MS` (intervalo entre obras, padrão 4000 ms
 
 #### Ordem segura desta atualização (27 migrações, de `20261025100000` a `20261119100000`)
 
+**Use o roteiro com caixas de marcar, ensaiado numa cópia do banco: [`checklist-atualizacao-28-10.md`](checklist-atualizacao-28-10.md)** (inclui a conferência em SQL, `conferir-atualizacao.sql`, e o comando do primeiro administrador para um banco novo). Os passos abaixo são o resumo.
+
 O site do cluster e o desenvolvimento no Windows usam o **mesmo banco**. O código antigo ainda lê a tabela `Episode`, que
 a migração de 02/11 arquiva: migrar o banco sem atualizar o cluster derruba as páginas de obra do site antigo. Por isso,
 banco e site sobem juntos, pelo próprio Job de migração:
