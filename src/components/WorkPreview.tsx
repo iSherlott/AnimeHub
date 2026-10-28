@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import NextLink from "next/link";
 import ArrowOutwardIcon from "@mui/icons-material/ArrowOutward";
 import { Box, Button, ButtonBase, Typography, type SxProps, type Theme } from "@mui/material";
 import { CoverImage } from "@/components/CoverImage";
 import { lineLang, PrimaryTitle, useTitleLines } from "@/components/ExploreCard";
 import { useSynopsis } from "@/components/SynopsisText";
-import { WorkPreviewShell } from "@/components/WorkPreviewShell";
+import { WORK_TRIGGER, WorkPreviewShell } from "@/components/WorkPreviewShell";
 import type { TitleSet } from "@/lib/titlePreference";
 
 const actionSx = { bgcolor: "#171820", color: "text.primary", border: 1, borderColor: "divider", "&:hover": { bgcolor: "#1d1e28" } };
@@ -25,13 +25,46 @@ export type WorkPreviewInfo = {
   meta?: Array<string | null | undefined>;
 };
 
+type WorkDetails = { anilistId: number | null; description: string | null; descriptionPt: string | null; descriptionJa: string | null; genres: string[] };
+// Uma busca por obra por visita: abrir a mesma prévia de novo (ou voltar a ela pelas setas) não pede de novo.
+const detailsCache = new Map<string, Promise<WorkDetails | null>>();
+
+/**
+ * Sinopse e gêneros de quem não veio com eles no cartão (Explorar paginado, Minha Lista, perfil, Feed): pedidos só ao
+ * abrir a prévia, pela chave do endereço da obra.
+ */
+function useWorkDetails(info: WorkPreviewInfo): WorkDetails | null {
+  const key = !info.description && info.href?.startsWith("/anime/") ? info.href.slice("/anime/".length) : null;
+  const [details, setDetails] = useState<{ key: string; value: WorkDetails | null } | null>(null);
+  useEffect(() => {
+    if (!key) return;
+    let cancelled = false;
+    let request = detailsCache.get(key);
+    if (!request) {
+      request = fetch(`/api/catalog/preview?work=${encodeURIComponent(key)}`)
+        .then((r) => (r.ok ? (r.json() as Promise<WorkDetails>) : null))
+        .catch(() => null);
+      detailsCache.set(key, request);
+      // Falhou: a próxima abertura tenta de novo.
+      request.then((v) => v ?? detailsCache.delete(key));
+    }
+    request.then((value) => !cancelled && setDetails({ key, value }));
+    return () => {
+      cancelled = true;
+    };
+  }, [key]);
+  return key && details?.key === key ? details.value : null;
+}
+
 /**
  * Conteúdo da prévia de uma obra (Explorar, temporada, Dashboard, Minha Lista, álbuns, relacionadas): capa, títulos,
  * informações, sinopse, gêneros, as ações do lugar e o botão "Ver página da obra".
  */
 export function WorkPreview({ info, actions, testId }: { info: WorkPreviewInfo; actions?: ReactNode; testId?: string }) {
   const lines = useTitleLines(info.titles);
-  const synopsis = useSynopsis(info.description, info.anilistId);
+  const fetched = useWorkDetails(info);
+  const synopsis = useSynopsis(info.description || fetched?.description, info.anilistId ?? fetched?.anilistId, null, fetched ? { pt: fetched.descriptionPt, ja: fetched.descriptionJa } : undefined);
+  const genres = info.genres?.length ? info.genres : (fetched?.genres ?? []);
   const meta = (info.meta ?? []).filter((m): m is string => Boolean(m));
   return (
     <Box sx={{ width: { xs: "100%", sm: 360 }, display: "flex", flexDirection: "column", gap: 1.5, p: 2, boxSizing: "border-box" }} data-testid={testId ?? "work-preview"}>
@@ -56,9 +89,9 @@ export function WorkPreview({ info, actions, testId }: { info: WorkPreviewInfo; 
           {synopsis}
         </Typography>
       )}
-      {info.genres && info.genres.length > 0 && (
+      {genres.length > 0 && (
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
-          {info.genres.slice(0, 4).map((g) => (
+          {genres.slice(0, 4).map((g) => (
             <Typography key={g} component="span" sx={{ px: 1, py: 0.5, borderRadius: "6px", bgcolor: "background.paper", fontSize: 10, fontWeight: 700 }}>
               {g}
             </Typography>
@@ -109,6 +142,7 @@ export function WorkPreviewTrigger({
         aria-haspopup="dialog"
         aria-expanded={Boolean(anchorEl)}
         data-testid={testId}
+        {...WORK_TRIGGER}
         // O ButtonBase centraliza os filhos por padrão: sem esticar, a capa (proporção pela largura) ficava com altura zero.
         sx={[{ display: "block", width: "100%", alignItems: "stretch", justifyContent: "flex-start", textAlign: "left", color: "inherit", borderRadius: "8px", "&.Mui-focusVisible": { outline: "2px solid #ffd400", outlineOffset: 2 } }, ...(Array.isArray(sx) ? sx : [sx])]}
       >

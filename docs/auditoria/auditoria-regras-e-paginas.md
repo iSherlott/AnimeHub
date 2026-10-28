@@ -310,3 +310,19 @@ e a rolagem.
 
 Ficam como links os textos que levam a outra obra por dentro da própria página da obra (temporadas, ramos, marcadores
 da história), da hashtag e da comunidade, e os resultados da busca do cabeçalho. Ali a intenção de navegar é clara.
+
+**Toques finais da prévia (28/10).**
+
+- **Sinopse sob demanda:** as listas (Explorar paginado, Minha Lista, Feed) não carregam a sinopse. Ao abrir, a prévia
+  pede a sinopse (original e traduções guardadas) e os gêneros só daquela obra (`GET /api/catalog/preview?work=<chave>`,
+  pública, com limite por IP). Antes, a prévia dessas listas saía sem sinopse.
+- **Anime vizinho:** com a prévia presa, ← → passam ao anime anterior ou seguinte da página, na ordem em que aparecem.
+  Na gaveta do celular, os botões ‹ › fazem o mesmo e se apagam nas pontas. Setas dentro de um campo (o seletor de
+  andamento) continuam sendo do campo. Os itens que abrem a prévia são marcados com `data-work-trigger`.
+- **Gaveta que arrasta:** no celular, arrastar a gaveta para baixo fecha a prévia. Ela só escuta toques depois da
+  primeira abertura.
+- **Cartão que cabe:** quando a sinopse chega depois de aberto, o cartão do computador se reposiciona para continuar
+  inteiro na tela.
+- **Feed e publicações do perfil:** o nome da obra numa publicação abre a prévia, com "Ver página da obra" e a
+  comunidade dela, em vez de tirar a pessoa do Feed.
+- **Spec 135** cobre a rota, a sinopse no Explorar e no Feed, ← →, ‹ › e o arraste.

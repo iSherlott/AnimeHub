@@ -10,7 +10,7 @@ import { PrimaryTitle, useTitleLines } from "@/components/ExploreCard";
 import { isAiringNow } from "@/lib/airingWindow";
 import { CalendarEntryPreview } from "@/components/CalendarEntryPreview";
 import { CoverImage } from "@/components/CoverImage";
-import { WorkPreviewShell } from "@/components/WorkPreviewShell";
+import { WORK_TRIGGER, WorkPreviewShell } from "@/components/WorkPreviewShell";
 import { formatTimeInZone } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
 
@@ -158,6 +158,7 @@ export function CalendarEntryCard({
         aria-expanded={Boolean(anchorEl)}
         aria-label={`${title}, ${episode}, ${time}`}
         data-testid={`calendar-entry-${item.key}`}
+        {...WORK_TRIGGER}
         data-delayed={item.delayed ? "true" : undefined}
         onPointerEnter={hoverOpen}
         onPointerLeave={scheduleClose}

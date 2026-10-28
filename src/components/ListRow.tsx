@@ -7,7 +7,7 @@ import { Box, ButtonBase, Typography } from "@mui/material";
 import { CoverImage } from "@/components/CoverImage";
 import { lineLang, PrimaryTitle, useTitleLines } from "@/components/ExploreCard";
 import { WorkPreview, type WorkPreviewInfo } from "@/components/WorkPreview";
-import { WorkPreviewShell } from "@/components/WorkPreviewShell";
+import { WORK_TRIGGER, WorkPreviewShell } from "@/components/WorkPreviewShell";
 import type { TitleSet } from "@/lib/titlePreference";
 
 /** Selo "NOVO EPISÓDIO EP03" (Figma `10:28`): ícone de brilho + 11 px bold em acento. */
@@ -89,6 +89,7 @@ export function ListRow({
               onClick={openPreview}
               aria-haspopup="dialog"
               aria-expanded={Boolean(anchorEl)}
+              {...WORK_TRIGGER}
               sx={{ font: "inherit", color: "inherit", textAlign: "left", display: "inline", borderRadius: "4px", "&:hover": { textDecoration: "underline" }, "&.Mui-focusVisible": { outline: "2px solid #ffd400", outlineOffset: 2 } }}
             >
               <PrimaryTitle lines={titleLines} />
@@ -138,6 +139,7 @@ export function ListRow({
           onClick={openPreview}
           aria-haspopup="dialog"
           aria-expanded={Boolean(anchorEl)}
+          {...WORK_TRIGGER}
           sx={{ ...sx, width: "100%", textAlign: "left", justifyContent: "stretch", transition: "border-color 0.15s ease", "&:hover": { borderColor: "text.secondary" }, "&.Mui-focusVisible": { outline: "2px solid #ffd400", outlineOffset: 2 } }}
         >
           {content}

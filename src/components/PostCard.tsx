@@ -15,6 +15,7 @@ import { Box, ButtonBase, Link as MuiLink, Menu, MenuItem, Stack, Typography, Bu
 import { LikeToggle } from "@/components/LikeToggle";
 import { PostComments } from "@/components/PostComments";
 import { PostImageCarousel } from "@/components/PostImageCarousel";
+import { WorkPreviewTrigger } from "@/components/WorkPreview";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { splitTrailingHashtags } from "@/lib/hashtags";
@@ -302,16 +303,35 @@ export function PostCard({
         </>
       )}
 
-      {/* Obra (contexto explícito) — link para o detalhe público e para a comunidade dela (o endereço da obra leva à da franquia) */}
+      {/* Obra (contexto explícito) — abre a prévia da obra (sinopse, gêneros, página) sem sair do Feed; ao lado, a comunidade dela */}
       {animeTitle !== null && post.workKey !== null && (
         <Typography component="div" className="font-jp" sx={{ fontSize: 12, color: "text.secondary", display: "flex", gap: 1.5, flexWrap: "wrap", alignItems: "center" }}>
-          <MuiLink component={NextLink} href={`/anime/${post.workKey}`} underline="hover" color="inherit" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
+          <WorkPreviewTrigger
+            inline
+            label={animeTitle}
+            testId={`post-work-${post.id}`}
+            info={{
+              titles: { titleRomaji: post.animeTitleRomaji ?? animeTitle, titleEnglish: post.animeTitleEnglish, titleNative: post.animeTitleNative },
+              coverImage: post.animeCoverImage,
+              href: `/anime/${post.workKey}`,
+              anilistId: post.anilistId,
+              meta: [post.animeFormat],
+            }}
+            actions={
+              post.hasCommunity ? (
+                <Button component={NextLink} href={`/comunidades/${post.workKey}`} size="small" sx={{ color: "text.secondary" }}>
+                  Comunidade →
+                </Button>
+              ) : undefined
+            }
+            sx={{ display: "inline-flex", width: "auto", alignItems: "center", gap: 0.5, borderRadius: "4px", "&:hover": { textDecoration: "underline" } }}
+          >
             {post.favoritedByMe && <StarIcon role="img" aria-label="Anime favoritado" sx={{ fontSize: 14, color: "secondary.main" }} />}
             <span lang={post.animeTitleNative && animeTitle === post.animeTitleNative ? "ja" : undefined}>
               {animeTitle}
-              {post.animeFormat ? ` · ${post.animeFormat}` : ""} ↗
+              {post.animeFormat ? ` · ${post.animeFormat}` : ""}
             </span>
-          </MuiLink>
+          </WorkPreviewTrigger>
           {post.hasCommunity && (
             <MuiLink component={NextLink} href={`/comunidades/${post.workKey}`} underline="hover" color="inherit" data-testid={`post-community-${post.id}`} sx={{ fontWeight: 700 }}>
               Comunidade →

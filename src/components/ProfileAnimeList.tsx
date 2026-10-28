@@ -5,7 +5,7 @@ import NextLink from "next/link";
 import ArrowOutwardIcon from "@mui/icons-material/ArrowOutward";
 import { Box, Button, ButtonBase, Typography } from "@mui/material";
 import { CoverImage } from "@/components/CoverImage";
-import { WorkPreviewShell } from "@/components/WorkPreviewShell";
+import { WORK_TRIGGER, WorkPreviewShell } from "@/components/WorkPreviewShell";
 import { readSession, useCameBack, useScrollMemory, writeSession } from "@/lib/useScrollMemory";
 import { SearchField } from "@/components/FilterField";
 import { InfiniteFooter } from "@/components/InfiniteFooter";
@@ -134,6 +134,7 @@ function AnimeTile({ entry, onChangeState }: { entry: ProfileAnimeEntry; onChang
         aria-haspopup="dialog"
         aria-expanded={Boolean(anchorEl)}
         data-testid={`profile-anime-open-${entry.key}`}
+        {...WORK_TRIGGER}
         sx={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "stretch", gap: 1, textAlign: "left", color: "text.primary", borderRadius: "8px", "&:hover .title": { textDecoration: "underline" }, "&.Mui-focusVisible": { outline: "2px solid #ffd400", outlineOffset: 2 } }}
       >
         <Box sx={{ position: "relative", aspectRatio: "2 / 3", borderRadius: "8px", overflow: "hidden", bgcolor: "#171820" }}>
