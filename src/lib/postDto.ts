@@ -12,6 +12,8 @@ export type PostSummaryDTO = {
   body: string;
   isSpoiler: boolean;
   imageUrl: string | null;
+  /** Descrição da imagem (texto alternativo), "" sem descrição. */
+  imageAlt: string;
   /** null = publicação sem obra associada (contexto opcional). */
   animeTitleRomaji: string | null;
   animeTitleEnglish: string | null;
@@ -24,6 +26,8 @@ export type PostDTO = {
   body: string;
   isSpoiler: boolean;
   imageUrls: string[];
+  /** Descrição de cada imagem (texto alternativo), na mesma ordem; "" = sem descrição. Vazia com spoiler, como as imagens. */
+  imageAlts: string[];
   createdAt: string;
   /** null = publicação sem obra associada (Figma 13:41840: contexto opcional). */
   anilistId: number | null;
@@ -78,6 +82,7 @@ export function toPostSummaryDto(post: PostWithAuthor): PostSummaryDTO {
     body: post.isSpoiler ? "" : post.body,
     isSpoiler: post.isSpoiler,
     imageUrl: post.isSpoiler ? null : (post.imageUrls[0] ?? null),
+    imageAlt: post.isSpoiler ? "" : (post.imageAlts?.[0] ?? ""),
     animeTitleRomaji: post.animeTitleRomaji,
     animeTitleEnglish: post.animeTitleEnglish,
     createdAt: post.createdAt.toISOString(),
@@ -114,6 +119,7 @@ export function toPostDto(
     body: post.isSpoiler ? "" : post.body,
     isSpoiler: post.isSpoiler,
     imageUrls: post.isSpoiler ? [] : post.imageUrls,
+    imageAlts: post.isSpoiler ? [] : post.imageUrls.map((_, i) => post.imageAlts?.[i] ?? ""),
     createdAt: post.createdAt.toISOString(),
     anilistId: post.anilistId,
     workKey: postWorkKey(post),

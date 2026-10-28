@@ -271,19 +271,19 @@ export function PostCard({
 
       {/* Corpo: spoiler fechado, imagens + legenda, ou texto */}
       {post.isSpoiler ? (
-        <SpoilerGate<{ body: string; imageUrls: string[] }>
+        <SpoilerGate<{ body: string; imageUrls: string[]; imageAlts?: string[] }>
           revealUrl={`/api/posts/${post.id}/reveal`}
           context={animeTitle ?? undefined}
           render={(d) => (
             <Box>
-              {d.imageUrls.length > 0 && <PostImageCarousel imageUrls={d.imageUrls} />}
+              {d.imageUrls.length > 0 && <PostImageCarousel imageUrls={d.imageUrls} imageAlts={d.imageAlts} />}
               <Typography sx={{ whiteSpace: "pre-wrap", fontSize: 16, mt: d.imageUrls.length > 0 ? 1.5 : 0 }}>{d.body}</Typography>
             </Box>
           )}
         />
       ) : (
         <>
-          {hasImages && <PostImageCarousel imageUrls={post.imageUrls} />}
+          {hasImages && <PostImageCarousel imageUrls={post.imageUrls} imageAlts={post.imageAlts} />}
           <Box>
             <Typography sx={{ whiteSpace: "pre-wrap", fontSize: 16, color: "text.primary", overflowWrap: "anywhere" }}>
               <PostBodyText
@@ -367,7 +367,7 @@ export function PostCard({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={post.quotedPost.imageUrl}
-                alt=""
+                alt={post.quotedPost.imageAlt ?? ""}
                 onError={() => setQuotedCoverBroken(true)}
                 style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
               />

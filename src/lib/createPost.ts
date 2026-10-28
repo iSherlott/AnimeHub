@@ -11,6 +11,8 @@ import { equippedTitleNames } from "@/lib/quiz";
 
 export const MAX_POST_BODY_LENGTH = 500;
 export const MAX_POST_IMAGES = 6;
+/** Descrição de uma imagem (texto alternativo): o mesmo limite do ALT do X. */
+export const MAX_IMAGE_ALT_LENGTH = 1000;
 
 /**
  * Contexto de obra congelado no post (opcional: publicar sem anime é válido — D-27/Figma 13:41840). A obra é a da AniList
@@ -51,6 +53,12 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
   }
 
   const imageUrls: string[] = [];
+  // Descrição de cada imagem (opcional), na mesma posição de `imageUrls` no pedido.
+  const rawAlts: unknown[] = Array.isArray(body.imageAlts) ? body.imageAlts : [];
+  if (body.imageAlts !== undefined && !Array.isArray(body.imageAlts)) {
+    return NextResponse.json({ error: "imageAlts deve ser uma lista" }, { status: 400 });
+  }
+  const imageAlts: string[] = [];
   if (body.imageUrls !== undefined) {
     if (!Array.isArray(body.imageUrls)) {
       return NextResponse.json({ error: "imageUrls deve ser uma lista" }, { status: 400 });
@@ -58,7 +66,7 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
     if (body.imageUrls.length > MAX_POST_IMAGES) {
       return NextResponse.json({ error: `No máximo ${MAX_POST_IMAGES} imagens por post` }, { status: 400 });
     }
-    for (const raw of body.imageUrls) {
+    for (const [index, raw] of (body.imageUrls as unknown[]).entries()) {
       if (typeof raw !== "string") {
         return NextResponse.json({ error: "URL de imagem inválida" }, { status: 400 });
       }
@@ -67,7 +75,16 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
       if (!isValidHttpUrl(trimmed)) {
         return NextResponse.json({ error: "URL de imagem inválida" }, { status: 400 });
       }
+      const alt = rawAlts[index];
+      if (alt !== undefined && alt !== null && typeof alt !== "string") {
+        return NextResponse.json({ error: "Descrição de imagem inválida" }, { status: 400 });
+      }
+      const altText = (alt ?? "").trim();
+      if (altText.length > MAX_IMAGE_ALT_LENGTH) {
+        return NextResponse.json({ error: `Descrição de imagem muito longa (máximo ${MAX_IMAGE_ALT_LENGTH} caracteres)` }, { status: 400 });
+      }
       imageUrls.push(trimmed);
+      imageAlts.push(altText);
     }
   }
 
@@ -118,6 +135,7 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
       body: text,
       isSpoiler: body.isSpoiler === true,
       imageUrls,
+      imageAlts,
       quotedPostId,
     },
     include: {

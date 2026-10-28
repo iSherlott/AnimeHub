@@ -825,6 +825,9 @@ model Post {
   /// remotePatterns). Sem imagem nenhuma, o corpo do post ocupa esse
   /// mesmo espaço visual (Epic 25).
   imageUrls         String[]  @default([])
+  /// Descrição de cada imagem (texto alternativo, como o ALT do X), na mesma ordem de `imageUrls`; "" = sem descrição.
+  /// Lida por leitores de tela e mostrada no selo ALT da publicação.
+  imageAlts         String[]  @default([])
   createdAt         DateTime  @default(now())
   /// Soft delete pelo autor ou por admin via fila de denúncia — mesmo
   /// padrão do Comment (Epic 15).

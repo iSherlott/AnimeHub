@@ -17,7 +17,12 @@ export type PostImage = {
   url: string | null;
   status: "uploading" | "done" | "error";
   error?: string;
+  /** Descrição da imagem (texto alternativo), escrita por quem posta; "" = sem descrição. */
+  alt: string;
 };
+
+/** Limite da descrição de uma imagem (o mesmo do servidor, `MAX_IMAGE_ALT_LENGTH`, e do ALT do X). */
+export const MAX_IMAGE_ALT_LENGTH = 1000;
 
 let seq = 0;
 const nextId = () => `img-${Date.now()}-${(seq += 1)}`;
@@ -35,29 +40,38 @@ export function usePostImages(storageKey: string) {
     itemsRef.current = items;
   });
 
-  // Rascunho: as imagens já enviadas voltam (só no navegador).
+  // Rascunho: as imagens já enviadas (e as descrições) voltam (só no navegador). Aceita o formato antigo, só o endereço.
   useEffect(() => {
     try {
       const saved = JSON.parse(sessionStorage.getItem(storageKey) ?? "[]") as unknown;
       if (Array.isArray(saved) && saved.length) {
-        const urls = saved.filter((u): u is string => typeof u === "string").slice(0, MAX_COMPOSER_IMAGES);
+        const restored = saved
+          .map((entry): { url: string; alt: string } | null => {
+            if (typeof entry === "string") return { url: entry, alt: "" };
+            const e = entry as { url?: unknown; alt?: unknown } | null;
+            return e && typeof e.url === "string" ? { url: e.url, alt: typeof e.alt === "string" ? e.alt.slice(0, MAX_IMAGE_ALT_LENGTH) : "" } : null;
+          })
+          .filter((e): e is { url: string; alt: string } => e !== null)
+          .slice(0, MAX_COMPOSER_IMAGES);
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setItems(urls.map((url) => ({ id: nextId(), preview: url, url, status: "done" })));
+        setItems(restored.map(({ url, alt }) => ({ id: nextId(), preview: url, url, status: "done", alt })));
       }
     } catch {
       // sessionStorage indisponível ou rascunho estragado: começa sem imagens.
     }
   }, [storageKey]);
-  const doneUrls = items.filter((i) => i.status === "done" && i.url).map((i) => i.url as string);
-  const doneKey = doneUrls.join("\n");
+  const done = items.filter((i) => i.status === "done" && i.url);
+  const doneUrls = done.map((i) => i.url as string);
+  const doneAlts = done.map((i) => i.alt.trim());
+  const draft = JSON.stringify(done.map((i) => ({ url: i.url, alt: i.alt })));
   useEffect(() => {
     try {
-      if (doneKey) sessionStorage.setItem(storageKey, JSON.stringify(doneKey.split("\n")));
+      if (draft !== "[]") sessionStorage.setItem(storageKey, draft);
       else sessionStorage.removeItem(storageKey);
     } catch {
       // idem
     }
-  }, [doneKey, storageKey]);
+  }, [draft, storageKey]);
 
   // Prévias locais (blob:) são soltas quando saem da lista e ao desmontar.
   useEffect(() => () => itemsRef.current.forEach((i) => i.preview.startsWith("blob:") && URL.revokeObjectURL(i.preview)), []);
@@ -90,7 +104,7 @@ export function usePostImages(storageKey: string) {
           problems.push(`"${file.name}" passa de 8 MB.`);
           continue;
         }
-        accepted.push({ id: nextId(), preview: URL.createObjectURL(file), url: null, status: "uploading" });
+        accepted.push({ id: nextId(), preview: URL.createObjectURL(file), url: null, status: "uploading", alt: "" });
         void upload(accepted[accepted.length - 1].id, file);
       }
       setNotice(problems.length ? problems.join(" ") : null);
@@ -108,6 +122,10 @@ export function usePostImages(storageKey: string) {
     setNotice(null);
   }, []);
 
+  const setAlt = useCallback((id: string, alt: string) => {
+    setItems((list) => list.map((i) => (i.id === id ? { ...i, alt: alt.slice(0, MAX_IMAGE_ALT_LENGTH) } : i)));
+  }, []);
+
   const clear = useCallback(() => {
     setItems((list) => {
       list.forEach((i) => i.preview.startsWith("blob:") && URL.revokeObjectURL(i.preview));
@@ -119,12 +137,15 @@ export function usePostImages(storageKey: string) {
   return {
     items,
     urls: doneUrls,
+    /** Descrições na mesma ordem de `urls` (vão juntas para o servidor). */
+    alts: doneAlts,
     uploading: items.some((i) => i.status === "uploading"),
     failed: items.some((i) => i.status === "error"),
     full: items.length >= MAX_COMPOSER_IMAGES,
     notice,
     addFiles,
     remove,
+    setAlt,
     clear,
   };
 }

@@ -99,7 +99,7 @@ export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: text, imageUrls: images.urls, anilistId: anime?.anilistId ?? undefined, work: anime && anime.anilistId === null ? anime.work : undefined, isSpoiler: spoiler }),
+        body: JSON.stringify({ body: text, imageUrls: images.urls, imageAlts: images.alts, anilistId: anime?.anilistId ?? undefined, work: anime && anime.anilistId === null ? anime.work : undefined, isSpoiler: spoiler }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.post) {
@@ -156,7 +156,7 @@ export function FeedComposer({ onPosted }: { onPosted: (post: PostDTO) => void }
           sx={{ fontSize: { xs: 18, sm: 20 }, lineHeight: 1.4, py: 0.75, alignItems: "flex-start", "& textarea::placeholder": { color: "text.secondary", opacity: 1 } }}
         />
 
-        <PostImageAttachments items={images.items} onRemove={images.remove} disabled={busy} />
+        <PostImageAttachments items={images.items} onRemove={images.remove} onAltChange={images.setAlt} disabled={busy} />
         {images.notice && (
           <Typography role="status" sx={{ fontSize: 13, color: "warning.main" }}>
             {images.notice}

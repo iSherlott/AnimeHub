@@ -434,7 +434,19 @@ usava. Agora o campo do Feed e o editor completo anexam imagens:
 - **No celular:** o contador de caracteres só aparece perto do limite, e a barra cabe numa linha com alvos de 44 px.
 - **Rascunho:** as imagens já enviadas vão junto do campo do Feed para o editor completo.
 
-O que fica de fora: as imagens não ganharam descrição (texto alternativo) escrita pela pessoa. Na exibição, o
-carrossel continua sem descrição (`alt` vazio), e quem usa leitor de tela não sabe o que a imagem mostra.
+A descrição das imagens veio logo depois (abaixo).
 
 Spec 138; teste de unidade do GIF animado em `processImageUpload.test.ts`.
+
+## Descrição das imagens (28/10)
+
+- **Ao postar:** cada miniatura tem "+ ALT" (como o ALT do X), que abre "Descrever imagem", com a imagem grande e o
+  texto (até 1.000 caracteres). Com descrição, o botão vira "ALT ✓".
+- **Na publicação:** a descrição é o texto alternativo da imagem (lido pelo leitor de tela; antes o `alt` era vazio)
+  e um selo ALT no canto mostra o texto a quem tocar. A imagem da citação também usa a descrição.
+- **Dados:** `Post.imageAlts` (migração `20261118100000_post_image_alts`, só acrescenta), na mesma ordem de
+  `imageUrls`, com "" para quem não tem descrição. A API recusa mais de 1.000 caracteres e tipos errados. Com
+  spoiler, a descrição fica escondida como a imagem e volta pela rota de revelar.
+- **Rascunho:** a descrição vai junto da imagem do campo do Feed para o editor completo.
+
+Spec 139.

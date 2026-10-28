@@ -182,7 +182,7 @@ export function PostComposer({
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: full, imageUrls: images.urls, anilistId: anime?.anilistId ?? undefined, work: anime && anime.anilistId === null ? anime.work : undefined, isSpoiler: spoiler, quotedPostId: quoted?.id }),
+        body: JSON.stringify({ body: full, imageUrls: images.urls, imageAlts: images.alts, anilistId: anime?.anilistId ?? undefined, work: anime && anime.anilistId === null ? anime.work : undefined, isSpoiler: spoiler, quotedPostId: quoted?.id }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -265,7 +265,7 @@ export function PostComposer({
           Opcional. Até {MAX_COMPOSER_IMAGES} imagens (JPG, PNG, WebP, AVIF ou GIF, que continua animado), de até 8 MB cada.
           Também dá para colar uma imagem no campo do texto.
         </Typography>
-        <PostImageAttachments items={images.items} onRemove={images.remove} disabled={busy} />
+        <PostImageAttachments items={images.items} onRemove={images.remove} onAltChange={images.setAlt} disabled={busy} />
         {images.notice && (
           <Typography role="status" sx={{ fontSize: 13, color: "warning.main" }}>
             {images.notice}
