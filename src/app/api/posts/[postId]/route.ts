@@ -11,6 +11,9 @@ type Params = { params: Promise<{ postId: string }> };
  * igual (404), sem revelar o motivo.
  */
 export async function GET(_request: Request, { params }: Params) {
+  // Sistema fechado: a parte social só abre para quem entrou.
+  const { user: member, response: closed } = await requireUser();
+  if (!member) return closed;
   const { postId } = await params;
   const row = await prisma.post.findUnique({ where: { id: postId }, include: POST_ROW_INCLUDE });
   if (!row || row.deletedAt || row.repostOfId) {

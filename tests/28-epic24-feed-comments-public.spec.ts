@@ -117,10 +117,10 @@ test.describe("Epic 24 — Feed público (sem sessão)", () => {
     await prisma.$disconnect();
   });
 
-  test("GET de comentários é público, POST exige login", async ({ request }) => {
+  // Sistema fechado (28/10): ler os comentários também exige conta.
+  test("GET e POST de comentários exigem login", async ({ request }) => {
     const anonGet = await request.get(`/api/posts/${postId}/comments`);
-    expect(anonGet.status()).toBe(200);
-    expect((await anonGet.json()).comments).toEqual([]);
+    expect(anonGet.status()).toBe(401);
 
     const anonPost = await request.post(`/api/posts/${postId}/comments`, {
       data: { body: "tentativa sem login" },
@@ -133,12 +133,9 @@ test.describe("Epic 24 — Feed público (sem sessão)", () => {
     expect(res.status()).toBe(401);
   });
 
-  test("clicar em curtir sem sessão redireciona pro login em vez de ficar inerte", async ({ page }) => {
+  test("sem sessão o Feed nem abre: vai direto ao login", async ({ page }) => {
     await page.goto("/");
-    const card = page.locator('[data-testid^="post-card-"]').first();
-    await expect(card).toBeVisible();
-
-    await card.getByRole("button", { name: "Curtir" }).click();
-    await expect(page).toHaveURL(/\/login/);
+    await expect(page).toHaveURL(/\/login\?next=%2F$/);
+    await expect(page.locator('[data-testid^="post-card-"]')).toHaveCount(0);
   });
 });

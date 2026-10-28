@@ -7,6 +7,9 @@ type Params = { params: Promise<{ id: string }> };
 
 /** Recados do perfil, mais recentes primeiro (`?page=`). */
 export async function GET(request: Request, { params }: Params) {
+  // Sistema fechado: a parte social só abre para quem entrou.
+  const { user: member, response: closed } = await requireUser();
+  if (!member) return closed;
   const viewer = await getCurrentUser();
   const page = Math.max(0, Number(new URL(request.url).searchParams.get("page")) || 0);
   const { total, rows } = await listScraps((await params).id, page, viewer?.id ?? null);

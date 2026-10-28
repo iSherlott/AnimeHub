@@ -18,6 +18,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from "@mui/material";
 import { AdminExtraReports } from "@/components/AdminExtraReports";
@@ -42,16 +43,9 @@ type AdminUser = {
   email: string;
   displayName: string;
   role: string;
+  /** Ainda com a senha provisória (conta nova ou senha redefinida). */
+  mustChangePassword?: boolean;
   createdAt: string;
-};
-
-type AdminInvite = {
-  id: string;
-  code: string;
-  usedAt: string | null;
-  expiresAt: string | null;
-  createdAt: string;
-  usedBy: { email: string; displayName: string } | null;
 };
 
 type AdminCommentReport = {
@@ -88,45 +82,42 @@ function fmtDate(iso: string): string {
 }
 
 /**
- * `canManageUsers` (Fase 9): só o administrador vê convites, usuários, papéis e as execuções dos serviços; o moderador vê
- * as denúncias. O servidor confere de novo em cada API.
+ * `canManageUsers` (Fase 9): só o administrador cria contas e vê usuários, papéis e as execuções dos serviços; o moderador
+ * vê as denúncias. O servidor confere de novo em cada API. Sistema fechado: não existe cadastro aberto — toda conta nasce
+ * aqui, como membro, com uma senha provisória que a pessoa troca no primeiro login.
  */
 export function AdminDashboard({ canManageUsers = true, currentUserId }: { canManageUsers?: boolean; currentUserId?: string }) {
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [invites, setInvites] = useState<AdminInvite[]>([]);
   const [commentReports, setCommentReports] = useState<AdminCommentReport[]>([]);
   const [postReports, setPostReports] = useState<AdminPostReport[]>([]);
   const [loading, setLoading] = useState(true);
-  const [creatingInvite, setCreatingInvite] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [creatingAccount, setCreatingAccount] = useState(false);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [resolvingPostId, setResolvingPostId] = useState<string | null>(null);
-  const [resetResult, setResetResult] = useState<{ userId: string; password: string } | null>(
+  // Senha provisória recém-gerada (conta criada ou senha redefinida): mostrada uma vez, num diálogo.
+  const [resetResult, setResetResult] = useState<{ userId: string; password: string; created?: { displayName: string; email: string } } | null>(
     null
   );
   const [error, setError] = useState<string | null>(null);
-  // Guarda síncrona pra clique duplo/triplo rápido em "+ Gerar convite" —
-  // o `disabled={creatingInvite}` do botão só reflete depois do próximo
-  // render, e um clique real (não sintético) pode disparar de novo antes
-  // disso, gerando convites duplicados (achado real da 5ª rodada de
-  // auditoria, Epic 18).
-  const creatingInviteRef = useRef(false);
+  // Guarda síncrona contra clique duplo em "Criar conta": o `disabled` do botão só reflete no próximo render, e um
+  // segundo clique real antes disso criaria a mesma conta duas vezes (achado da 5ª rodada de auditoria, Epic 18).
+  const creatingAccountRef = useRef(false);
 
   async function loadAll() {
     setLoading(true);
     try {
       const none = new Response(JSON.stringify({}));
-      const [usersRes, invitesRes, reportsRes, postReportsRes] = await Promise.all([
+      const [usersRes, reportsRes, postReportsRes] = await Promise.all([
         canManageUsers ? fetch("/api/admin/users") : Promise.resolve(none.clone()),
-        canManageUsers ? fetch("/api/admin/invites") : Promise.resolve(none.clone()),
         fetch("/api/admin/comment-reports"),
         fetch("/api/admin/post-reports"),
       ]);
       const usersData = await usersRes.json();
-      const invitesData = await invitesRes.json();
       const reportsData = await reportsRes.json();
       const postReportsData = await postReportsRes.json();
       setUsers(usersData.users ?? []);
-      setInvites(invitesData.invites ?? []);
       setCommentReports(reportsData.reports ?? []);
       setPostReports(postReportsData.reports ?? []);
     } finally {
@@ -175,8 +166,6 @@ export function AdminDashboard({ canManageUsers = true, currentUserId }: { canMa
   }
 
   useEffect(() => {
-    // loadAll também é reusada pelo botão de gerar convite (linha 117) pra
-    // recarregar a lista depois — precisa poder setar loading=true sozinha.
     // Mesmo caso canônico de "buscar dados num efeito" dos docs do React.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadAll();
@@ -184,22 +173,30 @@ export function AdminDashboard({ canManageUsers = true, currentUserId }: { canMa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleCreateInvite() {
-    if (creatingInviteRef.current) return;
-    creatingInviteRef.current = true;
-    setCreatingInvite(true);
+  async function handleCreateAccount(e: React.FormEvent) {
+    e.preventDefault();
+    if (creatingAccountRef.current) return;
+    creatingAccountRef.current = true;
+    setCreatingAccount(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/invites", { method: "POST" });
-      const data = await res.json();
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayName: newName, email: newEmail }),
+      });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Falha ao gerar convite");
+        setError(data.error ?? "Falha ao criar a conta");
         return;
       }
-      await loadAll();
+      setUsers((current) => [...current, data.user]);
+      setResetResult({ userId: data.user.id, password: data.temporaryPassword, created: { displayName: data.user.displayName, email: data.user.email } });
+      setNewName("");
+      setNewEmail("");
     } finally {
-      creatingInviteRef.current = false;
-      setCreatingInvite(false);
+      creatingAccountRef.current = false;
+      setCreatingAccount(false);
     }
   }
 
@@ -225,6 +222,7 @@ export function AdminDashboard({ canManageUsers = true, currentUserId }: { canMa
       return;
     }
     setResetResult({ userId, password: data.temporaryPassword });
+    setUsers((current) => current.map((u) => (u.id === userId ? { ...u, mustChangePassword: true } : u)));
   }
 
   if (loading) {
@@ -424,62 +422,22 @@ export function AdminDashboard({ canManageUsers = true, currentUserId }: { canMa
       {canManageUsers && <AdminDataPanel />}
 
       {canManageUsers && (
-      <Box component="section">
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1.5 }}>
-          <Typography variant="h6" component="h2" className="font-display" sx={{ textTransform: "uppercase" }}>
-            Convites
-          </Typography>
-          <Button onClick={handleCreateInvite} disabled={creatingInvite} variant="contained" size="small">
-            {creatingInvite ? "Gerando..." : "+ Gerar convite"}
+      <Box component="section" aria-labelledby="admin-new-account">
+        <Typography id="admin-new-account" variant="h6" component="h2" className="font-display" sx={{ mb: 0.5, textTransform: "uppercase" }}>
+          Criar conta
+        </Typography>
+        <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
+          O AnimeHub é fechado: só daqui nascem contas, sempre como membro. A senha provisória aparece uma única vez para
+          você repassar; no primeiro acesso a pessoa escolhe a dela.
+        </Typography>
+        <Box component="form" onSubmit={handleCreateAccount} sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "flex-start" }}>
+          <TextField label="Nome" size="small" required value={newName} onChange={(e) => setNewName(e.target.value)} slotProps={{ htmlInput: { maxLength: 60 } }} sx={{ flex: "1 1 200px" }} />
+          <TextField label="E-mail" type="email" size="small" required value={newEmail} onChange={(e) => setNewEmail(e.target.value)} slotProps={{ htmlInput: { maxLength: 254 } }} sx={{ flex: "1 1 240px" }} />
+          <Button type="submit" variant="contained" disabled={creatingAccount} sx={{ minHeight: 40 }}>
+            {creatingAccount ? "Criando..." : "Criar conta"}
           </Button>
         </Box>
-        {invites.length === 0 ? (
-          <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            Nenhum convite gerado ainda.
-          </Typography>
-        ) : (
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small" aria-label="Convites gerados">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Código</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Detalhes</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {invites.map((invite) => {
-                  const expired = invite.expiresAt ? new Date(invite.expiresAt) < new Date() : false;
-                  const status = invite.usedBy ? "usado" : expired ? "expirado" : "disponível";
-                  return (
-                    <TableRow key={invite.id}>
-                      <TableCell>
-                        <Box component="code">{invite.code}</Box>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={status}
-                          size="small"
-                          color={status === "disponível" ? "success" : status === "usado" ? "default" : "error"}
-                          sx={{ fontWeight: 700, textTransform: "uppercase", fontSize: 10 }}
-                        />
-                      </TableCell>
-                      <TableCell sx={{ color: "text.secondary" }}>
-                        {invite.usedBy
-                          ? `por ${invite.usedBy.displayName} (${invite.usedBy.email})`
-                          : invite.expiresAt
-                            ? `expira em ${fmtDate(invite.expiresAt)}`
-                            : "—"}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
       </Box>
-
       )}
 
       {canManageUsers && (
@@ -509,6 +467,7 @@ export function AdminDashboard({ canManageUsers = true, currentUserId }: { canMa
                       {u.role === "ADMIN" && (
                         <Chip label="admin" size="small" sx={{ bgcolor: "secondary.main", color: "#0b0b0d", fontWeight: 700, fontSize: 10 }} />
                       )}
+                      {u.mustChangePassword && <Chip label="senha provisória" size="small" variant="outlined" sx={{ fontWeight: 700, fontSize: 10 }} />}
                     </Box>
                   </TableCell>
                   <TableCell sx={{ color: "text.secondary" }}>{u.email}</TableCell>
@@ -546,12 +505,14 @@ export function AdminDashboard({ canManageUsers = true, currentUserId }: { canMa
           em vez de empurrá-la (achado real da 3ª rodada de auditoria,
           Epic 18); um Dialog nunca colide com o conteúdo ao redor. */}
       <Dialog open={resetResult !== null} onClose={() => setResetResult(null)}>
-        <DialogTitle>Nova senha temporária</DialogTitle>
+        <DialogTitle>{resetResult?.created ? "Conta criada" : "Nova senha provisória"}</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Mostrada só uma vez — repasse pra pessoa por fora deste painel:
+            {resetResult?.created
+              ? `A conta de ${resetResult.created.displayName} (${resetResult.created.email}) foi criada como membro. Senha provisória — mostrada só uma vez; repasse por fora deste painel:`
+              : "Mostrada só uma vez — repasse pra pessoa por fora deste painel. No próximo acesso ela escolhe a própria senha:"}
           </DialogContentText>
-          <Box component="code" sx={{ display: "block", mt: 2, fontWeight: 700, fontSize: 16 }}>
+          <Box component="code" data-testid="temporary-password" sx={{ display: "block", mt: 2, fontWeight: 700, fontSize: 16 }}>
             {resetResult?.password}
           </Box>
         </DialogContent>

@@ -17,35 +17,23 @@ test.describe("Controle de acesso — dados pessoais exigem login", () => {
     await prisma.$disconnect();
   });
 
-  test("Minha lista mostra prompt de login em vez da lista pessoal", async ({ page }) => {
+  test("Minha lista leva ao login, que devolve a pessoa à lista", async ({ page }) => {
     await page.goto("/minha-lista");
-
-    await expect(page.getByText("Faça login para ver sua lista")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Entrar" }).first()).toBeVisible();
+    await expect(page).toHaveURL(/\/login\?next=%2Fminha-lista$/);
+    await expect(page.getByRole("button", { name: "Entrar" })).toBeVisible();
   });
 
-  // Achado real do redesenho do Feed: ao contrário da lista pessoal, o
-  // Feed (agora a página principal) é público — Instagram/Twitter deixam
-  // navegar o feed sem conta, só interagir (curtir/seguir/comentar) exige
-  // login.
-  test("Feed (página principal) carrega sem sessão nenhuma, sem prompt de login", async ({ page }) => {
-    const res = await page.goto("/");
-    expect(res?.status()).toBe(200);
-
-    await expect(page.getByText("Faça login para ver o feed")).toHaveCount(0);
-    await expect(page.getByRole("tab", { name: "Para você" })).toBeVisible();
-    // "Seguindo" não existe sem conta.
-    await expect(page.getByRole("tab", { name: "Seguindo" })).toHaveCount(0);
+  // Sistema fechado (28/10): o Feed deixou de ser leitura pública — quem não entrou vai ao login.
+  test("Feed (página principal) leva ao login", async ({ page }) => {
+    await page.goto("/");
+    await expect(page).toHaveURL(/\/login\?next=%2F$/);
+    await expect(page.getByRole("tab", { name: "Para você" })).toHaveCount(0);
   });
 
-  test("GET /api/posts?tab=recommended funciona sem sessão, mas tab=following exige login", async ({
-    request,
-  }) => {
-    const recommended = await request.get("/api/posts?tab=recommended");
-    expect(recommended.status()).toBe(200);
-
-    const following = await request.get("/api/posts?tab=following");
-    expect(following.status()).toBe(401);
+  test("GET /api/posts exige login em todas as abas", async ({ request }) => {
+    for (const tab of ["recommended", "recent", "following"]) {
+      expect((await request.get(`/api/posts?tab=${tab}`)).status(), tab).toBe(401);
+    }
   });
 
   test("página de detalhe de um anime não retorna dados sem login", async ({ page }) => {

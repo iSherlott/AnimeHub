@@ -83,7 +83,7 @@ test.describe.serial("Perfil social", () => {
     await page.screenshot({ path: test.info().outputPath("perfil-social.png"), fullPage: true });
   });
 
-  test("sorte do dia só para a dona do perfil; quem não entrou vê o perfil e é convidado a entrar para o recado", async ({ browser }) => {
+  test("sorte do dia só para a dona do perfil; quem não entrou não vê o perfil: vai ao login", async ({ browser }) => {
     const admin = await browser.newContext({ storageState: adminState });
     const adminPage = await admin.newPage();
     await adminPage.goto(`/users/${userId}`);
@@ -94,8 +94,8 @@ test.describe.serial("Perfil social", () => {
     const anon = await browser.newContext({ storageState: { cookies: [], origins: [] } });
     const anonPage = await anon.newPage();
     await anonPage.goto(`/users/${userId}`);
-    await expect(anonPage.getByTestId("profile-scraps")).toContainText("para deixar um recado");
-    await expect(anonPage.getByTestId("profile-fan-toggle")).toHaveCount(0);
+    await expect(anonPage).toHaveURL(`/login?next=%2Fusers%2F${userId}`);
+    expect((await anonPage.request.get(`/api/users/${userId}/scraps`)).status()).toBe(401);
     await anon.close();
   });
 
@@ -134,8 +134,11 @@ test.describe.serial("Perfil social", () => {
     await expect(adminPage.getByTestId("testimonial-status")).toContainText("Esperando a aprovação");
     const t = await prisma.testimonial.findUniqueOrThrow({ where: { profileId_authorId: { profileId: userId, authorId: adminId } } });
 
-    // Antes de aprovar, só a dona vê.
-    const anon = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    // Antes de aprovar, só a dona vê. Quem olha é uma terceira conta (sistema fechado: sem conta, o perfil nem abre).
+    const outsiderToken = `t121${Date.now()}`.padEnd(64, "0");
+    const outsider = await prisma.user.create({ data: { email: `terceira-${Date.now()}@spec121.test.local`, displayName: "Terceira 121", passwordHash: "x", passwordSalt: "x" } });
+    await prisma.session.create({ data: { token: outsiderToken, userId: outsider.id, expiresAt: new Date(Date.now() + 3600_000) } });
+    const anon = await browser.newContext({ storageState: { cookies: [{ ...adminState.cookies[0], value: outsiderToken }], origins: [] } });
     const anonPage = await anon.newPage();
     await anonPage.goto(`/users/${userId}`);
     await expect(anonPage.getByTestId("profile-testimonials")).toContainText("Nenhum depoimento ainda.");
@@ -149,6 +152,7 @@ test.describe.serial("Perfil social", () => {
     await anonPage.reload();
     await expect(anonPage.getByTestId(`testimonial-${t.id}`)).toContainText("Melhor companhia de maratona.");
     await anon.close();
+    await prisma.user.delete({ where: { id: outsider.id } });
 
     await adminPage.reload();
     await adminPage.getByTestId("testimonial-input").fill("Melhor companhia de maratona (e de filmes).");

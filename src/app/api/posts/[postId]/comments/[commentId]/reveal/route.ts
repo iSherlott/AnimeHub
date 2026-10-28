@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser, requireUser } from "@/lib/auth/session";
 import { blockedUserIdSet } from "@/lib/blocks";
 
 type Params = { params: Promise<{ postId: string; commentId: string }> };
 
 /** Revela o texto de UMA resposta marcada como spoiler (não libera as outras). */
 export async function GET(_request: Request, { params }: Params) {
+  // Sistema fechado: a parte social só abre para quem entrou.
+  const { user: member, response: closed } = await requireUser();
+  if (!member) return closed;
   const { postId, commentId } = await params;
   const comment = await prisma.postComment.findUnique({
     where: { id: commentId },

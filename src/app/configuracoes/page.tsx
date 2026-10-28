@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import { Alert, Box, Button, MenuItem, Select, Typography } from "@mui/material";
@@ -279,8 +280,17 @@ export default function SettingsPage() {
                 onChange={(v) => update("recordVisits", v)}
               />
               <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
-                Publicações são públicas. Acompanhar uma obra e seguir uma pessoa nunca publicam uma mensagem por conta própria.
+                Publicações são vistas por quem tem conta no AnimeHub. Acompanhar uma obra e seguir uma pessoa nunca publicam uma mensagem por conta própria.
               </Typography>
+            </Card>
+
+            <Card title="Senha" labelledBy="password-heading">
+              <Typography sx={{ fontSize: 16 }}>Troque a sua senha quando quiser. As outras sessões abertas são encerradas.</Typography>
+              <Box>
+                <Button component={NextLink} href="/trocar-senha?next=%2Fconfiguracoes" sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}>
+                  Trocar senha
+                </Button>
+              </Box>
             </Card>
 
             <Card title="Social desligado, agenda ativa">

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { toDtoPage } from "@/lib/postFeedDto";
 import { loadRecommendedPage } from "@/lib/feedRecommended";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser, requireUser } from "@/lib/auth/session";
 
 const LIMIT = 5;
 
@@ -15,6 +15,9 @@ const LIMIT = 5;
  * que o feed principal usa, é só um retrato do momento).
  */
 export async function GET() {
+  // Sistema fechado: a parte social só abre para quem entrou.
+  const { user: member, response: closed } = await requireUser();
+  if (!member) return closed;
   const { page } = await loadRecommendedPage(0, LIMIT, new Date());
   // Com sessão, aplica o bloqueio do viewer (D-10); sem sessão segue público.
   const viewer = await getCurrentUser();

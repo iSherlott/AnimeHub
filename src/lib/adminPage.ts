@@ -11,7 +11,8 @@ import type { AdminActor } from "@/lib/adminImport/pipeline";
  */
 export async function requireAdminPage(permission: Permission | "staff" = "admin"): Promise<{ actor: AdminActor; name: string; timeZone: string; role: string }> {
   const user = await getCurrentUser();
-  if (!user || (permission === "staff" ? !isStaff(user.role) : !can(user.role, permission))) notFound();
+  // Senha provisória ainda não trocada: a área não abre (nem para administrador).
+  if (!user || user.mustChangePassword || (permission === "staff" ? !isStaff(user.role) : !can(user.role, permission))) notFound();
   return { actor: { id: user.id, name: user.displayName }, name: user.displayName, timeZone: resolveTimeZone(user.timeZone), role: user.role };
 }
 

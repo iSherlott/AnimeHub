@@ -63,11 +63,11 @@ test.describe.serial("Papéis e quizzes", () => {
   test.describe("curador", () => {
     test.use({ storageState: stateFor(CURATOR_TOKEN) });
 
-    test("abre o catálogo, mas não usuários, convites nem moderação; a recusa fica no log", async ({ request, page }) => {
+    test("abre o catálogo, mas não usuários, criação de contas nem moderação; a recusa fica no log", async ({ request, page }) => {
       expect(await status(request, "get", "/api/admin/works")).toBe(200);
       expect(await status(request, "get", "/api/admin/genres")).toBe(200);
       expect(await status(request, "get", "/api/admin/users")).toBe(403);
-      expect(await status(request, "get", "/api/admin/invites")).toBe(403);
+      expect(await status(request, "post", "/api/admin/users", { email: "curador-cria@test.local", displayName: "Não" })).toBe(403);
       expect(await status(request, "get", "/api/admin/comment-reports")).toBe(403);
       expect(await prisma.adminLog.count({ where: { event: "Access denied", context: `user:${curatorId}` } })).toBeGreaterThanOrEqual(3);
 

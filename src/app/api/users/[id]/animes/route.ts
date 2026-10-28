@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser, requireUser } from "@/lib/auth/session";
 import { loadProfileAnimeList } from "@/lib/profileAnimeList";
 
 type Params = { params: Promise<{ id: string }> };
@@ -10,6 +10,9 @@ type Params = { params: Promise<{ id: string }> };
  * do perfil (404, sem revelar quem bloqueou quem).
  */
 export async function GET(request: Request, { params }: Params) {
+  // Sistema fechado: a parte social só abre para quem entrou.
+  const { user: member, response: closed } = await requireUser();
+  if (!member) return closed;
   const { id } = await params;
   const { searchParams } = new URL(request.url);
   const viewer = await getCurrentUser();

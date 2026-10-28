@@ -233,7 +233,7 @@ test.describe("Epic 25 — repost sem sessão", () => {
 });
 
 test.describe("Epic 25 — lateral de threads de anime (Comment, Epic 15)", () => {
-  test.use({ storageState: { cookies: [], origins: [] } });
+  // Sistema fechado (28/10): a lateral de conversas é só de quem tem conta — roda com a sessão padrão da suíte.
 
   const trendingAnilistId = ANILIST_ID + 3;
 
@@ -257,7 +257,7 @@ test.describe("Epic 25 — lateral de threads de anime (Comment, Epic 15)", () =
     await prisma.$disconnect();
   });
 
-  test("GET /api/anime-threads/trending é pública e inclui a thread recém-comentada", async ({ request }) => {
+  test("GET /api/anime-threads/trending (com sessão) inclui a thread recém-comentada", async ({ request }) => {
     const res = await request.get("/api/anime-threads/trending");
     expect(res.status()).toBe(200);
     const data = await res.json();

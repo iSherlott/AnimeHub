@@ -84,10 +84,10 @@ test.describe("Acessibilidade", () => {
     });
   }
 
-  test("axe: login e cadastro (visitante)", async ({ browser, baseURL }) => {
+  test("axe: login e página da obra (visitante)", async ({ browser, baseURL }) => {
     const ctx = await browser.newContext({ baseURL, storageState: { cookies: [], origins: [] } });
     const page = await ctx.newPage();
-    for (const path of ["/login", "/signup", `/obra/${PROD_ID}`]) {
+    for (const path of ["/login", `/obra/${PROD_ID}`]) {
       await page.goto(path);
       await page.waitForLoadState("networkidle");
       const violations = await audit(page);
@@ -129,7 +129,7 @@ test.describe("Acessibilidade", () => {
   });
 
   test("landmarks: uma única <main>, navegação principal e um <h1> por tela", async ({ page }) => {
-    for (const path of ["/", "/discover", "/calendar", "/minha-lista", `/obra/${PROD_ID}`, "/login", "/signup"]) {
+    for (const path of ["/", "/discover", "/calendar", "/minha-lista", `/obra/${PROD_ID}`, "/login"]) {
       await page.goto(path);
       await expect(page.locator("main")).toHaveCount(1);
       await expect(page.getByRole("navigation", { name: "Navegação principal" })).toBeVisible();

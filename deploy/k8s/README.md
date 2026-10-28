@@ -190,12 +190,19 @@ também só acrescenta, assim como a `20261109100000_community_notifications` (a
 amizade separada do seguir e transforma em amizade quem já se seguia mutuamente (só acrescenta linhas). A `20261111100000_profile_reports` (denúncias de recados e depoimentos) só cria uma tabela. A `20261112100000_scrap_replies` (responder recado) só acrescenta uma coluna. A `20261113100000_birthdays` (aniversário no perfil) só acrescenta duas colunas. A `20261114100000_profile_visits` (visitas ao perfil) só acrescenta uma coluna e uma tabela. A `20261115100000_profile_albums` (álbuns de animes) só cria tabelas. A
 `20261115110000_avatar_from_anime_only` **altera dados**: quem tinha foto própria enviada volta às iniciais (decisão da
 pessoa usuária; os arquivos continuam em `storage/uploads/avatars`). A `20261116100000_reports_events_albums`
-(denúncia de evento e de álbum, aniversários uma vez por dia) só acrescenta.
+(denúncia de evento e de álbum, aniversários uma vez por dia) só acrescenta. A `20261117100000_closed_accounts` (sistema
+fechado: o admin cria as contas com senha provisória) só acrescenta a coluna `User.mustChangePassword`, falsa para quem já
+existe — ninguém precisa trocar a senha por causa dela.
+
+**Sistema fechado (28/10).** Não existe mais cadastro aberto nem convite: as contas nascem em Admin → Acesso e
+moderação → Criar conta, sempre como membro, com uma senha provisória mostrada uma vez (a pessoa troca no primeiro
+login). A primeira conta de um banco vazio não vira mais administradora sozinha; num banco novo, o primeiro
+administrador precisa ser criado à mão (os bancos atuais já têm).
 
 Para o lote do AniDB funcionar, o servidor precisa de `ANIDB_CLIENT_NAME` e `ANIDB_CLIENT_VERSION` (o client registrado no
 AniDB). Opcional: `ANIDB_REQUEST_GAP_MS` (intervalo entre obras, padrão 4000 ms; não baixe de 2000).
 
-#### Ordem segura desta atualização (24 migrações, de `20261025100000` a `20261116100000`)
+#### Ordem segura desta atualização (25 migrações, de `20261025100000` a `20261117100000`)
 
 O site do cluster e o desenvolvimento no Windows usam o **mesmo banco**. O código antigo ainda lê a tabela `Episode`, que
 a migração de 02/11 arquiva: migrar o banco sem atualizar o cluster derruba as páginas de obra do site antigo. Por isso,

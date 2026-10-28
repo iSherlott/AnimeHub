@@ -370,3 +370,51 @@ tempo até o conteúdo e os bytes são estáveis.
 **O que fica de fora:** o JavaScript inicial (cerca de 300 KB comprimidos) é quase todo React, Next e MUI. No Explorar,
 as fileiras só aparecem depois que o JavaScript monta e a busca volta; o próximo ganho seria renderizar as fileiras no
 servidor, uma reestruturação maior.
+
+## Explorar renderizado no servidor (28/10)
+
+As fileiras ("No ar hoje", "Novas histórias"), os filtros e, quando o endereço já abre num gênero (`?genre=`, dos chips
+da página da obra), a primeira página do catálogo vêm prontos no HTML (`src/app/discover/page.tsx` carrega e entrega a
+`DiscoverExplorer`). As rotas e a página usam as mesmas funções (`src/lib/catalogServer.ts`, `src/lib/catalogQuery.ts`).
+O navegador só refaz as fileiras quando depende do que o servidor não sabe: fuso "do aparelho" ou, para visitante, as
+últimas obras abertas.
+
+A suíte mostrou um efeito colateral: com os filtros já desenhados no HTML, escolher um gênero antes de a página
+"assumir" perdia a escolha (num celular lento, isso dura alguns segundos). Busca e filtros ficam desativados até lá
+(`useHydrated`).
+
+## Sistema fechado: visitantes, contas só pelo admin e permissões (28/10)
+
+**Pedido:** Meus animes e Comunidades (e o Feed) não fazem sentido para quem não entrou; as contas são criadas só pelo
+administrador; conta nova nunca alcança a administração.
+
+- **Visitante:** o menu mostra só Calendário e Explorar. Ficam abertos Explorar, Calendário, Temporada, a página da
+  obra e o login. O resto (Feed, Meus animes, Comunidades, perfis, recados, hashtags, amigos, quiz, Configurações) leva
+  ao login, que devolve a pessoa à página depois. A lista fica em `src/lib/memberOnly.ts`, usada pelo `src/proxy.ts`
+  (redireciona antes de a página abrir), pelo menu e pelo `CurrentUserProvider` (sessão que vence com a página aberta).
+  Sair da conta leva ao Explorar.
+- **APIs:** toda leitura da parte social exige login logo no começo do GET. `/api/posts` barrava só a aba
+  "Seguindo"; "Para você" e "Recentes" eram públicas. O teste de rotas (`routeAuthorization.test.ts`) agora confere
+  que a barreira vem antes de qualquer outra coisa.
+- **Contas:**
+  - Não existe mais `/signup` (leva ao login), nem `/api/auth/signup`, nem convites.
+  - Em Admin → Acesso e moderação → Criar conta, o admin informa nome e e-mail. A conta nasce **sempre MEMBER**: um
+    papel enviado junto é ignorado.
+  - A senha provisória aparece uma única vez. "Resetar senha" também gera uma provisória.
+  - A brecha "a primeira conta de um banco vazio vira administradora" deixou de existir.
+- **Senha provisória (`User.mustChangePassword`, migração `20261117100000_closed_accounts`):**
+  - Até a troca, as APIs respondem 403 `PASSWORD_CHANGE_REQUIRED` e a administração não abre, nem para admin.
+  - Qualquer página leva a `/trocar-senha`.
+  - Trocar encerra as outras sessões. Configurações ganhou "Trocar senha".
+- **Specs:**
+  - 06 (contas criadas pelo admin, primeiro login, permissões);
+  - 136 (visitante: menu, páginas, APIs);
+  - 23 specs antigos que assumiam leitura pública ou cadastro aberto foram atualizados para a regra nova.
+
+## Feed: campo de postar no topo (28/10)
+
+No lugar do botão "+ Nova publicação", o Feed tem o campo do X (`src/components/FeedComposer.tsx`): avatar e "O que
+está acontecendo?". Ao focar, aparece a barra com anime relacionado, hashtag (insere `#` no cursor), spoiler e o
+editor completo (`/publicar`, que leva o texto junto pelo mesmo rascunho), e o botão Postar, que só acende com texto.
+Ctrl/⌘+Enter também posta. A publicação nova entra no topo da lista sem sair do Feed. Sem foto nem GIF: as publicações
+são só de texto, como no editor completo. Spec 137.

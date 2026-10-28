@@ -1,5 +1,6 @@
 "use client";
 
+import { isPublicPath } from "@/lib/memberOnly";
 import { loginHref } from "@/lib/safeRedirect";
 import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -59,8 +60,10 @@ function NavLinks({
   onNavigate?: () => void;
   direction?: "row" | "column";
 }) {
-  // "Administração" não fica mais aqui: o acesso é pelo menu do perfil (avatar).
-  const items = [...NAV_ITEMS];
+  // "Administração" não fica mais aqui: o acesso é pelo menu do perfil (avatar). Sistema fechado: quem não entrou só vê
+  // o que pode abrir (Calendário e Explorar) — Feed, Meus animes e Comunidades pedem login (ver src/lib/memberOnly.ts).
+  const user = useCurrentUser();
+  const items = user ? NAV_ITEMS : NAV_ITEMS.filter((item) => isPublicPath(item.href));
 
   return (
     <Stack
@@ -168,7 +171,8 @@ export function Header() {
     await fetch("/api/auth/logout", { method: "POST" });
     setUser(null);
     setMobileOpen(false);
-    router.push("/");
+    // O Feed é só de quem tem conta: quem sai volta ao Explorar.
+    router.push("/discover");
     router.refresh();
   }
 

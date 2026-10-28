@@ -1,94 +1,60 @@
-﻿import { test, expect, type APIRequestContext } from "@playwright/test";
-import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
+﻿import { test, expect } from "@playwright/test";
+import { PrismaClient } from "@prisma/client";
+import { TEST_DB_URL } from "./test-db";
+import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN } from "./test-auth";
 
-// F3: destino pós-login (D-04), cadastro sem enumeração de contas (GAP-S-03)
-// e limites de tamanho. Roda sem sessão; convites são gerados como admin.
+// Conta própria do spec (criada pelo admin, como toda conta; a pessoa troca a senha provisória por esta).
+const LOGIN_EMAIL = `destino-${Date.now()}@spec48.test.local`;
+const LOGIN_PASSWORD = "senha-do-spec-48";
+
+test.beforeAll(async ({ playwright, baseURL }) => {
+  const admin = await playwright.request.newContext({ baseURL, extraHTTPHeaders: { Cookie: `${SESSION_COOKIE_NAME}=${TEST_ADMIN_SESSION_TOKEN}` } });
+  const created = await (await admin.post("/api/admin/users", { data: { email: LOGIN_EMAIL, displayName: "Spec 48" } })).json();
+  await admin.dispose();
+  const person = await playwright.request.newContext({ baseURL, storageState: { cookies: [], origins: [] } });
+  expect((await person.post("/api/auth/login", { data: { email: LOGIN_EMAIL, password: created.temporaryPassword } })).status()).toBe(200);
+  expect((await person.post("/api/auth/password", { data: { currentPassword: created.temporaryPassword, newPassword: LOGIN_PASSWORD } })).status()).toBe(200);
+  await person.dispose();
+});
+
+test.afterAll(async () => {
+  const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
+  await prisma.user.deleteMany({ where: { email: LOGIN_EMAIL } });
+  await prisma.$disconnect();
+});
+
+// F3: destino pós-login (D-04) e validação do login. Roda sem sessão. (O cadastro aberto deixou de existir: as contas são
+// criadas pelo administrador — ver 06-admin-contas.spec.ts.)
 test.use({ storageState: { cookies: [], origins: [] } });
 
-async function newInvite(request: APIRequestContext): Promise<string> {
-  const res = await request.post("/api/admin/invites", {
-    headers: { Cookie: `${SESSION_COOKIE_NAME}=${TEST_ADMIN_SESSION_TOKEN}` },
-  });
-  return (await res.json()).invite.code as string;
-}
-
-test.describe("Cadastro: sem enumeração e com limites", () => {
-  test("convite inválido responde igual para e-mail novo e e-mail já cadastrado", async ({ request }) => {
-    const base = { password: "password123", displayName: "Alguém", inviteCode: "codigo-que-nao-existe" };
-    const fresh = await request.post("/api/auth/signup", { data: { ...base, email: `novo-${Date.now()}@test.local` } });
-    const existing = await request.post("/api/auth/signup", { data: { ...base, email: TEST_USER_EMAIL } });
-
-    expect(existing.status()).toBe(fresh.status());
-    expect(await existing.json()).toEqual(await fresh.json());
-  });
-
-  test("e-mail já cadastrado com convite válido não revela que a conta existe", async ({ request }) => {
-    const invite = await newInvite(request);
-    const res = await request.post("/api/auth/signup", {
-      data: { email: TEST_USER_EMAIL, password: "password123", displayName: "Duplicado", inviteCode: invite },
-    });
+test.describe("Login: corpo inválido", () => {
+  test("corpo JSON nulo devolve 400", async ({ request }) => {
+    const res = await request.post("/api/auth/login", { headers: { "Content-Type": "application/json" }, data: "null" });
     expect(res.status()).toBe(400);
-    const body = await res.json();
-    expect(JSON.stringify(body)).not.toMatch(/já existe uma conta com esse e-mail/i);
-
-    // O convite NÃO foi consumido pela tentativa fracassada (transação desfeita).
-    const ok = await request.post("/api/auth/signup", {
-      data: { email: `reuso-${Date.now()}@test.local`, password: "password123", displayName: "Reuso", inviteCode: invite },
-    });
-    expect(ok.status()).toBe(201);
-  });
-
-  test("rejeita nome e e-mail longos demais", async ({ request }) => {
-    const invite = await newInvite(request);
-    const longName = await request.post("/api/auth/signup", {
-      data: { email: `nome-${Date.now()}@test.local`, password: "password123", displayName: "x".repeat(61), inviteCode: invite },
-    });
-    expect(longName.status()).toBe(400);
-
-    const longEmail = await request.post("/api/auth/signup", {
-      data: { email: `${"a".repeat(250)}@test.local`, password: "password123", displayName: "Ok", inviteCode: invite },
-    });
-    expect(longEmail.status()).toBe(400);
-  });
-
-  test("corpo JSON nulo devolve 400 em login e cadastro", async ({ request }) => {
-    for (const url of ["/api/auth/login", "/api/auth/signup"]) {
-      const res = await request.post(url, { headers: { "Content-Type": "application/json" }, data: "null" });
-      expect(res.status()).toBe(400);
-    }
   });
 });
 
 test.describe("Destino pós-login", () => {
-  test("cadastro com ?next= volta ao destino de origem", async ({ page, request }) => {
-    const invite = await newInvite(request);
-    await page.goto("/signup?next=%2Fcalendar");
-    await page.getByLabel("Código de convite").fill(invite);
-    await page.getByLabel("Nome de exibição").fill("Volta ao Destino");
-    await page.getByLabel("E-mail").fill(`destino-${Date.now()}@test.local`);
-    await page.getByLabel(/^Senha/).fill("password123");
-    await page.getByRole("button", { name: "Criar conta" }).click();
+  test("login com ?next= volta ao destino de origem", async ({ page }) => {
+    await page.goto("/login?next=%2Fcalendar");
+    await page.getByLabel("E-mail").fill(LOGIN_EMAIL);
+    await page.getByLabel("Senha", { exact: true }).fill(LOGIN_PASSWORD);
+    await page.getByRole("button", { name: "Entrar" }).click();
     await expect(page).toHaveURL(/\/calendar$/);
   });
 
-  test("?next= externo ou malicioso é ignorado e cai na home", async ({ page, request }) => {
-    const invite = await newInvite(request);
-    await page.goto("/signup?next=https%3A%2F%2Fevil.example%2Fphish");
-    await page.getByLabel("Código de convite").fill(invite);
-    await page.getByLabel("Nome de exibição").fill("Sem Open Redirect");
-    await page.getByLabel("E-mail").fill(`seguro-${Date.now()}@test.local`);
-    await page.getByLabel(/^Senha/).fill("password123");
-    await page.getByRole("button", { name: "Criar conta" }).click();
-    // Criar conta gasta scrypt + sessão: com a máquina carregada passa dos 5 s padrão.
+  test("?next= externo ou malicioso é ignorado e cai na home", async ({ page }) => {
+    await page.goto("/login?next=https%3A%2F%2Fevil.example%2Fphish");
+    await page.getByLabel("E-mail").fill(LOGIN_EMAIL);
+    await page.getByLabel("Senha", { exact: true }).fill(LOGIN_PASSWORD);
+    await page.getByRole("button", { name: "Entrar" }).click();
     await expect(page).toHaveURL(/localhost:\d+\/$/, { timeout: 20_000 });
   });
 
   test("os pontos de entrada 'Entrar' levam o caminho atual em ?next=", async ({ page }) => {
+    // Página só de quem tem conta: o visitante vai direto ao login, que devolve a pessoa a ela depois.
     await page.goto("/minha-lista");
-    await expect(page.getByRole("link", { name: /entrar/i }).first()).toHaveAttribute(
-      "href",
-      /\/login\?next=%2Fminha-lista/
-    );
+    await expect(page).toHaveURL(/\/login\?next=%2Fminha-lista$/);
 
     await page.goto("/calendar");
     await expect(page.getByRole("link", { name: "Entrar" }).first()).toHaveAttribute(

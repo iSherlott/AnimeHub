@@ -72,8 +72,9 @@ test.describe.serial("Aniversários", () => {
     await admin.close();
     const anon = await browser.newContext({ storageState: { cookies: [], origins: [] } });
     const anonPage = await anon.newPage();
+    // Quem não entrou nem chega ao perfil (sistema fechado).
     await anonPage.goto(`/users/${userId}`);
-    await expect(anonPage.getByTestId("profile-about")).not.toContainText("Aniversário");
+    await expect(anonPage).toHaveURL(`/login?next=${encodeURIComponent(`/users/${userId}`)}`);
     await anon.close();
   });
 

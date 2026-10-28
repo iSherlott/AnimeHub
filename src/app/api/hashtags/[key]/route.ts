@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { canonicalHashtagKey } from "@/lib/hashtags";
+import { requireUser } from "@/lib/auth/session";
 
 type Params = { params: Promise<{ key: string }> };
 
@@ -10,6 +11,9 @@ type Params = { params: Promise<{ key: string }> };
  * (outras hashtags populares agrupadas por tipo). Leitura pública.
  */
 export async function GET(_request: Request, { params }: Params) {
+  // Sistema fechado: a parte social só abre para quem entrou.
+  const { user: member, response: closed } = await requireUser();
+  if (!member) return closed;
   const { key: rawKey } = await params;
   const key = canonicalHashtagKey(decodeURIComponent(rawKey));
   const hashtag = await prisma.hashtag.findUnique({ where: { key } });

@@ -1,12 +1,11 @@
 "use client";
 
-import { readNextFromLocation, signupHref } from "@/lib/safeRedirect";
+import { readNextFromLocation } from "@/lib/safeRedirect";
 import { useEffect, useState } from "react";
-import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import MailOutlinedIcon from "@mui/icons-material/MailOutlined";
-import { Box, Button, Alert, Link as MuiLink, Typography } from "@mui/material";
+import { Box, Button, Alert, Typography } from "@mui/material";
 import { AuthField, AuthShell } from "@/components/AuthShell";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 
@@ -20,8 +19,9 @@ export default function LoginPage() {
 
   // Já logado não tem o que fazer aqui — manda pra home em vez de deixar o
   // formulário reaparecer (achado real da auditoria: item baixo do Epic 21).
+  // Com senha provisória, o próximo passo é trocá-la (o CurrentUserProvider leva para lá).
   useEffect(() => {
-    if (user) router.replace(readNextFromLocation());
+    if (user && !user.mustChangePassword) router.replace(readNextFromLocation());
   }, [user, router]);
 
   if (user) return null;
@@ -41,7 +41,9 @@ export default function LoginPage() {
         setError(data.error ?? "Falha ao entrar");
         return;
       }
-      router.push(readNextFromLocation());
+      // Senha provisória (conta nova ou senha redefinida pelo admin): primeiro troca, depois segue para onde ia.
+      const next = readNextFromLocation();
+      router.push(data.user?.mustChangePassword ? `/trocar-senha?next=${encodeURIComponent(next)}` : next);
       router.refresh();
     } finally {
       setLoading(false);
@@ -67,10 +69,8 @@ export default function LoginPage() {
           Após entrar, você volta ao anime que queria acompanhar. O vínculo só é criado quando você confirmar + Acompanhar.
         </Typography>
         <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
-          Não tem conta?{" "}
-          <MuiLink component={NextLink} href="/signup" onClick={(e: React.MouseEvent) => { e.preventDefault(); router.push(signupHref(new URLSearchParams(window.location.search).get("next"))); }} color="inherit">
-            Criar conta
-          </MuiLink>
+          Não tem conta? O AnimeHub é fechado: as contas são criadas pela administração, que entrega uma senha provisória
+          para você trocar no primeiro acesso.
         </Typography>
       </Box>
     </AuthShell>

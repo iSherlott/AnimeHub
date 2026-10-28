@@ -33,9 +33,11 @@ model User {
   birthMonth        Int?
   /// Último dia (AAAA-MM-DD, no fuso da pessoa) em que os aniversários dos amigos já viraram aviso: calcula uma vez por dia.
   birthdayCheckedOn String?
-  /// "ADMIN" | "MEMBER". A primeira conta criada no sistema vira admin
-  /// automaticamente (mesmo bootstrap que já herda os dados órfãos).
+  /// "ADMIN" | "CURATOR" | "MODERATOR" | "MEMBER". Toda conta nasce MEMBER (sistema fechado: só o admin cria contas, e
+  /// nunca com papel); papel da equipe só por um administrador, em Administração → Acesso.
   role         String    @default("MEMBER")
+  /// Senha provisória (conta criada ou senha redefinida pelo admin): enquanto true, a pessoa só pode trocar a senha.
+  mustChangePassword Boolean @default(false)
   /// Preferências da conta (Configurações, Figma `8:3333`/`13:42966`).
   /// titleFormat: "ja" (Japonês) | "romaji" | null (usa o padrão do produto).
   titleFormat  String?

@@ -145,7 +145,7 @@ test.describe("Epic 18 — 3ª rodada — admin", () => {
     const row = page.getByRole("row", { name: new RegExp(THIRD_USER_EMAIL) });
     await row.getByRole("button", { name: "Resetar senha" }).click();
 
-    const dialog = page.getByRole("dialog", { name: "Nova senha temporária" });
+    const dialog = page.getByRole("dialog", { name: "Nova senha provisória" });
     await expect(dialog).toBeVisible();
     await dialog.getByRole("button", { name: "Fechar" }).click();
     await expect(dialog).toBeHidden();

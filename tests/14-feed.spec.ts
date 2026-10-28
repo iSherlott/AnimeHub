@@ -343,7 +343,7 @@ test.describe("Feed com posts, curtidas e seguir (Epic 22)", () => {
   });
 });
 
-test.describe("Feed exige login pra interagir, mas leitura e perfis públicos ficam abertos", () => {
+test.describe("Feed exige login para ler e para interagir (sistema fechado)", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
   test("POST /api/anime/:id/posts retorna 401 sem sessão", async ({ request }) => {
@@ -351,12 +351,10 @@ test.describe("Feed exige login pra interagir, mas leitura e perfis públicos fi
     expect(res.status()).toBe(401);
   });
 
-  // Redesenho do Feed (Instagram/Twitter): a leitura de "Recomendado" (a
-  // aba padrão) é pública, igual Descobrir/Calendário já eram — só
-  // "Seguindo" (que não existe sem conta) continua exigindo login.
-  test("GET /api/posts (recommended, padrão) funciona sem sessão", async ({ request }) => {
+  // Sistema fechado (28/10): o Feed deixou de ser leitura pública — todas as abas exigem conta.
+  test("GET /api/posts (recommended, padrão) retorna 401 sem sessão", async ({ request }) => {
     const res = await request.get("/api/posts");
-    expect(res.status()).toBe(200);
+    expect(res.status()).toBe(401);
   });
 
   test("GET /api/posts?tab=following retorna 401 sem sessão", async ({ request }) => {
@@ -389,17 +387,13 @@ test.describe("Feed exige login pra interagir, mas leitura e perfis públicos fi
     expect(res.status()).toBe(401);
   });
 
-  test("GET /api/users/:id e /api/users/:id/posts funcionam sem sessão (200)", async ({ request }) => {
+  // Sistema fechado (28/10): perfis e publicações são só de quem tem conta.
+  test("GET /api/users/:id e /api/users/:id/posts exigem login (401)", async ({ request }) => {
     const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
     const user = await prisma.user.findUniqueOrThrow({ where: { email: TEST_USER_EMAIL } });
     await prisma.$disconnect();
 
-    const profile = await request.get(`/api/users/${user.id}`);
-    expect(profile.status()).toBe(200);
-    const profileData = await profile.json();
-    expect(profileData.user.isFollowedByMe).toBe(false);
-
-    const posts = await request.get(`/api/users/${user.id}/posts`);
-    expect(posts.status()).toBe(200);
+    expect((await request.get(`/api/users/${user.id}`)).status()).toBe(401);
+    expect((await request.get(`/api/users/${user.id}/posts`)).status()).toBe(401);
   });
 });

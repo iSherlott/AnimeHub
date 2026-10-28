@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { canonicalHashtagKey } from "@/lib/hashtags";
+import { requireUser } from "@/lib/auth/session";
 
 const PER_KIND = 4;
 const MAX_MATCHES = 5;
@@ -18,6 +19,9 @@ const TRENDING_LIMIT = 8;
  * - `?trending=1`: "Em alta agora" do Feed — as hashtags com mais publicações nos últimos 7 dias (como no Twitter).
  */
 export async function GET(request: Request) {
+  // Sistema fechado: a parte social só abre para quem entrou.
+  const { user: member, response: closed } = await requireUser();
+  if (!member) return closed;
   const params = new URL(request.url).searchParams;
   const q = (params.get("q") ?? "").trim().replace(/^#/, "").slice(0, 40);
 

@@ -112,7 +112,7 @@ test.describe("Epic 18 — 22ª rodada de auditoria de UX/UI — embed de citaç
 
 test.describe("Epic 18 — 22ª rodada de auditoria de UX/UI — 'mais comentadas hoje' usa a meia-noite do NAVEGADOR, não a do servidor", () => {
   const trendingAnilistId = ANILIST_ID + 2;
-  test.use({ storageState: { cookies: [], origins: [] } });
+  // Sistema fechado (28/10): a lateral de conversas é só de quem tem conta — roda com a sessão padrão da suíte.
 
   test.beforeAll(async () => {
     const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });

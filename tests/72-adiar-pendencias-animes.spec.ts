@@ -1,7 +1,7 @@
 ﻿import { test, expect } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
-import { TEST_USER_EMAIL } from "./test-auth";
+import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
 
 // "Adiar" no calendário → pendência em "Para assistir"; aba "Animes" do perfil (busca + gênero + privacidade);
 // ícones de rolagem/cursor (carrossel do seletor) e botão Acompanhando em Minha Lista.
@@ -223,8 +223,8 @@ test.describe.serial("Adiar, Para assistir e Animes no perfil", () => {
   });
 
   test("privacidade: ocultar em Configurações esconde a aba de quem visita, mas não de mim", async ({ page, browser, request }) => {
-    // Visitante anônimo vê enquanto é pública...
-    const anon = await browser.newContext({ baseURL: test.info().project.use.baseURL, storageState: { cookies: [], origins: [] } });
+    // Outra conta vê enquanto é pública (sistema fechado: sem conta, o perfil nem abre)...
+    const anon = await browser.newContext({ baseURL: test.info().project.use.baseURL, storageState: { cookies: [{ name: SESSION_COOKIE_NAME, value: TEST_ADMIN_SESSION_TOKEN, domain: "localhost", path: "/", expires: Math.floor(Date.now() / 1000) + 3600, httpOnly: true, secure: false, sameSite: "Lax" as const }], origins: [] } });
     const anonApi = anon.request;
     const open = await anonApi.get(`/api/users/${userId}/animes?genre=GeneroRound72`);
     expect(open.status()).toBe(200);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser, requireUser } from "@/lib/auth/session";
 import { blockedUserIdSet } from "@/lib/blocks";
 
 type Params = { params: Promise<{ postId: string }> };
@@ -12,6 +12,9 @@ type Params = { params: Promise<{ postId: string }> };
  * ou inexistente responde igual (404), sem revelar motivo.
  */
 export async function GET(_request: Request, { params }: Params) {
+  // Sistema fechado: a parte social só abre para quem entrou.
+  const { user: member, response: closed } = await requireUser();
+  if (!member) return closed;
   const { postId } = await params;
   const post = await prisma.post.findUnique({
     where: { id: postId },

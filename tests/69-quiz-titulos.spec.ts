@@ -106,12 +106,13 @@ test.describe.serial("Quiz, títulos e conquistas", () => {
   test.describe("sem conta", () => {
     test.use({ storageState: { cookies: [], origins: [] } });
 
-    test("visitante vê o estado, mas é levado a entrar; a API pede sessão", async ({ page, request }) => {
+    // Sistema fechado (28/10): o quiz é da comunidade, só de quem tem conta.
+    test("visitante vai ao login, que o devolve ao quiz; a API pede sessão", async ({ page, request }) => {
       await page.goto(`/obra/${PERFECT}/quiz`);
-      await expect(page.getByTestId("quiz-login")).toContainText("Entre para fazer o quiz");
+      await expect(page).toHaveURL(`/login?next=${encodeURIComponent(`/obra/${PERFECT}/quiz`)}`);
       expect((await request.post(`/api/quiz/${PERFECT}/attempt`)).status()).toBe(401);
       expect((await request.get("/api/users/me/titles")).status()).toBe(401);
-      expect((await request.get(`/api/quiz/${PERFECT}`)).status()).toBe(200);
+      expect((await request.get(`/api/quiz/${PERFECT}`)).status()).toBe(401);
     });
   });
 

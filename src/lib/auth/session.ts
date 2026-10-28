@@ -7,7 +7,7 @@ import { can, type Permission } from "@/lib/auth/permissions";
 import type { User } from "@prisma/client";
 import type { UserPreferences } from "@/lib/userSettings";
 
-const SESSION_COOKIE = "session_token";
+import { SESSION_COOKIE } from "@/lib/auth/cookieName";
 const SESSION_TTL_MS = 30 * 24 * 3600 * 1000; // 30 dias
 
 export type PublicUser = {
@@ -17,6 +17,8 @@ export type PublicUser = {
   handle: string | null;
   avatarUrl: string | null;
   role: string;
+  /** Entrou com senha provisória: precisa trocar a senha antes de usar o resto do site. */
+  mustChangePassword: boolean;
   preferences: UserPreferences;
 };
 
@@ -28,6 +30,7 @@ export function toPublicUser(user: User): PublicUser {
     handle: user.handle,
     avatarUrl: user.avatarUrl,
     role: user.role,
+    mustChangePassword: user.mustChangePassword,
     preferences: {
       titleFormat: user.titleFormat === "ja" || user.titleFormat === "romaji" ? user.titleFormat : null,
       synopsisLanguage: user.synopsisLanguage === "pt" || user.synopsisLanguage === "ja" ? user.synopsisLanguage : null,
@@ -81,10 +84,15 @@ export async function getCurrentUser(): Promise<User | null> {
   return session.user;
 }
 
+/** Resposta das APIs para quem entrou com senha provisória e ainda não a trocou. */
+export const PASSWORD_CHANGE_REQUIRED = { error: "Troque a senha provisória para continuar.", code: "PASSWORD_CHANGE_REQUIRED" } as const;
+
 /**
  * Helper pra rotas de API que exigem sessão ativa. Uso:
  *   const { user, response } = await requireUser();
  *   if (!user) return response;
+ * Quem entrou com senha provisória (conta criada ou senha redefinida pelo admin) só pode trocar a senha (POST
+ * /api/auth/password, que usa `getCurrentUser`) e sair: todo o resto recebe 403 até a troca.
  */
 export async function requireUser(): Promise<
   { user: User; response: null } | { user: null; response: NextResponse }
@@ -95,6 +103,9 @@ export async function requireUser(): Promise<
       user: null,
       response: NextResponse.json({ error: "Faça login para continuar" }, { status: 401 }),
     };
+  }
+  if (user.mustChangePassword) {
+    return { user: null, response: NextResponse.json(PASSWORD_CHANGE_REQUIRED, { status: 403 }) };
   }
   return { user, response: null };
 }

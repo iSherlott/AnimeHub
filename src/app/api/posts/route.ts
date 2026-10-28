@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, requireUser } from "@/lib/auth/session";
+import { requireUser } from "@/lib/auth/session";
 import { toDtoPage, POST_ROW_INCLUDE } from "@/lib/postFeedDto";
 import { loadRecommendedPage } from "@/lib/feedRecommended";
 import { createPostResponse } from "@/lib/createPost";
@@ -57,24 +57,21 @@ async function loadRecentPage(cursor: string | null, limit: number, work: WorkRe
 }
 
 export async function GET(request: Request) {
+  // Sistema fechado (28/10): o Feed inteiro é só de quem entrou — antes "Para você" e "Recentes" eram leitura pública.
+  const { user, response } = await requireUser();
+  if (!user) return response;
   const { searchParams } = new URL(request.url);
   const tabParam = searchParams.get("tab");
   const tab = tabParam === "following" ? "following" : tabParam === "recent" ? "recent" : "recommended";
   const limit = Math.min(MAX_LIMIT, Math.max(1, Number(searchParams.get("limit")) || DEFAULT_LIMIT));
 
-  // "Seguindo" não existe sem conta — só essa aba exige login. "Recomendado"
-  // é a leitura pública do feed (Instagram/Twitter deixam navegar sem
-  // conta; só interagir exige login).
   if (tab === "following") {
-    const { user, response } = await requireUser();
-    if (!user) return response;
     const cursor = searchParams.get("cursor");
     const { page, nextCursor } = await loadFollowingPage(user.id, cursor, limit);
     return NextResponse.json({ posts: await toDtoPage(page, user.id), nextCursor });
   }
 
   if (tab === "recent") {
-    const user = await getCurrentUser();
     // `anilistId` (obra da AniList) ou `work` (a chave da obra: AniList ID ou `anidb-<id>`/`kitsu-<id>`).
     const anilistParam = Number(searchParams.get("anilistId"));
     const workParam = searchParams.get("work");
@@ -82,10 +79,9 @@ export async function GET(request: Request) {
     // Obra pedida e não encontrada: nenhuma publicação (e não o feed inteiro).
     if (workParam && !work) return NextResponse.json({ posts: [], nextCursor: null });
     const { page, nextCursor } = await loadRecentPage(searchParams.get("cursor"), limit, work);
-    return NextResponse.json({ posts: await toDtoPage(page, user?.id ?? null), nextCursor });
+    return NextResponse.json({ posts: await toDtoPage(page, user.id), nextCursor });
   }
 
-  const user = await getCurrentUser();
   const offset = Math.max(0, Number(searchParams.get("offset")) || 0);
   // `since` fixa o instante usado tanto pra calcular a pontuação (gravidade)
   // quanto pra travar QUAIS posts entram na janela ranqueada (ver
@@ -106,7 +102,7 @@ export async function GET(request: Request) {
   const now = since && !Number.isNaN(since.getTime()) ? since : new Date();
   const { page, nextOffset } = await loadRecommendedPage(offset, limit, now);
   return NextResponse.json({
-    posts: await toDtoPage(page, user?.id ?? null),
+    posts: await toDtoPage(page, user.id),
     nextOffset,
     since: now.toISOString(),
   });

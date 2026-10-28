@@ -55,7 +55,7 @@ test.describe.serial("Recados mais completos", () => {
     expect((await request.post(`/api/users/${adminId}/scraps`, { data: { body: "x", replyToId: "nao-existe" } })).status()).toBe(400);
   });
 
-  test("conversa: os dois sentidos em ordem; quem é da conversa escreve dali; visitante só lê", async ({ page, browser }) => {
+  test("conversa: os dois sentidos em ordem; quem é da conversa escreve dali; visitante vai ao login", async ({ page, browser }) => {
     await page.goto(`/users/${userId}`);
     await page.getByTestId(`scrap-thread-${originalId}`).click();
     await expect(page).toHaveURL(new RegExp(`/users/${userId}/recados/com/${adminId}$`));
@@ -76,9 +76,9 @@ test.describe.serial("Recados mais completos", () => {
 
     const anon = await browser.newContext({ storageState: { cookies: [], origins: [] } });
     const anonPage = await anon.newPage();
+    // Sistema fechado: recados são só de quem tem conta.
     await anonPage.goto(`/users/${userId}/recados/com/${adminId}`);
-    await expect(anonPage.getByTestId("scrap-conversation")).toContainText("Mais um 126");
-    await expect(anonPage.getByTestId("scrap-input")).toHaveCount(0);
+    await expect(anonPage).toHaveURL(`/login?next=${encodeURIComponent(`/users/${userId}/recados/com/${adminId}`)}`);
     await anon.close();
   });
 

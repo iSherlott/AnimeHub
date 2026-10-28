@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { TEST_DB_URL } from "./test-db";
-import { TEST_USER_EMAIL } from "./test-auth";
+import { SESSION_COOKIE_NAME, TEST_ADMIN_SESSION_TOKEN, TEST_USER_EMAIL } from "./test-auth";
 
 // Andamento dos animes (modo misto): a plataforma deduz — episódio adiado = "Não terminei", no ar = "Acompanhando
 // nesta temporada", já exibido = "Terminei" — e a pessoa pode marcar na mão. O perfil separa por categoria.
@@ -112,8 +112,11 @@ test.describe.serial("Andamento dos animes no perfil", () => {
     await prisma.pendingEpisode.deleteMany({ where: { userId, anilistId: AIRING } });
   });
 
-  test("visitantes veem as categorias (se a lista é pública), mas sem controles nem ids internos", async ({ browser }) => {
-    const anon = await browser.newContext({ baseURL: test.info().project.use.baseURL, storageState: { cookies: [], origins: [] } });
+  test("outras contas veem as categorias (se a lista é pública), mas sem controles nem ids internos; sem conta, nada", async ({ browser }) => {
+    const nobody = await browser.newContext({ baseURL: test.info().project.use.baseURL, storageState: { cookies: [], origins: [] } });
+    expect((await nobody.request.get(`/api/users/${userId}/animes`)).status()).toBe(401);
+    await nobody.close();
+    const anon = await browser.newContext({ baseURL: test.info().project.use.baseURL, storageState: { cookies: [{ name: SESSION_COOKIE_NAME, value: TEST_ADMIN_SESSION_TOKEN, domain: "localhost", path: "/", expires: Math.floor(Date.now() / 1000) + 3600, httpOnly: true, secure: false, sameSite: "Lax" as const }], origins: [] } });
     const body = await (await anon.request.get(`/api/users/${userId}/animes?category=finished`)).json();
     expect(body.entries.every((e: { category: string }) => e.category === "finished")).toBe(true);
     expect(body.categories).toEqual(expect.objectContaining({ watching: expect.any(Number), unfinished: expect.any(Number), finished: expect.any(Number) }));

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser, requireUser } from "@/lib/auth/session";
 import { toDtoPage, POST_ROW_INCLUDE } from "@/lib/postFeedDto";
 import { canonicalHashtagKey } from "@/lib/hashtags";
 
@@ -19,6 +19,9 @@ const TRENDING_CANDIDATES = 200;
  * apagados passam pelas mesmas regras de toda lista (toDtoPage).
  */
 export async function GET(request: Request, { params }: Params) {
+  // Sistema fechado: a parte social só abre para quem entrou.
+  const { user: member, response: closed } = await requireUser();
+  if (!member) return closed;
   const { key: rawKey } = await params;
   const key = canonicalHashtagKey(decodeURIComponent(rawKey));
   const hashtag = await prisma.hashtag.findUnique({ where: { key }, select: { id: true } });

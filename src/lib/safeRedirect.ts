@@ -4,7 +4,7 @@
  */
 const MAX_LENGTH = 500;
 // Telas de autenticação nunca são destino (evita loop login → login).
-const AUTH_PATHS = ["/login", "/signup"];
+const AUTH_PATHS = ["/login", "/signup", "/trocar-senha"];
 
 export function sanitizeNext(raw: string | null | undefined, fallback = "/"): string {
   if (typeof raw !== "string" || raw.length === 0 || raw.length > MAX_LENGTH) return fallback;
@@ -23,12 +23,6 @@ export function sanitizeNext(raw: string | null | undefined, fallback = "/"): st
 export function loginHref(next: string | null | undefined): string {
   const safe = sanitizeNext(next, "");
   return safe ? `/login?next=${encodeURIComponent(safe)}` : "/login";
-}
-
-/** `/signup?next=<destino>` — usado pelo link entre login e cadastro. */
-export function signupHref(next: string | null | undefined): string {
-  const safe = sanitizeNext(next, "");
-  return safe ? `/signup?next=${encodeURIComponent(safe)}` : "/signup";
 }
 
 /** Lê e valida `?next=` da URL atual — só chamar no navegador (handlers/efeitos). */

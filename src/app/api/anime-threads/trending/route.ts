@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/auth/session";
 
 const DAY_SECONDS = 24 * 3600;
 
@@ -80,6 +81,9 @@ async function toSummaries(groups: CommentGroup[]): Promise<ThreadSummary[]> {
  * relógio do servidor, só como cinto de segurança contra abuso.
  */
 export async function GET(request: NextRequest) {
+  // Sistema fechado: a parte social só abre para quem entrou.
+  const { user: member, response: closed } = await requireUser();
+  if (!member) return closed;
   const todayStartRaw = request.nextUrl.searchParams.get("todayStart");
   const todayStartParam = todayStartRaw !== null ? Number(todayStartRaw) : NaN;
   const serverNow = Math.floor(Date.now() / 1000);

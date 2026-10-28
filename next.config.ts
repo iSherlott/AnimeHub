@@ -34,6 +34,10 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  // Sistema fechado: não existe mais cadastro aberto (as contas são criadas pelo admin). Endereços antigos vão ao login.
+  async redirects() {
+    return [{ source: "/signup", destination: "/login", permanent: false }];
+  },
   // Empacota só o necessário pra rodar em produção (usado pela imagem
   // Docker) — evita levar node_modules/devDependencies inteiros pro runner.
   // Só a build da imagem Docker liga isso (ver Dockerfile): dev local e a

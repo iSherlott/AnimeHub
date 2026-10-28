@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loginHref, sanitizeNext, signupHref } from "./safeRedirect";
+import { loginHref, sanitizeNext } from "./safeRedirect";
 
 describe("sanitizeNext", () => {
   it("accepts same-site relative paths, with query and hash", () => {
@@ -34,10 +34,9 @@ describe("sanitizeNext", () => {
   });
 });
 
-describe("loginHref / signupHref", () => {
+describe("loginHref", () => {
   it("encodes a valid destination", () => {
     expect(loginHref("/obra/9?x=1")).toBe("/login?next=%2Fobra%2F9%3Fx%3D1");
-    expect(signupHref("/calendar")).toBe("/signup?next=%2Fcalendar");
   });
   it("drops an invalid destination instead of forwarding it", () => {
     expect(loginHref("https://evil.example")).toBe("/login");

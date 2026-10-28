@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser, requireUser } from "@/lib/auth/session";
 import { toDtoPage, POST_ROW_INCLUDE } from "@/lib/postFeedDto";
 import { blockRelation } from "@/lib/blocks";
 
@@ -17,6 +17,9 @@ const MAX_LIMIT = 50;
  * original com a mesma atribuição "X repostou" do feed global.
  */
 export async function GET(request: Request, { params }: Params) {
+  // Sistema fechado: a parte social só abre para quem entrou.
+  const { user: member, response: closed } = await requireUser();
+  if (!member) return closed;
   const { id } = await params;
   const { searchParams } = new URL(request.url);
   const cursor = searchParams.get("cursor");

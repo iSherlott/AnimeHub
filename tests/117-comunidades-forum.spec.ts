@@ -67,15 +67,16 @@ test.describe.serial("Comunidades dos animes (fórum)", () => {
 
   test.describe("sem conta", () => {
     test.use({ storageState: anonState });
-    test("lê a comunidade pelo endereço da franquia (qualquer temporada leva a ele) e é convidado a entrar", async ({ page, request }) => {
+    // Sistema fechado (28/10): a comunidade é só de quem tem conta — o visitante vai ao login, que o devolve à comunidade.
+    test("não lê a comunidade: vai ao login, que guarda o endereço", async ({ page, request }) => {
       await page.goto(`/comunidades/${S2}`);
-      await expect(page).toHaveURL(new RegExp(`/comunidades/${S1}$`));
-      await expect(page.getByTestId("community-stats")).toContainText("0 membros · 0 tópicos · 2 obras da franquia");
-      await expect(page.getByTestId("community-login")).toHaveAttribute("href", `/login?next=${encodeURIComponent(`/comunidades/${S1}`)}`);
-      await expect(page.getByTestId("community-empty")).toBeVisible();
+      await expect(page).toHaveURL(`/login?next=${encodeURIComponent(`/comunidades/${S2}`)}`);
       expect((await request.post(`/api/communities/${S1}/topics`, { data: { title: "x", body: "y" } })).status()).toBe(401);
-      expect((await request.get("/comunidades/999999999")).status()).toBe(404);
     });
+  });
+
+  test("comunidade que não existe responde 404 a quem entrou", async ({ request }) => {
+    expect((await request.get("/comunidades/999999999")).status()).toBe(404);
   });
 
   test("da página do anime à comunidade: participar, criar tópico com enquete e responder", async ({ page }) => {

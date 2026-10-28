@@ -138,13 +138,11 @@ test.describe.serial("Decisões da auditoria", () => {
     expect(await ids()).toContain(post.id);
   });
 
-  test("visitante sem conta vê 'Adicionar como amigo', que leva ao login", async ({ browser }) => {
+  test("visitante sem conta não abre o perfil: vai ao login, que o devolve ao perfil", async ({ browser }) => {
     const anon = await browser.newContext({ storageState: { cookies: [], origins: [] } });
     const page = await anon.newPage();
     await page.goto(`/users/${adminId}`);
-    const button = page.getByTestId("friend-add-login");
-    await expect(button).toHaveText("Adicionar como amigo");
-    await expect(button).toHaveAttribute("href", `/login?next=${encodeURIComponent(`/users/${adminId}`)}`);
+    await expect(page).toHaveURL(`/login?next=${encodeURIComponent(`/users/${adminId}`)}`);
     await anon.close();
   });
 

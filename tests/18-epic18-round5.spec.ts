@@ -31,28 +31,24 @@ test.describe("Epic 18 — 5ª rodada de auditoria de UX/UI — duplo clique nã
     expect(matches.length).toBe(1);
   });
 
-  test("clicar '+ Gerar convite' duas vezes rápido gera só 1 convite novo", async ({ page, request }) => {
-    const adminHeaders = { Cookie: `${SESSION_COOKIE_NAME}=${TEST_ADMIN_SESSION_TOKEN}` };
-    const before = await (
-      await request.get("/api/admin/invites", { headers: adminHeaders })
-    ).json();
-    const countBefore = before.invites.length;
-
+  test("clicar 'Criar conta' duas vezes rápido cria só 1 conta", async ({ page }) => {
+    const prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
+    const email = `duplo-clique-${Date.now()}@round5.test.local`;
     await page.context().addCookies([
       { name: SESSION_COOKIE_NAME, value: TEST_ADMIN_SESSION_TOKEN, domain: "localhost", path: "/" },
     ]);
     await page.goto("/admin/acesso");
-    const submit = page.getByRole("button", { name: "+ Gerar convite" });
+    await page.getByRole("textbox", { name: "Nome", exact: true }).fill("Duplo Clique");
+    await page.getByRole("textbox", { name: "E-mail", exact: true }).fill(email);
+    const submit = page.getByRole("button", { name: "Criar conta" });
     await submit.evaluate((el: HTMLElement) => {
       el.click();
       el.click();
     });
-    await page.waitForTimeout(800);
-
-    const after = await (
-      await request.get("/api/admin/invites", { headers: adminHeaders })
-    ).json();
-    expect(after.invites.length - countBefore).toBe(1);
+    await expect(page.getByRole("dialog", { name: "Conta criada" })).toBeVisible();
+    expect(await prisma.user.count({ where: { email } })).toBe(1);
+    await prisma.user.deleteMany({ where: { email } });
+    await prisma.$disconnect();
   });
 });
 

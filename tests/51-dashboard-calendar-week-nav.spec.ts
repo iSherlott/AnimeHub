@@ -69,12 +69,18 @@ test.describe("Dashboard, calendário e navegação", () => {
       await expect(page).toHaveURL(/\/login\?next=%2Fdashboard/);
     });
 
-    test("o logo leva o visitante a Explorar e a navegação segue a ordem escolhida (Feed primeiro)", async ({ page }) => {
+    test("o logo leva o visitante a Explorar e o menu só tem o que ele pode abrir: Calendário e Explorar", async ({ page }) => {
       await page.goto("/calendar");
       await expect(page.getByRole("link", { name: "Anime Hub" })).toHaveAttribute("href", "/discover");
       const nav = page.getByRole("link", { name: /^(Explorar|Calendário|Meus animes|Feed|Comunidades)$/ });
-      await expect(nav).toHaveText(["Feed", "Calendário", "Explorar", "Meus animes", "Comunidades"]);
+      await expect(nav).toHaveText(["Calendário", "Explorar"]);
     });
+  });
+
+  test("autenticado: o menu inteiro, na ordem escolhida (Feed primeiro)", async ({ page }) => {
+    await page.goto("/calendar");
+    const nav = page.getByRole("link", { name: /^(Explorar|Calendário|Meus animes|Feed|Comunidades)$/ });
+    await expect(nav).toHaveText(["Feed", "Calendário", "Explorar", "Meus animes", "Comunidades"]);
   });
 
   test("autenticado: o logo leva ao Dashboard", async ({ page }) => {

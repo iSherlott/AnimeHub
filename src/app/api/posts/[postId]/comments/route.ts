@@ -26,6 +26,9 @@ async function loadVisiblePost(postId: string) {
 }
 
 export async function GET(_request: Request, { params }: Params) {
+  // Sistema fechado: a parte social só abre para quem entrou.
+  const { user: member, response: closed } = await requireUser();
+  if (!member) return closed;
   const { postId } = await params;
   const post = await loadVisiblePost(postId);
   if (!post) {

@@ -3,6 +3,8 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { PublicUser } from "@/lib/auth/session";
+import { isMemberOnlyPath } from "@/lib/memberOnly";
+import { loginHref } from "@/lib/safeRedirect";
 
 type CurrentUser = PublicUser | null | undefined;
 
@@ -44,8 +46,11 @@ export function CurrentUserProvider({ children, initialUser }: { children: React
     fetch("/api/auth/me")
       .then((res) => res.json())
       .then((data) => {
+        if (cancelled) return;
         // Mesma pessoa, mesmos dados: mantém o objeto — telas que dependem de `user` não buscam tudo de novo.
-        if (!cancelled) setUser((prev) => (prev && data.user && JSON.stringify(prev) === JSON.stringify(data.user) ? prev : data.user));
+        setUser((prev) => (prev && data.user && JSON.stringify(prev) === JSON.stringify(data.user) ? prev : data.user));
+        // Sessão que venceu numa página só de quem tem conta: vai ao login (que devolve a pessoa para cá).
+        if (!data.user && isMemberOnlyPath(window.location.pathname)) router.replace(loginHref(`${window.location.pathname}${window.location.search}`));
       })
       .catch(() => {
         if (!cancelled) setUser(null);
@@ -53,7 +58,15 @@ export function CurrentUserProvider({ children, initialUser }: { children: React
     return () => {
       cancelled = true;
     };
+    // `router` é estável; a checagem é por troca de rota.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
+
+  // Senha provisória (conta criada ou senha redefinida pelo admin): nada abre até a pessoa escolher a dela.
+  const mustChangePassword = Boolean(user?.mustChangePassword);
+  useEffect(() => {
+    if (mustChangePassword && pathname !== "/trocar-senha") router.replace(`/trocar-senha?next=${encodeURIComponent(pathname)}`);
+  }, [mustChangePassword, pathname, router]);
 
   // Detecta sessão invalidada (expirada, deslogada em outra aba, revogada
   // pelo admin) em QUALQUER requisição da árvore, não só na checagem
@@ -79,7 +92,8 @@ export function CurrentUserProvider({ children, initialUser }: { children: React
               : input.url;
         if (!url.includes("/api/auth/")) {
           setUser(null);
-          router.refresh();
+          if (isMemberOnlyPath(window.location.pathname)) router.replace(loginHref(`${window.location.pathname}${window.location.search}`));
+          else router.refresh();
         }
       }
       return response;
