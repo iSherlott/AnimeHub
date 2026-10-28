@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography } from "@mui/material";
+import LibraryAddOutlinedIcon from "@mui/icons-material/LibraryAddOutlined";
+import { Box, Button, ButtonBase, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography } from "@mui/material";
 import { ELEVATED_BUTTON_SX } from "@/components/ExploreCard";
 import { AnimeTitle } from "@/components/AnimeTitle";
 import { CoverImage } from "@/components/CoverImage";
@@ -52,9 +53,18 @@ export function NewAlbumButton({ userId }: { userId: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button size="small" onClick={() => setOpen(true)} sx={ELEVATED_BUTTON_SX} data-testid="album-new">
-        + Novo álbum
-      </Button>
+      {/* Dentro da grade dos álbuns, do tamanho de um álbum: capa tracejada com o ícone e o nome embaixo. */}
+      <ButtonBase onClick={() => setOpen(true)} data-testid="album-new" sx={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "stretch", gap: 0.75, textAlign: "left", borderRadius: "10px", "&:hover .album-new-cover": { borderColor: "text.secondary", color: "text.primary" }, "&:hover .album-name": { textDecoration: "underline" } }}>
+          <Box className="album-new-cover" sx={{ aspectRatio: "1 / 1", display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px dashed", borderColor: "divider", borderRadius: "10px", color: "text.secondary" }}>
+            <LibraryAddOutlinedIcon sx={{ fontSize: 32 }} />
+          </Box>
+          <Typography className="album-name" component="span" sx={{ fontSize: 14, fontWeight: 700 }}>
+            Novo álbum
+          </Typography>
+          <Typography component="span" sx={{ fontSize: 12, color: "text.secondary" }}>
+            com obras da sua lista
+          </Typography>
+        </ButtonBase>
       {open && (
         <AlbumForm
           open

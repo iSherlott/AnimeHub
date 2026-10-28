@@ -1,8 +1,8 @@
-# Checklist da atualização de 28/10/2026 (27 migrações)
+# Checklist da atualização de 28/10/2026 (28 migrações)
 
 O banco do cluster e o do desenvolvimento no Windows são o mesmo (`datatrade`, schema `animehub`). Ele parou na
-migração `20261024120000_streaming_delay`; esta versão traz **27 migrações**, de `20261025100000` a
-`20261119100000`. Todas só acrescentam, com duas exceções que mexem em dados existentes:
+migração `20261024120000_streaming_delay`; esta versão traz **28 migrações**, de `20261025100000` a
+`20261120100000`. Todas só acrescentam, com duas exceções que mexem em dados existentes:
 
 - `20261102100000_archive_episode_watchprogress` **move** `Episode` e `WatchProgress` para o schema
   `animehub_archive`. Nada é apagado. O site antigo lê `Episode`, por isso banco e site sobem juntos.
@@ -27,6 +27,9 @@ restaurada num Postgres 18 separado, e as 27 migrações foram aplicadas com `pr
   Saúde).
 - **Banco novo, do zero:** as 74 migrações levaram cerca de 6 s, e o comando do primeiro administrador (abaixo)
   funcionou de ponta a ponta. O login com a senha provisória pediu a troca, e o painel só abriu depois dela.
+
+Depois do ensaio entrou mais uma migração, `20261120100000_profile_background`, que só acrescenta a coluna do plano de
+fundo do perfil (`User.backgroundUrl`, vazia). Ela foi aplicada no banco de testes da suíte.
 
 O banco real pode ter mudado desde 26/10. Por isso o backup novo do passo 2 é obrigatório.
 
@@ -78,9 +81,11 @@ aconteceu, e o site continua na versão anterior.
 docker run --rm -v "$PWD:/w" postgres:18-alpine psql "<URL do banco sem ?schema=…>" -f /w/deploy/k8s/conferir-atualizacao.sql
 ```
 
-- [ ] Cada linha bate com o "espera" do lado: 74 migrações, 0 com falha, última `20261119100000_spoilers`, nenhum item
+- [ ] Cada linha bate com o "espera" do lado: 75 migrações, 0 com falha, última `20261120100000_profile_background`, nenhum item
       de lista ou produção sem obra, 2 tabelas arquivadas, 1 ou mais administradores, nenhuma senha provisória,
       nenhum avatar enviado. Gênero não registrado não impede o site: registre, mescle ou remova em Admin → Taxonomia.
+- [ ] A linha "contas sem nome de usuário" diz quantas contas ainda não têm @. Não impede o site: defina cada uma em
+      Admin → Acesso e moderação → Usuários ("definir"), já que a pessoa não pode mais escolher o próprio @.
 - [ ] `curl -s http://localhost:8010/api/auth/me` responde `{"user":null}`.
 - [ ] No navegador, sem entrar: Explorar e Calendário abrem; o menu mostra só Calendário e Explorar; abrir
       `/comunidades` leva ao login.
@@ -98,11 +103,15 @@ docker run --rm -v "$PWD:/w" postgres:18-alpine psql "<URL do banco sem ?schema=
   - Não existe mais cadastro aberto nem convite: as contas nascem em Admin → Acesso → Criar conta, com senha
     provisória.
   - Quem não entrou vê só Explorar, Calendário, Temporada e a página da obra.
-- **Avatares enviados** voltam às iniciais. Avatar e capa passam a ser sempre de anime.
+- **Avatares enviados** voltam à foto padrão. Avatar, capa e o novo plano de fundo do perfil são sempre imagens dos
+  animes que a pessoa acompanha; quem não escolheu avatar aparece com a foto padrão (não mais com as iniciais).
+- **Nome de usuário (@) fixo.** O administrador define ao criar a conta; a pessoa não troca mais. Contas antigas sem @
+  recebem pelo painel.
 - **Novidades:**
   - campo de postar no Feed, com imagens, descrição (ALT) e spoiler (trecho, imagem e aviso por obra);
   - prévia ao tocar num anime;
-  - comunidades, perfil social, amizades e álbuns.
+  - comunidades (com categorias, ordem e as dos amigos), perfil social, amizades (com as pessoas da rede) e álbuns;
+  - a aba Pausados em Meus Animes.
 
 ## Se algo der errado: voltar atrás
 
@@ -123,10 +132,10 @@ mostrada uma vez, e **recusa se o banco já tem administrador**. Ele roda dentro
 
 ```bash
 kubectl -n animehub run criar-admin --rm -it --restart=Never --image=animehub/migrate:latest --image-pull-policy=Never \
-  --overrides='{"spec":{"containers":[{"name":"criar-admin","image":"animehub/migrate:latest","imagePullPolicy":"Never","stdin":true,"tty":true,"envFrom":[{"secretRef":{"name":"animehub-env"}}],"command":["node","scripts/criar-primeiro-admin.mjs","--email","voce@exemplo.com","--nome","Seu Nome"]}]}}'
+  --overrides='{"spec":{"containers":[{"name":"criar-admin","image":"animehub/migrate:latest","imagePullPolicy":"Never","stdin":true,"tty":true,"envFrom":[{"secretRef":{"name":"animehub-env"}}],"command":["node","scripts/criar-primeiro-admin.mjs","--email","voce@exemplo.com","--nome","Seu Nome","--usuario","seu_usuario"]}]}}'
 ```
 
 No Windows, com `ANIME_HUB_DATABASE_URL` apontando para o banco: `npm run admin:primeiro -- --email voce@exemplo.com
---nome "Seu Nome"`.
+--nome "Seu Nome" --usuario seu_usuario`.
 
 Os bancos atuais já têm administrador; para eles, o comando só confirma isso e não faz nada.

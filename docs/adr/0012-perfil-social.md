@@ -243,3 +243,66 @@ encaixassem no resto do perfil e que a lista de animes ficasse junto dos álbuns
   - com 4 ou mais, mostra o mosaico 2×2.
 - **Foto de perfil padrão.** Quem não escolheu avatar mostra a foto padrão (`public/avatar-padrao.svg`, uma silhueta
   com o mesmo sol), no lugar das iniciais, em todo o site. "Remover foto" volta para ela.
+
+## Revisão de 28/10/2026 — lote de ajustes (Feed, Meus Animes, Comunidades, Amigos, perfil)
+
+Decisões da pessoa usuária, nas perguntas deste lote: só o @ fica fixo; a aba nova de Meus Animes mostra "Não terminei"
+mais as obras com episódio adiado; nas comunidades entram categorias, busca com ordem, comunidades dos amigos e
+relacionadas às obras.
+
+- **Busca do Feed.** Ficou pequena (o rótulo só para leitores de tela) e vai no topo da lateral, acima de "Em alta agora".
+  No celular e no tablet, a lateral vai para depois do Feed, por isso a busca fica antes dele.
+- **Pausados (Meus Animes).** Terceira aba, ao lado de Minha Lista e Para assistir: obras cujas temporadas já terminaram
+  de passar e que a pessoa não terminou ("Não terminei" ou com episódio adiado). Usa a mesma grade da aba Animes do
+  perfil (busca, gênero, prévia, andamento); marcar "Terminei" ou "Dropei" tira a obra da aba. `?category=paused` na API.
+- **Perfil.**
+  - "Nova publicação" e "Editar perfil" viraram atalhos discretos (contorno fino, ícone, sem fundo).
+  - O "quem sou eu" tem só o ícone de editar (com nome para leitores de tela e dica ao passar o mouse).
+  - "Novo álbum" é um cartão dentro da grade dos álbuns, do tamanho de um álbum.
+- **Plano de fundo do perfil** (`User.backgroundUrl`, migração `20261120100000_profile_background`, só acrescenta). Segue
+  a regra do avatar e do banner: só imagens (banner ou capa) das obras que a pessoa acompanha, escolhidas no seletor, e
+  some se ela deixa de acompanhar a obra. Aparece fixo atrás do perfil, escurecido para o texto continuar legível.
+- **Seletor de imagens** (avatar, banner e plano de fundo): busca pelo título e páginas de 8 obras.
+  - **A repetição.** Cada temporada era um grupo, e as mesmas pessoas voltavam em cada uma. Na lista real eram 800
+    linhas para 429 obras; dos 4.826 personagens, 646 eram a mesma imagem e 536 nomes se repetiam.
+  - **Agora:** uma obra é um grupo, com as capas de cada temporada ("Capa · 2ª temporada"). Cada personagem aparece uma
+    vez, com a arte da temporada mais recente, e nenhum endereço se repete no seletor inteiro.
+- **Nome de usuário (@) fixo.**
+  - A pessoa não troca mais o @ (PATCH /api/users/me responde 403); o "Nome do Perfil" continua livre.
+  - O administrador define o @ ao criar a conta (obrigatório, 3 a 20 letras minúsculas, números ou _, sem espaço) e pode
+    definir ou corrigir depois em Acesso e moderação → Usuários, para as contas antigas que ainda não têm.
+  - O comando do primeiro administrador pede `--usuario`.
+- **Amigos.** Duas colunas no computador.
+  - À esquerda, os seus amigos e as **pessoas na rede**: todo mundo no AnimeHub, das contas mais novas para as mais
+    antigas, com amigos em comum, em páginas de 20.
+  - À direita, pedidos, aniversários, sugestões e pedidos enviados.
+  - As sugestões passaram a contar amigos de amigos (peso 2, como as comunidades em comum).
+- **Comunidades.** "Populares" e "Buscar" viraram uma tela só, **Explorar**:
+  - busca pelo nome do anime;
+  - **categorias** (os gêneros das obras, sem migração: vêm do catálogo);
+  - **ordem** (mais membros, mais novas, atividade recente);
+  - páginas de 24;
+  - sem filtro, as faixas **Dos seus amigos** e **Das obras que você acompanha**.
+
+  Os endereços antigos (`?aba=populares`, `?aba=buscar`) abrem o Explorar. Dentro de uma comunidade há "← Comunidades"
+  para voltar ao diretório. As relacionadas à obra continuam na coluna da direita da comunidade.
+- **Foco nos campos.**
+  - **Antes:** o anel amarelo do teclado ficava afastado do campo e aparecia em todo clique num campo de texto, já
+    que o navegador trata esse clique como foco de teclado. O resultado era um contorno laranja por cima da borda do
+    próprio campo.
+  - **Agora:** campos de texto e seletores mostram o foco clareando a própria borda. No Editar perfil, o sublinhado
+    claro substitui o laranja.
+  - Links, botões e caixas de marcar continuam com o anel amarelo do teclado. Nas opções de Configurações, o anel só
+    aparece pelo teclado.
+- **Ações da prévia do calendário.** "Ver página da obra", "Acompanhando", "Adiar a obra"/"Retomar" e "Acompanhar"
+  quebravam o cartão em alguns títulos. Agora são só ícones, com o nome na dica ao passar o mouse e para leitores de
+  tela (`IconAction`).
+- **"Atrasado" fora** (pedido de 28/10: um agente vai cuidar dos atrasos depois).
+  - **Calendário:** saem o selo "Atrasado" no cartão, o aviso "Previsão atrasada" e a checagem na API. O episódio fica
+    no horário previsto, sem marca.
+  - **Meus Animes:** sai o estado "Atrasado". A obra cai em "Adiado" (hiato) ou "Data não definida", como as outras
+    sem horário confirmado.
+- **Testes.**
+  - Spec novo: 141.
+  - Ajustados: 06, 18, 43, 48, 58, 61, 62, 70 e 120.
+  - Testes de unidade das imagens por obra (`avatarOptions.test.ts`) e da ordem do diretório (`communityDirectory.test.ts`).

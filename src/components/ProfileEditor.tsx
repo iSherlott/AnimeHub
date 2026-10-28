@@ -9,7 +9,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { MONTHS } from "@/lib/birthdayDates";
 import { useCurrentUser, useSetCurrentUser } from "@/lib/auth/useCurrentUser";
 
-type Me = { id: string; displayName: string; handle: string | null; bio: string | null; avatarUrl: string | null; bannerUrl: string | null; favoriteAnime: string | null; favoriteCharacter: string | null; favoriteGenres: string[]; birthDay: number | null; birthMonth: number | null };
+type Me = { id: string; displayName: string; handle: string | null; bio: string | null; avatarUrl: string | null; bannerUrl: string | null; backgroundUrl: string | null; favoriteAnime: string | null; favoriteCharacter: string | null; favoriteGenres: string[]; birthDay: number | null; birthMonth: number | null };
 
 const outlined = (enabled: boolean, accent: boolean) => ({
   px: 4,
@@ -26,7 +26,7 @@ const outlined = (enabled: boolean, accent: boolean) => ({
   "&:focus-visible": { outline: "2px solid #ffd400", outlineOffset: 2 },
 });
 
-const SELECT_SX = { fontSize: 18, py: 0.75, px: 0.5, bgcolor: "transparent", color: "text.primary", border: 0, borderBottom: "2px solid #6b6b6b", fontFamily: "inherit", "&:focus": { outline: "none", borderBottomColor: PROFILE_ACCENT }, "&:focus-visible": { outline: "2px solid #ffd400", outlineOffset: 2 }, "& option": { bgcolor: "#171820" } } as const;
+const SELECT_SX = { fontSize: 18, py: 0.75, px: 0.5, bgcolor: "transparent", color: "text.primary", border: 0, borderBottom: "2px solid #6b6b6b", fontFamily: "inherit", "&:focus": { outline: "none", borderBottomColor: "#f2f2f5" }, "& option": { bgcolor: "#171820" } } as const;
 
 function Field({ id, label, value, onChange, help, placeholder, maxLength, multiline = false }: { id: string; label: string; value: string; onChange: (v: string) => void; help: string; placeholder?: string; maxLength: number; multiline?: boolean }) {
   return (
@@ -43,7 +43,7 @@ function Field({ id, label, value, onChange, help, placeholder, maxLength, multi
         minRows={multiline ? 2 : undefined}
         maxRows={multiline ? 5 : undefined}
         inputProps={{ maxLength }}
-        sx={{ fontSize: 20, py: 0.75, borderBottom: "2px solid #6b6b6b", "&:focus-within": { borderBottomColor: PROFILE_ACCENT }, "& input::placeholder, & textarea::placeholder": { color: "#6b6b6b", opacity: 1 } }}
+        sx={{ fontSize: 20, py: 0.75, borderBottom: "2px solid #6b6b6b", "&:focus-within": { borderBottomColor: "#f2f2f5" }, "& input::placeholder, & textarea::placeholder": { color: "#6b6b6b", opacity: 1 } }}
       />
       <Typography sx={{ fontSize: 13, color: "text.secondary", lineHeight: 1.6 }}>{help}</Typography>
     </Box>
@@ -53,14 +53,13 @@ function Field({ id, label, value, onChange, help, placeholder, maxLength, multi
 /**
  * Editar Perfil, no estilo da Crunchyroll: faixa de banner no topo, avatar redondo sobreposto com o lápis,
  * campos com sublinhado e os botões SALVAR / CANCELAR. Avatar e banner vêm das obras que a pessoa acompanha
- * (e gravam ao salvar no seletor); nome, identificador e bio gravam com SALVAR.
+ * (e gravam ao salvar no seletor); nome e bio gravam com SALVAR. O nome de usuário (@) é fixo e só aparece aqui.
  */
 export function ProfileEditor({ me, genreOptions = [] }: { me: Me; genreOptions?: string[] }) {
   const router = useRouter();
   const currentUser = useCurrentUser();
   const setCurrentUser = useSetCurrentUser();
   const [name, setName] = useState(me.displayName);
-  const [handle, setHandle] = useState(me.handle ?? "");
   const [bio, setBio] = useState(me.bio ?? "");
   const [favoriteAnime, setFavoriteAnime] = useState(me.favoriteAnime ?? "");
   const [favoriteCharacter, setFavoriteCharacter] = useState(me.favoriteCharacter ?? "");
@@ -69,13 +68,13 @@ export function ProfileEditor({ me, genreOptions = [] }: { me: Me; genreOptions?
   const [birthMonth, setBirthMonth] = useState(me.birthMonth ? String(me.birthMonth) : "");
   const [avatar, setAvatar] = useState(me.avatarUrl);
   const [banner, setBanner] = useState(me.bannerUrl);
-  const [picker, setPicker] = useState<"avatar" | "banner" | null>(null);
+  const [background, setBackground] = useState(me.backgroundUrl);
+  const [picker, setPicker] = useState<"avatar" | "banner" | "background" | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const dirty =
     name.trim() !== me.displayName ||
-    handle.trim() !== (me.handle ?? "") ||
     bio.trim() !== (me.bio ?? "") ||
     favoriteAnime.trim() !== (me.favoriteAnime ?? "") ||
     favoriteCharacter.trim() !== (me.favoriteCharacter ?? "") ||
@@ -98,7 +97,6 @@ export function ProfileEditor({ me, genreOptions = [] }: { me: Me; genreOptions?
         birthDay: birthDay ? Number(birthDay) : null,
         birthMonth: birthMonth ? Number(birthMonth) : null,
       };
-      if (handle.trim()) payload.handle = handle;
       const res = await fetch("/api/users/me", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -115,12 +113,14 @@ export function ProfileEditor({ me, genreOptions = [] }: { me: Me; genreOptions?
     }
   }
 
-  function savedImage(kind: "avatar" | "banner", url: string | null) {
+  function savedImage(kind: "avatar" | "banner" | "background", url: string | null) {
     if (kind === "avatar") {
       setAvatar(url);
       if (currentUser) setCurrentUser({ ...currentUser, avatarUrl: url });
-    } else {
+    } else if (kind === "banner") {
       setBanner(url);
+    } else {
+      setBackground(url);
     }
     router.refresh();
   }
@@ -158,16 +158,40 @@ export function ProfileEditor({ me, genreOptions = [] }: { me: Me; genreOptions?
         </Box>
 
         <Box sx={{ px: { xs: 3, sm: 7 }, pt: 4, display: "flex", flexDirection: "column", gap: 4 }}>
+          {/* Plano de fundo do perfil: como o avatar e o banner, uma imagem de um anime que a pessoa acompanha. */}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+            <Typography component="span" sx={{ fontSize: 13, color: "text.secondary" }}>
+              Plano de fundo do perfil
+            </Typography>
+            <ButtonBase
+              onClick={() => setPicker("background")}
+              aria-label="Editar plano de fundo"
+              data-testid="edit-background"
+              sx={{ position: "relative", height: 72, borderRadius: "6px", overflow: "hidden", bgcolor: "#2a2a2a", justifyContent: "flex-end", alignItems: "flex-end", p: 1, "&:hover .bg-edit": { bgcolor: "#fff" } }}
+            >
+              {background && <Box component="img" src={background} alt="" data-testid="profile-background-preview" sx={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.7 }} />}
+              {!background && (
+                <Typography component="span" sx={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "text.secondary" }}>
+                  Sem plano de fundo
+                </Typography>
+              )}
+              <Box className="bg-edit" sx={{ position: "relative", display: "inline-flex", p: 0.5, borderRadius: "50%", bgcolor: "rgba(210,210,210,0.85)", color: "#111" }}>
+                <EditIcon fontSize="small" />
+              </Box>
+            </ButtonBase>
+            <Typography sx={{ fontSize: 13, color: "text.secondary", lineHeight: 1.6 }}>Aparece atrás do seu perfil, escurecido para o texto continuar legível.</Typography>
+          </Box>
           <Field id="profile-name" label="Nome do Perfil" value={name} onChange={setName} maxLength={40} help="Este é o nome mostrado nas suas publicações e no seu perfil. Pode ser alterado a qualquer tempo." />
-          <Field
-            id="profile-handle"
-            label="Nome de usuário (opcional)"
-            value={handle}
-            onChange={setHandle}
-            placeholder="seu_identificador"
-            maxLength={21}
-            help="3 a 20 caracteres: letras sem acento, números e _. Aparece como @identificador e é único."
-          />
+          {/* O nome de usuário (@) é fixo: o administrador define na criação da conta. */}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }} data-testid="profile-handle-fixed">
+            <Typography component="span" sx={{ fontSize: 13, color: "text.secondary" }}>
+              Nome de usuário
+            </Typography>
+            <Typography sx={{ fontSize: 20, py: 0.75, color: me.handle ? "text.primary" : "text.secondary", borderBottom: "2px dashed #3a3a3a" }}>{me.handle ? `@${me.handle}` : "ainda não definido"}</Typography>
+            <Typography sx={{ fontSize: 13, color: "text.secondary", lineHeight: 1.6 }}>
+              {me.handle ? "Fixo: definido na criação da conta. Para corrigir, fale com o administrador." : "O administrador define o seu nome de usuário em Acesso e moderação."}
+            </Typography>
+          </Box>
           <Field id="profile-bio" label="Quem sou eu (opcional)" value={bio} onChange={setBio} multiline maxLength={300} placeholder="uma frase sobre você" help="Até 300 caracteres. Aparece no seu perfil." />
           <Field id="profile-favorite-anime" label="Anime favorito (opcional)" value={favoriteAnime} onChange={setFavoriteAnime} maxLength={80} placeholder="ex.: Frieren" help="Aparece no quem sou eu do seu perfil." />
           <Field id="profile-favorite-character" label="Personagem favorito (opcional)" value={favoriteCharacter} onChange={setFavoriteCharacter} maxLength={80} placeholder="ex.: Himmel" help="Aparece no quem sou eu do seu perfil." />
@@ -240,7 +264,7 @@ export function ProfileEditor({ me, genreOptions = [] }: { me: Me; genreOptions?
           kind={picker}
           userId={me.id}
           displayName={name || me.displayName}
-          current={picker === "avatar" ? avatar : banner}
+          current={picker === "avatar" ? avatar : picker === "banner" ? banner : background}
           onClose={() => setPicker(null)}
           onSaved={(url) => savedImage(picker, url)}
         />

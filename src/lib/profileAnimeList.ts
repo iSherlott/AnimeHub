@@ -27,6 +27,8 @@ export type ProfileAnimeEntry = {
   genres: string[];
   status: string | null;
   category: WatchCategory;
+  /** Todas as temporadas da obra que a pessoa tem já terminaram de passar (nenhuma no ar nem por estrear). */
+  ended: boolean;
   /** Temporadas da obra que a pessoa tem na lista (1 quando é uma só). */
   seasonsCount: number;
   /** Cada temporada com a categoria dela, da primeira à última. */
@@ -62,10 +64,22 @@ export function normalizeSearch(text: string): string {
   return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 }
 
+/**
+ * "Pausados" (aba de Meus Animes): obras que já terminaram de passar e a pessoa não terminou — marcadas "Não terminei"
+ * ou com episódio adiado em "Para assistir" (as duas viram a categoria `unfinished`).
+ */
+export const PAUSED_CATEGORY = "paused";
+
+export function isPaused(entry: Pick<ProfileAnimeEntry, "category" | "ended">): boolean {
+  return entry.category === "unfinished" && entry.ended;
+}
+
+const ENDED_STATUSES = new Set(["FINISHED", "CANCELLED"]);
+
 export function filterEntries(entries: ProfileAnimeEntry[], q: string, genre: string, category = ""): ProfileAnimeEntry[] {
   const needle = normalizeSearch(q);
   return entries.filter((e) => {
-    if (category && e.category !== category) return false;
+    if (category === PAUSED_CATEGORY ? !isPaused(e) : category && e.category !== category) return false;
     if (genre && !e.genres.includes(genre)) return false;
     if (!needle) return true;
     return normalizeSearch([e.titleRomaji, e.titleEnglish, e.titleNative, e.titlePortuguese].filter(Boolean).join(" ")).includes(needle);
@@ -125,6 +139,7 @@ export async function loadProfileAnimeList(targetId: string, viewerId: string | 
       genres: Array.from(genreSet),
       status: rep.status,
       category: groupCategory(members.map((m) => m.category)),
+      ended: members.every((m) => m.status !== null && ENDED_STATUSES.has(m.status)),
       seasonsCount: members.length,
       ...(members.length > 1 ? { seasons: members.map((m) => ({ anilistId: m.anilistId, seasonNumber: m.seasonNumber, category: m.category })) } : {}),
       ...(isOwn ? { animeId: rep.id, watchState: isWatchState(rep.watchState) ? rep.watchState : null, waiting: rep.waiting } : {}),
@@ -133,5 +148,5 @@ export async function loadProfileAnimeList(targetId: string, viewerId: string | 
   const matched = filterEntries(all, q, genre, category);
   const entries = page ? matched.slice(page.offset, page.offset + page.limit) : matched;
   const next = page ? page.offset + entries.length : matched.length;
-  return { kind: "ok", isOwn, list: { total: all.length, matched: matched.length, entries, nextCursor: next < matched.length ? String(next) : null, genres: genreFacets(all), categories: categoryCounts(all) } };
+  return { kind: "ok", isOwn, list: { total: all.length, matched: matched.length, entries, nextCursor: next < matched.length ? String(next) : null, genres: genreFacets(category ? filterEntries(all, "", "", category) : all), categories: categoryCounts(all) } };
 }

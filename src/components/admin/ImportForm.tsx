@@ -139,7 +139,7 @@ export function ImportForm({ seasons, initialHtml = "", initialSeason }: { seaso
                 addCustomSeason();
               }
             }}
-            sx={{ p: 2, bgcolor: "background.paper", color: "text.primary", border: 1, borderColor: "divider", borderRadius: "10px", fontSize: 14, "&:focus": { outline: "none", borderColor: "text.secondary" }, "&:focus-visible": { outline: "2px solid #ffd400", outlineOffset: 2 } }}
+            sx={{ p: 2, bgcolor: "background.paper", color: "text.primary", border: 1, borderColor: "divider", borderRadius: "10px", fontSize: 14, "&:focus": { outline: "none", borderColor: "text.secondary" } }}
           />
         </Box>
         <Button onClick={addCustomSeason} disabled={!customValid} sx={ELEVATED_BUTTON_SX} data-testid="add-custom-season">
@@ -175,7 +175,7 @@ export function ImportForm({ seasons, initialHtml = "", initialSeason }: { seaso
             fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
             fontSize: 14,
             lineHeight: 1.6,
-            "&:focus": { outline: "none", borderColor: "text.secondary" }, "&:focus-visible": { outline: "2px solid #ffd400", outlineOffset: 2 },
+            "&:focus": { outline: "none", borderColor: "text.secondary" },
           }}
         />
         {detected && (

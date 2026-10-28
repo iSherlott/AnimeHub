@@ -37,6 +37,10 @@ export default async function CommunityLayout({ children, params }: { children: 
     <Box sx={{ minHeight: "100%", bgcolor: "background.default" }}>
       <Header />
       <PageContainer wide>
+        {/* Voltar ao diretório: de qualquer seção da comunidade (fórum, tópico, enquetes, eventos, membros). */}
+        <AppLink href="/comunidades" underline="hover" data-testid="community-back" sx={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 0.5, fontSize: 14, color: "text.secondary", "&:hover": { color: "text.primary" } }}>
+          ← Comunidades
+        </AppLink>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", md: "220px minmax(0,1fr)", lg: "220px minmax(0,1fr) 280px" }, gap: 3, alignItems: "start" }}>
           {/* Coluna da esquerda: a comunidade */}
           <Box component="aside" aria-label="A comunidade" sx={{ display: "flex", flexDirection: "column", gap: 1.5 }} data-testid="community-header">

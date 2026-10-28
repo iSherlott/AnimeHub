@@ -89,7 +89,7 @@ test.describe("Calendário em colunas por dia", () => {
     await expect(page.getByRole("button", { name: "Minha Lista", exact: true })).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("API marca como atrasado só o episódio que a fonte ainda aponta como próximo, e preserva o horário", async ({ request }) => {
+  test("sem o 'Atrasado' (28/10): o episódio que a fonte ainda aponta como próximo fica no horário previsto, sem marca", async ({ request }) => {
     const airingAt = new Date(Date.now() - 4 * 3600_000);
     await prisma.airingScheduleEntry.create({
       data: { anilistId: DELAYED_ID, episode: 5, airingAt, titleRomaji: "Grade Atrasada" },
@@ -104,10 +104,9 @@ test.describe("Calendário em colunas por dia", () => {
     expect(res.status()).toBe(200);
     const data = await res.json();
     const item = data.results.find((r: { anilistId: number }) => r.anilistId === DELAYED_ID);
-    expect(item.delayed).toBe(true);
-    expect(new Date(item.airingAt).getTime()).toBe(airingAt.getTime()); // previsão original preservada
-    const others = data.results.filter((r: { anilistId: number }) => IDS.includes(r.anilistId));
-    expect(others.every((r: { delayed: boolean }) => r.delayed === false)).toBe(true);
+    expect(item).not.toHaveProperty("delayed");
+    expect(new Date(item.airingAt).getTime()).toBe(airingAt.getTime()); // continua no horário previsto
+    expect(data.results.some((r: object) => "delayed" in r)).toBe(false);
   });
 
   test("API devolve fora da grade só o que não tem horário: dia exato, sem data e adiado", async ({ request }) => {
@@ -133,7 +132,7 @@ test.describe("Calendário em colunas por dia", () => {
     expect(byId(OFF_GRID_IDS[2])).toMatchObject({ kind: "postponed", startDate: null });
   });
 
-  test("a tela mostra 'Previsão atrasada' e os painéis fora da grade, sem posição inventada", async ({ page }) => {
+  test("a tela não mostra mais 'Atrasado' nem 'Previsão atrasada'; os painéis fora da grade continuam, sem posição inventada", async ({ page }) => {
     const day = todayAtNoonSaoPaulo();
     const exactDay = day.toISOString().slice(0, 10);
     await page.route("**/api/calendar**", (route) =>
@@ -142,8 +141,8 @@ test.describe("Calendário em colunas por dia", () => {
           results: [
             {
               key: "962099-6", anilistId: 962099, animeId: null, episode: 6, airingAt: new Date(day.getTime() - 3 * 3600_000).toISOString(),
-              titleRomaji: "Mock Atrasado", titleEnglish: null, titleNative: null, titlePortuguese: null, coverImage: null, genres: [],
-              inMyList: false, description: null, descriptionPortuguese: null, isFavorite: false, delayed: true,
+              titleRomaji: "Mock Sem Confirmacao", titleEnglish: null, titleNative: null, titlePortuguese: null, coverImage: null, genres: [],
+              inMyList: false, description: null, descriptionPortuguese: null, isFavorite: false,
             },
           ],
           offGrid: [
@@ -156,11 +155,10 @@ test.describe("Calendário em colunas por dia", () => {
     );
     await openAll(page);
 
-    await expect(page.getByTestId("calendar-entry-962099-6")).toContainText("Atrasado");
-    const alert = page.getByTestId("calendar-delayed-alert");
-    await expect(alert).toContainText("Previsão atrasada");
-    await expect(alert).toContainText("Mock Atrasado");
-    await expect(alert).toContainText("Não foi deslocado para um horário inventado");
+    await expect(page.getByTestId("calendar-entry-962099-6")).toBeVisible();
+    await expect(page.getByTestId("calendar-entry-962099-6")).not.toContainText("Atrasado");
+    await expect(page.getByTestId("calendar-delayed-alert")).toHaveCount(0);
+    await expect(page.getByText("Previsão atrasada")).toHaveCount(0);
 
     const panels = page.getByTestId("calendar-off-grid");
     await expect(panels.getByRole("heading", { name: "Sem horário definido" })).toBeVisible();

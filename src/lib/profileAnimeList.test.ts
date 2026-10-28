@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categoryCounts, filterEntries, genreFacets, normalizeSearch, type ProfileAnimeEntry } from "@/lib/profileAnimeList";
+import { PAUSED_CATEGORY, categoryCounts, filterEntries, genreFacets, normalizeSearch, type ProfileAnimeEntry } from "@/lib/profileAnimeList";
 
 const entry = (anilistId: number, titleRomaji: string, genres: string[], extra: Partial<ProfileAnimeEntry> = {}): ProfileAnimeEntry => ({
   anilistId,
@@ -13,6 +13,7 @@ const entry = (anilistId: number, titleRomaji: string, genres: string[], extra: 
   genres,
   status: null,
   category: "other",
+  ended: false,
   seasonsCount: 1,
   ...extra,
 });
@@ -74,5 +75,16 @@ describe("categorias do perfil", () => {
   });
   it("conta cada categoria; 'other' só aparece em Todos", () => {
     expect(categoryCounts(withCategory)).toEqual({ watching: 1, unfinished: 1, finished: 1, dropped: 0 });
+  });
+});
+describe("pausados (aba de Meus Animes)", () => {
+  it("só obras já encerradas que a pessoa não terminou", () => {
+    const works = [
+      entry(10, "Encerrada, não terminei", [], { category: "unfinished", ended: true }),
+      entry(11, "No ar, não terminei", [], { category: "unfinished", ended: false }),
+      entry(12, "Encerrada, terminei", [], { category: "finished", ended: true }),
+      entry(13, "Encerrada, dropei", [], { category: "dropped", ended: true }),
+    ];
+    expect(filterEntries(works, "", "", PAUSED_CATEGORY).map((e) => e.anilistId)).toEqual([10]);
   });
 });

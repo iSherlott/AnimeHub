@@ -42,6 +42,8 @@ type AdminUser = {
   id: string;
   email: string;
   displayName: string;
+  /** Nome de usuário (@), fixo; contas antigas podem ainda não ter. */
+  handle?: string | null;
   role: string;
   /** Ainda com a senha provisória (conta nova ou senha redefinida). */
   mustChangePassword?: boolean;
@@ -93,6 +95,7 @@ export function AdminDashboard({ canManageUsers = true, currentUserId }: { canMa
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [newHandle, setNewHandle] = useState("");
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [resolvingPostId, setResolvingPostId] = useState<string | null>(null);
@@ -183,7 +186,7 @@ export function AdminDashboard({ canManageUsers = true, currentUserId }: { canMa
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName: newName, email: newEmail }),
+        body: JSON.stringify({ displayName: newName, email: newEmail, handle: newHandle }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -194,6 +197,7 @@ export function AdminDashboard({ canManageUsers = true, currentUserId }: { canMa
       setResetResult({ userId: data.user.id, password: data.temporaryPassword, created: { displayName: data.user.displayName, email: data.user.email } });
       setNewName("");
       setNewEmail("");
+      setNewHandle("");
     } finally {
       creatingAccountRef.current = false;
       setCreatingAccount(false);
@@ -432,6 +436,17 @@ export function AdminDashboard({ canManageUsers = true, currentUserId }: { canMa
         </Typography>
         <Box component="form" onSubmit={handleCreateAccount} sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "flex-start" }}>
           <TextField label="Nome" size="small" required value={newName} onChange={(e) => setNewName(e.target.value)} slotProps={{ htmlInput: { maxLength: 60 } }} sx={{ flex: "1 1 200px" }} />
+          <TextField
+            label="Nome de usuário"
+            size="small"
+            required
+            value={newHandle}
+            // Fixo e em minúsculas, sem espaço nem caractere especial: o campo já ajusta enquanto digita.
+            onChange={(e) => setNewHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+            helperText="Fixo: 3 a 20 letras minúsculas, números ou _."
+            slotProps={{ htmlInput: { maxLength: 20, "data-testid": "new-account-handle" }, input: { startAdornment: <Typography component="span" sx={{ color: "text.secondary", mr: 0.25 }}>@</Typography> } }}
+            sx={{ flex: "1 1 200px" }}
+          />
           <TextField label="E-mail" type="email" size="small" required value={newEmail} onChange={(e) => setNewEmail(e.target.value)} slotProps={{ htmlInput: { maxLength: 254 } }} sx={{ flex: "1 1 240px" }} />
           <Button type="submit" variant="contained" disabled={creatingAccount} sx={{ minHeight: 40 }}>
             {creatingAccount ? "Criando..." : "Criar conta"}
@@ -469,6 +484,7 @@ export function AdminDashboard({ canManageUsers = true, currentUserId }: { canMa
                       )}
                       {u.mustChangePassword && <Chip label="senha provisória" size="small" variant="outlined" sx={{ fontWeight: 700, fontSize: 10 }} />}
                     </Box>
+                    <HandleCell user={u} onSaved={(handle) => setUsers((current) => current.map((x) => (x.id === u.id ? { ...x, handle } : x)))} />
                   </TableCell>
                   <TableCell sx={{ color: "text.secondary" }}>{u.email}</TableCell>
                   <TableCell sx={{ color: "text.secondary" }}>{fmtDate(u.createdAt)}</TableCell>
@@ -520,6 +536,68 @@ export function AdminDashboard({ canManageUsers = true, currentUserId }: { canMa
           <Button onClick={() => setResetResult(null)}>Fechar</Button>
         </DialogActions>
       </Dialog>
+    </Box>
+  );
+}
+
+/**
+ * O @ da pessoa na tabela de usuários. Fixo para ela; o administrador define nas contas antigas que ainda não têm
+ * (ou corrige um erro de digitação).
+ */
+function HandleCell({ user, onSaved }: { user: AdminUser; onSaved: (handle: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(user.handle ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ handle: value }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Não foi possível salvar.");
+        return;
+      }
+      onSaved(data.handle);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!editing) {
+    return (
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Typography variant="body2" sx={{ color: user.handle ? "text.secondary" : "warning.main", fontSize: 12 }} data-testid={`user-handle-${user.id}`}>
+          {user.handle ? `@${user.handle}` : "sem nome de usuário"}
+        </Typography>
+        <Button size="small" color="inherit" onClick={() => setEditing(true)} sx={{ minWidth: 0, px: 0.75, fontSize: 11 }} data-testid={`user-handle-edit-${user.id}`}>
+          {user.handle ? "corrigir" : "definir"}
+        </Button>
+      </Box>
+    );
+  }
+  return (
+    <Box component="form" onSubmit={save} sx={{ display: "flex", alignItems: "flex-start", gap: 1, mt: 0.5 }}>
+      <TextField
+        size="small"
+        value={value}
+        autoFocus
+        onChange={(e) => setValue(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+        error={Boolean(error)}
+        helperText={error ?? undefined}
+        slotProps={{ htmlInput: { maxLength: 20, "aria-label": `Nome de usuário de ${user.displayName}`, "data-testid": `user-handle-input-${user.id}` } }}
+        sx={{ width: 180 }}
+      />
+      <Button type="submit" size="small" variant="contained" disabled={saving}>
+        Salvar
+      </Button>
+      <Button size="small" color="inherit" onClick={() => setEditing(false)}>
+        Cancelar
+      </Button>
     </Box>
   );
 }

@@ -4,7 +4,7 @@ import { Header } from "@/components/Header";
 import { FeedView } from "@/components/FeedView";
 import { CommunitySearchBox } from "@/components/CommunitySearchBox";
 import { CommunitySidebar } from "@/components/CommunitySidebar";
-import { PageContainer, PageIntro, TwoColumn } from "@/components/PageShell";
+import { PageContainer, PageIntro } from "@/components/PageShell";
 
 /**
  * Feed (antes "Comunidade"; Figma "14 — Comunidade / Para você · Seguindo · Recentes", `13:41181`): as publicações e as
@@ -18,18 +18,31 @@ export default function Home() {
       <Header />
       <PageContainer>
         <PageIntro kicker="フィード / FEED" title="Feed" subtitle="Notícias, impressões e hashtags do que está passando." />
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", lg: "minmax(0,1fr) 320px" }, columnGap: 5, rowGap: 2, alignItems: "start" }}>
-          <CommunitySearchBox />
-        </Box>
-        <TwoColumn
-          main={
-            // useSearchParams em filhos exige um limite de Suspense no build estático.
+        {/* A busca, pequena, fica no topo da lateral, acima de "Em alta agora"; no celular e no tablet, antes do Feed. */}
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(0, 1fr) 320px" },
+            gridTemplateAreas: { xs: `"search" "main" "aside"`, lg: `"main search" "main aside"` },
+            gridTemplateRows: { lg: "auto 1fr" },
+            columnGap: 5,
+            rowGap: { xs: 3, lg: 3 },
+            alignItems: "start",
+          }}
+        >
+          <Box sx={{ gridArea: "search", minWidth: 0 }}>
+            <CommunitySearchBox compact />
+          </Box>
+          <Box sx={{ gridArea: "main", minWidth: 0 }}>
+            {/* useSearchParams em filhos exige um limite de Suspense no build estático. */}
             <Suspense>
               <FeedView />
             </Suspense>
-          }
-          aside={<CommunitySidebar />}
-        />
+          </Box>
+          <Box component="aside" sx={{ gridArea: "aside", minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+            <CommunitySidebar />
+          </Box>
+        </Box>
       </PageContainer>
     </Box>
   );

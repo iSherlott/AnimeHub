@@ -3,7 +3,7 @@ import { streamingDelays, tvAiringAt } from "@/lib/streamingDelay";
 import { prisma } from "@/lib/prisma";
 import { getCachedAiringSchedule } from "@/lib/airingCache";
 import { calendarItemFromCache } from "@/lib/calendarItem";
-import { animeSeasonOf, civilDay, classifyOffGrid, DELAY_GRACE_MS, isDelayed, type OffGridItem } from "@/lib/calendarOffGrid";
+import { animeSeasonOf, civilDay, classifyOffGrid, type OffGridItem } from "@/lib/calendarOffGrid";
 import { getCurrentUser } from "@/lib/auth/session";
 import { startOfWeekMonday } from "@/lib/calendarWeek";
 import { postponedSet } from "@/lib/pending";
@@ -116,19 +116,6 @@ export async function GET(request: NextRequest) {
     if (!episodeImages.has(key)) episodeImages.set(key, img.thumbnail);
   }
 
-  // "Atrasado": só vale checar quem já passou da tolerância — uma busca curta no catálogo.
-  const now = new Date();
-  const pastIds = Array.from(
-    new Set(entries.filter((e) => e.airingAt.getTime() <= now.getTime() - DELAY_GRACE_MS).map((e) => e.anilistId))
-  );
-  const catalogNext = pastIds.length
-    ? await prisma.catalogEntry.findMany({
-        where: { anilistId: { in: pastIds } },
-        select: { anilistId: true, nextEpisodeNumber: true, nextEpisodeAt: true },
-      })
-    : [];
-  const catalogNextById = new Map(catalogNext.map((c) => [c.anilistId as number, c]));
-
   // Fora da grade (D-25): nunca ganham posição inventada. Só estreias com dia
   // exato perto desta semana ("dated"), e — da temporada da semana — o que não
   // tem data confiável ("undated") ou está em hiato ("postponed").
@@ -183,7 +170,6 @@ export async function GET(request: NextRequest) {
       const item = calendarItemFromCache(
         e,
         myAnimeByAnilistId,
-        isDelayed(e.airingAt, e.episode, catalogNextById.get(e.anilistId), now),
         episodeImages.get(`${e.anilistId}-${e.episode}`) ?? null,
         postponedIds.has(e.anilistId)
       );

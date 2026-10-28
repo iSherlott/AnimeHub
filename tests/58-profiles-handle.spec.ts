@@ -25,25 +25,31 @@ test.describe("Perfil: nome, @identificador e discussões", () => {
     await prisma.$disconnect();
   });
 
-  test("API: valida identificador, salva em minúsculas e recusa duplicado (409)", async ({ request, playwright, baseURL }) => {
-    for (const bad of ["ab", "com espaço", "joão", "admin", "x".repeat(21)]) {
-      expect((await request.patch("/api/users/me", { data: { handle: bad } })).status()).toBe(400);
-    }
+  test("API: o @ é fixo para a pessoa; só o administrador define, valida, salva em minúsculas e recusa duplicado (409)", async ({ request, playwright, baseURL }) => {
+    // A própria pessoa não troca o @ (nem para um valor válido).
+    expect((await request.patch("/api/users/me", { data: { handle: HANDLE } })).status()).toBe(403);
     expect((await request.patch("/api/users/me", { data: { displayName: "   " } })).status()).toBe(400);
     expect((await request.patch("/api/users/me", { data: {} })).status()).toBe(400);
 
-    const ok = await request.patch("/api/users/me", { data: { handle: `@${HANDLE.toUpperCase()}` } });
-    expect(ok.status()).toBe(200);
-    expect((await ok.json()).handle).toBe(HANDLE);
-
-    // outra conta tentando o mesmo identificador
     const admin = await playwright.request.newContext({
       baseURL,
       extraHTTPHeaders: { Cookie: `${SESSION_COOKIE_NAME}=${TEST_ADMIN_SESSION_TOKEN}` },
     });
-    const dup = await admin.patch("/api/users/me", { data: { handle: HANDLE } });
-    expect(dup.status()).toBe(409);
-    await admin.dispose();
+    try {
+      for (const bad of ["ab", "com espaço", "joão", "admin", "x".repeat(21)]) {
+        expect((await admin.patch(`/api/admin/users/${userId}`, { data: { handle: bad } })).status()).toBe(400);
+      }
+      const ok = await admin.patch(`/api/admin/users/${userId}`, { data: { handle: `@${HANDLE.toUpperCase()}` } });
+      expect(ok.status()).toBe(200);
+      expect((await ok.json()).handle).toBe(HANDLE);
+      // Outra conta com o mesmo @.
+      const adminId = (await prisma.user.findUniqueOrThrow({ where: { email: TEST_ADMIN_EMAIL } })).id;
+      expect((await admin.patch(`/api/admin/users/${adminId}`, { data: { handle: HANDLE } })).status()).toBe(409);
+      // Quem não é administrador não define o @ de ninguém.
+      expect((await request.patch(`/api/admin/users/${userId}`, { data: { handle: `${HANDLE}z` } })).status()).toBe(403);
+    } finally {
+      await admin.dispose();
+    }
 
     // a bio continua independente
     const bioOnly = await request.patch("/api/users/me", { data: { bio: "olá" } });
@@ -52,7 +58,7 @@ test.describe("Perfil: nome, @identificador e discussões", () => {
   });
 
   test("perfil próprio: @identificador, editar perfil, atalhos e Discussões iniciadas", async ({ page, request }) => {
-    await request.patch("/api/users/me", { data: { handle: HANDLE } });
+    await prisma.user.update({ where: { id: userId }, data: { handle: HANDLE } });
     const plain = await request.post("/api/posts", { data: { body: `Sem obra ${SUFFIX}` } });
     const about = await request.post("/api/posts", { data: { body: `Com obra ${SUFFIX}`, anilistId: 907000 } });
     const ids = [(await plain.json()).post.id, about.status() === 201 ? (await about.json()).post.id : null];
@@ -61,30 +67,29 @@ test.describe("Perfil: nome, @identificador e discussões", () => {
       await page.goto(`/users/${userId}`);
       await expect(page.getByTestId("profile-handle")).toHaveText(`@${HANDLE}`);
       await expect(page.getByRole("link", { name: "Minha Lista privada" })).toHaveAttribute("href", "/minha-lista");
-      await expect(page.getByRole("link", { name: "+ Nova publicação" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Nova publicação" })).toBeVisible();
 
       await page.getByRole("tab", { name: "Discussões iniciadas" }).click();
       await expect(page.getByText(`Sem obra ${SUFFIX}`)).toHaveCount(0);
       if (about.status() === 201) await expect(page.getByText(`Com obra ${SUFFIX}`)).toBeVisible();
 
-      // Editar Perfil (estilo Crunchyroll): página própria; o identificador inválido mostra o erro sem perder o que foi digitado.
+      // Editar Perfil (estilo Crunchyroll): página própria; o @ aparece fixo, sem campo para trocar.
       await page.getByTestId("profile-edit-open").click();
       await expect(page).toHaveURL(/\/perfil\/editar$/);
       await expect(page.getByRole("heading", { name: "Editar Perfil" })).toBeVisible();
-      await page.getByLabel("Nome de usuário (opcional)").fill("ab");
-      await page.getByTestId("profile-edit-save").click();
-      await expect(page.getByTestId("profile-edit-error")).toContainText("3 a 20");
-      await page.getByLabel("Nome de usuário (opcional)").fill(`${HANDLE}x`);
+      await expect(page.getByTestId("profile-handle-fixed")).toContainText(`@${HANDLE}`);
+      await expect(page.getByTestId("profile-handle-fixed").getByRole("textbox")).toHaveCount(0);
+      await page.getByLabel("Nome do Perfil").fill("Perfil Round58");
       await page.getByTestId("profile-edit-save").click();
       await expect(page).toHaveURL(new RegExp(`/users/${userId}$`));
-      await expect(page.getByTestId("profile-handle")).toHaveText(`@${HANDLE}x`);
+      await expect(page.getByTestId("profile-handle")).toHaveText(`@${HANDLE}`);
     } finally {
       for (const id of ids) if (id) await request.delete(`/api/posts/${id}`);
     }
   });
 
   test("perfil de outra pessoa não mostra atalhos de edição; busca encontra por @identificador", async ({ page, request }) => {
-    await request.patch("/api/users/me", { data: { handle: HANDLE } });
+    await prisma.user.update({ where: { id: userId }, data: { handle: HANDLE } });
     const found = await (await request.get(`/api/search?q=${HANDLE}&scope=profiles`)).json();
     expect(found.profiles.map((p: { id: string }) => p.id)).toContain(userId);
 

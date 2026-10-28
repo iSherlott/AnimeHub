@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
-import EventRepeatIcon from "@mui/icons-material/EventRepeat";
 import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
 import { Box, Typography } from "@mui/material";
 import type { CalendarItem } from "@/lib/calendarItem";
@@ -22,7 +21,7 @@ const RECHECK_INTERVAL_MS = 60 * 1000;
  * sem isso, mover o mouse até o botão dentro do preview fecharia no caminho. */
 const CLOSE_DELAY_MS = 150;
 
-/** Selo do Figma (`10:23` Atrasado / `10:28` Novo episódio): 11 px bold, raio 6. */
+/** Selo do Figma (`10:28` Novo episódio; o tom de aviso é o de "Obra adiada"): 11 px bold, raio 6. */
 function Badge({ tone, icon, children }: { tone: "accent" | "warning"; icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <Box
@@ -49,8 +48,8 @@ function Badge({ tone, icon, children }: { tone: "accent" | "warning"; icon: Rea
 
 /**
  * Item de lançamento na coluna do dia (Figma `8:2106`, "Item"/"Item novo ep"/
- * "Item atrasado"): horário, título e EP; os da minha lista ganham o fundo de
- * acento + selo "NOVO EPISÓDIO EPnn", os atrasados a barra âmbar + "Atrasado".
+ * "Item atrasado", este fora desde 28/10): horário, título e EP; os da minha
+ * lista ganham o fundo de acento + selo "NOVO EPISÓDIO EPnn".
  * As medidas são em `em` (a grade escala com o monitor). Tocar ou clicar abre a
  * prévia (no celular, a gaveta de baixo) com sinopse, ações e o botão da página
  * da obra; no computador, passar o mouse também mostra a prévia, que some ao sair.
@@ -147,7 +146,7 @@ export function CalendarEntryCard({
   const airingNowLabel = `${title}, ${item.episodeEnd ? `episódios ${item.episode} a ${item.episodeEnd}` : `episódio ${item.episode}`}, no ar agora`;
   const highlighted = highlightMine && item.inMyList;
   const image = item.episodeImage ?? item.coverImage;
-  const barColor = item.delayed ? "warning.main" : highlighted ? "primary.main" : "transparent";
+  const barColor = highlighted ? "primary.main" : "transparent";
 
   return (
     <>
@@ -159,7 +158,6 @@ export function CalendarEntryCard({
         aria-label={`${title}, ${episode}, ${time}`}
         data-testid={`calendar-entry-${item.key}`}
         {...WORK_TRIGGER}
-        data-delayed={item.delayed ? "true" : undefined}
         onPointerEnter={hoverOpen}
         onPointerLeave={scheduleClose}
         onClick={(e: React.MouseEvent<HTMLElement>) => togglePinned(e.currentTarget)}
@@ -223,11 +221,6 @@ export function CalendarEntryCard({
               AO VIVO
             </Badge>
           </Box>
-        )}
-        {item.delayed && (
-          <Badge tone="warning" icon={<EventRepeatIcon />}>
-            Atrasado
-          </Badge>
         )}
         {item.postponed && (
           <Box data-testid={`calendar-pending-${item.key}`}>

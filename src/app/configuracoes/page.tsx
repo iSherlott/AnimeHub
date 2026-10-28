@@ -77,7 +77,7 @@ function TitleOption({ name = "titleFormat", value, current, label, onSelect }: 
         fontWeight: 700,
         bgcolor: selected ? "primary.main" : "#171820",
         color: selected ? "primary.contrastText" : "text.primary",
-        "&:focus-within": { outline: "2px solid #ffd400", outlineOffset: 2 },
+        "&:has(:focus-visible)": { outline: "2px solid #ffd400", outlineOffset: 2 },
       }}
     >
       <input type="radio" name={name} value={value} checked={selected} onChange={onSelect} aria-label={label} style={hiddenInput as React.CSSProperties} />
@@ -107,7 +107,7 @@ function PillToggle({ label, hint, checked, onChange }: { label: string; hint: s
             bgcolor: "#171820",
             fontSize: 14,
             fontWeight: 700,
-            "&:focus-within": { outline: "2px solid #ffd400", outlineOffset: 2 },
+            "&:has(:focus-visible)": { outline: "2px solid #ffd400", outlineOffset: 2 },
           }}
         >
           <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} aria-label={label} style={hiddenInput as React.CSSProperties} />

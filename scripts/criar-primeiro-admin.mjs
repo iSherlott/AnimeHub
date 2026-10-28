@@ -5,10 +5,11 @@
  * recusa (contas novas e papéis são sempre pelo painel).
  *
  * Uso (com ANIME_HUB_DATABASE_URL apontando para o banco):
- *   node scripts/criar-primeiro-admin.mjs --email voce@exemplo.com --nome "Seu Nome"
+ *   node scripts/criar-primeiro-admin.mjs --email voce@exemplo.com --nome "Seu Nome" --usuario seu_usuario
  *
  * A conta nasce com uma senha provisória, mostrada uma única vez aqui; no primeiro login a pessoa escolhe a dela.
- * O cálculo da senha é o mesmo de src/lib/auth/password.ts (scrypt, 64 bytes, sal de 16 bytes em hex).
+ * O cálculo da senha é o mesmo de src/lib/auth/password.ts (scrypt, 64 bytes, sal de 16 bytes em hex). O nome de usuário
+ * (@, fixo) segue src/lib/handle.ts: 3 a 20 letras minúsculas sem acento, números ou _.
  */
 import { randomBytes, randomInt, scrypt } from "node:crypto";
 import { promisify } from "node:util";
@@ -18,6 +19,7 @@ const { PrismaClient } = prismaPkg;
 const scryptAsync = promisify(scrypt);
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TEMP_ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const HANDLE_PATTERN = /^[a-z0-9_]{3,20}$/;
 
 function arg(name) {
   const i = process.argv.indexOf(`--${name}`);
@@ -31,15 +33,18 @@ function fail(message) {
 
 const email = arg("email").toLowerCase();
 const displayName = arg("nome");
+const handle = arg("usuario").replace(/^@/, "").toLowerCase();
 if (!process.env.ANIME_HUB_DATABASE_URL) fail("Defina ANIME_HUB_DATABASE_URL (o mesmo endereço do banco que o site usa).");
 if (!EMAIL_PATTERN.test(email) || email.length > 254) fail('Informe um e-mail válido: --email voce@exemplo.com');
 if (!displayName || displayName.length > 60) fail('Informe o nome (até 60 caracteres): --nome "Seu Nome"');
+if (!HANDLE_PATTERN.test(handle)) fail("Informe o nome de usuário (3 a 20 letras minúsculas, números ou _, sem espaço): --usuario seu_usuario");
 
 const prisma = new PrismaClient();
 try {
   const admins = await prisma.user.count({ where: { role: "ADMIN" } });
   if (admins > 0) fail(`Este banco já tem ${admins} administrador(es). Crie contas e dê papéis em Admin → Acesso e moderação.`);
   if (await prisma.user.findUnique({ where: { email }, select: { id: true } })) fail("Já existe uma conta com esse e-mail.");
+  if (await prisma.user.findUnique({ where: { handle }, select: { id: true } })) fail("Já existe uma conta com esse nome de usuário.");
 
   let temporaryPassword = "";
   for (let i = 0; i < 12; i += 1) temporaryPassword += TEMP_ALPHABET[randomInt(TEMP_ALPHABET.length)];
@@ -47,13 +52,14 @@ try {
   const hash = (await scryptAsync(temporaryPassword, salt, 64)).toString("hex");
 
   const user = await prisma.user.create({
-    data: { email, displayName, passwordHash: hash, passwordSalt: salt, role: "ADMIN", mustChangePassword: true },
-    select: { id: true, email: true },
+    data: { email, displayName, handle, passwordHash: hash, passwordSalt: salt, role: "ADMIN", mustChangePassword: true },
+    select: { id: true, email: true, handle: true },
   });
   await prisma.adminLog.create({ data: { level: "WARN", event: "First admin created", message: `Primeiro administrador criado pela linha de comando: ${user.email}.`, context: `user:${user.id}` } });
 
   console.log("\n✓ Primeiro administrador criado.");
   console.log(`  E-mail:            ${user.email}`);
+  console.log(`  Nome de usuário:   @${user.handle}`);
   console.log(`  Senha provisória:  ${temporaryPassword}`);
   console.log("  Ela aparece só agora. No primeiro login o site pede uma senha nova.\n");
 } finally {

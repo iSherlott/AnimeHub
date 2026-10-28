@@ -107,15 +107,24 @@ test.describe("Acessibilidade", () => {
     expect(violations, describeViolations(violations)).toEqual([]);
   });
 
-  test("teclado: campos de texto e seletores mostram o anel de foco amarelo", async ({ page }) => {
+  test("teclado: o campo de texto mostra o foco na própria borda, sem o anel amarelo por fora; botões mantêm o anel", async ({ page }) => {
     await page.goto("/minha-lista");
     const search = page.getByPlaceholder("Buscar anime...");
+    const box = search.locator("xpath=ancestor::div[contains(@class,'MuiBox-root')][1]");
+    const before = await box.evaluate((el) => getComputedStyle(el).borderTopColor);
     await search.focus();
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Tab");
     await expect(search).toBeFocused();
-    const ring = await search.evaluate((el) => getComputedStyle(el.closest(".MuiInputBase-root")!).outlineColor);
-    expect(ring).toBe("rgb(255, 212, 0)");
+    // Sem anel amarelo afastado (aparecia em todo clique num campo de texto, por cima da borda dele).
+    expect(await search.evaluate((el) => getComputedStyle(el.closest(".MuiInputBase-root")!).outlineStyle)).toBe("none");
+    expect(await search.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe("none");
+    // A borda da caixa do campo clareia.
+    await expect.poll(() => box.evaluate((el) => getComputedStyle(el).borderTopColor)).not.toBe(before);
+    // Botões e links seguem com o anel amarelo do teclado.
+    await page.keyboard.press("Tab");
+    const focused = page.locator(":focus");
+    expect(await focused.evaluate((el) => getComputedStyle(el).outlineColor)).toBe("rgb(255, 212, 0)");
   });
 
   test("teclado: primeiro Tab leva ao skip-link, que move o foco para o conteúdo", async ({ page }) => {

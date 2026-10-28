@@ -241,7 +241,7 @@ export function PostComposer({
       )}
 
       {/* Campo de texto */}
-      <Box sx={{ bgcolor: "background.paper", border: 1, borderColor: "divider", borderRadius: "12px", p: 3, minHeight: 180, display: "flex", flexDirection: "column", gap: 2 }}>
+      <Box sx={{ bgcolor: "background.paper", border: 1, borderColor: "divider", borderRadius: "12px", p: 3, minHeight: 180, display: "flex", flexDirection: "column", gap: 2, "&:focus-within": { borderColor: "text.secondary" } }}>
         <Typography component="label" htmlFor="post-body" sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary" }}>
           SUA PUBLICAÇÃO
         </Typography>
@@ -338,7 +338,7 @@ export function PostComposer({
 
       {/* Hashtags */}
       <EditorSection title="Hashtags">
-        <Box sx={{ bgcolor: "background.paper", borderRadius: "10px", p: 2 }}>
+        <Box sx={{ bgcolor: "background.paper", borderRadius: "10px", p: 2, border: 1, borderColor: "transparent", "&:focus-within": { borderColor: "text.secondary" } }}>
           <InputBase
             value={tagInput}
             onChange={(e) => setTagInput(e.target.value.slice(0, 41))}

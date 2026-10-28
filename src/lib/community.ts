@@ -656,34 +656,168 @@ export async function relatedCommunities(scope: CommunityScope, limit = 6): Prom
   return picked.map((c) => ({ key: communityKeyOf(c), titleRomaji: c.titleRomaji, titleNative: c.titleNative, titleEnglish: c.titleEnglish, coverImage: c.coverImage, members: counts.get(communityKeyOf(c)) ?? 0 }));
 }
 
-/** Diretório: as comunidades com mais membros (e, no empate, mais tópicos). */
-export async function popularCommunities(limit = 24): Promise<CommunityLink[]> {
-  const rows = await prisma.community.findMany({ orderBy: [{ members: { _count: "desc" } }, { topics: { _count: "desc" } }, { createdAt: "asc" }], take: limit, include: { _count: { select: { members: true } } } });
-  const out: CommunityLink[] = [];
-  for (const c of rows) {
-    if (c._count.members === 0) continue;
-    const scope = await scopeOfCommunity(c);
-    if (scope) out.push({ key: scope.key, titleRomaji: scope.root.titleRomaji, titleNative: scope.root.titleNative, titleEnglish: scope.root.titleEnglish, coverImage: scope.root.coverImage, members: c._count.members });
+// ---------- Diretório (como no Orkut: categorias, busca com ordem, comunidades dos amigos e das obras) ----------
+
+export type DirectorySort = "membros" | "novas" | "atividade";
+export const DIRECTORY_SORTS: Array<{ key: DirectorySort; label: string }> = [
+  { key: "membros", label: "Mais membros" },
+  { key: "novas", label: "Mais novas" },
+  { key: "atividade", label: "Atividade recente" },
+];
+export const isDirectorySort = (value: unknown): value is DirectorySort => DIRECTORY_SORTS.some((s) => s.key === value);
+export const DIRECTORY_PAGE = 24;
+const DIRECTORY_CANDIDATES = 400;
+
+/** Uma comunidade do diretório: o cartão com os números para ordenar e mostrar. */
+export type DirectoryCard = CommunityLink & { topics: number; createdAt: string | null; lastActivityAt: string | null; detail: string | null };
+
+type Candidate = { key: string; franchiseKey: number | null; catalogEntryId: string | null; rank: number };
+export type DirectoryStats = { members: number; topics: number; createdAt: Date | null; lastActivityAt: Date | null };
+
+/** Números das comunidades já gravadas de cada candidata (as que ainda não existem ficam de fora: contam zero). */
+async function directoryStats(candidates: Candidate[]): Promise<Map<string, DirectoryStats>> {
+  const franchiseKeys = candidates.flatMap((c) => (c.franchiseKey !== null ? [c.franchiseKey] : []));
+  const entryIds = candidates.flatMap((c) => (c.franchiseKey === null && c.catalogEntryId ? [c.catalogEntryId] : []));
+  if (franchiseKeys.length === 0 && entryIds.length === 0) return new Map();
+  const rows = await prisma.community.findMany({
+    where: { OR: [...(franchiseKeys.length ? [{ franchiseKey: { in: franchiseKeys } }] : []), ...(entryIds.length ? [{ catalogEntryId: { in: entryIds } }] : [])] },
+    select: { id: true, franchiseKey: true, catalogEntryId: true, createdAt: true, _count: { select: { members: true, topics: { where: { deletedAt: null } } } } },
+  });
+  const last = rows.length ? await prisma.communityTopic.groupBy({ by: ["communityId"], where: { communityId: { in: rows.map((r) => r.id) }, deletedAt: null }, _max: { lastActivityAt: true } }) : [];
+  const lastById = new Map(last.map((l) => [l.communityId, l._max.lastActivityAt]));
+  const byFranchise = new Map(rows.flatMap((r) => (r.franchiseKey !== null ? [[r.franchiseKey, r] as const] : [])));
+  const byEntry = new Map(rows.flatMap((r) => (r.catalogEntryId ? [[r.catalogEntryId, r] as const] : [])));
+  const out = new Map<string, DirectoryStats>();
+  for (const c of candidates) {
+    const row = c.franchiseKey !== null ? byFranchise.get(c.franchiseKey) : c.catalogEntryId ? byEntry.get(c.catalogEntryId) : undefined;
+    if (row) out.set(c.key, { members: row._count.members, topics: row._count.topics, createdAt: row.createdAt, lastActivityAt: lastById.get(row.id) ?? null });
   }
   return out;
 }
 
-/** Diretório: busca pelo nome do anime (qualquer título de qualquer obra da franquia), uma comunidade por franquia. */
-export async function searchCommunities(query: string, limit = 24): Promise<CommunityLink[]> {
-  const q = query.trim();
-  if (q.length < 2) return [];
-  const rows = await prisma.catalogEntry.findMany({
-    where: { onPlatform: true, OR: [{ titleRomaji: { contains: q, mode: "insensitive" } }, { titleEnglish: { contains: q, mode: "insensitive" } }, { titleNative: { contains: q, mode: "insensitive" } }] },
-    orderBy: [{ popularityRank: { sort: "asc", nulls: "last" } }, { titleRomaji: "asc" }],
-    take: limit * 4,
-    select: { franchiseKey: true, anilistId: true, anidbId: true, kitsuId: true, titleRomaji: true },
-  });
-  const keys = [...new Set(rows.map(communityKeyOf).filter(Boolean))].slice(0, limit);
-  const out: CommunityLink[] = [];
-  const counts = await memberCounts(keys);
-  for (const key of keys) {
-    const scope = await scopeForKey(key);
-    if (scope) out.push({ key: scope.key, titleRomaji: scope.root.titleRomaji, titleNative: scope.root.titleNative, titleEnglish: scope.root.titleEnglish, coverImage: scope.root.coverImage, members: counts.get(scope.key) ?? 0 });
+const timeOf = (d: Date | null | undefined) => (d ? d.getTime() : -Infinity);
+
+/** Ordena pelo critério escolhido; no empate, mais membros e depois a obra mais popular no catálogo. */
+export function sortDirectory<T extends { rank: number; stats: DirectoryStats | undefined }>(rows: T[], sort: DirectorySort): T[] {
+  const members = (r: T) => r.stats?.members ?? 0;
+  const primary = (a: T, b: T) => {
+    if (sort === "membros") return members(b) - members(a);
+    const field = sort === "novas" ? "createdAt" : "lastActivityAt";
+    const ta = timeOf(a.stats?.[field]);
+    const tb = timeOf(b.stats?.[field]);
+    return ta === tb ? 0 : tb > ta ? 1 : -1;
+  };
+  return [...rows].sort((a, b) => primary(a, b) || members(b) - members(a) || a.rank - b.rank);
+}
+
+/** Cartões de uma lista de chaves (nome e capa da obra raiz). */
+async function directoryCards(rows: Array<{ key: string; stats: DirectoryStats | undefined; detail?: string | null }>): Promise<DirectoryCard[]> {
+  const out: DirectoryCard[] = [];
+  for (const r of rows) {
+    const scope = await scopeForKey(r.key);
+    if (!scope) continue;
+    out.push({
+      key: scope.key,
+      titleRomaji: scope.root.titleRomaji,
+      titleNative: scope.root.titleNative,
+      titleEnglish: scope.root.titleEnglish,
+      coverImage: scope.root.coverImage,
+      members: r.stats?.members ?? 0,
+      topics: r.stats?.topics ?? 0,
+      createdAt: r.stats?.createdAt?.toISOString() ?? null,
+      lastActivityAt: r.stats?.lastActivityAt?.toISOString() ?? null,
+      detail: r.detail ?? null,
+    });
   }
   return out;
+}
+
+/**
+ * Explorar comunidades — populares e busca na mesma tela. Sem busca nem categoria: as comunidades que já têm membros.
+ * Com busca (nome do anime em qualquer título, 2 letras ou mais) ou categoria (gênero da obra): toda obra da
+ * plataforma tem a sua comunidade, mesmo antes do primeiro membro. Uma por franquia; ordena por membros, pelas mais
+ * novas ou pela atividade recente.
+ */
+export async function exploreCommunities({ q = "", genre = "", sort = "membros", page = 0 }: { q?: string; genre?: string; sort?: DirectorySort; page?: number }): Promise<{ rows: DirectoryCard[]; total: number; page: number; pages: number }> {
+  const query = q.trim();
+  let candidates: Candidate[];
+  if (query.length >= 2 || genre) {
+    const entries = await prisma.catalogEntry.findMany({
+      where: {
+        onPlatform: true,
+        ...(query.length >= 2 ? { OR: [{ titleRomaji: { contains: query, mode: "insensitive" as const } }, { titleEnglish: { contains: query, mode: "insensitive" as const } }, { titleNative: { contains: query, mode: "insensitive" as const } }] } : {}),
+        ...(genre ? { genreLinks: { some: { genreKey: genre } } } : {}),
+      },
+      orderBy: [{ popularityRank: { sort: "asc", nulls: "last" } }, { titleRomaji: "asc" }],
+      take: DIRECTORY_CANDIDATES,
+      select: { id: true, franchiseKey: true, anilistId: true, anidbId: true, kitsuId: true },
+    });
+    const seen = new Set<string>();
+    candidates = entries.flatMap((e, rank) => {
+      const key = communityKeyOf(e);
+      if (!key || seen.has(key)) return [];
+      seen.add(key);
+      return [{ key, franchiseKey: e.franchiseKey, catalogEntryId: e.franchiseKey === null ? e.id : null, rank }];
+    });
+  } else {
+    const rows = await prisma.community.findMany({ where: { members: { some: {} } }, select: { franchiseKey: true, catalogEntryId: true }, orderBy: { createdAt: "asc" }, take: DIRECTORY_CANDIDATES });
+    const entryIds = rows.flatMap((r) => (r.franchiseKey === null && r.catalogEntryId ? [r.catalogEntryId] : []));
+    const entries = new Map((entryIds.length ? await prisma.catalogEntry.findMany({ where: { id: { in: entryIds } }, select: { id: true, anilistId: true, anidbId: true, kitsuId: true } }) : []).map((e) => [e.id, e]));
+    candidates = rows.flatMap((r, rank): Candidate[] => {
+      if (r.franchiseKey !== null) return [{ key: String(r.franchiseKey), franchiseKey: r.franchiseKey, catalogEntryId: null, rank }];
+      const entry = r.catalogEntryId ? entries.get(r.catalogEntryId) : undefined;
+      const key = entry ? workKeyOf(entry) : "";
+      return key ? [{ key, franchiseKey: null, catalogEntryId: r.catalogEntryId, rank }] : [];
+    });
+  }
+  const stats = await directoryStats(candidates);
+  const sorted = sortDirectory(candidates.map((c) => ({ ...c, stats: stats.get(c.key) })), sort);
+  const pages = Math.max(1, Math.ceil(sorted.length / DIRECTORY_PAGE));
+  const current = Math.min(Math.max(0, page), pages - 1);
+  const rows = await directoryCards(sorted.slice(current * DIRECTORY_PAGE, (current + 1) * DIRECTORY_PAGE));
+  return { rows, total: sorted.length, page: current, pages };
+}
+
+/** Comunidades em que os amigos da pessoa estão e ela ainda não, das com mais amigos para as com menos. */
+export async function friendsCommunities(userId: string, limit = 6): Promise<DirectoryCard[]> {
+  const friendships = await prisma.friendship.findMany({ where: { OR: [{ userAId: userId }, { userBId: userId }] }, select: { userAId: true, userBId: true } });
+  const friendIds = friendships.map((f) => (f.userAId === userId ? f.userBId : f.userAId));
+  if (friendIds.length === 0) return [];
+  const mine = (await prisma.communityMember.findMany({ where: { userId }, select: { communityId: true } })).map((m) => m.communityId);
+  const counts = await prisma.communityMember.groupBy({ by: ["communityId"], where: { userId: { in: friendIds }, ...(mine.length ? { communityId: { notIn: mine } } : {}) }, _count: { _all: true } });
+  const top = counts.sort((a, b) => b._count._all - a._count._all || a.communityId.localeCompare(b.communityId)).slice(0, limit);
+  if (top.length === 0) return [];
+  const communities = new Map((await prisma.community.findMany({ where: { id: { in: top.map((t) => t.communityId) } } })).map((c) => [c.id, c]));
+  const candidates: Array<Candidate & { detail: string }> = [];
+  for (const t of top) {
+    const community = communities.get(t.communityId);
+    const scope = community ? await scopeOfCommunity(community) : null;
+    if (!community || !scope) continue;
+    const n = t._count._all;
+    candidates.push({ key: scope.key, franchiseKey: community.franchiseKey, catalogEntryId: community.catalogEntryId, rank: candidates.length, detail: `${n} ${n === 1 ? "amigo participa" : "amigos participam"}` });
+  }
+  const stats = await directoryStats(candidates);
+  return directoryCards(candidates.map((c) => ({ ...c, stats: stats.get(c.key) })));
+}
+
+/** Comunidades das obras que a pessoa acompanha e de que ela ainda não participa, das com mais membros primeiro. */
+export async function trackedWorkCommunities(userId: string, limit = 6): Promise<DirectoryCard[]> {
+  const tracked = await prisma.anime.findMany({ where: { userId, catalogEntryId: { not: null } }, select: { catalogEntryId: true } });
+  if (tracked.length === 0) return [];
+  const entries = await prisma.catalogEntry.findMany({ where: { id: { in: tracked.flatMap((t) => (t.catalogEntryId ? [t.catalogEntryId] : [])) } }, select: { id: true, franchiseKey: true, anilistId: true, anidbId: true, kitsuId: true, popularityRank: true } });
+  const memberOf = await prisma.communityMember.findMany({ where: { userId }, select: { community: { select: { franchiseKey: true, catalogEntryId: true } } } });
+  const joinedFranchises = new Set(memberOf.flatMap((m) => (m.community.franchiseKey !== null ? [m.community.franchiseKey] : [])));
+  const joinedEntries = new Set(memberOf.flatMap((m) => (m.community.catalogEntryId ? [m.community.catalogEntryId] : [])));
+  const seen = new Set<string>();
+  const candidates: Candidate[] = [];
+  for (const e of entries.sort((a, b) => (a.popularityRank ?? Infinity) - (b.popularityRank ?? Infinity))) {
+    const key = communityKeyOf(e);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    if (e.franchiseKey !== null ? joinedFranchises.has(e.franchiseKey) : joinedEntries.has(e.id)) continue;
+    candidates.push({ key, franchiseKey: e.franchiseKey, catalogEntryId: e.franchiseKey === null ? e.id : null, rank: candidates.length });
+  }
+  const stats = await directoryStats(candidates);
+  const picked = sortDirectory(candidates.map((c) => ({ ...c, stats: stats.get(c.key) })), "membros").slice(0, limit);
+  return directoryCards(picked.map((c) => ({ ...c, detail: "você acompanha" })));
 }

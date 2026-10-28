@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import CloseIcon from "@mui/icons-material/Close";
-import { Box, ButtonBase, Dialog, IconButton, Typography } from "@mui/material";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import SearchIcon from "@mui/icons-material/Search";
+import { Box, ButtonBase, Dialog, IconButton, InputBase, Typography } from "@mui/material";
 import { ScrollCarousel } from "@/components/ScrollCarousel";
 import { UserAvatar } from "@/components/UserAvatar";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
@@ -26,10 +29,19 @@ const outlinedButton = (enabled: boolean) => ({
   "&:focus-visible": { outline: "2px solid #ffd400", outlineOffset: 2 },
 });
 
+const TEXTS = {
+  avatar: { title: "Seleção de Avatar", lead: "Escolha seu avatar! Você pode mudá-lo a qualquer momento.", option: "Avatar", plural: "Avatares", remove: "Remover foto (usar a padrão)" },
+  banner: { title: "Seleção de Banner", lead: "Escolha o banner do seu perfil. Você pode mudá-lo a qualquer momento.", option: "Banner", plural: "Banners", remove: "Remover banner" },
+  background: { title: "Seleção de Plano de Fundo", lead: "Escolha o plano de fundo do seu perfil. Você pode mudá-lo a qualquer momento.", option: "Plano de fundo", plural: "Planos de fundo", remove: "Remover plano de fundo" },
+} as const;
+
+type Page = { groups: AvatarGroup[]; total: number; page: number; pages: number };
+
 /**
- * "Seleção de Avatar" (e de banner): as imagens das obras que a pessoa acompanha, uma fileira por obra,
- * no estilo da Crunchyroll. Escolher e Salvar grava na hora (PATCH /api/users/me/avatar); no avatar, a pessoa também
- * pode voltar à foto padrão. Não há envio de foto própria: avatar e capa são sempre imagens dos animes acompanhados.
+ * "Seleção de Avatar" (e de banner e de plano de fundo): as imagens das obras que a pessoa acompanha, uma fileira por
+ * obra (todas as temporadas juntas, sem repetir imagem), no estilo da Crunchyroll — com busca pelo título e páginas de
+ * 8 obras. Escolher e Salvar grava na hora (PATCH /api/users/me/avatar); no avatar, a pessoa também pode voltar à foto
+ * padrão. Não há envio de foto própria: avatar, capa e fundo são sempre imagens dos animes acompanhados.
  */
 export function AvatarPickerDialog({
   open,
@@ -41,7 +53,7 @@ export function AvatarPickerDialog({
   onSaved,
 }: {
   open: boolean;
-  kind: "avatar" | "banner";
+  kind: "avatar" | "banner" | "background";
   userId: string;
   displayName: string;
   current: string | null;
@@ -49,24 +61,44 @@ export function AvatarPickerDialog({
   onSaved: (url: string | null) => void;
 }) {
   const { preference } = useTitlePreference();
-  const [groups, setGroups] = useState<AvatarGroup[] | null>(null);
+  const [result, setResult] = useState<Page | null>(null);
+  const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<string | null>(current);
   const [loadError, setLoadError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isAvatar = kind === "avatar";
+  const texts = TEXTS[kind];
 
   useEffect(() => {
     if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelected(current);
     setError(null);
+  }, [open, current]);
+
+  // A busca vai ao servidor 250 ms depois da última tecla e volta para a primeira página.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebounced(query.trim());
+      setPage(0);
+    }, query ? 250 : 0);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  useEffect(() => {
+    if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadError(false);
     let cancelled = false;
-    fetch("/api/users/me/avatar")
+    const params = new URLSearchParams({ kind, page: String(page) });
+    if (debounced) params.set("q", debounced);
+    fetch(`/api/users/me/avatar?${params.toString()}`)
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("falha"))))
-      .then((data: { groups: AvatarGroup[] }) => {
-        if (!cancelled) setGroups(data.groups);
+      .then((data: Page) => {
+        if (!cancelled) setResult(data);
       })
       .catch(() => {
         if (!cancelled) setLoadError(true);
@@ -74,7 +106,9 @@ export function AvatarPickerDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, current]);
+  }, [open, kind, page, debounced]);
+
+  const groups = result?.groups ?? null;
 
   async function save() {
     if (!selected || busy) return;
@@ -97,7 +131,7 @@ export function AvatarPickerDialog({
     setBusy(true);
     setError(null);
     try {
-      const res = isAvatar ? await fetch("/api/users/me/avatar", { method: "DELETE" }) : await fetch("/api/users/me/avatar", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "banner", url: null }) });
+      const res = isAvatar ? await fetch("/api/users/me/avatar", { method: "DELETE" }) : await fetch("/api/users/me/avatar", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, url: null }) });
       if (!res.ok) throw new Error("Não foi possível remover.");
       onSaved(null);
       onClose();
@@ -129,11 +163,9 @@ export function AvatarPickerDialog({
         )}
         <Box sx={{ minWidth: 0 }}>
           <Typography id="avatar-picker-title" component="h2" sx={{ fontSize: 22, fontWeight: 700 }}>
-            {isAvatar ? "Seleção de Avatar" : "Seleção de Banner"}
+            {texts.title}
           </Typography>
-          <Typography sx={{ fontSize: 14, color: "text.secondary", mb: 2 }}>
-            {isAvatar ? "Escolha seu avatar! Você pode mudá-lo a qualquer momento." : "Escolha o banner do seu perfil. Você pode mudá-lo a qualquer momento."}
-          </Typography>
+          <Typography sx={{ fontSize: 14, color: "text.secondary", mb: 2 }}>{texts.lead}</Typography>
           <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
             <ButtonBase onClick={onClose} disabled={busy} sx={outlinedButton(true)}>
               Cancelar
@@ -146,6 +178,27 @@ export function AvatarPickerDialog({
         <IconButton onClick={onClose} disabled={busy} aria-label="Fechar" sx={{ position: "absolute", top: 12, right: 12, color: "text.primary", border: "2px solid", borderColor: "#6b6b6b" }}>
           <CloseIcon />
         </IconButton>
+      </Box>
+
+      {/* Busca pelo título da obra e as páginas (8 obras por vez). */}
+      <Box sx={{ px: { xs: 2, sm: 4 }, pt: 2, display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+        <Box component="form" role="search" onSubmit={(e) => e.preventDefault()} sx={{ flex: "1 1 220px", display: "flex", alignItems: "center", gap: 1, px: 1.5, py: 0.75, bgcolor: "#141414", border: "1px solid #3a3a3a", borderRadius: "6px", "&:focus-within": { borderColor: "#8a8a8a" } }}>
+          <SearchIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+          <InputBase value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar anime" fullWidth inputProps={{ maxLength: 80, "aria-label": "Buscar anime", "data-testid": "avatar-picker-search" }} sx={{ fontSize: 14, "& input": { p: 0 } }} />
+        </Box>
+        {result && result.pages > 1 && (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }} data-testid="avatar-picker-pages">
+            <IconButton size="small" onClick={() => setPage((p) => p - 1)} disabled={result.page === 0} aria-label="Página anterior" sx={{ color: "text.primary" }}>
+              <ChevronLeftIcon />
+            </IconButton>
+            <Typography sx={{ fontSize: 13, color: "text.secondary", fontVariantNumeric: "tabular-nums" }}>
+              {result.page + 1} de {result.pages}
+            </Typography>
+            <IconButton size="small" onClick={() => setPage((p) => p + 1)} disabled={result.page >= result.pages - 1} aria-label="Próxima página" sx={{ color: "text.primary" }}>
+              <ChevronRightIcon />
+            </IconButton>
+          </Box>
+        )}
       </Box>
 
       <Box sx={{ overflowY: "auto", px: { xs: 2, sm: 4 }, py: 3, display: "flex", flexDirection: "column", gap: 4, flex: 1 }} data-testid="avatar-picker-list">
@@ -164,7 +217,7 @@ export function AvatarPickerDialog({
           </Typography>
         ) : groups.length === 0 ? (
           <Typography data-testid="avatar-picker-empty" sx={{ fontSize: 14, color: "text.secondary" }}>
-            Acompanhe um anime para escolher imagens dele aqui — a capa e os personagens viram opções de {isAvatar ? "avatar" : "banner"}.
+            {debounced ? `Nenhum anime da sua lista com “${debounced}”.` : `Acompanhe um anime para escolher imagens dele aqui — a capa e os personagens viram opções de ${texts.option.toLowerCase()}.`}
           </Typography>
         ) : (
           groups.map((group) => {
@@ -176,14 +229,14 @@ export function AvatarPickerDialog({
                 <Typography lang={preference.language === "ja" && group.titleNative ? "ja" : undefined} sx={{ fontSize: 18, mb: 2 }}>
                   {title}
                 </Typography>
-                <ScrollCarousel label={`${isAvatar ? "Avatares" : "Banners"} de ${title}`}>
+                <ScrollCarousel label={`${texts.plural} de ${title}`}>
                   {items.map((item) => {
                     const on = selected === item.url;
                     return (
                       <ButtonBase
                         key={item.url}
                         onClick={() => setSelected(item.url)}
-                        aria-label={`${isAvatar ? "Avatar" : "Banner"}: ${item.label}`}
+                        aria-label={`${texts.option}: ${item.label}`}
                         aria-pressed={on}
                         data-testid="avatar-option"
                         sx={{
@@ -210,7 +263,7 @@ export function AvatarPickerDialog({
         <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap", pt: 1, borderTop: 1, borderColor: "#3a3a3a" }}>
           {current && (
             <ButtonBase onClick={() => void remove()} disabled={busy} sx={{ color: "#c0392b", fontSize: 13, fontWeight: 700, textTransform: "uppercase" }} data-testid="avatar-remove">
-              {isAvatar ? "Remover foto (usar a padrão)" : "Remover banner"}
+              {texts.remove}
             </ButtonBase>
           )}
         </Box>

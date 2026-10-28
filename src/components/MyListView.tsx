@@ -8,7 +8,6 @@ import EventRepeatIcon from "@mui/icons-material/EventRepeat";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PauseCircleIcon from "@mui/icons-material/PauseCircle";
 import PauseCircleOutlineIcon from "@mui/icons-material/PauseCircleOutlined";
-import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { Box, Button, Typography } from "@mui/material";
 import { ELEVATED_BUTTON_SX, lineLang, PrimaryTitle, useTitleLines } from "@/components/ExploreCard";
 import { SearchField, SelectField } from "@/components/FilterField";
@@ -21,7 +20,7 @@ import { useWindowedList } from "@/lib/useWindowedList";
 import type { MyListEntry } from "@/lib/myList";
 import { rowTimeLabel, sectionsByRelease } from "@/lib/myListGroups";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
-import { formatTimeInZone, weekdayName } from "@/lib/timeZone";
+import { weekdayName } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
 
 export type { MyListEntry } from "@/lib/myList";
@@ -236,7 +235,8 @@ function EntryTitle({ entry, size = 20 }: { entry: MyListEntry; size?: number })
 /**
  * Minha Lista (Figma `8:2608`): agrupada por data do próximo lançamento
  * (hoje, depois de hoje) e, fora da grade, "Sem horário definido",
- * "Adiado / Atrasado" e "Data não definida" — nunca com horário inventado.
+ * "Adiado" e "Data não definida" — nunca com horário inventado (o "Atrasado"
+ * saiu em 28/10: os atrasos vão ser cuidados por um agente próprio).
  * Com busca, ordenação e status. Privada e sem qualquer métrica de consumo.
  */
 export function MyListView({ entries }: { entries: MyListEntry[] }) {
@@ -273,7 +273,7 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
     return sectionsByRelease(timed, new Date(), timeZone);
   }, [active, timeZone]);
   const noTime = active.filter((e) => e.state.kind === "dated");
-  const delayed = active.filter((e) => e.state.kind === "delayed" || e.state.kind === "postponed");
+  const delayed = active.filter((e) => e.state.kind === "postponed");
   const unknown = active.filter((e) => e.state.kind === "undated" || e.state.kind === "none");
 
   function renderRow(item: { at: string; entry: MyListEntry; episode: number }) {
@@ -296,8 +296,6 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
     switch (entry.state.kind) {
       case "dated":
         return "Sem horário";
-      case "delayed":
-        return "Atrasado";
       case "postponed":
         return "Adiado";
       case "none":
@@ -452,23 +450,14 @@ export function MyListView({ entries }: { entries: MyListEntry[] }) {
               {delayedShown.length > 0 && (
                 <Box component="section" aria-labelledby="my-delayed" data-testid="group-delayed" sx={panelSx}>
                   <Typography id="my-delayed" component="h2" sx={{ fontSize: 18, textTransform: "uppercase" }}>
-                    Adiado / Atrasado
+                    Adiado
                   </Typography>
                   {delayedShown.map((entry) => (
                     <Box key={entry.id} data-testid={`anime-card-${entry.id}`} sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
                       <EntryTitle entry={entry} />
-                      {entry.state.kind === "delayed" ? (
-                        <>
-                          <Chip tone="warning" icon={<WarningAmberIcon />}>
-                            Atrasado · previsão {previousSlot(entry.state.at, timeZone)}
-                          </Chip>
-                          <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Não atribuir novo horário sem confirmação da fonte.</Typography>
-                        </>
-                      ) : (
-                        <Chip tone="warning" icon={<EventRepeatIcon />}>
-                          Adiado · nova data a confirmar
-                        </Chip>
-                      )}
+                      <Chip tone="warning" icon={<EventRepeatIcon />}>
+                        Adiado · nova data a confirmar
+                      </Chip>
                     </Box>
                   ))}
                 </Box>
@@ -545,10 +534,4 @@ function datedLabel(day: string): string {
   const d = new Date(`${day}T12:00:00Z`);
   const rest = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", day: "2-digit", month: "short" }).format(d).replace(".", "").replace(" de ", " ");
   return `${weekdayName(d, "UTC")}, ${rest}`;
-}
-
-function previousSlot(iso: string, timeZone: string): string {
-  const d = new Date(iso);
-  const dm = new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit", month: "short" }).format(d).replace(".", "").replace(" de ", " ");
-  return `${dm}, ${formatTimeInZone(d, timeZone)}`;
 }

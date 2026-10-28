@@ -8,7 +8,6 @@ import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import EventBusyIcon from "@mui/icons-material/EventBusy";
 import EventNoteIcon from "@mui/icons-material/EventNote";
 import EventRepeatIcon from "@mui/icons-material/EventRepeat";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { Box, Button, Link as MuiLink, Typography } from "@mui/material";
 import { ErrorNotice } from "@/components/StatePanels";
 import NextLink from "next/link";
@@ -20,7 +19,7 @@ import { mergeConsecutiveEpisodes, type CalendarItem } from "@/lib/calendarItem"
 import type { OffGridItem } from "@/lib/calendarOffGrid";
 import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 import { loginHref } from "@/lib/safeRedirect";
-import { buildWeekDaysInZone, dayKeyInZone, formatTimeInZone, timeZoneLabel, weekdayName } from "@/lib/timeZone";
+import { buildWeekDaysInZone, dayKeyInZone, timeZoneLabel, weekdayName } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
 import { readSession, useCameBack, useScrollMemory, writeSession } from "@/lib/useScrollMemory";
 
@@ -90,7 +89,6 @@ export default function CalendarPage() {
   const router = useRouter();
   const user = useCurrentUser();
   const timeZone = useTimeZone();
-  const { preference } = useTitlePreference();
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [offGrid, setOffGrid] = useState<OffGridItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -233,8 +231,6 @@ export default function CalendarPage() {
     setShowAll(false);
   }
 
-  const delayedItems = useMemo(() => visibleItems.filter((i) => i.delayed), [visibleItems]);
-
   const weekKeys = useMemo(() => new Set(weekDays.map((d) => dayKeyInZone(d, timeZone))), [weekDays, timeZone]);
   const visibleOffGrid = useMemo(() => offGrid.filter((o) => showAll || o.inMyList), [offGrid, showAll]);
   const noTimeItems = useMemo(
@@ -243,13 +239,6 @@ export default function CalendarPage() {
   );
   const noDateItems = useMemo(() => visibleOffGrid.filter((o) => o.kind !== "dated"), [visibleOffGrid]);
 
-  /** "Sex 09, 21:00" — o dia/horário original preservado do atrasado. */
-  function previousSlot(item: CalendarItem): string {
-    const d = new Date(item.airingAt);
-    const weekday = new Intl.DateTimeFormat("pt-BR", { timeZone, weekday: "short" }).format(d).replace(".", "").replace(/^./, (c) => c.toUpperCase());
-    const day = new Intl.DateTimeFormat("pt-BR", { timeZone, day: "2-digit" }).format(d);
-    return `${weekday} ${day}, ${formatTimeInZone(d, timeZone)}`;
-  }
 
   /** "Domingo, 11 out" do dia civil `YYYY-MM-DD` (sem fuso — é uma data, não um instante). */
   function civilLabel(day: string): string {
@@ -368,27 +357,6 @@ export default function CalendarPage() {
               <Typography sx={{ color: "text.secondary", fontSize: 14 }} data-testid="calendar-empty">
                 {showAll ? "Nenhum lançamento previsto nesta semana." : "Nada da sua lista nesta semana. Veja Todos para o resto da programação."}
               </Typography>
-            )}
-
-            {delayedItems.length > 0 && (
-              <Box
-                data-testid="calendar-delayed-alert"
-                sx={{ display: "flex", gap: 2, p: 2.5, borderRadius: "12px", bgcolor: "background.paper", border: 1, borderColor: "divider" }}
-              >
-                <InfoOutlinedIcon sx={{ fontSize: 20, color: "warning.main", mt: 0.25 }} />
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, minWidth: 0 }}>
-                  <Typography component="h2" sx={{ fontSize: 16, lineHeight: 1.5 }}>
-                    Previsão atrasada
-                  </Typography>
-                  {delayedItems.map((item) => (
-                    <Typography key={item.key} sx={{ fontSize: 14, color: "text.secondary" }}>
-                      <span lang={item.titleNative ? "ja" : undefined}>{resolveTitleText(preference, item) || "Sem título"}</span> ·{" "}
-                      <span suppressHydrationWarning>{previousSlot(item)}</span> · EP{String(item.episode).padStart(2, "0")}. A previsão original é
-                      preservada, mas o lançamento ainda não foi confirmado. Não foi deslocado para um horário inventado.
-                    </Typography>
-                  ))}
-                </Box>
-              </Box>
             )}
 
             {(noTimeItems.length > 0 || noDateItems.length > 0) && (

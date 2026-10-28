@@ -8,6 +8,7 @@ import { MyListView } from "@/components/MyListView";
 import { prisma } from "@/lib/prisma";
 import { loadMyListEntries } from "@/lib/myList";
 import { getCurrentUser } from "@/lib/auth/session";
+import { pausedCount } from "@/lib/myListCounts";
 
 /**
  * Minha Lista (Figma `8:2608`, D-02 aprovada): privada, agrupada pela data
@@ -37,7 +38,7 @@ export default async function MinhaListaPage() {
     );
   }
 
-  const [entries, pendingCount] = await Promise.all([loadMyListEntries(user.id), prisma.pendingEpisode.count({ where: { userId: user.id } })]);
+  const [entries, pendingCount, paused] = await Promise.all([loadMyListEntries(user.id), prisma.pendingEpisode.count({ where: { userId: user.id } }), pausedCount(user.id)]);
 
   const waitingCount = entries.filter((e) => e.waiting).length;
   const following = entries.length - waitingCount;
@@ -81,7 +82,7 @@ export default async function MinhaListaPage() {
           }
         />
         <Box sx={{ mt: 4 }}>
-          <MyListTabs active="list" pendingCount={pendingCount} />
+          <MyListTabs active="list" pendingCount={pendingCount} pausedCount={paused} />
           <MyListView entries={entries} />
         </Box>
       </PageContainer>

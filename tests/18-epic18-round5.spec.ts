@@ -40,6 +40,9 @@ test.describe("Epic 18 — 5ª rodada de auditoria de UX/UI — duplo clique nã
     await page.goto("/admin/acesso");
     await page.getByRole("textbox", { name: "Nome", exact: true }).fill("Duplo Clique");
     await page.getByRole("textbox", { name: "E-mail", exact: true }).fill(email);
+    // O @ é obrigatório; o campo já tira o que não serve (maiúsculas viram minúsculas, espaço e acento saem).
+    await page.getByTestId("new-account-handle").fill(`Duplo Clique ${Date.now() % 100_000}`);
+    await expect(page.getByTestId("new-account-handle")).toHaveValue(/^duploclique\d+$/);
     const submit = page.getByRole("button", { name: "Criar conta" });
     await submit.evaluate((el: HTMLElement) => {
       el.click();

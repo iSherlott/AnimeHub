@@ -134,16 +134,25 @@ test.describe.serial("Comunidades em três colunas", () => {
     });
   });
 
-  test("diretório: minhas, populares e busca; o menu tem Comunidades", async ({ page }) => {
+  test("diretório: minhas e explorar (populares e busca na mesma tela); o menu tem Comunidades; voltar da comunidade", async ({ page }) => {
     await page.goto("/comunidades");
     await expect(page.getByRole("navigation", { name: "Navegação principal" }).first().getByRole("link", { name: "Comunidades" })).toHaveAttribute("aria-current", "page");
     await expect(page.getByTestId(`my-community-${S1}`)).toBeVisible();
-    await page.getByTestId("communities-tab-populares").click();
+    await page.getByTestId("communities-tab-explorar").click();
     await expect(page.getByTestId(`directory-${S1}`)).toContainText("1 membro");
-    await page.goto("/comunidades?aba=buscar");
+    // A busca fica na mesma tela das populares, com as categorias e a ordem.
+    await expect(page.getByTestId("communities-categories")).toBeVisible();
+    await expect(page.getByTestId("communities-sort")).toContainText("Atividade recente");
     await page.getByTestId("communities-search").fill(`Vizinha ${TAG}`);
     await page.getByTestId("communities-search-submit").click();
     await expect(page.getByTestId(`directory-${OTHER}`)).toContainText("0 membros");
     await expect(page.getByTestId(`directory-${S1}`)).toHaveCount(0);
+    // Endereços antigos abrem o Explorar.
+    await page.goto("/comunidades?aba=populares");
+    await expect(page.getByTestId("communities-tab-explorar")).toHaveAttribute("aria-current", "page");
+    // Dentro da comunidade, o atalho de volta ao diretório.
+    await page.goto(`/comunidades/${S1}`);
+    await page.getByTestId("community-back").click();
+    await expect(page).toHaveURL(/\/comunidades$/);
   });
 });

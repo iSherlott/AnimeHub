@@ -6,6 +6,9 @@ import { TEST_USER_EMAIL } from "./test-auth";
 // Avatar e banner escolhidos entre as imagens (capa e personagens) das obras acompanhadas + Editar Perfil estilo Crunchyroll.
 const A = 970001;
 const B = 970002;
+// Duas temporadas da mesma obra (mesmo `seriesKey`): no seletor viram um grupo só, sem repetir personagem.
+const C1 = 970003;
+const C2 = 970004;
 const IMG = (name: string) => `https://s4.anilist.co/file/anilistcdn/spec70/${name}.png`;
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
 const cast = (names: string[]) => JSON.stringify(names.map((n) => ({ role: "MAIN", name: n, image: IMG(n.toLowerCase().replace(/\W/g, "")), voiceActors: [] })));
@@ -17,14 +20,18 @@ test.describe.serial("Avatar de anime e Editar Perfil", () => {
   test.beforeAll(async () => {
     prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
     userId = (await prisma.user.findUniqueOrThrow({ where: { email: TEST_USER_EMAIL } })).id;
-    await prisma.anime.deleteMany({ where: { anilistId: { in: [A, B] } } });
+    await prisma.anime.deleteMany({ where: { anilistId: { in: [A, B, C1, C2] } } });
     await prisma.anime.create({ data: { userId, anilistId: A, titleRomaji: "Avatar Round70 Alfa", genres: "", coverImage: IMG("capa-a"), bannerImage: IMG("banner-a"), castJson: cast(["Maomao", "Jinshi"]) } });
     await prisma.anime.create({ data: { userId, anilistId: B, titleRomaji: "Avatar Round70 Beta", genres: "", coverImage: IMG("capa-b"), castJson: cast(["Frieren"]) } });
+    await prisma.anime.create({ data: { userId, anilistId: C1, titleRomaji: "Avatar Round70 Gama", seriesKey: "avatar round70 gama", seasonNumber: 1, genres: "", coverImage: IMG("capa-g1"), castJson: cast(["Yuji", "Megumi"]) } });
+    await prisma.anime.create({
+      data: { userId, anilistId: C2, titleRomaji: "Avatar Round70 Gama 2nd Season", seriesKey: "avatar round70 gama", seasonNumber: 2, genres: "", coverImage: IMG("capa-g2"), bannerImage: IMG("banner-g2"), castJson: JSON.stringify([{ role: "MAIN", name: "Yuji", image: IMG("yuji-s2"), voiceActors: [] }, { role: "MAIN", name: "Megumi", image: IMG("megumi"), voiceActors: [] }]) },
+    });
   });
 
   test.afterAll(async () => {
-    await prisma.user.update({ where: { id: userId }, data: { avatarUrl: null, bannerUrl: null } });
-    await prisma.anime.deleteMany({ where: { anilistId: { in: [A, B] } } });
+    await prisma.user.update({ where: { id: userId }, data: { avatarUrl: null, bannerUrl: null, backgroundUrl: null } });
+    await prisma.anime.deleteMany({ where: { anilistId: { in: [A, B, C1, C2] } } });
     await prisma.$disconnect();
   });
 
@@ -46,6 +53,29 @@ test.describe.serial("Avatar de anime e Editar Perfil", () => {
     expect((await prisma.user.findUniqueOrThrow({ where: { id: userId } })).avatarUrl).toBe(IMG("maomao"));
   });
 
+  test("temporadas da mesma obra viram um grupo só, sem repetir imagem nem personagem; busca e páginas", async ({ request }) => {
+    const data = await (await request.get("/api/users/me/avatar")).json();
+    const gama = data.groups.filter((g: { titleRomaji: string }) => g.titleRomaji.startsWith("Avatar Round70 Gama"));
+    expect(gama).toHaveLength(1);
+    // As duas capas (com a temporada) e um Yuji e uma Megumi só — a arte da temporada mais recente.
+    expect(gama[0].avatars.map((i: { label: string }) => i.label)).toEqual(["Capa", "Capa · 2ª temporada", "Yuji", "Megumi"]);
+    expect(gama[0].avatars.map((i: { url: string }) => i.url)).toContain(IMG("yuji-s2"));
+    expect(gama[0].avatars.map((i: { url: string }) => i.url)).not.toContain(IMG("yuji"));
+    // Nenhum endereço aparece duas vezes no seletor inteiro.
+    const urls = data.groups.flatMap((g: { avatars: Array<{ url: string }> }) => g.avatars.map((i) => i.url));
+    expect(new Set(urls).size).toBe(urls.length);
+
+    // Uma página do seletor: busca pelo título, sem acento nem caixa.
+    const page = await (await request.get("/api/users/me/avatar?kind=avatar&q=ROUND70%20gama")).json();
+    expect(page).toMatchObject({ total: 1, page: 0, pages: 1 });
+    expect(page.groups[0].anilistId).toBe(C1);
+    const many = await (await request.get("/api/users/me/avatar?kind=avatar&q=round70")).json();
+    expect(many.total).toBe(3);
+    // O plano de fundo usa as imagens largas (banner) e as capas.
+    const bg = await (await request.get("/api/users/me/avatar?kind=background&q=round70")).json();
+    expect(bg.groups.find((g: { anilistId: number }) => g.anilistId === A).banners.map((i: { label: string }) => i.label)).toEqual(["Banner", "Capa"]);
+  });
+
   test("Editar Perfil: Seleção de Avatar por obra, escolher e salvar troca o avatar", async ({ page }) => {
     await page.goto("/perfil/editar");
     await expect(page.getByRole("heading", { name: "Editar Perfil" })).toBeVisible();
@@ -54,6 +84,7 @@ test.describe.serial("Avatar de anime e Editar Perfil", () => {
     await page.getByTestId("edit-avatar").click();
     const dialog = page.getByRole("dialog", { name: "Seleção de Avatar" });
     await expect(dialog).toContainText("Escolha seu avatar! Você pode mudá-lo a qualquer momento.");
+    await dialog.getByTestId("avatar-picker-search").fill("Round70");
     await expect(dialog.getByTestId(`avatar-group-${A}`)).toContainText("Avatar Round70 Alfa");
     await expect(dialog.getByTestId(`avatar-group-${B}`).getByTestId("avatar-option")).toHaveCount(2); // capa + 1 personagem
     await expect(dialog.getByTestId("avatar-picker-save")).toBeDisabled();
@@ -70,6 +101,7 @@ test.describe.serial("Avatar de anime e Editar Perfil", () => {
     await page.goto("/perfil/editar");
     await page.getByTestId("edit-banner").click();
     const dialog = page.getByRole("dialog", { name: "Seleção de Banner" });
+    await dialog.getByTestId("avatar-picker-search").fill("Round70 Alfa");
     await dialog.getByTestId(`avatar-group-${A}`).getByRole("button", { name: "Banner: Banner" }).click();
     await dialog.getByTestId("avatar-picker-save").click();
     await expect(dialog).toBeHidden();
@@ -84,6 +116,29 @@ test.describe.serial("Avatar de anime e Editar Perfil", () => {
     await page.getByTestId("avatar-remove").click();
     await expect(page.getByTestId("profile-banner")).toHaveCount(0);
     expect((await prisma.user.findUniqueOrThrow({ where: { id: userId } })).bannerUrl).toBeNull();
+  });
+
+  test("plano de fundo: escolhido entre as obras, aparece atrás do perfil e pode ser removido", async ({ page, request }) => {
+    expect((await request.patch("/api/users/me/avatar", { data: { kind: "background", url: "https://evil.example/x.png" } })).status()).toBe(400);
+    await page.goto("/perfil/editar");
+    await page.getByTestId("edit-background").click();
+    const dialog = page.getByRole("dialog", { name: "Seleção de Plano de Fundo" });
+    await dialog.getByTestId("avatar-picker-search").fill("gama");
+    await dialog.getByTestId(`avatar-group-${C1}`).getByRole("button", { name: "Plano de fundo: Banner · 2ª temporada" }).click();
+    await dialog.getByTestId("avatar-picker-save").click();
+    await expect(dialog).toBeHidden();
+    await expect(page.getByTestId("profile-background-preview")).toHaveAttribute("src", IMG("banner-g2"));
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: userId } })).backgroundUrl).toBe(IMG("banner-g2"));
+
+    await page.goto(`/users/${userId}`);
+    await expect(page.getByTestId("profile-background")).toHaveAttribute("style", /banner-g2/);
+
+    // E sai pelo próprio seletor.
+    await page.goto("/perfil/editar");
+    await page.getByTestId("edit-background").click();
+    await page.getByTestId("avatar-remove").click();
+    await expect(page.getByTestId("profile-background-preview")).toHaveCount(0);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: userId } })).backgroundUrl).toBeNull();
   });
 
   test("Editar Perfil salva nome e bio; remover a foto volta à foto padrão", async ({ page }) => {

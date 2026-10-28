@@ -5,7 +5,7 @@ import { loadProfileAnimeList } from "@/lib/profileAnimeList";
 type Params = { params: Promise<{ id: string }> };
 
 /**
- * Animes acompanhados de um perfil (estilo My Anime List), com `?q=` (título), `?genre=` e `?category=` (watching | unfinished | finished), em páginas (`?cursor=`, `?limit=`). Leitura não exige
+ * Animes acompanhados de um perfil (estilo My Anime List), com `?q=` (título), `?genre=` e `?category=` (watching | unfinished | finished | dropped | paused), em páginas (`?cursor=`, `?limit=`). Leitura não exige
  * sessão; a lista é pública por padrão, mas a pessoa pode ocultá-la (403) e bloqueios valem como no resto
  * do perfil (404, sem revelar quem bloqueou quem).
  */

@@ -60,8 +60,10 @@ test.describe("Minha Lista (Figma 8:2608) e deixar de acompanhar", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Minha Lista" })).toBeVisible();
     await expect(page.getByTestId("list-count")).toContainText("acompanhando");
 
-    const body = page.locator("body");
-    for (const forbidden of ["Continuar assistindo", "Quero assistir", "Assistindo", "Abandonado", "Pausado"]) {
+    // A própria lista (sem as abas: "Pausados" é a aba de 28/10 com as obras encerradas não terminadas, a pedido).
+    const body = page.locator("main");
+    await expect(page.getByTestId("tab-paused")).toContainText("Pausados");
+    for (const forbidden of ["Continuar assistindo", "Quero assistir", "Assistindo", "Abandonado", /Pausad[oa]/]) {
       await expect(body).not.toContainText(forbidden);
     }
     await expect(body).not.toContainText(/\d+\/\d+ eps/);

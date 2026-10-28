@@ -1,18 +1,24 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/session";
 import { isRole, ROLE_LABELS } from "@/lib/auth/permissions";
 import { recordChanges } from "@/lib/changeLog";
+import { normalizeHandle, validateHandle } from "@/lib/handle";
 
 /**
  * Muda o papel de uma pessoa (Fase 9): `{ role: ADMIN | CURATOR | MODERATOR | MEMBER }`. Só administrador; ninguém muda
  * o próprio papel; o sistema nunca fica sem administrador. Fica no log e no histórico.
+ *
+ * Ou define o nome de usuário (@): `{ handle }`. O @ é fixo para a pessoa; só o administrador o define — na criação da
+ * conta ou aqui, para contas antigas que ainda não têm, ou para corrigir um erro de digitação.
  */
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { user, response } = await requireAdmin();
   if (!user) return response;
   const id = (await params).id;
-  const body = (await request.json().catch(() => null)) as { role?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { role?: unknown; handle?: unknown } | null;
+  if (body && "handle" in body) return setHandle(user, id, body.handle);
   if (!isRole(body?.role)) return NextResponse.json({ error: "Papel inválido." }, { status: 400 });
   const role = body.role;
   if (id === user.id) return NextResponse.json({ error: "Você não pode mudar o próprio papel." }, { status: 409 });
@@ -24,4 +30,22 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   await recordChanges(prisma, { origin: "ADMIN", actor: { id: user.id, name: user.displayName }, entity: "User", entityId: id, changes: [{ field: "role", before: target.role, after: role }] });
   await prisma.adminLog.create({ data: { level: "WARN", event: "Role changed", message: `${user.displayName} mudou o papel de ${target.displayName}: ${ROLE_LABELS[target.role as keyof typeof ROLE_LABELS] ?? target.role} → ${ROLE_LABELS[role]}.`, context: `user:${id}`, adminName: user.displayName } });
   return NextResponse.json({ ok: true, role });
+}
+
+async function setHandle(admin: { id: string; displayName: string }, id: string, raw: unknown) {
+  const handle = typeof raw === "string" ? normalizeHandle(raw) : "";
+  const problem = validateHandle(handle);
+  if (problem) return NextResponse.json({ error: `${problem}.` }, { status: 400 });
+  const target = await prisma.user.findUnique({ where: { id }, select: { id: true, handle: true, displayName: true } });
+  if (!target) return NextResponse.json({ error: "Usuário não encontrado." }, { status: 404 });
+  if (target.handle === handle) return NextResponse.json({ ok: true, handle });
+  try {
+    await prisma.user.update({ where: { id }, data: { handle } });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return NextResponse.json({ error: "Esse nome de usuário já está em uso." }, { status: 409 });
+    throw error;
+  }
+  await recordChanges(prisma, { origin: "ADMIN", actor: { id: admin.id, name: admin.displayName }, entity: "User", entityId: id, changes: [{ field: "handle", before: target.handle, after: handle }] });
+  await prisma.adminLog.create({ data: { level: "INFO", event: "Handle set", message: `${admin.displayName} definiu o nome de usuário de ${target.displayName}: @${handle}${target.handle ? ` (antes @${target.handle})` : ""}.`, context: `user:${id}`, adminName: admin.displayName } });
+  return NextResponse.json({ ok: true, handle });
 }

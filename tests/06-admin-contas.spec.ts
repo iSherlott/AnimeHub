@@ -59,18 +59,23 @@ test.describe.serial("Contas criadas só pelo administrador", () => {
     expect(await prisma.user.count({ where: { email: { endsWith: `@${DOMAIN}` } } })).toBe(0);
   });
 
-  test("a conta nasce membro, com senha provisória, mesmo que o pedido traga outro papel", async ({ request }) => {
-    const res = await request.post("/api/admin/users", { headers: adminHeaders, data: { email, displayName: "Pessoa Nova 06", role: "ADMIN", mustChangePassword: false } });
+  test("a conta nasce membro, com senha provisória e o @ fixo, mesmo que o pedido traga outro papel", async ({ request }) => {
+    const res = await request.post("/api/admin/users", { headers: adminHeaders, data: { email, displayName: "Pessoa Nova 06", handle: "Pessoa_Nova06", role: "ADMIN", mustChangePassword: false } });
     expect(res.status()).toBe(201);
     const body = await res.json();
     temporaryPassword = body.temporaryPassword;
     expect(temporaryPassword).toMatch(/^[A-Za-z0-9]{12}$/);
-    expect(body.user).toMatchObject({ email, role: "MEMBER", mustChangePassword: true });
-    expect(await prisma.user.findUniqueOrThrow({ where: { email } })).toMatchObject({ role: "MEMBER", mustChangePassword: true });
-    // E-mail repetido e dados inválidos não criam nada.
-    expect((await request.post("/api/admin/users", { headers: adminHeaders, data: { email, displayName: "De Novo" } })).status()).toBe(409);
-    expect((await request.post("/api/admin/users", { headers: adminHeaders, data: { email: "sem-arroba", displayName: "X" } })).status()).toBe(400);
-    expect((await request.post("/api/admin/users", { headers: adminHeaders, data: { email: `z@${DOMAIN}`, displayName: " " } })).status()).toBe(400);
+    expect(body.user).toMatchObject({ email, handle: "pessoa_nova06", role: "MEMBER", mustChangePassword: true });
+    expect(await prisma.user.findUniqueOrThrow({ where: { email } })).toMatchObject({ handle: "pessoa_nova06", role: "MEMBER", mustChangePassword: true });
+    // E-mail ou @ repetido e dados inválidos não criam nada; o @ é obrigatório, em minúsculas, sem espaço nem acento.
+    expect((await request.post("/api/admin/users", { headers: adminHeaders, data: { email, displayName: "De Novo", handle: "de_novo06" } })).status()).toBe(409);
+    expect((await request.post("/api/admin/users", { headers: adminHeaders, data: { email: `w@${DOMAIN}`, displayName: "Mesmo @", handle: "pessoa_nova06" } })).status()).toBe(409);
+    expect((await request.post("/api/admin/users", { headers: adminHeaders, data: { email: "sem-arroba", displayName: "X", handle: "sem_arroba06" } })).status()).toBe(400);
+    expect((await request.post("/api/admin/users", { headers: adminHeaders, data: { email: `z@${DOMAIN}`, displayName: " ", handle: "vazio06" } })).status()).toBe(400);
+    for (const handle of [undefined, "", "com espaço", "joão06", "ab"]) {
+      expect((await request.post("/api/admin/users", { headers: adminHeaders, data: { email: `h@${DOMAIN}`, displayName: "Sem @", handle } })).status(), String(handle)).toBe(400);
+    }
+    expect(await prisma.user.count({ where: { email: { in: [`w@${DOMAIN}`, `z@${DOMAIN}`, `h@${DOMAIN}`] } } })).toBe(0);
   });
 
   test("primeiro login: a senha provisória só deixa trocar a senha; nada mais abre, nem a administração", async ({ browser }) => {
@@ -142,6 +147,7 @@ test.describe.serial("Contas criadas só pelo administrador", () => {
       const panelEmail = `painel-${Date.now()}@${DOMAIN}`;
       await page.getByRole("textbox", { name: "Nome", exact: true }).fill("Pelo Painel 06");
       await page.getByRole("textbox", { name: "E-mail", exact: true }).fill(panelEmail);
+      await page.getByTestId("new-account-handle").fill(`painel_${Date.now() % 1_000_000}`);
       await page.getByRole("button", { name: "Criar conta" }).click();
       const dialog = page.getByRole("dialog", { name: "Conta criada" });
       await expect(dialog).toContainText(panelEmail);

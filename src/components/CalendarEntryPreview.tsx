@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { isAiringNow } from "@/lib/airingWindow";
 import Image from "next/image";
-import NextLink from "next/link";
 import ArrowOutwardIcon from "@mui/icons-material/ArrowOutward";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import CheckIcon from "@mui/icons-material/Check";
@@ -11,6 +10,8 @@ import PauseCircleIcon from "@mui/icons-material/PauseCircle";
 import EventRepeatIcon from "@mui/icons-material/EventRepeat";
 import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
 import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
+import AddIcon from "@mui/icons-material/Add";
+import { IconAction } from "@/components/IconAction";
 import { useSynopsis } from "@/components/SynopsisText";
 import { Box, Button, Skeleton, Typography } from "@mui/material";
 import type { CalendarItem } from "@/lib/calendarItem";
@@ -22,6 +23,8 @@ import { useTimeZone } from "@/lib/useTimeZone";
 import { useWorkDetails } from "@/lib/useWorkDetails";
 
 const buttonSx = { bgcolor: "#171820", color: "text.primary", border: 1, borderColor: "divider", "&:hover": { bgcolor: "#1d1e28" } };
+/** "Acompanhar": a ação principal da prévia, no acento. */
+const accentSx = { bgcolor: "primary.main", borderColor: "primary.main", color: "#fff", "&:hover": { bgcolor: "primary.dark" } };
 
 /**
  * Conteúdo do preview ao passar o mouse (ou focar) num item do calendário
@@ -257,39 +260,27 @@ export function CalendarEntryPreview({
           </Box>
         )}
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Button component={NextLink} href={detailHref} size="small" startIcon={<ArrowOutwardIcon />} sx={buttonSx}>
-            Ver página da obra
-          </Button>
+        {/* Só ícones, com o nome ao passar o mouse: com texto, os três botões quebravam o cartão em alguns títulos. */}
+        <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
+          <IconAction href={detailHref} label="Ver página da obra" icon={<ArrowOutwardIcon fontSize="small" />} />
           {isInternal ? (
             <>
-              {followedId && (
-                <Button component={NextLink} href={`/anime/${followedId}`} size="small" startIcon={<CheckIcon />} sx={buttonSx} data-testid="preview-following">
-                  Acompanhando
-                </Button>
-              )}
+              {followedId && <IconAction href={`/anime/${followedId}`} label="Acompanhando" icon={<CheckIcon fontSize="small" />} testId="preview-following" sx={{ color: "primary.main" }} />}
               {!hasImage && followToggle}
               {(released || item.postponed) && (
-                <Button
-                  size="small"
-                  disabled={pendingBusy}
+                <IconAction
+                  label={item.postponed ? "Retomar" : "Adiar a obra"}
+                  icon={item.postponed ? <BookmarkAddedIcon fontSize="small" /> : <BookmarkAddIcon fontSize="small" />}
                   onClick={() => void togglePending()}
-                  startIcon={item.postponed ? <BookmarkAddedIcon /> : <BookmarkAddIcon />}
-                  sx={buttonSx}
-                  data-testid={item.postponed ? "preview-pending-resolve" : "preview-postpone"}
-                >
-                  {item.postponed ? "Retomar" : "Adiar a obra"}
-                </Button>
+                  disabled={pendingBusy}
+                  testId={item.postponed ? "preview-pending-resolve" : "preview-postpone"}
+                />
               )}
             </>
           ) : user ? (
-            <Button variant="contained" size="small" disabled={following} onClick={() => void follow()} data-testid="preview-follow">
-              {following ? "Adicionando…" : "+ Acompanhar"}
-            </Button>
+            <IconAction label={following ? "Adicionando…" : "Acompanhar"} icon={<AddIcon fontSize="small" />} onClick={() => void follow()} disabled={following} testId="preview-follow" sx={accentSx} />
           ) : (
-            <Button component={NextLink} href={loginHref(detailHref)} variant="contained" size="small">
-              + Acompanhar
-            </Button>
+            <IconAction href={loginHref(detailHref)} label="Acompanhar" icon={<AddIcon fontSize="small" />} sx={accentSx} />
           )}
         </Box>
         {item.postponed && (

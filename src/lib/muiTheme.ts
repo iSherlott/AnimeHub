@@ -54,13 +54,9 @@ export const muiTheme = createTheme({
     MuiTypography: {
       defaultProps: { variantMapping: { subtitle1: "p", subtitle2: "p" } },
     },
-    // Foco pelo teclado nos campos (texto, seletor): o MUI tira o contorno do <input>/<select>, então o anel amarelo do
-    // site vai no contorno do campo inteiro.
-    MuiInputBase: {
-      styleOverrides: {
-        root: { "&:has(:focus-visible)": { outline: "2px solid #ffd400", outlineOffset: 2 } },
-      },
-    },
+    // Foco nos campos (texto, seletor): sem anel amarelo por fora do campo — ele aparecia em todo clique num campo de
+    // texto, por cima da borda do próprio campo. Cada campo mostra o foco na própria borda: a caixa em volta clareia
+    // (`:focus-within`) e o campo contornado do MUI usa a borda dele.
     // Alvos de toque/clique >= 44 px (VIS/WCAG 2.5.8 AAA recomendado pelo
     // Figma): ícones isolados são os que mais ficavam abaixo disso.
     MuiIconButton: {

@@ -4,7 +4,6 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { isBlank } from "@/lib/text";
-import { normalizeHandle, validateHandle } from "@/lib/handle";
 
 // Bio é 1 linha/parágrafo curto de "sobre mim", não um texto livre tipo
 // descrição de anime (5000) — 300 é generoso o bastante pra 2-3 frases
@@ -82,24 +81,15 @@ export async function PATCH(request: Request) {
     data.displayName = name;
   }
 
+  // O nome de usuário (@) é fixo: só o administrador o define, na criação da conta (PATCH /api/admin/users/[id]).
   if ("handle" in body) {
-    const handle = typeof body.handle === "string" ? normalizeHandle(body.handle) : "";
-    const problem = validateHandle(handle);
-    if (problem) return NextResponse.json({ error: problem }, { status: 400 });
-    data.handle = handle;
+    return NextResponse.json({ error: "O nome de usuário é definido pelo administrador e não pode ser alterado." }, { status: 403 });
   }
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "Nada para atualizar" }, { status: 400 });
   }
 
-  try {
-    const updated = await prisma.user.update({ where: { id: user.id }, data });
-    return NextResponse.json({ bio: updated.bio, displayName: updated.displayName, handle: updated.handle, favoriteAnime: updated.favoriteAnime, favoriteCharacter: updated.favoriteCharacter, favoriteGenres: updated.favoriteGenres, birthDay: updated.birthDay, birthMonth: updated.birthMonth });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json({ error: "Esse identificador já está em uso" }, { status: 409 });
-    }
-    throw error;
-  }
+  const updated = await prisma.user.update({ where: { id: user.id }, data });
+  return NextResponse.json({ bio: updated.bio, displayName: updated.displayName, handle: updated.handle, favoriteAnime: updated.favoriteAnime, favoriteCharacter: updated.favoriteCharacter, favoriteGenres: updated.favoriteGenres, birthDay: updated.birthDay, birthMonth: updated.birthMonth });
 }

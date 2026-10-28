@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Box, Typography } from "@mui/material";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import { AppLink } from "@/components/AppLink";
 import { AnimeTitle } from "@/components/AnimeTitle";
 import { CoverImage } from "@/components/CoverImage";
@@ -14,7 +15,7 @@ type Person = { id: string; displayName: string; avatarUrl: string | null };
 export type ScrapView = { id: string; body: string; isSpoiler?: boolean; createdAt: Date; author: Person; authorId: string; profileId: string; replyTo?: { id: string; deletedAt: Date | null } | null };
 
 /** Seção do centro do perfil (recados, depoimentos…): título em minúsculas, contagem e "ver todos". */
-export function ProfileSection({ id, title, count, more, testId, children }: { id: string; title: string; count?: number; more?: { href: string; label: string }; testId: string; children: ReactNode }) {
+export function ProfileSection({ id, title, count, more, edit, testId, children }: { id: string; title: string; count?: number; more?: { href: string; label: string }; edit?: { href: string; label: string }; testId: string; children: ReactNode }) {
   return (
     <Box component="section" id={id} aria-labelledby={`${id}-title`} data-testid={testId} sx={{ display: "flex", flexDirection: "column", gap: 2, p: { xs: 2, sm: 3 }, borderRadius: "16px", bgcolor: "background.paper", scrollMarginTop: 96 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 1 }}>
@@ -29,6 +30,12 @@ export function ProfileSection({ id, title, count, more, testId, children }: { i
         {more && (
           <AppLink href={more.href} underline="hover" sx={{ fontSize: 13 }}>
             {more.label}
+          </AppLink>
+        )}
+        {/* Editar: só o ícone (o nome vai para leitores de tela e para a dica ao passar o mouse). */}
+        {edit && (
+          <AppLink href={edit.href} aria-label={edit.label} title={edit.label} data-testid={`${testId}-edit`} sx={{ display: "inline-flex", alignSelf: "center", p: 0.75, borderRadius: "8px", color: "text.secondary", "&:hover": { color: "text.primary", bgcolor: "#171820" } }}>
+            <EditOutlinedIcon sx={{ fontSize: 18 }} />
           </AppLink>
         )}
       </Box>
@@ -173,7 +180,7 @@ function AlbumMosaic({ covers }: { covers: string[] }) {
 }
 
 /** Os álbuns do perfil: automáticos (pelo andamento) e os que a pessoa montou. */
-export function AlbumGrid({ userId, albums }: { userId: string; albums: AlbumCard[] }) {
+export function AlbumGrid({ userId, albums, newAlbum }: { userId: string; albums: AlbumCard[]; newAlbum?: ReactNode }) {
   return (
     <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0,1fr))", sm: "repeat(4, minmax(0,1fr))" }, gap: 2 }}>
       {albums.map((a) => (
@@ -191,6 +198,7 @@ export function AlbumGrid({ userId, albums }: { userId: string; albums: AlbumCar
           </AppLink>
         </Box>
       ))}
+      {newAlbum && <Box component="li">{newAlbum}</Box>}
     </Box>
   );
 }

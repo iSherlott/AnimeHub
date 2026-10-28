@@ -402,7 +402,7 @@ export function PostComments({
           >
             {replyingTo ? `Em resposta a ${replyingTo.author.displayName} · comentário` : "Sua resposta"}
           </Typography>
-          <Box sx={{ bgcolor: "background.default", borderRadius: "10px", p: 2, minHeight: 80 }}>
+          <Box sx={{ bgcolor: "background.default", borderRadius: "10px", p: 2, minHeight: 80, border: 1, borderColor: "transparent", "&:focus-within": { borderColor: "text.secondary" } }}>
             <InputBase
               value={draft}
               onChange={(e) => setDraft(e.target.value.slice(0, MAX_BODY_LENGTH))}

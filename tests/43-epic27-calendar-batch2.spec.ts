@@ -104,8 +104,8 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     await expect(toggle).toContainText("Acompanhando");
     await toggle.click();
     expect(deleted).toContain(`/api/anime/${ownedAnimeId}`);
-    // Saiu da lista: o preview passa a oferecer "+ Acompanhar".
-    await expect(page.getByRole("button", { name: "+ Acompanhar" })).toBeVisible();
+    // Saiu da lista: o preview passa a oferecer "Acompanhar" (só o ícone, com o nome na dica).
+    await expect(page.getByRole("button", { name: "Acompanhar", exact: true })).toBeVisible();
     await expect(page.getByTestId("preview-follow-toggle")).toHaveCount(0);
   });
 
@@ -122,8 +122,8 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     const seeMore = page.getByRole("link", { name: "Ver página da obra" });
     await expect(seeMore).toBeVisible();
     await expect(seeMore).toHaveAttribute("href", `/anime/${OTHER_ANILIST_ID}`);
-    // "+ Acompanhar" adiciona direto à lista (botão), em vez de abrir a página da obra.
-    await expect(page.getByRole("button", { name: "+ Acompanhar" })).toBeVisible();
+    // "Acompanhar" adiciona direto à lista (botão), em vez de abrir a página da obra.
+    await expect(page.getByRole("button", { name: "Acompanhar", exact: true })).toBeVisible();
     await expect(page.getByTestId("preview-follow-toggle")).toHaveCount(0);
   });
 

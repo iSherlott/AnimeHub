@@ -62,7 +62,7 @@ function StateSelect({ entry, onChange }: { entry: ProfileAnimeEntry; onChange: 
       data-testid={`watch-state-${entry.key}`}
       value={entry.watchState ?? ""}
       onChange={(event: React.ChangeEvent<HTMLSelectElement>) => onChange(entry.animeId as string, (event.target.value || null) as WatchState | null)}
-      sx={{ width: "100%", mt: 0.5, px: 0.75, py: 0.5, borderRadius: "6px", border: 1, borderColor: "divider", bgcolor: "#171820", color: "text.primary", fontSize: 12, "&:focus-visible": { outline: "2px solid #ffd400", outlineOffset: 2 } }}
+      sx={{ width: "100%", mt: 0.5, px: 0.75, py: 0.5, borderRadius: "6px", border: 1, borderColor: "divider", bgcolor: "#171820", color: "text.primary", fontSize: 12, "&:focus": { outline: "none", borderColor: "text.secondary" } }}
     >
       <option value="">Andamento: automático</option>
       {WATCH_STATES.map((s) => (
@@ -165,10 +165,25 @@ function AnimeTile({ entry, onChangeState }: { entry: ProfileAnimeEntry; onChang
  * Busca no servidor (`/api/users/[id]/animes`), então vale para o próprio perfil e para o de outras pessoas
  * respeitando a privacidade que a pessoa escolheu.
  */
-export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isOwnProfile: boolean }) {
+export function ProfileAnimeList({
+  userId,
+  isOwnProfile,
+  category = "",
+  scrollKey,
+  emptyText,
+}: {
+  userId: string;
+  isOwnProfile: boolean;
+  /** Recorte fixo da lista (ex.: `paused` na aba Pausados de Meus Animes). */
+  category?: string;
+  /** Endereço da página, para a rolagem voltar ao mesmo ponto (padrão: a aba Animes do perfil). */
+  scrollKey?: string;
+  /** Texto quando não há nenhuma obra no recorte. */
+  emptyText?: string;
+}) {
   // Ao voltar da página de uma obra, a busca e o gênero escolhidos continuam (e a rolagem volta ao ponto em que estava).
   const cameBack = useCameBack();
-  const filtersKey = `profile-animes:${userId}`;
+  const filtersKey = `profile-animes:${userId}${category ? `:${category}` : ""}`;
   const [saved] = useState(() => (cameBack ? readSession<{ query: string; genre: string }>(filtersKey) : null));
   const [query, setQuery] = useState(saved?.query ?? "");
   // A busca só vai ao servidor 250 ms depois da última tecla.
@@ -188,12 +203,13 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
 
   // Rolagem infinita: as obras chegam 48 por vez, conforme a pessoa desce a lista.
   const pager = usePagedList<ProfileAnimeEntry>({
-    resetKey: `${userId}|${debounced}|${genre}|${reloads}`,
+    resetKey: `${userId}|${category}|${debounced}|${genre}|${reloads}`,
     keyOf: (entry) => entry.key,
     fetchPage: async (cursor) => {
       const params = new URLSearchParams();
       if (debounced) params.set("q", debounced);
       if (genre) params.set("genre", genre);
+      if (category) params.set("category", category);
       if (cursor) params.set("cursor", cursor);
       const res = await fetch(`/api/users/${userId}/animes?${params.toString()}`);
       if (res.status === 403) {
@@ -204,7 +220,9 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
       const data = (await res.json()) as Loaded;
       if (cursor === null) {
         setHidden(false);
-        setMeta({ total: data.total, categories: data.categories });
+        // Num recorte fixo, o "total" é o do recorte (sem busca nem gênero), não o da lista inteira.
+        if (!category) setMeta({ total: data.total, categories: data.categories });
+        else if (!genre && !debounced) setMeta({ total: data.matched, categories: data.categories });
         if (!genre && !debounced) setFacets(data.genres);
       }
       return { items: data.entries, nextCursor: data.nextCursor, total: data.matched };
@@ -212,7 +230,7 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
   });
   const { ref: sentinelRef, supported: infiniteSupported } = useInfiniteScroll(pager.loadMore, pager.hasMore && !pager.loading && !pager.failed, pager.items.length);
   useEffect(() => writeSession(filtersKey, { query, genre }), [filtersKey, query, genre]);
-  useScrollMemory(`/users/${userId}?aba=animes`, !pager.loading && pager.items.length > 0);
+  useScrollMemory(scrollKey ?? `/users/${userId}?aba=animes`, !pager.loading && pager.items.length > 0);
 
   async function changeState(animeId: string, next: WatchState | null) {
     setSaveError(false);
@@ -246,7 +264,7 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }} data-testid="profile-anime-list">
       {meta && meta.total === 0 && !filtering ? (
         <Typography sx={{ color: "text.secondary" }}>
-          {isOwnProfile ? "Você ainda não acompanha nenhum anime. Acompanhe uma obra para ela aparecer aqui." : "Esta pessoa ainda não acompanha nenhum anime."}
+          {emptyText ?? (isOwnProfile ? "Você ainda não acompanha nenhum anime. Acompanhe uma obra para ela aparecer aqui." : "Esta pessoa ainda não acompanha nenhum anime.")}
         </Typography>
       ) : (
         <>

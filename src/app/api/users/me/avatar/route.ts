@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
-import { buildAvatarOptions, isAllowedImage, type ImageKind } from "@/lib/avatarOptions";
+import { buildAvatarOptions, isAllowedImage, isImageKind, pageOfOptions } from "@/lib/avatarOptions";
 
 /**
  * Envio de foto própria: desativado. O avatar e a capa do perfil são sempre imagens das obras que a pessoa
@@ -24,17 +24,26 @@ export async function DELETE() {
   return NextResponse.json({ avatarUrl: null });
 }
 
-/** Opções de avatar/banner: imagens (capa e personagens) das obras que a pessoa acompanha, agrupadas por obra. */
-export async function GET() {
+/**
+ * Opções de avatar, banner e plano de fundo: imagens (capa, banner e personagens) das obras que a pessoa acompanha, uma
+ * obra por grupo. Sem `kind`, devolve todas as obras (`groups`); com `?kind=avatar|banner|background`, uma página do
+ * seletor (`?q=` busca pelo título, `?page=` a partir de 0) com `total`, `page` e `pages`.
+ */
+export async function GET(request: Request) {
   const { user, response } = await requireUser();
   if (!user) return response;
-  const [groups, me] = await Promise.all([buildAvatarOptions(user.id), prisma.user.findUnique({ where: { id: user.id }, select: { avatarUrl: true, bannerUrl: true } })]);
-  return NextResponse.json({ groups, avatarUrl: me?.avatarUrl ?? null, bannerUrl: me?.bannerUrl ?? null });
+  const { searchParams } = new URL(request.url);
+  const [all, me] = await Promise.all([buildAvatarOptions(user.id), prisma.user.findUnique({ where: { id: user.id }, select: { avatarUrl: true, bannerUrl: true, backgroundUrl: true } })]);
+  const current = { avatarUrl: me?.avatarUrl ?? null, bannerUrl: me?.bannerUrl ?? null, backgroundUrl: me?.backgroundUrl ?? null };
+  const kind = searchParams.get("kind");
+  if (!isImageKind(kind)) return NextResponse.json({ groups: all, ...current });
+  const page = Number(searchParams.get("page"));
+  return NextResponse.json({ ...pageOfOptions(all, kind, (searchParams.get("q") ?? "").slice(0, 80), Number.isInteger(page) ? page : 0), ...current });
 }
 
 /**
- * Escolhe o avatar (ou o banner) entre as imagens das obras acompanhadas: `{ kind, url }`.
- * `url: null` remove o banner. Qualquer URL fora das opções da pessoa é recusada.
+ * Escolhe o avatar, o banner ou o plano de fundo entre as imagens das obras acompanhadas: `{ kind, url }`.
+ * `url: null` remove o banner ou o fundo. Qualquer URL fora das opções da pessoa é recusada.
  */
 export async function PATCH(request: Request) {
   const { user, response } = await requireUser();
@@ -45,11 +54,12 @@ export async function PATCH(request: Request) {
   } catch {
     return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
   }
-  const kind: ImageKind | null = body.kind === "avatar" || body.kind === "banner" ? body.kind : null;
+  const kind = isImageKind(body.kind) ? body.kind : null;
   if (!kind) return NextResponse.json({ error: "Tipo inválido" }, { status: 400 });
+  const field = kind === "avatar" ? "avatarUrl" : kind === "banner" ? "bannerUrl" : "backgroundUrl";
 
-  if (body.url === null && kind === "banner") {
-    await prisma.user.update({ where: { id: user.id }, data: { bannerUrl: null } });
+  if (body.url === null && kind !== "avatar") {
+    await prisma.user.update({ where: { id: user.id }, data: { [field]: null } });
     return NextResponse.json({ kind, url: null });
   }
   if (typeof body.url !== "string") return NextResponse.json({ error: "Imagem inválida" }, { status: 400 });
@@ -57,6 +67,6 @@ export async function PATCH(request: Request) {
   if (!isAllowedImage(groups, kind, body.url)) {
     return NextResponse.json({ error: "Escolha uma imagem de uma obra que você acompanha." }, { status: 400 });
   }
-  await prisma.user.update({ where: { id: user.id }, data: kind === "avatar" ? { avatarUrl: body.url } : { bannerUrl: body.url } });
+  await prisma.user.update({ where: { id: user.id }, data: { [field]: body.url } });
   return NextResponse.json({ kind, url: body.url });
 }

@@ -1,15 +1,13 @@
-import { civilDay, classifyOffGrid, DELAY_GRACE_MS, isExactStartDate } from "@/lib/calendarOffGrid";
+import { civilDay, classifyOffGrid, isExactStartDate } from "@/lib/calendarOffGrid";
 
 /**
  * Situação de agenda de cada obra acompanhada (Figma `8:2608`): quando há um
  * episódio com horário confirmado, ele manda; senão, nunca uma data inventada —
- * o item cai em "Atrasado", "Adiado", "Sem horário definido" ou
- * "Data não definida".
+ * o item cai em "Adiado", "Sem horário definido" ou "Data não definida". (O
+ * "Atrasado" saiu em 28/10: os atrasos vão ser cuidados por um agente próprio.)
  */
 export type MyListState =
   | { kind: "scheduled"; at: string; episode: number }
-  /** O horário previsto passou e a fonte ainda não confirmou o episódio. */
-  | { kind: "delayed"; at: string; episode: number }
   /** Estreia com dia exato conhecido, sem horário (`YYYY-MM-DD`). */
   | { kind: "dated"; day: string; episode: number | null }
   | { kind: "postponed" }
@@ -34,9 +32,6 @@ export function myListStateOf({ upcoming, catalog, now = new Date() }: MyListSta
   if (upcoming) return { kind: "scheduled", at: upcoming.airingAt.toISOString(), episode: upcoming.episode };
   if (!catalog) return { kind: "undated" };
 
-  if (catalog.nextEpisodeNumber !== null && catalog.nextEpisodeAt && catalog.nextEpisodeAt.getTime() <= now.getTime() - DELAY_GRACE_MS) {
-    return { kind: "delayed", at: catalog.nextEpisodeAt.toISOString(), episode: catalog.nextEpisodeNumber };
-  }
   if (catalog.status === "FINISHED" || catalog.status === "CANCELLED") return { kind: "none" };
   const kind = classifyOffGrid(catalog);
   if (kind === "postponed") return { kind: "postponed" };

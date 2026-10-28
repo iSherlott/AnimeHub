@@ -9,7 +9,7 @@ import { ELEVATED_BUTTON_SX } from "@/components/ExploreCard";
 import { ErrorNotice } from "@/components/StatePanels";
 import { zonedLocalToUtc } from "@/lib/timeZone";
 
-const fieldSx = { px: 2, py: 1.75, borderRadius: "10px", border: 1, borderColor: "divider", bgcolor: "background.paper", fontSize: 14 } as const;
+const fieldSx = { px: 2, py: 1.75, borderRadius: "10px", border: 1, borderColor: "divider", bgcolor: "background.paper", fontSize: 14, "&.Mui-focused": { borderColor: "text.secondary" } } as const;
 
 /**
  * Decisão de um conflito de horário (Figma `8:4327`): "Usar fonte A/B" ou

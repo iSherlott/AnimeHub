@@ -7,6 +7,10 @@ import { FollowToggle } from "@/components/FollowToggle";
 import { LinkButton } from "@/components/LinkButton";
 import { ProfileSafetyMenu } from "@/components/ProfileSafetyMenu";
 import { UserAvatar } from "@/components/UserAvatar";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import EditNoteOutlinedIcon from "@mui/icons-material/EditNoteOutlined";
+
+const quietActionSx = { px: 1.25, minHeight: 32, fontSize: 13, fontWeight: 600, color: "text.secondary", border: 1, borderColor: "divider", borderRadius: "999px", "&:hover": { color: "text.primary", borderColor: "text.secondary", bgcolor: "transparent" } } as const;
 
 /**
  * Bloco de identidade do perfil (Figma `13:42598` / `13:42736`, no estilo da Crunchyroll): banner (de uma obra
@@ -83,13 +87,14 @@ export function ProfileHeader({
             {followerCount} {followerCount === 1 ? "seguidor" : "seguidores"} · {followingCount} seguindo · {postCount}{" "}
             {postCount === 1 ? "publicação" : "publicações"}
           </Typography>
-          <Stack direction="row" sx={{ flexWrap: "wrap", gap: 2 }}>
+          <Stack direction="row" sx={{ flexWrap: "wrap", gap: isOwnProfile ? 1 : 2 }}>
             {isOwnProfile ? (
               <>
-                <LinkButton href="/publicar" variant="contained">
-                  + Nova publicação
+                {/* Discretos: atalhos da dona do perfil, sem disputar a atenção com o conteúdo da página. */}
+                <LinkButton href="/publicar" size="small" startIcon={<EditNoteOutlinedIcon />} sx={quietActionSx}>
+                  Nova publicação
                 </LinkButton>
-                <LinkButton href="/perfil/editar" data-testid="profile-edit-open" sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}>
+                <LinkButton href="/perfil/editar" size="small" startIcon={<EditOutlinedIcon />} data-testid="profile-edit-open" sx={quietActionSx}>
                   Editar perfil
                 </LinkButton>
               </>

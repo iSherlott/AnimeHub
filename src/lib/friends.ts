@@ -149,10 +149,56 @@ export async function searchPeople(viewerId: string, query: string, take = 20): 
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
+/** Ids dos amigos de cada pessoa da lista (uma consulta). */
+async function friendIdsOf(ids: string[]): Promise<Map<string, Set<string>>> {
+  const out = new Map<string, Set<string>>(ids.map((id) => [id, new Set<string>()]));
+  if (ids.length === 0) return out;
+  const rows = await prisma.friendship.findMany({ where: { OR: [{ userAId: { in: ids } }, { userBId: { in: ids } }] }, select: { userAId: true, userBId: true } });
+  for (const r of rows) {
+    out.get(r.userAId)?.add(r.userBId);
+    out.get(r.userBId)?.add(r.userAId);
+  }
+  return out;
+}
+
+/** Quantos amigos em comum quem vê tem com cada pessoa da lista. */
+async function mutualFriendCounts(viewerId: string, ids: string[]): Promise<Map<string, number>> {
+  const friendsOf = await friendIdsOf([viewerId, ...ids]);
+  const mine = friendsOf.get(viewerId) ?? new Set<string>();
+  return new Map(ids.map((id) => [id, [...(friendsOf.get(id) ?? [])].filter((f) => mine.has(f)).length]));
+}
+
+export const NETWORK_PAGE = 20;
+
 /**
- * Sugestões de amizade: quem participa das mesmas comunidades (vale 2) e quem acompanha os mesmos animes (vale 1; só
- * conta quem deixa a aba Animes pública, para não revelar listas ocultas). Ficam de fora amigos, pedidos pendentes,
- * bloqueios e a conta do sistema. O motivo vai junto ("2 comunidades em comum · 3 animes em comum").
+ * Pessoas da rede (o AnimeHub é fechado: todas as contas são de quem o administrador convidou), das que entraram por
+ * último às primeiras, com a relação de cada uma e os amigos em comum. Sem a própria pessoa, bloqueios e a conta do
+ * sistema.
+ */
+export async function networkPeople(viewerId: string, page = 0, take = NETWORK_PAGE): Promise<{ total: number; page: number; pages: number; rows: PersonCard[] }> {
+  const where = { id: { notIn: await excludedIds(viewerId) } };
+  const total = await prisma.user.count({ where });
+  const pages = Math.max(1, Math.ceil(total / take));
+  const current = Math.min(Math.max(0, page), pages - 1);
+  const rows = await prisma.user.findMany({ where, select: { id: true, displayName: true, handle: true, avatarUrl: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip: current * take, take });
+  const ids = rows.map((r) => r.id);
+  const [states, mutual] = await Promise.all([statesFor(viewerId, ids), mutualFriendCounts(viewerId, ids)]);
+  return {
+    total,
+    page: current,
+    pages,
+    rows: rows.map((r) => {
+      const n = mutual.get(r.id) ?? 0;
+      return { ...r, state: states.get(r.id) ?? "none", detail: n ? plural(n, "amigo em comum", "amigos em comum") : null };
+    }),
+  };
+}
+
+/**
+ * Sugestões de amizade: amigos dos seus amigos (vale 2), quem participa das mesmas comunidades (vale 2) e quem acompanha
+ * os mesmos animes (vale 1; só conta quem deixa a aba Animes pública, para não revelar listas ocultas). Ficam de fora
+ * amigos, pedidos pendentes, bloqueios e a conta do sistema. O motivo vai junto ("1 amigo em comum · 2 comunidades em
+ * comum · 3 animes em comum").
  */
 export async function friendSuggestions(viewerId: string, take = 8): Promise<PersonCard[]> {
   const [communities, works, friendships, requests, excluded] = await Promise.all([
@@ -175,20 +221,24 @@ export async function friendSuggestions(viewerId: string, take = 8): Promise<Per
         })
       : [],
   ]);
-  const score = new Map<string, { communities: number; works: number }>();
-  for (const m of coMembers) score.set(m.userId, { communities: m._count._all, works: 0 });
-  for (const t of coTrackers) {
-    if (!t.userId) continue;
-    const cur = score.get(t.userId) ?? { communities: 0, works: 0 };
-    score.set(t.userId, { ...cur, works: t._count._all });
-  }
-  const ranked = [...score.entries()].sort((a, b) => b[1].communities * 2 + b[1].works - (a[1].communities * 2 + a[1].works) || a[0].localeCompare(b[0])).slice(0, take);
+  const myFriends = friendships.map((f) => (f.userAId === viewerId ? f.userBId : f.userAId));
+  const friendsOfFriends = await friendIdsOf(myFriends);
+  const score = new Map<string, { friends: number; communities: number; works: number }>();
+  const bump = (id: string, field: "friends" | "communities" | "works", n: number) => {
+    const cur = score.get(id) ?? { friends: 0, communities: 0, works: 0 };
+    score.set(id, { ...cur, [field]: cur[field] + n });
+  };
+  for (const set of friendsOfFriends.values()) for (const id of set) if (!skip.has(id)) bump(id, "friends", 1);
+  for (const m of coMembers) bump(m.userId, "communities", m._count._all);
+  for (const t of coTrackers) if (t.userId) bump(t.userId, "works", t._count._all);
+  const weight = (s: { friends: number; communities: number; works: number }) => s.friends * 2 + s.communities * 2 + s.works;
+  const ranked = [...score.entries()].sort((a, b) => weight(b[1]) - weight(a[1]) || a[0].localeCompare(b[0])).slice(0, take);
   if (ranked.length === 0) return [];
   const people = new Map((await prisma.user.findMany({ where: { id: { in: ranked.map(([id]) => id) } }, select: { id: true, displayName: true, handle: true, avatarUrl: true } })).map((u) => [u.id, u]));
   return ranked.flatMap(([id, s]) => {
     const person = people.get(id);
     if (!person) return [];
-    const detail = [s.communities ? plural(s.communities, "comunidade em comum", "comunidades em comum") : null, s.works ? plural(s.works, "anime em comum", "animes em comum") : null].filter(Boolean).join(" · ");
+    const detail = [s.friends ? plural(s.friends, "amigo em comum", "amigos em comum") : null, s.communities ? plural(s.communities, "comunidade em comum", "comunidades em comum") : null, s.works ? plural(s.works, "anime em comum", "animes em comum") : null].filter(Boolean).join(" · ");
     return [{ ...person, state: "none" as const, detail }];
   });
 }

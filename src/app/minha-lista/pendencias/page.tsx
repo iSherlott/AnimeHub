@@ -6,6 +6,7 @@ import { PageContainer, PageIntro } from "@/components/PageShell";
 import { PendingListView } from "@/components/PendingListView";
 import { getCurrentUser } from "@/lib/auth/session";
 import { listPending } from "@/lib/pending";
+import { pausedCount } from "@/lib/myListCounts";
 
 /**
  * Para assistir: a outra "planilha" ao lado de Minha Lista. Guarda os episódios que a pessoa adiou no
@@ -30,7 +31,7 @@ export default async function PendenciasPage() {
     );
   }
 
-  const entries = await listPending(user.id);
+  const [entries, paused] = await Promise.all([listPending(user.id), pausedCount(user.id)]);
 
   return (
     <Box sx={{ minHeight: "100%", bgcolor: "background.default" }}>
@@ -46,7 +47,7 @@ export default async function PendenciasPage() {
           }
         />
         <Box sx={{ mt: 4 }}>
-          <MyListTabs active="pending" pendingCount={entries.length} />
+          <MyListTabs active="pending" pendingCount={entries.length} pausedCount={paused} />
           {entries.length === 0 ? (
             <Box data-testid="pending-empty" sx={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start" }}>
               <Typography sx={{ color: "text.secondary" }}>

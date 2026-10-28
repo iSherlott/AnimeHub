@@ -29,9 +29,6 @@ export type CalendarItem = {
   waiting?: boolean;
   /** "Obra adiada" (D5): a pessoa adiou a obra (lembrete em "Para assistir"; ver `PendingEpisode`). Só obras da lista. */
   postponed?: boolean;
-  /** "Atrasado" (Figma `8:2106`): o horário previsto passou e a fonte ainda
-   * não confirmou o episódio — ver `isDelayed`. A previsão original é mantida. */
-  delayed: boolean;
   /** Episódios exibidos em sequência no mesmo dia viram UM item (ver `mergeConsecutiveEpisodes`): último episódio do bloco... */
   episodeEnd?: number;
   /** ...horário do último episódio do bloco... */
@@ -58,7 +55,6 @@ export type OwnedAnimeCalendarInfo = {
 export function calendarItemFromCache(
   entry: AiringScheduleEntry & { airingAt: Date; anilistId: number },
   myAnimeByAnilistId: Map<number, OwnedAnimeCalendarInfo>,
-  delayed = false,
   episodeImage: string | null = null,
   postponed = false
 ): CalendarItem {
@@ -82,7 +78,6 @@ export function calendarItemFromCache(
     descriptionPortuguese: owned?.descriptionPortuguese ?? null,
     isFavorite: owned?.isFavorite ?? false,
     postponed: Boolean(owned && !owned.waiting && postponed),
-    delayed,
   };
 }
 
@@ -112,7 +107,6 @@ export function mergeConsecutiveEpisodes(items: CalendarItem[], maxGapMs: number
         episodeEnd: item.episode,
         lastAiringAt: item.airingAt,
         endsAt: new Date(at + slot).toISOString(),
-        delayed: block.delayed || item.delayed,
         inMyList: block.inMyList || item.inMyList,
       };
       continue;

@@ -9,7 +9,7 @@ const LOGIN_PASSWORD = "senha-do-spec-48";
 
 test.beforeAll(async ({ playwright, baseURL }) => {
   const admin = await playwright.request.newContext({ baseURL, extraHTTPHeaders: { Cookie: `${SESSION_COOKIE_NAME}=${TEST_ADMIN_SESSION_TOKEN}` } });
-  const created = await (await admin.post("/api/admin/users", { data: { email: LOGIN_EMAIL, displayName: "Spec 48" } })).json();
+  const created = await (await admin.post("/api/admin/users", { data: { email: LOGIN_EMAIL, displayName: "Spec 48", handle: `spec48_${Date.now() % 1_000_000}` } })).json();
   await admin.dispose();
   const person = await playwright.request.newContext({ baseURL, storageState: { cookies: [], origins: [] } });
   expect((await person.post("/api/auth/login", { data: { email: LOGIN_EMAIL, password: created.temporaryPassword } })).status()).toBe(200);

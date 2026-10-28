@@ -1,28 +1,12 @@
 /**
  * Estados do calendário que NUNCA ganham posição inventada na grade (Figma
- * `8:2106`, D-25 / CAL-003 / CAL-004): "Atrasado", "Sem horário definido",
- * "Data não definida" e "Adiado". Tudo aqui é puro; a rota só alimenta com
- * linhas do cache (`AiringScheduleEntry` / `CatalogEntry`).
+ * `8:2106`, D-25 / CAL-003 / CAL-004): "Sem horário definido", "Data não
+ * definida" e "Adiado". Tudo aqui é puro; a rota só alimenta com linhas do
+ * cache (`AiringScheduleEntry` / `CatalogEntry`).
+ *
+ * O "Atrasado" (horário previsto passou e a fonte não confirmou) saiu em 28/10:
+ * os atrasos vão ser cuidados por um agente próprio, depois.
  */
-
-/** Tolerância depois do horário previsto antes de chamar de "Atrasado". */
-export const DELAY_GRACE_MS = 3 * 60 * 60 * 1000;
-
-export type CatalogNext = {
-  nextEpisodeNumber: number | null;
-  nextEpisodeAt: Date | null;
-};
-
-/**
- * "Atrasado": o horário previsto já passou há mais que a tolerância e a fonte
- * (catálogo) ainda aponta ESSE mesmo episódio como o próximo — ou seja, o
- * lançamento não foi confirmado. A previsão original é preservada.
- */
-export function isDelayed(airingAt: Date, episode: number, catalog: CatalogNext | undefined, now: Date = new Date()): boolean {
-  if (!catalog || catalog.nextEpisodeNumber !== episode || !catalog.nextEpisodeAt) return false;
-  const limit = now.getTime() - DELAY_GRACE_MS;
-  return airingAt.getTime() <= limit && catalog.nextEpisodeAt.getTime() <= limit;
-}
 
 /**
  * - `dated`: estreia com DIA conhecido, sem horário → painel "Sem horário definido".

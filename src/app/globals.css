@@ -169,15 +169,22 @@ button:disabled,
   outline-offset: 2px;
 }
 
-/* Foco visível global para elementos nativos fora do MUI (links, inputs). */
+/* Foco visível global para elementos nativos fora do MUI (links, botões, caixas de marcar). */
 a:focus-visible,
 button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible,
 [tabindex]:focus-visible {
   outline: 2px solid var(--color-jump-yellow);
   outline-offset: 2px;
+}
+/* Campos de texto e seletores: o navegador trata todo clique num campo de texto como foco de teclado, e o anel amarelo
+   afastado do campo aparecia sempre, por cima da borda do próprio campo. O foco passa a clarear a borda do campo. */
+input:not([type="checkbox"]):not([type="radio"]):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.55);
 }
 main:focus {
   outline: none;

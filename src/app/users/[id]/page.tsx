@@ -56,7 +56,7 @@ export default async function UserProfilePage({ params }: Params) {
   const { id } = await params;
   const target = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, displayName: true, handle: true, avatarUrl: true, bannerUrl: true, bio: true, favoriteAnime: true, favoriteCharacter: true, favoriteGenres: true, birthDay: true, birthMonth: true, createdAt: true },
+    select: { id: true, displayName: true, handle: true, avatarUrl: true, bannerUrl: true, backgroundUrl: true, bio: true, favoriteAnime: true, favoriteCharacter: true, favoriteGenres: true, birthDay: true, birthMonth: true, createdAt: true },
   });
   if (!target) notFound();
 
@@ -132,276 +132,278 @@ export default async function UserProfilePage({ params }: Params) {
   return (
     <Box sx={{ minHeight: "100%", bgcolor: "background.default" }}>
       <Header />
-      <PageContainer wide>
-        <PageIntro
-          kicker="プロフィール / PERFIL"
-          title={isOwnProfile ? "Meu perfil" : target.displayName}
-          subtitle={isOwnProfile ? "Seu espaço no AnimeHub: recados, depoimentos, amigos e comunidades, à vista de quem tem conta. Sua organização pessoal continua privada." : target.handle ? `@${target.handle}` : "Perfil"}
+      {/* Plano de fundo do perfil: a imagem escolhida, fixa atrás da página e escurecida para o texto continuar legível. */}
+      {target.backgroundUrl && (
+        <Box
+          aria-hidden
+          data-testid="profile-background"
+          // A imagem vai no estilo da própria caixa (uma por pessoa), não numa classe gerada.
+          style={{ backgroundImage: `linear-gradient(180deg, rgba(8,8,11,0.72) 0%, rgba(8,8,11,0.86) 45%, #08080b 100%), url("${encodeURI(target.backgroundUrl)}")` }}
+          sx={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", backgroundSize: "cover", backgroundPosition: "center top" }}
         />
-        <AppLink href="/" underline="hover" sx={{ fontSize: 14, color: "text.secondary", alignSelf: "flex-start" }}>
-          ← Feed
-        </AppLink>
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", md: "220px minmax(0,1fr)", lg: "220px minmax(0,1fr) 280px" }, gap: 3, alignItems: "start" }}>
-          {/* Esquerda: menu, fãs e avaliações */}
-          {/* No celular o centro (cabeçalho, quem sou eu, recados) vem primeiro; o menu, os fãs e as avaliações depois (no tablet, lado a lado). */}
-          <Box component="aside" aria-label="Menu do perfil" sx={{ display: { xs: "flex", sm: "grid", md: "flex" }, gridTemplateColumns: { sm: "repeat(2, minmax(0,1fr))" }, alignItems: { sm: "start", md: "stretch" }, flexDirection: "column", gap: 2, order: { xs: 2, md: 0 } }}>
-            {/* O menu de âncoras só faz sentido com as colunas lado a lado (no celular tudo já está em sequência). */}
-            <Box component="nav" aria-label="Seções do perfil" data-testid="profile-menu" sx={{ display: { xs: "none", md: "flex" }, flexDirection: "column", gap: 0.5 }}>
-              {menu.map((m) => (
-                <Box
-                  key={m.href}
-                  component="a"
-                  href={m.href}
-                  sx={{ display: "flex", justifyContent: "space-between", gap: 1, px: 1.5, py: 0.75, borderRadius: "8px", fontSize: 14, textDecoration: "none", color: "text.secondary", "&:hover": { bgcolor: "#171820", color: "text.primary" } }}
-                >
-                  <span>{m.label}</span>
-                  {m.count !== null && <span style={{ fontVariantNumeric: "tabular-nums" }}>{m.count}</span>}
-                </Box>
-              ))}
-            </Box>
-            <SideBox title="fãs" testId="profile-fans" more={fans > 0 ? { href: `/users/${id}/fas`, label: "ver fãs" } : undefined}>
-              <FanButton userId={id} initialFan={isFan} initialFans={fans} canFan={Boolean(viewer) && !isOwnProfile} />
-            </SideBox>
-            <SideBox title="avaliações">
-              <RatingBox userId={id} initialAverage={ratings.average} initialVotes={ratings.votes} initialMine={ratings.mine} canRate={friendOfViewer} />
-              {viewer && !isOwnProfile && !friendOfViewer && (
-                <Typography sx={{ fontSize: 12, color: "text.secondary" }}>Só amigos avaliam.</Typography>
-              )}
-            </SideBox>
-          </Box>
-
-          {/* Centro */}
-          <Box sx={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 3, order: { xs: 1, md: 0 } }}>
-            <ProfileHeader
-              userId={id}
-              displayName={target.displayName}
-              handle={target.handle}
-              avatarUrl={target.avatarUrl}
-              bannerUrl={target.bannerUrl}
-              bio={null}
-              postCount={postCount}
-              initialFollowerCount={followerCount}
-              followingCount={followingCount}
-              title={equippedTitles.get(id) ?? null}
-              isOwnProfile={isOwnProfile}
-              viewerLoggedIn={Boolean(viewer)}
-              initialFollowing={isFollowedByMe}
-              friendAction={
-                friendRel && friendRel !== "self" ? (
-                  <FriendButton userId={id} initial={friendRel} inline />
-                ) : !viewer ? (
-                  <LinkButton href={loginHref(`/users/${id}`)} variant="contained" data-testid="friend-add-login">
-                    Adicionar como amigo
-                  </LinkButton>
-                ) : null
-              }
-            />
-
-            {fortune && (
-              <Box data-testid="profile-fortune" sx={{ display: "flex", flexDirection: "column", gap: 0.5, px: 2.5, py: 2, borderRadius: "12px", border: 1, borderColor: "#5a2235", bgcolor: "#2c111b" }}>
-                <Typography lang="ja" sx={{ fontSize: 11, fontWeight: 700, color: "primary.main", letterSpacing: "0.04em" }}>
-                  今日の運勢 / SORTE DO DIA
-                </Typography>
-                <Typography sx={{ fontSize: 15 }}>{fortune}</Typography>
+      )}
+      <Box sx={{ position: "relative", zIndex: 1 }}>
+        <PageContainer wide>
+          <PageIntro
+            kicker="プロフィール / PERFIL"
+            title={isOwnProfile ? "Meu perfil" : target.displayName}
+            subtitle={isOwnProfile ? "Seu espaço no AnimeHub: recados, depoimentos, amigos e comunidades, à vista de quem tem conta. Sua organização pessoal continua privada." : target.handle ? `@${target.handle}` : "Perfil"}
+          />
+          <AppLink href="/" underline="hover" sx={{ fontSize: 14, color: "text.secondary", alignSelf: "flex-start" }}>
+            ← Feed
+          </AppLink>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", md: "220px minmax(0,1fr)", lg: "220px minmax(0,1fr) 280px" }, gap: 3, alignItems: "start" }}>
+            {/* Esquerda: menu, fãs e avaliações */}
+            {/* No celular o centro (cabeçalho, quem sou eu, recados) vem primeiro; o menu, os fãs e as avaliações depois (no tablet, lado a lado). */}
+            <Box component="aside" aria-label="Menu do perfil" sx={{ display: { xs: "flex", sm: "grid", md: "flex" }, gridTemplateColumns: { sm: "repeat(2, minmax(0,1fr))" }, alignItems: { sm: "start", md: "stretch" }, flexDirection: "column", gap: 2, order: { xs: 2, md: 0 } }}>
+              {/* O menu de âncoras só faz sentido com as colunas lado a lado (no celular tudo já está em sequência). */}
+              <Box component="nav" aria-label="Seções do perfil" data-testid="profile-menu" sx={{ display: { xs: "none", md: "flex" }, flexDirection: "column", gap: 0.5 }}>
+                {menu.map((m) => (
+                  <Box
+                    key={m.href}
+                    component="a"
+                    href={m.href}
+                    sx={{ display: "flex", justifyContent: "space-between", gap: 1, px: 1.5, py: 0.75, borderRadius: "8px", fontSize: 14, textDecoration: "none", color: "text.secondary", "&:hover": { bgcolor: "#171820", color: "text.primary" } }}
+                  >
+                    <span>{m.label}</span>
+                    {m.count !== null && <span style={{ fontVariantNumeric: "tabular-nums" }}>{m.count}</span>}
+                  </Box>
+                ))}
               </Box>
-            )}
+              <SideBox title="fãs" testId="profile-fans" more={fans > 0 ? { href: `/users/${id}/fas`, label: "ver fãs" } : undefined}>
+                <FanButton userId={id} initialFan={isFan} initialFans={fans} canFan={Boolean(viewer) && !isOwnProfile} />
+              </SideBox>
+              <SideBox title="avaliações">
+                <RatingBox userId={id} initialAverage={ratings.average} initialVotes={ratings.votes} initialMine={ratings.mine} canRate={friendOfViewer} />
+                {viewer && !isOwnProfile && !friendOfViewer && (
+                  <Typography sx={{ fontSize: 12, color: "text.secondary" }}>Só amigos avaliam.</Typography>
+                )}
+              </SideBox>
+            </Box>
 
-            <ProfileSection id="quem-sou-eu" title="quem sou eu" testId="profile-about" more={isOwnProfile ? { href: "/perfil/editar", label: "editar" } : undefined}>
-              <Typography sx={{ fontSize: 16, whiteSpace: "pre-wrap", overflowWrap: "anywhere", color: target.bio ? "text.primary" : "text.secondary" }}>
-                {target.bio ?? (isOwnProfile ? "Conte um pouco sobre você em Editar perfil." : `${firstName} ainda não escreveu o quem sou eu.`)}
-              </Typography>
-              <Box component="dl" sx={{ m: 0 }}>
-                {target.favoriteAnime && <AboutRow label="Anime favorito">{target.favoriteAnime}</AboutRow>}
-                {target.favoriteCharacter && <AboutRow label="Personagem favorito">{target.favoriteCharacter}</AboutRow>}
-                {target.favoriteGenres.length > 0 && (
-                  <AboutRow label="Gêneros favoritos">
-                    <Box component="span" sx={{ display: "inline-flex", gap: 0.75, flexWrap: "wrap" }}>
-                      {target.favoriteGenres.map((g) => (
-                        <Chip key={g} label={g} size="small" component="span" />
+            {/* Centro */}
+            <Box sx={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 3, order: { xs: 1, md: 0 } }}>
+              <ProfileHeader
+                userId={id}
+                displayName={target.displayName}
+                handle={target.handle}
+                avatarUrl={target.avatarUrl}
+                bannerUrl={target.bannerUrl}
+                bio={null}
+                postCount={postCount}
+                initialFollowerCount={followerCount}
+                followingCount={followingCount}
+                title={equippedTitles.get(id) ?? null}
+                isOwnProfile={isOwnProfile}
+                viewerLoggedIn={Boolean(viewer)}
+                initialFollowing={isFollowedByMe}
+                friendAction={
+                  friendRel && friendRel !== "self" ? (
+                    <FriendButton userId={id} initial={friendRel} inline />
+                  ) : !viewer ? (
+                    <LinkButton href={loginHref(`/users/${id}`)} variant="contained" data-testid="friend-add-login">
+                      Adicionar como amigo
+                    </LinkButton>
+                  ) : null
+                }
+              />
+
+              {fortune && (
+                <Box data-testid="profile-fortune" sx={{ display: "flex", flexDirection: "column", gap: 0.5, px: 2.5, py: 2, borderRadius: "12px", border: 1, borderColor: "#5a2235", bgcolor: "#2c111b" }}>
+                  <Typography lang="ja" sx={{ fontSize: 11, fontWeight: 700, color: "primary.main", letterSpacing: "0.04em" }}>
+                    今日の運勢 / SORTE DO DIA
+                  </Typography>
+                  <Typography sx={{ fontSize: 15 }}>{fortune}</Typography>
+                </Box>
+              )}
+
+              <ProfileSection id="quem-sou-eu" title="quem sou eu" testId="profile-about" edit={isOwnProfile ? { href: "/perfil/editar", label: "Editar quem sou eu" } : undefined}>
+                <Typography sx={{ fontSize: 16, whiteSpace: "pre-wrap", overflowWrap: "anywhere", color: target.bio ? "text.primary" : "text.secondary" }}>
+                  {target.bio ?? (isOwnProfile ? "Conte um pouco sobre você em Editar perfil." : `${firstName} ainda não escreveu o quem sou eu.`)}
+                </Typography>
+                <Box component="dl" sx={{ m: 0 }}>
+                  {target.favoriteAnime && <AboutRow label="Anime favorito">{target.favoriteAnime}</AboutRow>}
+                  {target.favoriteCharacter && <AboutRow label="Personagem favorito">{target.favoriteCharacter}</AboutRow>}
+                  {target.favoriteGenres.length > 0 && (
+                    <AboutRow label="Gêneros favoritos">
+                      <Box component="span" sx={{ display: "inline-flex", gap: 0.75, flexWrap: "wrap" }}>
+                        {target.favoriteGenres.map((g) => (
+                          <Chip key={g} label={g} size="small" component="span" />
+                        ))}
+                      </Box>
+                    </AboutRow>
+                  )}
+                  {target.birthDay && target.birthMonth && (isOwnProfile || friendOfViewer) && (
+                    <AboutRow label="Aniversário">
+                      {formatBirthday(target.birthDay, target.birthMonth)}
+                      {isOwnProfile && (
+                        <Typography component="span" sx={{ fontSize: 12, color: "text.secondary" }}>
+                          {" "}
+                          · só amigos veem
+                        </Typography>
+                      )}
+                    </AboutRow>
+                  )}
+                  <AboutRow label="No Anime Hub desde">{target.createdAt.toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: resolveTimeZone(viewer?.timeZone) })}</AboutRow>
+                </Box>
+              </ProfileSection>
+
+              {albums && (
+                <ProfileSection id="albuns" title="animes" count={animeCount ?? undefined} testId="profile-albums">
+                  <ProfileAnimesSwitch
+                    userId={id}
+                    isOwnProfile={isOwnProfile}
+                    albumCount={albumCards.length}
+                    animeCount={animeCount}
+                    albums={<AlbumGrid userId={id} albums={albumCards} newAlbum={isOwnProfile ? <NewAlbumButton userId={id} /> : undefined} />}
+                  />
+                </ProfileSection>
+              )}
+
+              <ProfileSection id="recados" title="recados" count={scraps.total} testId="profile-scraps" more={scraps.total > SCRAPS_ON_PROFILE ? { href: `/users/${id}/recados`, label: "ver todos" } : undefined}>
+                {viewer ? (
+                  <ScrapForm userId={id} />
+                ) : (
+                  <Typography sx={{ fontSize: 14 }}>
+                    <AppLink href={loginHref(`/users/${id}`)}>Entre</AppLink> para deixar um recado.
+                  </Typography>
+                )}
+                <ScrapList scraps={scraps.rows} viewerId={viewerId} canModerate={canModerate} empty={isOwnProfile ? "Nenhum recado ainda." : `Nenhum recado ainda. Seja a primeira pessoa a escrever para ${firstName}.`} />
+              </ProfileSection>
+
+              <ProfileSection id="depoimentos" title="depoimentos" count={approved.length} testId="profile-testimonials">
+                {isOwnProfile && pending.length > 0 && (
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1, p: 2, borderRadius: "12px", bgcolor: "#171820" }} data-testid="testimonials-pending">
+                    <Typography sx={{ fontSize: 13, fontWeight: 700 }}>Esperando a sua aprovação ({pending.length})</Typography>
+                    <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none" }}>
+                      {pending.map((t) => (
+                        <NoteItem key={t.id} author={t.author} when={t.updatedAt} body={t.body} isSpoiler={t.isSpoiler} testId={`testimonial-${t.id}`} actions={<TestimonialDecision id={t.id} />} />
                       ))}
                     </Box>
-                  </AboutRow>
-                )}
-                {target.birthDay && target.birthMonth && (isOwnProfile || friendOfViewer) && (
-                  <AboutRow label="Aniversário">
-                    {formatBirthday(target.birthDay, target.birthMonth)}
-                    {isOwnProfile && (
-                      <Typography component="span" sx={{ fontSize: 12, color: "text.secondary" }}>
-                        {" "}
-                        · só amigos veem
-                      </Typography>
-                    )}
-                  </AboutRow>
-                )}
-                <AboutRow label="No Anime Hub desde">{target.createdAt.toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: resolveTimeZone(viewer?.timeZone) })}</AboutRow>
-              </Box>
-            </ProfileSection>
-
-            {albums && (
-              <ProfileSection id="albuns" title="animes" count={animeCount ?? undefined} testId="profile-albums">
-                <ProfileAnimesSwitch
-                  userId={id}
-                  isOwnProfile={isOwnProfile}
-                  albumCount={albumCards.length}
-                  animeCount={animeCount}
-                  albums={
-                    <>
-                      {isOwnProfile && (
-                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, flexWrap: "wrap" }}>
-                          <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Os automáticos seguem o andamento de cada anime; monte os seus com obras da sua lista.</Typography>
-                          <NewAlbumButton userId={id} />
-                        </Box>
-                      )}
-                      <AlbumGrid userId={id} albums={albumCards} />
-                    </>
-                  }
-                />
-              </ProfileSection>
-            )}
-
-            <ProfileSection id="recados" title="recados" count={scraps.total} testId="profile-scraps" more={scraps.total > SCRAPS_ON_PROFILE ? { href: `/users/${id}/recados`, label: "ver todos" } : undefined}>
-              {viewer ? (
-                <ScrapForm userId={id} />
-              ) : (
-                <Typography sx={{ fontSize: 14 }}>
-                  <AppLink href={loginHref(`/users/${id}`)}>Entre</AppLink> para deixar um recado.
-                </Typography>
-              )}
-              <ScrapList scraps={scraps.rows} viewerId={viewerId} canModerate={canModerate} empty={isOwnProfile ? "Nenhum recado ainda." : `Nenhum recado ainda. Seja a primeira pessoa a escrever para ${firstName}.`} />
-            </ProfileSection>
-
-            <ProfileSection id="depoimentos" title="depoimentos" count={approved.length} testId="profile-testimonials">
-              {isOwnProfile && pending.length > 0 && (
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, p: 2, borderRadius: "12px", bgcolor: "#171820" }} data-testid="testimonials-pending">
-                  <Typography sx={{ fontSize: 13, fontWeight: 700 }}>Esperando a sua aprovação ({pending.length})</Typography>
-                  <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none" }}>
-                    {pending.map((t) => (
-                      <NoteItem key={t.id} author={t.author} when={t.updatedAt} body={t.body} isSpoiler={t.isSpoiler} testId={`testimonial-${t.id}`} actions={<TestimonialDecision id={t.id} />} />
-                    ))}
                   </Box>
-                </Box>
-              )}
-              {friendOfViewer && <TestimonialForm userId={id} displayName={firstName} initial={myTestimonial?.body ?? ""} initialSpoiler={myTestimonial?.isSpoiler ?? false} status={myTestimonial?.status ?? null} />}
-              {viewer && !isOwnProfile && !friendOfViewer && (
-                <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Só amigos escrevem depoimentos.</Typography>
-              )}
-              {approved.length === 0 ? (
-                <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Nenhum depoimento ainda.</Typography>
-              ) : (
-                <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none" }}>
-                  {approved.map((t) => (
-                    <NoteItem
-                      key={t.id}
-                      author={t.author}
-                      when={t.decidedAt ?? t.updatedAt}
-                      body={t.body}
-                      isSpoiler={t.isSpoiler}
-                      testId={`testimonial-${t.id}`}
-                      actions={
-                        viewerId ? (
-                          <>
-                            {viewerId !== t.authorId && <ProfileReportButton kind="testimonial" id={t.id} />}
-                            {(viewerId === id || viewerId === t.authorId) && <DeleteButton url={`/api/testimonials/${t.id}`} testId={`testimonial-delete-${t.id}`} />}
-                          </>
-                        ) : undefined
-                      }
-                    />
-                  ))}
-                </Box>
-              )}
-            </ProfileSection>
-
-            <ProfileSection id="publicacoes" title="publicações" count={postCount} testId="profile-posts">
-              <ProfilePostTabs userId={id} isOwnProfile={isOwnProfile} />
-            </ProfileSection>
-          </Box>
-
-          {/* Direita: amigos, comunidades e conquistas */}
-          <Box component="aside" aria-label="Amigos, comunidades e conquistas" sx={{ display: { xs: "flex", sm: "grid", lg: "flex" }, gridTemplateColumns: { sm: "repeat(2, minmax(0,1fr))" }, alignItems: { sm: "start", lg: "stretch" }, flexDirection: "column", gap: 2, gridColumn: { md: "1 / -1", lg: "auto" }, order: { xs: 3, md: 0 } }}>
-            {isOwnProfile && (
-              <SideBox title="só você vê">
-                <Typography sx={{ fontSize: 13 }}>Seus animes e álbuns podem ser ocultados em Configurações. Datas e adiados continuam só seus.</Typography>
-                <Box>
-                  <LinkButton href="/minha-lista" size="small" sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}>
-                    🔒 Abrir Minha Lista privada
-                  </LinkButton>
-                </Box>
-              </SideBox>
-            )}
-            <SideBox id="amigos" title="amigos" count={friends.total} testId="profile-friends" more={isOwnProfile ? { href: "/amigos", label: "gerenciar" } : friends.total > friends.rows.length ? { href: `/users/${id}/amigos`, label: "ver todos" } : undefined}>
-              {isOwnProfile && pendingRequests > 0 && (
-                <AppLink href="/amigos" underline="hover" sx={{ fontSize: 13, fontWeight: 700 }} data-testid="profile-friend-requests">
-                  {pendingRequests} {pendingRequests === 1 ? "pedido de amizade esperando" : "pedidos de amizade esperando"} →
-                </AppLink>
-              )}
-              {friends.rows.length === 0 && peopleYouMayKnow.length > 0 ? (
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }} data-testid="profile-friend-suggestions">
-                  <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Ainda nenhum. Talvez você conheça:</Typography>
-                  <PeopleGrid people={peopleYouMayKnow} />
-                  <AppLink href="/amigos#sugestoes" underline="hover" sx={{ fontSize: 13 }}>
-                    ver sugestões
-                  </AppLink>
-                </Box>
-              ) : friends.rows.length === 0 ? (
-                <Typography sx={{ fontSize: 13, color: "text.secondary" }}>{isOwnProfile ? "Ainda nenhum. Abra um perfil e use “Adicionar como amigo”." : "Ainda nenhum amigo."}</Typography>
-              ) : (
-                <PeopleGrid people={friends.rows} />
-              )}
-            </SideBox>
-            <SideBox id="comunidades" title="comunidades" count={communities.total} testId="profile-communities" more={isOwnProfile ? { href: "/comunidades", label: "ver todas" } : undefined}>
-              {communities.rows.length === 0 ? (
-                <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
-                  {isOwnProfile ? (
-                    <>
-                      Você ainda não participa de comunidades. <AppLink href="/comunidades">Encontre a do seu anime</AppLink>.
-                    </>
-                  ) : (
-                    "Ainda não participa de comunidades."
-                  )}
-                </Typography>
-              ) : (
-                <CommunityGrid communities={communities.rows} />
-              )}
-            </SideBox>
-            {isOwnProfile && (
-              <SideBox id="visitas" title="visitas recentes" count={visitors?.total} testId="profile-visitors" more={visitors && visitors.total > visitors.rows.length ? { href: `/users/${id}/visitas`, label: "ver todas" } : undefined}>
-                {!visitors ? (
-                  <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
-                    Você desligou o registro de visitas: ninguém vê as suas, e você também não vê quem visitou o seu perfil. <AppLink href="/configuracoes">Configurações</AppLink>
-                  </Typography>
-                ) : visitors.rows.length === 0 ? (
-                  <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Ninguém visitou seu perfil nos últimos 90 dias.</Typography>
+                )}
+                {friendOfViewer && <TestimonialForm userId={id} displayName={firstName} initial={myTestimonial?.body ?? ""} initialSpoiler={myTestimonial?.isSpoiler ?? false} status={myTestimonial?.status ?? null} />}
+                {viewer && !isOwnProfile && !friendOfViewer && (
+                  <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Só amigos escrevem depoimentos.</Typography>
+                )}
+                {approved.length === 0 ? (
+                  <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Nenhum depoimento ainda.</Typography>
                 ) : (
-                  <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: 1 }}>
-                    {visitors.rows.map((v) => (
-                      <Box component="li" key={v.id} data-testid={`visitor-${v.id}`}>
-                        <AppLink href={`/users/${v.id}`} underline="hover" sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5, color: "text.primary", fontSize: 11, textAlign: "center", overflowWrap: "anywhere" }}>
-                          <UserAvatar id={v.id} displayName={v.displayName} avatarUrl={v.avatarUrl} size={48} />
-                          {v.displayName}
-                          <Typography component="span" sx={{ fontSize: 10, color: "text.secondary" }}>
-                            {formatRelativeTime(v.visitedAt.toISOString())}
-                          </Typography>
-                        </AppLink>
-                      </Box>
+                  <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none" }}>
+                    {approved.map((t) => (
+                      <NoteItem
+                        key={t.id}
+                        author={t.author}
+                        when={t.decidedAt ?? t.updatedAt}
+                        body={t.body}
+                        isSpoiler={t.isSpoiler}
+                        testId={`testimonial-${t.id}`}
+                        actions={
+                          viewerId ? (
+                            <>
+                              {viewerId !== t.authorId && <ProfileReportButton kind="testimonial" id={t.id} />}
+                              {(viewerId === id || viewerId === t.authorId) && <DeleteButton url={`/api/testimonials/${t.id}`} testId={`testimonial-delete-${t.id}`} />}
+                            </>
+                          ) : undefined
+                        }
+                      />
+                    ))}
+                  </Box>
+                )}
+              </ProfileSection>
+
+              <ProfileSection id="publicacoes" title="publicações" count={postCount} testId="profile-posts">
+                <ProfilePostTabs userId={id} isOwnProfile={isOwnProfile} />
+              </ProfileSection>
+            </Box>
+
+            {/* Direita: amigos, comunidades e conquistas */}
+            <Box component="aside" aria-label="Amigos, comunidades e conquistas" sx={{ display: { xs: "flex", sm: "grid", lg: "flex" }, gridTemplateColumns: { sm: "repeat(2, minmax(0,1fr))" }, alignItems: { sm: "start", lg: "stretch" }, flexDirection: "column", gap: 2, gridColumn: { md: "1 / -1", lg: "auto" }, order: { xs: 3, md: 0 } }}>
+              {isOwnProfile && (
+                <SideBox title="só você vê">
+                  <Typography sx={{ fontSize: 13 }}>Seus animes e álbuns podem ser ocultados em Configurações. Datas e adiados continuam só seus.</Typography>
+                  <Box>
+                    <LinkButton href="/minha-lista" size="small" sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}>
+                      🔒 Abrir Minha Lista privada
+                    </LinkButton>
+                  </Box>
+                </SideBox>
+              )}
+              <SideBox id="amigos" title="amigos" count={friends.total} testId="profile-friends" more={isOwnProfile ? { href: "/amigos", label: "gerenciar" } : friends.total > friends.rows.length ? { href: `/users/${id}/amigos`, label: "ver todos" } : undefined}>
+                {isOwnProfile && pendingRequests > 0 && (
+                  <AppLink href="/amigos" underline="hover" sx={{ fontSize: 13, fontWeight: 700 }} data-testid="profile-friend-requests">
+                    {pendingRequests} {pendingRequests === 1 ? "pedido de amizade esperando" : "pedidos de amizade esperando"} →
+                  </AppLink>
+                )}
+                {friends.rows.length === 0 && peopleYouMayKnow.length > 0 ? (
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }} data-testid="profile-friend-suggestions">
+                    <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Ainda nenhum. Talvez você conheça:</Typography>
+                    <PeopleGrid people={peopleYouMayKnow} />
+                    <AppLink href="/amigos#sugestoes" underline="hover" sx={{ fontSize: 13 }}>
+                      ver sugestões
+                    </AppLink>
+                  </Box>
+                ) : friends.rows.length === 0 ? (
+                  <Typography sx={{ fontSize: 13, color: "text.secondary" }}>{isOwnProfile ? "Ainda nenhum. Abra um perfil e use “Adicionar como amigo”." : "Ainda nenhum amigo."}</Typography>
+                ) : (
+                  <PeopleGrid people={friends.rows} />
+                )}
+              </SideBox>
+              <SideBox id="comunidades" title="comunidades" count={communities.total} testId="profile-communities" more={isOwnProfile ? { href: "/comunidades", label: "ver todas" } : undefined}>
+                {communities.rows.length === 0 ? (
+                  <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
+                    {isOwnProfile ? (
+                      <>
+                        Você ainda não participa de comunidades. <AppLink href="/comunidades">Encontre a do seu anime</AppLink>.
+                      </>
+                    ) : (
+                      "Ainda não participa de comunidades."
+                    )}
+                  </Typography>
+                ) : (
+                  <CommunityGrid communities={communities.rows} />
+                )}
+              </SideBox>
+              {isOwnProfile && (
+                <SideBox id="visitas" title="visitas recentes" count={visitors?.total} testId="profile-visitors" more={visitors && visitors.total > visitors.rows.length ? { href: `/users/${id}/visitas`, label: "ver todas" } : undefined}>
+                  {!visitors ? (
+                    <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
+                      Você desligou o registro de visitas: ninguém vê as suas, e você também não vê quem visitou o seu perfil. <AppLink href="/configuracoes">Configurações</AppLink>
+                    </Typography>
+                  ) : visitors.rows.length === 0 ? (
+                    <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Ninguém visitou seu perfil nos últimos 90 dias.</Typography>
+                  ) : (
+                    <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: 1 }}>
+                      {visitors.rows.map((v) => (
+                        <Box component="li" key={v.id} data-testid={`visitor-${v.id}`}>
+                          <AppLink href={`/users/${v.id}`} underline="hover" sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5, color: "text.primary", fontSize: 11, textAlign: "center", overflowWrap: "anywhere" }}>
+                            <UserAvatar id={v.id} displayName={v.displayName} avatarUrl={v.avatarUrl} size={48} />
+                            {v.displayName}
+                            <Typography component="span" sx={{ fontSize: 10, color: "text.secondary" }}>
+                              {formatRelativeTime(v.visitedAt.toISOString())}
+                            </Typography>
+                          </AppLink>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                </SideBox>
+              )}
+              <SideBox id="conquistas" title="conquistas" count={titles.length} testId="profile-achievements" more={isOwnProfile ? { href: "/conquistas", label: "minhas conquistas" } : undefined}>
+                {titles.length === 0 ? (
+                  <Typography sx={{ fontSize: 13, color: "text.secondary" }}>{isOwnProfile ? "Acerte 10 de 10 num quiz para ganhar um título." : "Nenhum título ainda."}</Typography>
+                ) : (
+                  <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
+                    {titles.map((t) => (
+                      <Chip key={t.id} label={t.quiz.titleReward} size="small" variant="outlined" color="primary" />
                     ))}
                   </Box>
                 )}
               </SideBox>
-            )}
-            <SideBox id="conquistas" title="conquistas" count={titles.length} testId="profile-achievements" more={isOwnProfile ? { href: "/conquistas", label: "minhas conquistas" } : undefined}>
-              {titles.length === 0 ? (
-                <Typography sx={{ fontSize: 13, color: "text.secondary" }}>{isOwnProfile ? "Acerte 10 de 10 num quiz para ganhar um título." : "Nenhum título ainda."}</Typography>
-              ) : (
-                <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
-                  {titles.map((t) => (
-                    <Chip key={t.id} label={t.quiz.titleReward} size="small" variant="outlined" color="primary" />
-                  ))}
-                </Box>
-              )}
-            </SideBox>
+            </Box>
           </Box>
-        </Box>
-      </PageContainer>
+        </PageContainer>
+      </Box>
     </Box>
   );
 }

@@ -13,7 +13,7 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Editar Perfil · Anime Hub" };
 
-/** Editar Perfil (estilo Crunchyroll): banner, avatar de anime, nome, identificador e bio. Exige conta. */
+/** Editar Perfil (estilo Crunchyroll): banner, avatar e plano de fundo de anime, nome e bio; o @ aparece fixo. Exige conta. */
 export default async function EditProfilePage() {
   const user = await getCurrentUser();
   if (!user) redirect(loginHref("/perfil/editar"));
@@ -26,7 +26,7 @@ export default async function EditProfilePage() {
       <Header />
       <PageContainer>
         <ProfileEditor
-          me={{ id: user.id, displayName: user.displayName, handle: user.handle, bio: user.bio, avatarUrl: images.avatarUrl, bannerUrl: images.bannerUrl, ...favorites }}
+          me={{ id: user.id, displayName: user.displayName, handle: user.handle, bio: user.bio, avatarUrl: images.avatarUrl, bannerUrl: images.bannerUrl, backgroundUrl: images.backgroundUrl, ...favorites }}
           genreOptions={genreOptions}
         />
       </PageContainer>

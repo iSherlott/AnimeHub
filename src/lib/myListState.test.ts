@@ -20,16 +20,9 @@ describe("myListStateOf", () => {
     });
   });
 
-  it("marks delayed when the source still lists a long-past episode as next", () => {
-    expect(myListStateOf({ upcoming: null, catalog: catalog({ nextEpisodeNumber: 6, nextEpisodeAt: hours(-5) }), now: NOW })).toEqual({
-      kind: "delayed",
-      at: hours(-5).toISOString(),
-      episode: 6,
-    });
-  });
-
-  it("keeps the original slot out of 'delayed' while inside the grace window", () => {
-    expect(myListStateOf({ upcoming: null, catalog: catalog({ nextEpisodeNumber: 6, nextEpisodeAt: hours(-1) }), now: NOW })).toEqual({ kind: "undated" });
+  it("no longer marks 'delayed': a long-past unconfirmed episode falls back to the other states (28/10)", () => {
+    expect(myListStateOf({ upcoming: null, catalog: catalog({ nextEpisodeNumber: 6, nextEpisodeAt: hours(-5) }), now: NOW })).toEqual({ kind: "undated" });
+    expect(myListStateOf({ upcoming: null, catalog: catalog({ status: "HIATUS", nextEpisodeNumber: 6, nextEpisodeAt: hours(-5) }), now: NOW })).toEqual({ kind: "postponed" });
   });
 
   it("reports an exact premiere day without inventing a time", () => {

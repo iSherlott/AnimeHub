@@ -103,7 +103,7 @@ export function MatchActions({
           <Typography component="label" htmlFor={searchId} sx={{ fontSize: 12, fontWeight: 600, color: "text.secondary" }}>
             Buscar produção no catálogo
           </Typography>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, px: 2, py: 1.5, borderRadius: "10px", border: 1, borderColor: "divider" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, px: 2, py: 1.5, borderRadius: "10px", border: 1, borderColor: "divider", "&:focus-within": { borderColor: "text.secondary" } }}>
             <InputBase id={searchId} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Título ou AniList id…" fullWidth autoFocus sx={{ fontSize: 14 }} />
             <SearchIcon sx={{ fontSize: 18 }} />
           </Box>

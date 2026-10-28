@@ -47,6 +47,8 @@ model User {
   synopsisLanguage String?
   /// Banner do perfil (imagem de uma obra que a pessoa acompanha).
   bannerUrl    String?
+  /// Plano de fundo do perfil: como o avatar e o banner, uma imagem (banner ou capa) de uma obra que a pessoa acompanha.
+  backgroundUrl String?
   /// Título (UserTitle) equipado no perfil — um por vez, ou nenhum.
   equippedTitleId String?
   /// A lista de animes acompanhados aparece no perfil para quem o visita (padrão: sim; dá para ocultar em Configurações).
