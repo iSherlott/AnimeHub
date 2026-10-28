@@ -29,7 +29,7 @@ const outlinedButton = (enabled: boolean) => ({
 /**
  * "Seleção de Avatar" (e de banner): as imagens das obras que a pessoa acompanha, uma fileira por obra,
  * no estilo da Crunchyroll. Escolher e Salvar grava na hora (PATCH /api/users/me/avatar); no avatar, a pessoa também
- * pode voltar às iniciais. Não há envio de foto própria: avatar e capa são sempre imagens dos animes acompanhados.
+ * pode voltar à foto padrão. Não há envio de foto própria: avatar e capa são sempre imagens dos animes acompanhados.
  */
 export function AvatarPickerDialog({
   open,
@@ -210,7 +210,7 @@ export function AvatarPickerDialog({
         <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap", pt: 1, borderTop: 1, borderColor: "#3a3a3a" }}>
           {current && (
             <ButtonBase onClick={() => void remove()} disabled={busy} sx={{ color: "#c0392b", fontSize: 13, fontWeight: 700, textTransform: "uppercase" }} data-testid="avatar-remove">
-              {isAvatar ? "Remover foto (usar iniciais)" : "Remover banner"}
+              {isAvatar ? "Remover foto (usar a padrão)" : "Remover banner"}
             </ButtonBase>
           )}
         </Box>

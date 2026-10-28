@@ -76,6 +76,10 @@ test.describe.serial("Álbuns e avatar só de anime", () => {
     await expect(page).toHaveURL(new RegExp(`/users/${userId}/albuns/[a-z0-9]+$`));
     albumId = page.url().split("/").pop() as string;
     await expect(page.getByRole("heading", { name: "Para maratonar 130" })).toBeVisible();
+    // Vazio, o álbum mostra a capa padrão (e não quadrados escuros que formavam uma cruz).
+    await page.goto(`/users/${userId}`);
+    await expect(page.getByTestId(`album-${albumId}`).getByTestId("album-cover-default")).toBeVisible();
+    await page.goto(`/users/${userId}/albuns/${albumId}`);
 
     await page.getByTestId("album-search").fill("round130 dois");
     await page.getByTestId(`album-add-${BASE + 2}`).click();

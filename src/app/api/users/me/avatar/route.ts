@@ -13,7 +13,7 @@ export async function POST() {
   return NextResponse.json({ error: "O envio de foto própria foi desativado: escolha uma imagem de um anime que você acompanha." }, { status: 410 });
 }
 
-/** Remove o avatar (volta pras iniciais) — sem isso, quem envia o
+/** Remove o avatar (volta para a foto padrão) — sem isso, quem envia o
  * arquivo errado fica sem saída nenhuma pra reverter. */
 export async function DELETE() {
   const { user, response } = await requireUser();

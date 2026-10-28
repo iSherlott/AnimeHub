@@ -222,8 +222,11 @@ test.describe.serial("Rolagem infinita", () => {
       const tiles = list.locator('li[data-testid^="profile-anime-996"]');
       await expect(list.getByTestId("profile-anime-count")).toContainText("70 de");
       await expect(tiles).toHaveCount(48);
-      await scrollToEnd(page);
-      await expect(tiles).toHaveCount(70);
+      // A lista fica no meio do perfil (há recados e publicações depois): rola até o fim da lista, não da página.
+      await expect(async () => {
+        await list.getByTestId("profile-anime-sentinel").scrollIntoViewIfNeeded({ timeout: 1_000 }).catch(() => undefined);
+        await expect(tiles).toHaveCount(70, { timeout: 2_000 });
+      }).toPass({ timeout: 20_000 });
     });
   });
 

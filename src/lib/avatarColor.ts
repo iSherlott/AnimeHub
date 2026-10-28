@@ -4,8 +4,7 @@
  * avatarUrl` ganhou upload real no Epic 28; até lá, nunca era escrito
  * nem lido em lugar nenhum). Extraído de PostCard.tsx (onde nasceu,
  * Epic 22/25) — reaproveitado também pelo avatar do compositor e pela
- * linha "Posts em alta" da lateral do Feed (Epic 26), e por
- * `UserAvatar.tsx` (Epic 28) como fallback de iniciais.
+ * linha "Posts em alta" da lateral do Feed (Epic 26).
  */
 export const AVATAR_COLORS = ["#7C4DFF", "#00BFA5", "#FF6D00", "#2979FF", "#D500F9", "#FFAB00", "#F50057"];
 
@@ -23,13 +22,6 @@ export function avatarColor(authorId: string): string {
  * bloco-capa de texto quando o post não tem imagem (Epic 25). */
 export function coverColor(anilistId: number): string {
   return AVATAR_COLORS[hashString(String(anilistId)) % AVATAR_COLORS.length];
-}
-
-/** Até 2 iniciais (primeira letra das duas primeiras palavras), como no Figma ("Lia Sato" → "LS", "Akira" → "A"). */
-export function initials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const letters = words.slice(0, 2).map((w) => [...w][0] ?? "");
-  return letters.join("").toUpperCase() || "?";
 }
 
 /** Luminância relativa WCAG de uma cor #rrggbb. */

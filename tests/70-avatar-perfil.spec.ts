@@ -86,7 +86,7 @@ test.describe.serial("Avatar de anime e Editar Perfil", () => {
     expect((await prisma.user.findUniqueOrThrow({ where: { id: userId } })).bannerUrl).toBeNull();
   });
 
-  test("Editar Perfil salva nome e bio; remover a foto volta às iniciais", async ({ page }) => {
+  test("Editar Perfil salva nome e bio; remover a foto volta à foto padrão", async ({ page }) => {
     const original = (await prisma.user.findUniqueOrThrow({ where: { id: userId } })).displayName;
     await page.goto("/perfil/editar");
     await page.getByLabel("Nome do Perfil").fill("Perfil Round70");
@@ -100,6 +100,8 @@ test.describe.serial("Avatar de anime e Editar Perfil", () => {
     await page.getByTestId("edit-avatar").click();
     await page.getByTestId("avatar-remove").click();
     await expect.poll(async () => (await prisma.user.findUniqueOrThrow({ where: { id: userId } })).avatarUrl).toBeNull();
+    await page.goto(`/users/${userId}`);
+    await expect(page.locator('img[src="/avatar-padrao.svg"]').first()).toBeVisible();
     await prisma.user.update({ where: { id: userId }, data: { displayName: original, bio: null } });
   });
 

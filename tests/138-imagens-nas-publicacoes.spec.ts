@@ -56,7 +56,8 @@ test.describe.serial("Imagens nas publicações", () => {
     expect(saved.imageUrls).toHaveLength(1);
     expect(saved.imageUrls[0]).toMatch(/\/api\/uploads\/posts\/\d{4}-\d{2}\/[0-9a-f-]+\.webp$/);
     const card = page.getByTestId(`post-card-${saved.id}`);
-    await expect(card.locator("img").first()).toHaveAttribute("src", saved.imageUrls[0]);
+    // A primeira imagem do cartão é a foto de quem publicou; a anexada vem pelo endereço salvo.
+    await expect(card.locator(`img[src="${saved.imageUrls[0]}"]`)).toBeVisible();
     // A imagem foi guardada de verdade e é servida.
     expect((await page.request.get(saved.imageUrls[0])).status()).toBe(200);
   });

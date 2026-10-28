@@ -235,4 +235,11 @@ encaixassem no resto do perfil e que a lista de animes ficasse junto dos álbuns
   "Discussões iniciadas". `?aba=discussoes` abre a segunda.
 - **"Minhas conquistas"** deixou de ser uma aba que levava para fora do perfil. O caminho agora é o link "minhas
   conquistas" da caixa de conquistas.
-- **Testes.** Os specs 69, 72, 77, 121 e 130 foram ajustados.
+- **Testes.** Os specs 69, 70, 72, 77, 96, 121 e 130 foram ajustados. No 96, a lista do perfil fica no meio da
+  página, e o teste rola até o fim da lista, não da página.
+- **Capa do álbum.** Os quadrados escuros de um álbum sem capas formavam uma cruz que parecia um botão de fechar. Agora:
+  - sem capa, o álbum mostra a capa padrão (`public/album-padrao.svg`, três capas empilhadas com um sol nascente);
+  - com 1 a 3 capas, mostra a primeira inteira;
+  - com 4 ou mais, mostra o mosaico 2×2.
+- **Foto de perfil padrão.** Quem não escolheu avatar mostra a foto padrão (`public/avatar-padrao.svg`, uma silhueta
+  com o mesmo sol), no lugar das iniciais, em todo o site. "Remover foto" volta para ela.

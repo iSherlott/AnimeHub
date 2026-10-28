@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Foto de perfil padrão">
+  <defs>
+    <linearGradient id="fundo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22202d"/>
+      <stop offset="1" stop-color="#131420"/>
+    </linearGradient>
+    <clipPath id="circulo"><circle cx="60" cy="60" r="60"/></clipPath>
+  </defs>
+  <g clip-path="url(#circulo)">
+    <rect width="120" height="120" fill="url(#fundo)"/>
+    <!-- sol nascente atrás da pessoa, o mesmo motivo da capa padrão dos álbuns -->
+    <circle cx="60" cy="60" r="36" fill="#ff164f" opacity="0.4"/>
+    <!-- ombros -->
+    <path d="M14 120 C16 94 36 84 60 84 C84 84 104 94 106 120 Z" fill="#3a3d50"/>
+    <!-- cabeça com franja lisa -->
+    <circle cx="60" cy="53" r="20" fill="#5a5e78"/>
+    <path d="M39 55 C37 39 47 30 60 30 C74 30 83 39 81 55 C77 46 68 41 56 43 C49 44 43 48 39 55 Z" fill="#2a2c3a"/>
+  </g>
+</svg>

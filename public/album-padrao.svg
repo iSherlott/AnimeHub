@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Álbum sem animes">
+  <defs>
+    <linearGradient id="fundo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b1c26"/>
+      <stop offset="1" stop-color="#101116"/>
+    </linearGradient>
+    <linearGradient id="ceu" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a1420"/>
+      <stop offset="1" stop-color="#1c1e29"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" fill="url(#fundo)"/>
+  <!-- Três capas empilhadas, como uma coletânea -->
+  <rect x="64" y="44" width="76" height="108" rx="8" fill="#22242f" transform="rotate(-11 102 98)"/>
+  <rect x="64" y="44" width="76" height="108" rx="8" fill="#292b38" transform="rotate(7 102 98)"/>
+  <g>
+    <rect x="62" y="46" width="76" height="108" rx="8" fill="url(#ceu)" stroke="#3a3d50" stroke-width="1.5"/>
+    <!-- sol nascente sobre o horizonte -->
+    <circle cx="100" cy="104" r="17" fill="#ff164f"/>
+    <path d="M62 104 H138 V146 a8 8 0 0 1 -8 8 H70 a8 8 0 0 1 -8 -8 Z" fill="#1c1e29"/>
+    <rect x="72" y="122" width="56" height="5" rx="2.5" fill="#3a3d50"/>
+    <rect x="72" y="133" width="34" height="5" rx="2.5" fill="#ff164f" opacity="0.85"/>
+  </g>
+</svg>

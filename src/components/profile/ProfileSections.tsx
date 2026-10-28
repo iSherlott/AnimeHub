@@ -144,13 +144,28 @@ export function CommunityGrid({ communities }: { communities: CommunityLink[] })
   );
 }
 
-/** Capa do álbum: as primeiras capas em mosaico 2×2 (vazio fica escuro). */
+const albumCoverSx = { position: "relative", aspectRatio: "1 / 1", borderRadius: "10px", overflow: "hidden", bgcolor: "#171820" } as const;
+
+/**
+ * Capa do álbum. Sem obra, a capa padrão; com menos de 4, a primeira capa inteira; com 4 ou mais, o mosaico 2×2.
+ * Quadrados vazios no mosaico formavam uma cruz que parecia um botão de fechar.
+ */
 function AlbumMosaic({ covers }: { covers: string[] }) {
+  if (covers.length === 0) {
+    return <Box data-testid="album-cover-default" sx={{ ...albumCoverSx, backgroundImage: "url(/album-padrao.svg)", backgroundSize: "cover" }} />;
+  }
+  if (covers.length < 4) {
+    return (
+      <Box sx={albumCoverSx}>
+        <CoverImage src={covers[0]} sizes="180px" />
+      </Box>
+    );
+  }
   return (
     <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: "2px", aspectRatio: "1 / 1", borderRadius: "10px", overflow: "hidden", bgcolor: "#0d0e14" }}>
       {[0, 1, 2, 3].map((i) => (
         <Box key={i} sx={{ position: "relative", bgcolor: "#171820" }}>
-          {covers[i] && <CoverImage src={covers[i]} sizes="90px" />}
+          <CoverImage src={covers[i]} sizes="90px" />
         </Box>
       ))}
     </Box>
