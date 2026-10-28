@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState, type MouseEvent } from "react";
-import NextLink from "next/link";
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import EventRepeatIcon from "@mui/icons-material/EventRepeat";
 import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
-import { Box, Popover, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import type { CalendarItem } from "@/lib/calendarItem";
 import { PrimaryTitle, useTitleLines } from "@/components/ExploreCard";
 import { isAiringNow } from "@/lib/airingWindow";
 import { CalendarEntryPreview } from "@/components/CalendarEntryPreview";
 import { CoverImage } from "@/components/CoverImage";
+import { WorkPreviewShell } from "@/components/WorkPreviewShell";
 import { formatTimeInZone } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
 
@@ -51,8 +51,9 @@ function Badge({ tone, icon, children }: { tone: "accent" | "warning"; icon: Rea
  * Item de lançamento na coluna do dia (Figma `8:2106`, "Item"/"Item novo ep"/
  * "Item atrasado"): horário, título e EP; os da minha lista ganham o fundo de
  * acento + selo "NOVO EPISÓDIO EPnn", os atrasados a barra âmbar + "Atrasado".
- * As medidas são em `em` (a grade escala com o monitor). Passar o mouse (ou
- * focar) abre o preview com sinopse.
+ * As medidas são em `em` (a grade escala com o monitor). Tocar ou clicar abre a
+ * prévia (no celular, a gaveta de baixo) com sinopse, ações e o botão da página
+ * da obra; no computador, passar o mouse também mostra a prévia, que some ao sair.
  */
 export function CalendarEntryCard({
   item,
@@ -85,6 +86,8 @@ export function CalendarEntryCard({
   // navegador bem na borda da janela (mismatch de hidratação).
   const [airingNow, setAiringNow] = useState(false);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  // Presa = aberta por toque, clique ou teclado (fica até tocar fora); solta = só enquanto o mouse está em cima.
+  const [pinned, setPinned] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -107,17 +110,37 @@ export function CalendarEntryCard({
       closeTimer.current = null;
     }
   }
-  function openPreview(e: MouseEvent<HTMLElement> | { currentTarget: HTMLElement }) {
+  function hoverOpen(e: PointerEvent<HTMLElement>) {
+    // Só o mouse abre por "passar por cima"; no toque quem abre é o próprio toque (click).
+    if (e.pointerType !== "mouse") return;
     cancelClose();
     setAnchorEl(e.currentTarget);
   }
   function scheduleClose() {
+    if (pinned) return;
     cancelClose();
     closeTimer.current = setTimeout(() => setAnchorEl(null), CLOSE_DELAY_MS);
   }
+  function close() {
+    cancelClose();
+    setPinned(false);
+    setAnchorEl(null);
+  }
+  function togglePinned(target: HTMLElement) {
+    cancelClose();
+    if (pinned) {
+      close();
+      return;
+    }
+    setPinned(true);
+    setAnchorEl(target);
+  }
+  function onKeyDown(e: KeyboardEvent<HTMLElement>) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    togglePinned(e.currentTarget);
+  }
 
-  const isInternal = Boolean(item.inMyList && item.animeId);
-  const href = isInternal ? `/anime/${item.animeId}` : `/anime/${item.anilistId}`;
   // Anúncio de leitor de tela pra role="status" dispara fora do contexto de
   // onde a pessoa está navegando — sem nomear o anime/episódio, um selo
   // genérico "No ar agora" fica sem sentido quando escutado sozinho.
@@ -129,14 +152,17 @@ export function CalendarEntryCard({
   return (
     <>
       <Box
-        component={NextLink}
-        href={href}
+        role="button"
+        tabIndex={0}
+        aria-haspopup="dialog"
+        aria-expanded={Boolean(anchorEl)}
+        aria-label={`${title}, ${episode}, ${time}`}
         data-testid={`calendar-entry-${item.key}`}
         data-delayed={item.delayed ? "true" : undefined}
-        onMouseEnter={openPreview}
-        onMouseLeave={scheduleClose}
-        onFocus={(e: React.FocusEvent<HTMLElement>) => openPreview({ currentTarget: e.currentTarget })}
-        onBlur={scheduleClose}
+        onPointerEnter={hoverOpen}
+        onPointerLeave={scheduleClose}
+        onClick={(e: React.MouseEvent<HTMLElement>) => togglePinned(e.currentTarget)}
+        onKeyDown={onKeyDown}
         sx={{
           display: "flex",
           flexDirection: "column",
@@ -150,6 +176,8 @@ export function CalendarEntryCard({
           bgcolor: highlighted ? "#2c111b" : "background.paper",
           color: "text.primary",
           textDecoration: "none",
+          textAlign: "left",
+          cursor: "pointer",
           transition: "background-color 0.15s ease",
           "&:hover": { bgcolor: highlighted ? "#3a1423" : "#171820" },
           "&:focus-visible": { outlineOffset: -2 },
@@ -208,28 +236,17 @@ export function CalendarEntryCard({
           </Box>
         )}
       </Box>
-      <Popover
+      <WorkPreviewShell
         open={Boolean(anchorEl)}
         anchorEl={anchorEl}
-        onClose={() => setAnchorEl(null)}
-        disableAutoFocus
-        disableEnforceFocus
-        disableRestoreFocus
-        // O preview abre ao passar o mouse: travar a rolagem do <body> impedia descer a página com a roda do mouse.
-        disableScrollLock
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        transformOrigin={{ vertical: "top", horizontal: "left" }}
-        sx={{ pointerEvents: "none" }}
-        slotProps={{
-          paper: {
-            onMouseEnter: cancelClose,
-            onMouseLeave: scheduleClose,
-            sx: { pointerEvents: "auto", bgcolor: "#171820", border: 1, borderColor: "divider", borderRadius: "12px", backgroundImage: "none" },
-          },
-        }}
+        pinned={pinned}
+        onClose={close}
+        label={`Prévia de ${title}`}
+        onPaperMouseEnter={cancelClose}
+        onPaperMouseLeave={scheduleClose}
       >
         <CalendarEntryPreview item={item} onFollowed={onFollowed} onPendingChange={onPendingChange} onUnfollowed={onUnfollowed} onResumed={onResumed} />
-      </Popover>
+      </WorkPreviewShell>
     </>
   );
 }

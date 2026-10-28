@@ -25,7 +25,7 @@ const buttonSx = { bgcolor: "#171820", color: "text.primary", border: 1, borderC
 /**
  * Conteúdo do preview ao passar o mouse (ou focar) num item do calendário
  * (Figma `28:1940`): capa com o selo de novo episódio, títulos, dia/horário,
- * sinopse, gêneros e as ações Ver detalhes / + Acompanhar. O `Popover` em si
+ * sinopse, gêneros e as ações Ver página da obra / + Acompanhar. O `Popover` em si
  * (abertura por hover, delay de saída) vive em CalendarEntryCard.tsx.
  */
 export function CalendarEntryPreview({
@@ -173,7 +173,7 @@ export function CalendarEntryPreview({
   const tertiary = item.titleEnglish && item.titleEnglish !== title && item.titleEnglish !== secondary ? item.titleEnglish : null;
 
   return (
-    <Box sx={{ width: 320, display: "flex", flexDirection: "column" }} data-testid="calendar-preview">
+    <Box sx={{ width: { xs: "100%", sm: 320 }, display: "flex", flexDirection: "column" }} data-testid="calendar-preview">
       {(item.episodeImage ?? item.coverImage) && !coverBroken && (
         <Box sx={{ position: "relative", height: 180, overflow: "hidden", bgcolor: "background.default" }}>
           <Image
@@ -253,7 +253,7 @@ export function CalendarEntryPreview({
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Button component={NextLink} href={detailHref} size="small" startIcon={<ArrowOutwardIcon />} sx={buttonSx}>
-            Ver detalhes
+            Ver página da obra
           </Button>
           {isInternal ? (
             <>

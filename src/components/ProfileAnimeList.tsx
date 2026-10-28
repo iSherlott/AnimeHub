@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 import NextLink from "next/link";
-import { Box, ButtonBase, Typography } from "@mui/material";
+import ArrowOutwardIcon from "@mui/icons-material/ArrowOutward";
+import { Box, Button, ButtonBase, Typography } from "@mui/material";
 import { CoverImage } from "@/components/CoverImage";
+import { WorkPreviewShell } from "@/components/WorkPreviewShell";
+import { readSession, useCameBack, useScrollMemory, writeSession } from "@/lib/useScrollMemory";
 import { SearchField } from "@/components/FilterField";
 import { InfiniteFooter } from "@/components/InfiniteFooter";
 import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
@@ -71,12 +74,66 @@ function StateSelect({ entry, onChange }: { entry: ProfileAnimeEntry; onChange: 
   );
 }
 
+function categoryText(entry: ProfileAnimeEntry): string {
+  return entry.category !== "other" ? CATEGORY_LABELS[entry.category] : entry.waiting ? "Em espera" : entry.status && STATUS_LABELS[entry.status] ? STATUS_LABELS[entry.status] : "—";
+}
+
+/** Conteúdo da prévia: capa, títulos, temporadas, andamento, gêneros e o botão da página da obra. */
+function AnimePreview({ entry, title, onChangeState }: { entry: ProfileAnimeEntry; title: string; onChangeState: (animeId: string, state: WatchState | null) => void }) {
+  const others = [entry.titleNative, entry.titleEnglish, entry.titleRomaji].filter((t, i, all): t is string => Boolean(t) && t !== title && all.indexOf(t) === i);
+  return (
+    <Box sx={{ width: { xs: "100%", sm: 340 }, display: "flex", gap: 2, p: 2, boxSizing: "border-box" }} data-testid={`profile-anime-preview-${entry.key}`}>
+      <Box sx={{ position: "relative", flexShrink: 0, width: 96, aspectRatio: "2 / 3", borderRadius: "8px", overflow: "hidden", bgcolor: "background.default", alignSelf: "flex-start" }}>
+        {entry.coverImage && <CoverImage src={entry.coverImage} sizes="96px" />}
+      </Box>
+      <Box sx={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 1 }}>
+        <Box>
+          <Typography sx={{ fontSize: 16, fontWeight: 700, lineHeight: 1.35, overflowWrap: "anywhere" }}>{title}</Typography>
+          {others.slice(0, 2).map((t) => (
+            <Typography key={t} lang={t === entry.titleNative ? "ja" : undefined} sx={{ fontSize: 12, color: "text.secondary", overflowWrap: "anywhere" }}>
+              {t}
+            </Typography>
+          ))}
+        </Box>
+        <Typography sx={{ fontSize: 12, color: entry.category === "other" ? "text.secondary" : "primary.light", fontWeight: 700 }}>
+          {categoryText(entry)}
+          {entry.seasonsCount > 1 ? ` · ${entry.seasonsCount} temporadas` : ""}
+        </Typography>
+        {entry.genres.length > 0 && (
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+            {entry.genres.slice(0, 3).map((g) => (
+              <Typography key={g} component="span" sx={{ px: 1, py: 0.5, borderRadius: "6px", bgcolor: "background.paper", fontSize: 10, fontWeight: 700 }}>
+                {g}
+              </Typography>
+            ))}
+          </Box>
+        )}
+        <StateSelect entry={entry} onChange={onChangeState} />
+        {entry.href && (
+          <Button component={NextLink} href={entry.href} size="small" startIcon={<ArrowOutwardIcon />} sx={{ alignSelf: "flex-start", bgcolor: "#171820", color: "text.primary", border: 1, borderColor: "divider", "&:hover": { bgcolor: "#1d1e28" } }}>
+            Ver página da obra
+          </Button>
+        )}
+      </Box>
+    </Box>
+  );
+}
+
 function AnimeTile({ entry, onChangeState }: { entry: ProfileAnimeEntry; onChangeState: (animeId: string, state: WatchState | null) => void }) {
   const { preference } = useTitlePreference();
   const title = resolveTitleText(preference, entry) || entry.titleRomaji;
+  // Tocar/clicar abre a prévia (no celular, a gaveta de baixo); a página da obra fica num botão dentro dela.
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   return (
     <Box component="li" sx={{ listStyle: "none", minWidth: 0 }} data-testid={`profile-anime-${entry.key}`}>
-      <Box component={NextLink} href={entry.href ?? `/anime/${entry.key}`} sx={{ display: "flex", flexDirection: "column", gap: 1, color: "text.primary", textDecoration: "none", "&:hover .title": { textDecoration: "underline" } }}>
+      <ButtonBase
+        component="div"
+        onClick={(e) => setAnchorEl(e.currentTarget)}
+        aria-haspopup="dialog"
+        aria-expanded={Boolean(anchorEl)}
+        data-testid={`profile-anime-open-${entry.key}`}
+        sx={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "stretch", gap: 1, textAlign: "left", color: "text.primary", borderRadius: "8px", "&:hover .title": { textDecoration: "underline" }, "&.Mui-focusVisible": { outline: "2px solid #ffd400", outlineOffset: 2 } }}
+      >
         <Box sx={{ position: "relative", aspectRatio: "2 / 3", borderRadius: "8px", overflow: "hidden", bgcolor: "#171820" }}>
           {entry.coverImage && <CoverImage src={entry.coverImage} sizes="(max-width: 600px) 40vw, 160px" />}
         </Box>
@@ -89,10 +146,13 @@ function AnimeTile({ entry, onChangeState }: { entry: ProfileAnimeEntry; onChang
           </Typography>
         )}
         <Typography data-testid={`profile-anime-category-${entry.key}`} sx={{ fontSize: 11, color: entry.category === "other" ? "text.secondary" : "primary.light", fontWeight: entry.category === "other" ? 400 : 700 }}>
-          {entry.category !== "other" ? CATEGORY_LABELS[entry.category] : entry.waiting ? "Em espera" : entry.status && STATUS_LABELS[entry.status] ? STATUS_LABELS[entry.status] : "—"}
+          {categoryText(entry)}
         </Typography>
-      </Box>
+      </ButtonBase>
       <StateSelect entry={entry} onChange={onChangeState} />
+      <WorkPreviewShell open={Boolean(anchorEl)} anchorEl={anchorEl} pinned onClose={() => setAnchorEl(null)} label={`Prévia de ${title}`}>
+        <AnimePreview entry={entry} title={title} onChangeState={onChangeState} />
+      </WorkPreviewShell>
     </Box>
   );
 }
@@ -103,10 +163,14 @@ function AnimeTile({ entry, onChangeState }: { entry: ProfileAnimeEntry; onChang
  * respeitando a privacidade que a pessoa escolheu.
  */
 export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isOwnProfile: boolean }) {
-  const [query, setQuery] = useState("");
+  // Ao voltar da página de uma obra, a busca e o gênero escolhidos continuam (e a rolagem volta ao ponto em que estava).
+  const cameBack = useCameBack();
+  const filtersKey = `profile-animes:${userId}`;
+  const [saved] = useState(() => (cameBack ? readSession<{ query: string; genre: string }>(filtersKey) : null));
+  const [query, setQuery] = useState(saved?.query ?? "");
   // A busca só vai ao servidor 250 ms depois da última tecla.
-  const [debounced, setDebounced] = useState("");
-  const [genre, setGenre] = useState("");
+  const [debounced, setDebounced] = useState(saved?.query.trim() ?? "");
+  const [genre, setGenre] = useState(saved?.genre ?? "");
   const [reloads, setReloads] = useState(0);
   const [saveError, setSaveError] = useState(false);
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -144,6 +208,8 @@ export function ProfileAnimeList({ userId, isOwnProfile }: { userId: string; isO
     },
   });
   const { ref: sentinelRef, supported: infiniteSupported } = useInfiniteScroll(pager.loadMore, pager.hasMore && !pager.loading && !pager.failed, pager.items.length);
+  useEffect(() => writeSession(filtersKey, { query, genre }), [filtersKey, query, genre]);
+  useScrollMemory(`/users/${userId}?aba=animes`, !pager.loading && pager.items.length > 0);
 
   async function changeState(animeId: string, next: WatchState | null) {
     setSaveError(false);

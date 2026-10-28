@@ -91,7 +91,7 @@ test.describe.serial("Adiar, Para assistir e Animes no perfil", () => {
       })
     );
     await page.goto("/calendar");
-    await page.getByRole("link", { name: /Pendente Round72/ }).hover();
+    await page.getByRole("button", { name: /Pendente Round72/ }).hover();
     const preview = page.getByTestId("calendar-preview");
     await preview.getByTestId("preview-postpone").click();
     await expect(preview.getByTestId("preview-pending-note")).toContainText("Obra adiada");
@@ -183,7 +183,7 @@ test.describe.serial("Adiar, Para assistir e Animes no perfil", () => {
     });
     await page.goto("/calendar");
     await page.getByRole("button", { name: "Todos", exact: true }).click();
-    await page.getByRole("link", { name: /Pendente Round72/ }).hover();
+    await page.getByRole("button", { name: /Pendente Round72/ }).hover();
     const toggle = page.getByTestId("preview-follow-toggle");
     await expect(toggle).toHaveAttribute("data-state", "waiting");
     await expect(toggle).toContainText("Em espera");
@@ -214,10 +214,12 @@ test.describe.serial("Adiar, Para assistir e Animes no perfil", () => {
     await list.getByRole("textbox", { name: "Buscar animes" }).fill("nada-assim-existe");
     await expect(list.getByTestId("profile-anime-empty")).toBeVisible();
 
-    // Cada capa leva à página pública da obra.
+    // Cada capa abre a prévia, que tem o botão da página pública da obra.
     await list.getByRole("textbox", { name: "Buscar animes" }).fill("");
     await list.getByTestId("genre-all").click();
-    await expect(list.getByTestId(`profile-anime-${G3}`).getByRole("link")).toHaveAttribute("href", `/anime/${G3}`);
+    await list.getByTestId(`profile-anime-open-${G3}`).click();
+    await expect(page.getByRole("link", { name: "Ver página da obra" })).toHaveAttribute("href", `/anime/${G3}`);
+    await page.keyboard.press("Escape");
   });
 
   test("privacidade: ocultar em Configurações esconde a aba de quem visita, mas não de mim", async ({ page, browser, request }) => {

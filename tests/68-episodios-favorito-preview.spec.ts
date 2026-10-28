@@ -91,7 +91,7 @@ test.describe("Preview do calendário: Acompanhando sobre a imagem", () => {
       })
     );
     await page.goto("/calendar");
-    await page.getByRole("link", { name: /Favorito Round68/ }).hover();
+    await page.getByRole("button", { name: /Favorito Round68/ }).hover();
     const preview = page.getByTestId("calendar-preview");
     await expect(preview).toBeVisible();
     const star = preview.getByTestId("preview-follow-toggle");

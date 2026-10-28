@@ -115,7 +115,8 @@ test.describe.serial("Acompanhar obras só do AniDB", () => {
     }).toPass();
     const tile = page.getByTestId(`profile-anime-anidb-${AID}`);
     await expect(tile).toBeVisible();
-    await expect(tile.getByRole("link").first()).toHaveAttribute("href", `/anime/anidb-${AID}`);
+    await tile.getByTestId(`profile-anime-open-anidb-${AID}`).click();
+    await expect(page.getByRole("link", { name: "Ver página da obra" })).toHaveAttribute("href", `/anime/anidb-${AID}`);
   });
 
   test("API: duplicado, fora da plataforma, chave inválida; comentários da obra abertos a quem acompanha", async ({ request }) => {

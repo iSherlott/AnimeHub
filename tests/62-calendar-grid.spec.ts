@@ -79,14 +79,14 @@ test.describe("Calendário em colunas por dia", () => {
 
   test("filtro Minha Lista/Todos e navegação de semana do Figma", async ({ page }) => {
     await page.goto("/calendar");
-    await expect(page.getByRole("button", { name: "Semana anterior" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Próxima semana" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Hoje" })).toBeDisabled(); // já está na semana atual
-    await page.getByRole("button", { name: "Próxima semana" }).click();
-    await expect(page.getByRole("button", { name: "Hoje" })).toBeEnabled();
-    await page.getByRole("button", { name: "Hoje" }).click();
-    await expect(page.getByRole("button", { name: "Hoje" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Minha Lista" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("button", { name: "Semana anterior", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Próxima semana", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Hoje", exact: true })).toBeDisabled(); // já está na semana atual
+    await page.getByRole("button", { name: "Próxima semana", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Hoje", exact: true })).toBeEnabled();
+    await page.getByRole("button", { name: "Hoje", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Hoje", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Minha Lista", exact: true })).toHaveAttribute("aria-pressed", "true");
   });
 
   test("API marca como atrasado só o episódio que a fonte ainda aponta como próximo, e preserva o horário", async ({ request }) => {

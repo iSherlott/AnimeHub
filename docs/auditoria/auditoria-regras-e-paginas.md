@@ -278,3 +278,25 @@ nem crítico. O que apareceu e foi corrigido:
 O spec 61 passa a cobrir também recados, Editar perfil, Amigos, Comunidades, a comunidade, o fórum, o tópico, Nova
 publicação, Conquistas e Para assistir. Ele confere ainda que há um só `<main>` em Entrar e Criar conta e que os campos
 mostram o anel de foco.
+
+## Toque num anime abre a prévia; voltar volta ao mesmo ponto (28/10)
+
+**Pedido da pessoa usuária:** no celular, tocar num anime do perfil ou do calendário abria direto a página da obra, o
+que atrapalhava; no computador, o clique no calendário fazia o mesmo. E, voltando da página da obra, o navegador
+levava ao topo, não ao ponto em que a pessoa estava.
+
+**Decidido:** tocar ou clicar abre uma prévia, e a página da obra fica num botão dentro dela.
+
+- **Prévia** (`WorkPreviewShell`): no celular, uma gaveta que sobe de baixo, com o X para fechar. Do tablet em diante, o
+  cartão ao lado do item, que fecha ao clicar fora ou com Esc.
+  - **Calendário:** o clique ou toque prende a prévia aberta (capa, horário, sinopse, Acompanhar, Adiar e "Ver página da
+    obra"). No computador, passar o mouse continua mostrando a prévia, que some quando o mouse sai.
+  - **Perfil, aba Animes:** a capa abre a prévia com títulos, andamento, temporadas, gêneros, o seletor de andamento
+    (no próprio perfil) e "Ver página da obra".
+- **Voltar ao mesmo ponto:**
+  - **Calendário:** a semana, o filtro (Minha Lista ou Todos), a altura da página e o dia na grade do celular ficam
+    guardados enquanto a aba do navegador estiver aberta. Ao voltar, tudo é restaurado (`useScrollMemory`,
+    `src/lib/useScrollMemory.ts`).
+  - **Perfil:** a aba aberta vai para o endereço (`?aba=animes`), sem recarregar a página. A busca e o gênero da aba
+    Animes ficam lembrados. A rolagem volta ao ponto, carregando mais capas se precisar.
+- **Spec 134** cobre a gaveta no celular, a prévia presa no computador e o "voltar" com semana, filtro, altura e aba.

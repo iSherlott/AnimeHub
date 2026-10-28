@@ -69,8 +69,8 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     await page.goto("/calendar");
     await page.getByRole("button", { name: "Todos", exact: true }).click();
 
-    const mineLink = page.getByRole("link", { name: "Anime Do Calendario Que Esta Na Lista" });
-    const otherLink = page.getByRole("link", { name: "Anime Do Calendario Fora Da Lista" });
+    const mineLink = page.getByRole("button", { name: "Anime Do Calendario Que Esta Na Lista" });
+    const otherLink = page.getByRole("button", { name: "Anime Do Calendario Fora Da Lista" });
     await expect(mineLink).toBeVisible();
     await expect(otherLink).toBeVisible();
 
@@ -87,7 +87,7 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     await page.goto("/calendar");
     await page.getByRole("button", { name: "Todos", exact: true }).click();
 
-    const mineLink = page.getByRole("link", { name: "Anime Do Calendario Que Esta Na Lista" });
+    const mineLink = page.getByRole("button", { name: "Anime Do Calendario Que Esta Na Lista" });
     await mineLink.hover();
 
     await expect(page.getByText("Sinopse original em inglês do calendário.")).toBeVisible();
@@ -109,17 +109,17 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     await expect(page.getByTestId("preview-follow-toggle")).toHaveCount(0);
   });
 
-  test("hover num item de fora da lista mostra 'Ver detalhes' e '+ Acompanhar' em vez de Acompanhando", async ({
+  test("hover num item de fora da lista mostra 'Ver página da obra' e '+ Acompanhar' em vez de Acompanhando", async ({
     page,
   }) => {
     await page.goto("/calendar");
     await page.getByRole("button", { name: "Todos", exact: true }).click();
 
-    const otherLink = page.getByRole("link", { name: "Anime Do Calendario Fora Da Lista" });
+    const otherLink = page.getByRole("button", { name: "Anime Do Calendario Fora Da Lista" });
     await otherLink.hover();
 
     await expect(page.getByText("Sem sinopse — abra pra ver mais.")).toBeVisible();
-    const seeMore = page.getByRole("link", { name: "Ver detalhes" });
+    const seeMore = page.getByRole("link", { name: "Ver página da obra" });
     await expect(seeMore).toBeVisible();
     await expect(seeMore).toHaveAttribute("href", `/anime/${OTHER_ANILIST_ID}`);
     // "+ Acompanhar" adiciona direto à lista (botão), em vez de abrir a página da obra.
@@ -139,7 +139,7 @@ test.describe("Epic 27 (lote 2) — calendário: card único + preview no hover"
     await page.getByRole("button", { name: "Todos", exact: true }).click();
 
     // A sinopse é em português por padrão (a salva pela pessoa tem prioridade sobre a tradução automática).
-    const mineLink = page.getByRole("link", { name: "Anime Do Calendario Que Esta Na Lista" });
+    const mineLink = page.getByRole("button", { name: "Anime Do Calendario Que Esta Na Lista" });
     await mineLink.hover();
     await expect(page.getByText("Sinopse em português do calendário.")).toBeVisible();
     await page.mouse.move(0, 0);

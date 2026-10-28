@@ -22,6 +22,7 @@ import { resolveTitleText, useTitlePreference } from "@/lib/titlePreference";
 import { loginHref } from "@/lib/safeRedirect";
 import { buildWeekDaysInZone, dayKeyInZone, formatTimeInZone, timeZoneLabel, weekdayName } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
+import { readSession, useCameBack, useScrollMemory, writeSession } from "@/lib/useScrollMemory";
 
 const MAX_WEEK_OFFSET = 8;
 
@@ -82,6 +83,9 @@ const panelSx = { display: "flex", flexDirection: "column", gap: 2, p: 3, border
  * largura toda da tela e escala com o monitor (ultrawide incluso): todas as
  * medidas internas são em `em` e a base cresce de 14 px (1440 px) até 22 px.
  */
+type CalendarView = { weekOffset: number; showAll: boolean; gridLeft: number };
+const VIEW_KEY = "calendar:view";
+
 export default function CalendarPage() {
   const router = useRouter();
   const user = useCurrentUser();
@@ -91,11 +95,21 @@ export default function CalendarPage() {
   const [offGrid, setOffGrid] = useState<OffGridItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [weekOffset, setWeekOffset] = useState(0);
+  // Ao voltar da página de uma obra, o calendário reabre na mesma semana, no mesmo filtro e no mesmo dia da grade.
+  const cameBack = useCameBack();
+  const [savedView] = useState(() => (cameBack ? readSession<CalendarView>(VIEW_KEY) : null));
+  const [weekOffset, setWeekOffset] = useState(savedView?.weekOffset ?? 0);
   const [reloadKey, setReloadKey] = useState(0);
-  const [showAll, setShowAllRaw] = useState(false);
-  const userTouchedToggle = useRef(false);
+  const [showAll, setShowAllRaw] = useState(savedView?.showAll ?? false);
+  const userTouchedToggle = useRef(savedView !== null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const restoreGridLeft = useRef<number | null>(savedView?.gridLeft ?? null);
+  useScrollMemory("/calendar", !loading);
+
+  function saveView() {
+    writeSession(VIEW_KEY, { weekOffset, showAll, gridLeft: scrollerRef.current?.scrollLeft ?? 0 } satisfies CalendarView);
+  }
+  useEffect(saveView);
 
   function setShowAll(value: boolean) {
     userTouchedToggle.current = true;
@@ -140,6 +154,11 @@ export default function CalendarPage() {
   useEffect(() => {
     const scroller = scrollerRef.current;
     if (loading || !scroller || scroller.scrollWidth <= scroller.clientWidth) return;
+    if (restoreGridLeft.current !== null) {
+      scroller.scrollLeft = restoreGridLeft.current;
+      restoreGridLeft.current = null;
+      return;
+    }
     const today = scroller.querySelector<HTMLElement>("[data-today='true']");
     scroller.scrollLeft = today ? today.getBoundingClientRect().left - (scroller.firstElementChild as HTMLElement).getBoundingClientRect().left : 0;
   }, [loading, weekOffset, showAll, todayKey]);
@@ -307,7 +326,7 @@ export default function CalendarPage() {
         ) : (
           <>
             {/* Em telas estreitas a grade rola na horizontal: no celular um dia por vez (encaixa no dia, abre em hoje). */}
-            <Box ref={scrollerRef} sx={{ overflowX: "auto", pb: 1, scrollSnapType: { xs: "x mandatory", md: "none" }, overscrollBehaviorX: "contain" }}>
+            <Box ref={scrollerRef} onScroll={saveView} sx={{ overflowX: "auto", pb: 1, scrollSnapType: { xs: "x mandatory", md: "none" }, overscrollBehaviorX: "contain" }}>
               <Box
                 key={`${weekOffset}-${showAll}`}
                 className="animate-fade-in"
