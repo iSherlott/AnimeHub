@@ -139,13 +139,12 @@ banco ao mesmo tempo (calendário, alertas, notícias em dobro). Para desenvolve
 ## Atualizar para uma versão nova
 
 ```bash
-git pull
-bash deploy/k8s/build-images.sh
-kubectl -n animehub delete job animehub-migrate --ignore-not-found
-kubectl apply -f deploy/k8s/migrate-job.yaml && kubectl -n animehub wait --for=condition=complete job/animehub-migrate --timeout=300s
-kubectl apply -k deploy/k8s
-kubectl -n animehub rollout restart deploy
+git pull && bash deploy/k8s/atualizar.sh
 ```
+
+O script para no primeiro erro: gera as imagens, confere se a imagem de migração é a do código, migra o banco e só
+então troca o site (detalhes em `atualizar.sh`). Não cole os comandos soltos, um por linha: se um falhar, os
+seguintes rodam assim mesmo.
 
 ### Atualização das Fases 2 a 10 (catálogo, episódios e painel administrativo)
 

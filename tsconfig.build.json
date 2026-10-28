@@ -1,0 +1,6 @@
+{
+  "//": "Checagem de tipos do build da imagem Docker: só o código do site, sem testes nem serviços (ver next.config.ts).",
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "incremental": false },
+  "exclude": ["node_modules", "tests", "**/*.test.ts", "**/*.test.tsx", "vitest.config.ts", "playwright.config.ts", "services", "scripts"]
+}

@@ -15,6 +15,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate
 ENV NEXT_STANDALONE=true
+# Folga de memória para o build (o padrão do Node no servidor ficava em ~2 GB). A checagem de tipos aqui usa
+# tsconfig.build.json (sem os testes): ver next.config.ts.
+ENV NODE_OPTIONS=--max-old-space-size=3072
 RUN npm run build
 
 # runner: imagem final enxuta — só o output standalone + o Prisma Client

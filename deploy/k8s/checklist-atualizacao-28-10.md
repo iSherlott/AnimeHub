@@ -49,19 +49,28 @@ docker run --rm -v "$PWD:/out" postgres:18-alpine pg_dump "<URL do banco sem ?sc
 
 ## 3. Atualizar o cluster
 
+Num comando só, que **para no primeiro erro**:
+
 ```bash
-git pull
-bash deploy/k8s/build-images.sh
-kubectl -n animehub delete job animehub-migrate --ignore-not-found
-kubectl apply -f deploy/k8s/migrate-job.yaml && kubectl -n animehub wait --for=condition=complete job/animehub-migrate --timeout=300s
-kubectl -n animehub logs job/animehub-migrate | tail -3
-kubectl apply -k deploy/k8s
-kubectl -n animehub rollout restart deploy
-kubectl -n animehub rollout status deploy/web --timeout=180s
+git pull && bash deploy/k8s/atualizar.sh
 ```
 
-- [ ] O log do Job termina com "All migrations have been successfully applied".
-- [ ] `rollout status` diz que o `web` terminou.
+O script pergunta se o backup foi feito, gera as imagens e confere se a imagem de migração tem a última migração do
+código. Só então migra o banco e, se a migração terminar, troca o site. Se algo falhar, ele para ali e diz o que
+aconteceu, e o site continua na versão anterior.
+
+- [ ] O script termina com "✓ Atualizado".
+- [ ] No passo 5/6, o log da migração diz "All migrations have been successfully applied". Pode dizer "No pending
+      migrations to apply" se o banco já estava em dia, mas só depois de o passo 4/6 confirmar a imagem.
+
+> **Primeira tentativa (28/10).** Os comandos foram colados um por linha. O build da imagem do site estourou a
+> memória do Node ("JavaScript heap out of memory"), porque a checagem de tipos passava de 2 GB com os testes juntos,
+> e os comandos seguintes rodaram assim mesmo. O Job usou a imagem de migração antiga ("No pending migrations") e o
+> site reiniciou com as imagens antigas: nada mudou no banco nem no site.
+>
+> A correção tem duas partes. O build da imagem passou a checar só o código do site (`tsconfig.build.json`, 0,9 GB) e
+> ganhou folga de memória; ensaiado com o Node limitado a 2 GB, como no servidor, passou. E o `atualizar.sh` substitui
+> a colagem dos comandos.
 
 ## 4. Conferir
 

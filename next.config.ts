@@ -44,6 +44,10 @@ const nextConfig: NextConfig = {
   // suíte Playwright usam `next start` normal, que não roda a partir do
   // output standalone.
   output: process.env.NEXT_STANDALONE === "true" ? "standalone" : undefined,
+  // Na imagem Docker, a checagem de tipos do build olha só o código do site (tsconfig.build.json, sem os testes): com os
+  // ~150 specs do Playwright ela passava de 2 GB e estourava a memória do Node no servidor (deploy de 28/10). Os testes
+  // continuam checados no Windows (tsc com o tsconfig.json inteiro) antes de cada push.
+  typescript: { tsconfigPath: process.env.NEXT_STANDALONE === "true" ? "tsconfig.build.json" : "tsconfig.json" },
   images: {
     remotePatterns: [
       {
