@@ -140,7 +140,8 @@ test.describe.serial("Rolagem infinita", () => {
     await expect(page.getByTestId("catalog-end")).toHaveText("Você viu todos os resultados.");
     await expect(page.getByTestId("catalog-sentinel")).toHaveCount(0);
 
-    expect(requested.filter((r) => r.startsWith("/api/catalog/page")).length).toBe(3);
+    // A primeira página do gênero já vem pronta do servidor; o navegador só pede as duas seguintes.
+    expect(requested.filter((r) => r.startsWith("/api/catalog/page")).length).toBe(2);
     expect(requested.some((r) => r === "/api/catalog")).toBe(false); // o catálogo inteiro não é mais baixado
   });
 

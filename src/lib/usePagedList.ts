@@ -30,12 +30,16 @@ export function usePagedList<T>({
   fetchPage,
   keyOf,
   enabled = true,
+  initialPage,
 }: {
   resetKey: string;
   fetchPage: (cursor: string | null) => Promise<PageResult<T>>;
   keyOf: (item: T) => string;
   enabled?: boolean;
+  /** Primeira página que já veio pronta do servidor, para a consulta `key`: vale só se a tela abrir nessa mesma consulta. */
+  initialPage?: { key: string; page: PageResult<T> } | null;
 }) {
+  const seeded = initialPage && enabled && initialPage.key === resetKey ? initialPage.page : null;
   const [state, dispatch] = useReducer(
     (s: State<T>, a: Action<T>): State<T> => {
       switch (a.type) {
@@ -53,9 +57,11 @@ export function usePagedList<T>({
           return { ...s, items: a.items };
       }
     },
-    undefined,
-    initial<T>
+    seeded,
+    (page): State<T> => (page ? { items: page.items, cursor: page.nextCursor, hasMore: page.nextCursor !== null, total: page.total ?? null, loading: false, loadingMore: false, failed: false } : initial<T>())
   );
+  // A primeira página do servidor dispensa a primeira busca (só a primeira: mudou a consulta, busca normalmente).
+  const skipFirstLoad = useRef(Boolean(seeded));
 
   const fetchRef = useRef(fetchPage);
   const generation = useRef(0);
@@ -80,6 +86,10 @@ export function usePagedList<T>({
 
   useEffect(() => {
     if (!enabled) return;
+    if (skipFirstLoad.current) {
+      skipFirstLoad.current = false;
+      return;
+    }
     loadFirst();
     // `resetKey` é a identidade da consulta: mudou, recomeça.
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -24,11 +24,13 @@ export function SearchField({
   value,
   onChange,
   placeholder,
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   const id = useId();
   return (
@@ -42,6 +44,7 @@ export function SearchField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
+          disabled={disabled}
           fullWidth
           inputProps={{ maxLength: 80 }}
           sx={{ fontSize: 14, p: 0, "& input": { p: 0 } }}
@@ -62,6 +65,7 @@ export function SelectField({
   options,
   width = 204,
   testId,
+  disabled = false,
 }: {
   label: string;
   value: string;
@@ -69,6 +73,7 @@ export function SelectField({
   options: Array<{ value: string; label: string }>;
   width?: number | string;
   testId?: string;
+  disabled?: boolean;
 }) {
   const id = useId();
   return (
@@ -79,6 +84,7 @@ export function SelectField({
       <NativeSelect
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
         disableUnderline
         inputProps={{ id, "data-testid": testId } as Record<string, unknown>}
         sx={{
