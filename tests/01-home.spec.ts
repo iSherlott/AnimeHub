@@ -11,7 +11,7 @@ test.describe("Frontend — catálogo pessoal (/minha-lista)", () => {
 
     for (const anime of ANIME_FIXTURES) {
       await expect(
-        page.getByRole("link", { name: anime.titleRomaji }).first()
+        page.getByRole("button", { name: anime.titleRomaji }).first()
       ).toBeVisible();
     }
   });
@@ -22,7 +22,8 @@ test.describe("Frontend — catálogo pessoal (/minha-lista)", () => {
     const target = ANIME_FIXTURES[1]; // Kaiju No. 8
     await page.goto("/minha-lista");
 
-    await page.getByRole("link", { name: target.titleRomaji }).first().click();
+    await page.getByRole("button", { name: target.titleRomaji }).first().click();
+    await page.getByRole("dialog").getByRole("link", { name: "Ver página da obra" }).click();
 
     await expect(page).toHaveURL(/\/anime\//);
     await expect(page.getByTestId("anime-title")).toHaveText(

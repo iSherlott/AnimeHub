@@ -4,6 +4,7 @@ import { Header } from "@/components/Header";
 import { AppLink } from "@/components/AppLink";
 import { AnimeTitle } from "@/components/AnimeTitle";
 import { CoverImage } from "@/components/CoverImage";
+import { WorkPreviewTrigger } from "@/components/WorkPreview";
 import { PageContainer, PageIntro } from "@/components/PageShell";
 import { ProfileSection } from "@/components/profile/ProfileSections";
 import { AlbumEditor, AlbumRemoveItem } from "@/components/profile/ProfileAlbums";
@@ -29,7 +30,7 @@ function WorkCard({ work }: { work: AlbumWork }) {
 type Props = { params: Promise<{ id: string; album: string }> };
 
 /**
- * Um álbum do perfil: automático (pelo andamento) ou montado pela pessoa. As obras levam à página do anime; no próprio
+ * Um álbum do perfil: automático (pelo andamento) ou montado pela pessoa. As obras abrem a prévia (com a página do anime); no próprio
  * álbum personalizado, a pessoa renomeia, apaga, tira e coloca obras da lista dela.
  */
 export default async function AlbumPage({ params }: Props) {
@@ -64,9 +65,15 @@ export default async function AlbumPage({ params }: Props) {
               {view.works.map((w) => (
                 <Box component="li" key={w.animeId ?? w.key} data-testid={`album-work-${w.key}`} sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
                   {w.href ? (
-                    <AppLink href={w.href} underline="none" sx={{ display: "flex", flexDirection: "column", gap: 0.75, color: "text.primary", "&:hover .work-title": { textDecoration: "underline" } }}>
+                    // Tocar abre a prévia; a página da obra fica no botão dentro dela.
+                    <WorkPreviewTrigger
+                      label={w.titleNative ?? w.titleRomaji}
+                      testId={`album-open-${w.key}`}
+                      info={{ titles: { titleRomaji: w.titleRomaji, titleEnglish: w.titleEnglish, titleNative: w.titleNative }, coverImage: w.coverImage, href: w.href }}
+                      sx={{ display: "flex", flexDirection: "column", gap: 0.75, color: "text.primary", "&:hover .work-title": { textDecoration: "underline" } }}
+                    >
                       <WorkCard work={w} />
-                    </AppLink>
+                    </WorkPreviewTrigger>
                   ) : (
                     <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
                       <WorkCard work={w} />

@@ -21,6 +21,7 @@ import { SearchField, SelectField } from "@/components/FilterField";
 import { InfiniteFooter } from "@/components/InfiniteFooter";
 import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
 import { usePagedList } from "@/lib/usePagedList";
+import { readSession, useCameBack, useScrollMemory, writeSession } from "@/lib/useScrollMemory";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { DiscoverItem } from "@/lib/discoverItem";
 import { currentSeasonRef, scheduleOf, seasonDisplayName, seasonSlug } from "@/lib/exploreGroups";
@@ -185,7 +186,10 @@ function DiscoverPageContent() {
   const searchParams = useSearchParams();
   const user = useCurrentUser();
   const timeZone = useTimeZone();
-  const [query, setQuery] = useState(() => searchParams.get("search") ?? "");
+  // Ao voltar da página de uma obra, a busca, os filtros e a rolagem voltam como estavam.
+  const cameBack = useCameBack();
+  const [saved] = useState(() => (cameBack ? readSession<ExploreView>(VIEW_KEY) : null));
+  const [query, setQuery] = useState(() => saved?.query ?? searchParams.get("search") ?? "");
   const [searchResults, setSearchResults] = useState<DiscoverItem[]>([]);
   const [searchCached, setSearchCached] = useState(false);
   // Fileiras do Explorar: o que está no ar hoje e as sugestões de "Novas histórias, outros tempos".
@@ -200,16 +204,16 @@ function DiscoverPageContent() {
 
   // O que existe no catálogo (gêneros, anos, tipos…) para montar os filtros; as obras vêm página a página, ver `pager`.
   const [facets, setFacets] = useState<Facets | null>(null);
-  const [selectedGenre, setSelectedGenre] = useState<string>(() => searchParams.get("genre") ?? "");
-  const [selectedStatus, setSelectedStatus] = useState("");
-  const [selectedSeason, setSelectedSeason] = useState("");
-  const [selectedYear, setSelectedYear] = useState("");
-  const [selectedFormat, setSelectedFormat] = useState("");
-  const [sortBy, setSortBy] = useState<SortKey>("popular");
-  const [availability, setAvailability] = useState<"" | "scheduled" | "unscheduled">("");
+  const [selectedGenre, setSelectedGenre] = useState<string>(() => saved?.genre ?? searchParams.get("genre") ?? "");
+  const [selectedStatus, setSelectedStatus] = useState(saved?.status ?? "");
+  const [selectedSeason, setSelectedSeason] = useState(saved?.season ?? "");
+  const [selectedYear, setSelectedYear] = useState(saved?.year ?? "");
+  const [selectedFormat, setSelectedFormat] = useState(saved?.format ?? "");
+  const [sortBy, setSortBy] = useState<SortKey>(saved?.sort ?? "popular");
+  const [availability, setAvailability] = useState<"" | "scheduled" | "unscheduled">(saved?.availability ?? "");
   const [moreOpen, setMoreOpen] = useState(false);
   // Rascunho do modal "Mais filtros": só vale ao Aplicar; Esc/Cancelar descarta.
-  const [keywordFilters, setKeywordFilters] = useState(EMPTY_KEYWORDS);
+  const [keywordFilters, setKeywordFilters] = useState(saved?.keywords ?? EMPTY_KEYWORDS);
   const [draft, setDraft] = useState({ status: "", availability: "" as "" | "scheduled" | "unscheduled", sort: "popular" as SortKey, ...EMPTY_KEYWORDS });
 
   useEffect(() => {
@@ -317,6 +321,10 @@ function DiscoverPageContent() {
     },
   });
   const { ref: sentinelRef, supported: infiniteSupported } = useInfiniteScroll(pager.loadMore, pager.hasMore && !pager.loading && !pager.failed, pager.items.length);
+  useEffect(() => {
+    writeSession(VIEW_KEY, { query, genre: selectedGenre, status: selectedStatus, season: selectedSeason, year: selectedYear, format: selectedFormat, sort: sortBy, availability, keywords: keywordFilters } satisfies ExploreView);
+  }, [query, selectedGenre, selectedStatus, selectedSeason, selectedYear, selectedFormat, sortBy, availability, keywordFilters]);
+  useScrollMemory("/discover", !loadingRows && !searching && !pager.loading);
 
   function matchesFilters(item: DiscoverItem): boolean {
     if (selectedGenre && !item.genres.includes(selectedGenre)) return false;
@@ -689,6 +697,19 @@ function DiscoverPageContent() {
     </Box>
   );
 }
+
+type ExploreView = {
+  query: string;
+  genre: string;
+  status: string;
+  season: string;
+  year: string;
+  format: string;
+  sort: SortKey;
+  availability: "" | "scheduled" | "unscheduled";
+  keywords: typeof EMPTY_KEYWORDS;
+};
+const VIEW_KEY = "discover:view";
 
 export default function DiscoverPage() {
   return (

@@ -12,6 +12,7 @@ import { Header } from "@/components/Header";
 import { PageContainer, PageIntro } from "@/components/PageShell";
 import { ELEVATED_BUTTON_SX, PrimaryTitle, useTitleLines } from "@/components/ExploreCard";
 import { ListRow, NewEpisodeBadge } from "@/components/ListRow";
+import { WorkPreviewTrigger } from "@/components/WorkPreview";
 import { SectionHeader } from "@/components/ExploreParts";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import type { CalendarItem } from "@/lib/calendarItem";
@@ -201,6 +202,7 @@ export default function DashboardPage() {
                             episodeLabel={`Episódio ${pad(item.episode)}`}
                             cover={item.coverImage}
                             titles={item}
+                            preview={{ description: item.description, anilistId: item.anilistId, genres: item.genres }}
                             highlighted={aired}
                             badge={aired ? <NewEpisodeBadge>NOVO EPISÓDIO EP{pad(item.episode)}</NewEpisodeBadge> : undefined}
                           />
@@ -293,7 +295,11 @@ function LaterItem({ item, now, href }: { item: CalendarItem; now: Date; href: s
     : `${weekdayName(date, timeZone).toUpperCase()} / ${dayNumber} ${new Intl.DateTimeFormat("pt-BR", { timeZone, month: "short" }).format(date).replace(".", "").toUpperCase()}`;
   return (
     <li>
-      <Box component={NextLink} href={href} sx={{ display: "flex", flexDirection: "column", gap: 1, color: "text.primary", textDecoration: "none", "&:hover .later-title": { textDecoration: "underline" } }}>
+      <WorkPreviewTrigger
+        label={titleLines.primary}
+        info={{ titles: item, coverImage: item.coverImage, href, description: item.description, anilistId: item.anilistId, genres: item.genres, meta: [`${formatTimeInZone(date, timeZone)} · EP${pad(item.episode)}`] }}
+        sx={{ display: "flex", flexDirection: "column", gap: 1, color: "text.primary", "&:hover .later-title": { textDecoration: "underline" } }}
+      >
         <Typography suppressHydrationWarning component="p" sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary" }}>
           {kicker}
         </Typography>
@@ -304,7 +310,7 @@ function LaterItem({ item, now, href }: { item: CalendarItem; now: Date; href: s
           <PrimaryTitle lines={titleLines} />
         </Typography>
         {secondary[0] && <Typography sx={{ fontSize: 13, color: "text.secondary" }}>{secondary[secondary.length - 1]}</Typography>}
-      </Box>
+      </WorkPreviewTrigger>
     </li>
   );
 }

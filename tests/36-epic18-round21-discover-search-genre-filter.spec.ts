@@ -86,8 +86,8 @@ test.describe("Epic 18 — 21ª rodada de auditoria de UX/UI — filtro de gêne
     await page.goto("/discover");
     await page.getByPlaceholder("Buscar anime...").fill("Round21 Search Hit");
     // O título do cartão é um link para o detalhe — escopa por ele.
-    const correctCard = page.getByRole("link", { name: "Round21 Search Hit — gênero certo" });
-    const wrongCard = page.getByRole("link", { name: "Round21 Search Hit — gênero errado" });
+    const correctCard = page.getByRole("button", { name: "Round21 Search Hit — gênero certo" });
+    const wrongCard = page.getByRole("button", { name: "Round21 Search Hit — gênero errado" });
     await expect(correctCard).toBeVisible();
     await expect(wrongCard).toBeVisible();
 

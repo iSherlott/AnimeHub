@@ -15,7 +15,8 @@ test.describe("Criação de link de plataforma (Crunchyroll)", () => {
       page,
     }) => {
       await page.goto("/minha-lista");
-      await page.getByRole("link", { name: anime.titleRomaji }).first().click();
+      await page.getByRole("button", { name: anime.titleRomaji }).first().click();
+      await page.getByRole("dialog").getByRole("link", { name: "Ver página da obra" }).click();
       await expect(page.getByTestId("anime-title")).toHaveText(
         anime.titleRomaji
       );
@@ -52,7 +53,8 @@ test.describe("Criação de link de plataforma (Crunchyroll)", () => {
   test("remove um link vinculado", async ({ page }) => {
     const anime = UTILITY_FIXTURE;
     await page.goto("/minha-lista");
-    await page.getByRole("link", { name: anime.titleRomaji }).first().click();
+    await page.getByRole("button", { name: anime.titleRomaji }).first().click();
+    await page.getByRole("dialog").getByRole("link", { name: "Ver página da obra" }).click();
 
     const linksSection = page.getByTestId("platform-links");
     await linksSection.getByTestId("platform-link-add-toggle").click();
@@ -76,7 +78,8 @@ test.describe("Criação de link de plataforma (Crunchyroll)", () => {
     const anime = UTILITY_FIXTURE;
     const url = "https://exemplo-irregular.test/assistir/123";
     await page.goto("/minha-lista");
-    await page.getByRole("link", { name: anime.titleRomaji }).first().click();
+    await page.getByRole("button", { name: anime.titleRomaji }).first().click();
+    await page.getByRole("dialog").getByRole("link", { name: "Ver página da obra" }).click();
 
     const linksSection = page.getByTestId("platform-links");
     await linksSection.getByTestId("platform-link-add-toggle").click();
@@ -100,7 +103,8 @@ test.describe("Criação de link de plataforma (Crunchyroll)", () => {
   test("rejeita vincular sem preencher a URL", async ({ page }) => {
     const anime = UTILITY_FIXTURE;
     await page.goto("/minha-lista");
-    await page.getByRole("link", { name: anime.titleRomaji }).first().click();
+    await page.getByRole("button", { name: anime.titleRomaji }).first().click();
+    await page.getByRole("dialog").getByRole("link", { name: "Ver página da obra" }).click();
 
     const linksSection = page.getByTestId("platform-links");
     await linksSection.getByTestId("platform-link-add-toggle").click();

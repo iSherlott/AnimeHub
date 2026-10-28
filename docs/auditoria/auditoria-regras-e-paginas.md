@@ -300,3 +300,13 @@ levava ao topo, não ao ponto em que a pessoa estava.
   - **Perfil:** a aba aberta vai para o endereço (`?aba=animes`), sem recarregar a página. A busca e o gênero da aba
     Animes ficam lembrados. A rolagem volta ao ponto, carregando mais capas se precisar.
 - **Spec 134** cobre a gaveta no celular, a prévia presa no computador e o "voltar" com semana, filtro, altura e aba.
+
+**Prévia em mais lugares (28/10).** Os cartões de anime de Explorar, temporada, Dashboard (hoje e "mais tarde"),
+Minha Lista, Para assistir, álbuns do perfil e obras relacionadas da página da obra abrem a mesma prévia, com
+`WorkPreview` e `WorkPreviewTrigger` em `src/components/WorkPreview.tsx`. A prévia mostra capa, títulos, informações,
+sinopse, gêneros, as ações do lugar (acompanhar, no Explorar) e o botão "Ver página da obra". A estrela de acompanhar
+continua sobre a capa no Explorar. Ao voltar da obra, Explorar, temporada e Minha Lista restauram a busca, os filtros
+e a rolagem.
+
+Ficam como links os textos que levam a outra obra por dentro da própria página da obra (temporadas, ramos, marcadores
+da história), da hashtag e da comunidade, e os resultados da busca do cabeçalho. Ali a intenção de navegar é clara.

@@ -117,12 +117,14 @@ test.describe.serial("Obras só do AniDB religadas à AniList", () => {
       const card = page.getByTestId(`explore-card-anilist-${ANILIST}`);
       await expect(card).toContainText("Finalizado · 2024");
       await expect(card).not.toContainText("Data não definida");
-      await expect(card.getByRole("link", { name: "Relink Round89 2nd Season" }).first()).toHaveAttribute("href", `/anime/${ANILIST}`);
+      await card.getByRole("button", { name: /Relink Round89 2nd Season/ }).first().click();
+      await expect(page.getByRole("dialog").getByRole("link", { name: "Ver página da obra" })).toHaveAttribute("href", `/anime/${ANILIST}`);
+      await page.keyboard.press("Escape");
       // O nome do AniDB acha, e a grafia da AniList também (a busca entende "Shoujyo" × "Shoujo").
       await page.getByLabel("Gênero").selectOption("");
       for (const typed of ["Shoujo Round89", "Shoujyo Round89"]) {
         await page.getByPlaceholder("Buscar anime...").fill(typed);
-        await expect(page.getByRole("link", { name: "Shoujo Round89 Pirates" }).first()).toBeVisible();
+        await expect(page.getByRole("button", { name: "Shoujo Round89 Pirates" }).first()).toBeVisible();
       }
       await page.getByPlaceholder("Buscar anime...").fill("");
       await page.getByLabel("Gênero").selectOption(GENRE);

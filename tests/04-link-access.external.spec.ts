@@ -24,7 +24,8 @@ test.describe("Acesso real à Crunchyroll (rede externa) @external", () => {
       context,
     }) => {
       await page.goto("/minha-lista");
-      await page.getByRole("link", { name: anime.titleRomaji }).first().click();
+      await page.getByRole("button", { name: anime.titleRomaji }).first().click();
+      await page.getByRole("dialog").getByRole("link", { name: "Ver página da obra" }).click();
 
       const linksSection = page.getByTestId("platform-links");
       await linksSection.getByTestId("platform-link-add-toggle").click();

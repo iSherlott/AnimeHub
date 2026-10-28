@@ -84,8 +84,8 @@ test.describe("Minha Lista (Figma 8:2608) e deixar de acompanhar", () => {
     const search = page.getByLabel("Buscar na minha lista");
 
     await search.fill("Sem Previsao");
-    await expect(page.getByRole("link", { name: "Lista Sem Previsao Nenhuma" }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Lista Com Lancamento Confirmado" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Lista Sem Previsao Nenhuma" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Lista Com Lancamento Confirmado" })).toHaveCount(0);
 
     await search.fill("zzzz-nao-existe");
     await expect(page.getByText("Nenhum anime da sua lista bate com essa busca.")).toBeVisible();

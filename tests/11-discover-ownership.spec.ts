@@ -100,9 +100,10 @@ test.describe("Descobrir anota posse (Epic 19)", () => {
     await page.goto("/discover");
     await page.getByPlaceholder("Buscar anime...").fill("Catálogo Já Na Minha Lista");
 
-    const link = page.getByRole("link", { name: "Catálogo Já Na Minha Lista" });
-    await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute("href", `/anime/${ownedAnimeId}`);
+    const card = page.getByRole("button", { name: "Catálogo Já Na Minha Lista" });
+    await expect(card).toBeVisible();
+    await card.click();
+    await expect(page.getByRole("dialog").getByRole("link", { name: "Ver página da obra" })).toHaveAttribute("href", `/anime/${ownedAnimeId}`);
   });
 
   test.describe("sem sessão", () => {

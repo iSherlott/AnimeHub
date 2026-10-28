@@ -61,17 +61,17 @@ test.describe.serial("Explorar — filtro Tipo", () => {
     expect(labels).toContain("Filme");
 
     await page.getByLabel("Gênero").selectOption(GENRE);
-    await expect(page.getByRole("link", { name: "Serie Round92" }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Filme Round92" }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Sem Tipo Round92" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Serie Round92" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Filme Round92" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sem Tipo Round92" }).first()).toBeVisible();
 
     await tipo.selectOption("MOVIE"); // valor = tipo na linha da história (kind)
-    await expect(page.getByRole("link", { name: "Filme Round92" }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Serie Round92" })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Sem Tipo Round92" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Filme Round92" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Serie Round92" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Sem Tipo Round92" })).toHaveCount(0);
 
     await tipo.selectOption("");
-    await expect(page.getByRole("link", { name: "Serie Round92" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Serie Round92" }).first()).toBeVisible();
   });
 
   test("a importação grava o tipo da obra nova", async ({ playwright, baseURL }) => {

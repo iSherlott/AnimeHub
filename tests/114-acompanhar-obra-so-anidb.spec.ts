@@ -107,7 +107,9 @@ test.describe.serial("Acompanhar obras só do AniDB", () => {
   test("Minha Lista e o perfil mostram a obra; o perfil leva à página pública dela", async ({ page }) => {
     await page.goto("/minha-lista");
     await expect(page.getByTestId(`anime-card-${animeId}`).first()).toBeVisible();
-    await expect(page.getByTestId(`anime-card-${animeId}`).first().getByRole("link").first()).toHaveAttribute("href", `/anime/${animeId}`);
+    await page.getByTestId(`anime-card-${animeId}`).first().getByRole("button", { name: /Round114|AniDB/ }).first().click();
+    await expect(page.getByRole("dialog").getByRole("link", { name: "Ver página da obra" })).toHaveAttribute("href", `/anime/${animeId}`);
+    await page.keyboard.press("Escape");
     await page.goto(`/users/${userId}`);
     await expect(async () => {
       await page.getByTestId("tab-animes").click();

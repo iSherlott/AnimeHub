@@ -16,6 +16,7 @@ import type { DiscoverItem } from "@/lib/discoverItem";
 import { parseSeasonSlug, SEASON_COPY, seasonDisplayName, seasonSlug, splitSeasonItems, type SeasonRef } from "@/lib/exploreGroups";
 import type { AvailableSeason } from "@/lib/availableSeasons";
 import { CATALOG_STATUS_LABELS } from "@/lib/types";
+import { readSession, useCameBack, useScrollMemory, writeSession } from "@/lib/useScrollMemory";
 
 /**
  * Página de temporada (Figma `8:1733`, "Temporada Autumn2026"): o que está em
@@ -34,9 +35,15 @@ function SeasonView({ seasonRef: ref }: { seasonRef: SeasonRef }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [genre, setGenre] = useState("");
-  const [status, setStatus] = useState("");
+  // Ao voltar da página de uma obra, os filtros e a rolagem voltam como estavam.
+  const viewKey = `season:${ref.season}${ref.year}`;
+  const cameBack = useCameBack();
+  const [saved] = useState(() => (cameBack ? readSession<{ genre: string; status: string }>(viewKey) : null));
+  const [genre, setGenre] = useState(saved?.genre ?? "");
+  const [status, setStatus] = useState(saved?.status ?? "");
   const router = useRouter();
+  useEffect(() => writeSession(viewKey, { genre, status }), [viewKey, genre, status]);
+  useScrollMemory(viewKey, !loading);
   // Temporadas que têm anime na plataforma (o filtro nunca oferece uma temporada vazia).
   const [available, setAvailable] = useState<AvailableSeason[] | null>(null);
 

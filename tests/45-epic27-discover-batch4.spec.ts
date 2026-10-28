@@ -41,9 +41,9 @@ test.describe("Epic 27 (lote 4) — Descobrir: grade responsiva pros resultados 
     await page.goto("/discover");
     await page.getByLabel("Gênero").selectOption(GENRE);
 
-    const card1 = page.getByRole("link", { name: "Anime Lote4 Grid 1" });
-    const card2 = page.getByRole("link", { name: "Anime Lote4 Grid 2" });
-    const card3 = page.getByRole("link", { name: "Anime Lote4 Grid 3" });
+    const card1 = page.getByRole("button", { name: "Anime Lote4 Grid 1" });
+    const card2 = page.getByRole("button", { name: "Anime Lote4 Grid 2" });
+    const card3 = page.getByRole("button", { name: "Anime Lote4 Grid 3" });
     await expect(card1).toBeVisible();
     await expect(card3).toBeVisible();
 

@@ -98,8 +98,9 @@ test.describe.serial("Página das obras só do AniDB", () => {
     await page.getByLabel("Gênero").selectOption(GENRE);
     const card = page.getByTestId(`explore-card-anidb-${AID}`);
     // Padrão do produto: o título em japonês é o principal do cartão.
-    await expect(card.getByRole("link", { name: "アニDBだけ" })).toHaveAttribute("href", `/anime/anidb-${AID}`);
     await expect(card.getByRole("button", { name: "+ Acompanhar" })).toBeEnabled();
+    await card.getByRole("button", { name: /アニDBだけ/ }).click();
+    await expect(page.getByRole("dialog").getByRole("link", { name: "Ver página da obra" })).toHaveAttribute("href", `/anime/anidb-${AID}`);
   });
 
   test.describe("como administrador", () => {

@@ -84,7 +84,7 @@ test.describe.serial("Telas antigas", () => {
     await page.getByLabel("Buscar na minha lista").fill("Telas Round133");
     const row = page.getByTestId(`anime-card-${animeId}`);
     const time = (await row.getByTestId("card-next").boundingBox())!;
-    const title = (await row.getByRole("link", { name: /画面１３３|Telas Round133/ }).first().boundingBox())!;
+    const title = (await row.getByRole("button", { name: /画面１３３|Telas Round133/ }).first().boundingBox())!;
     // O horário fica numa linha, acima do título (não lado a lado), e o título tem largura de verdade.
     expect(title.y).toBeGreaterThan(time.y + time.height - 2);
     expect(title.width).toBeGreaterThan(60);

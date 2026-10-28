@@ -187,7 +187,7 @@ test.describe.serial("Explorar — fileiras, temporadas e cartões", () => {
       await expect(star).toBeVisible();
       await expect(card.getByRole("button", { name: "+ Acompanhar" })).toHaveCount(1);
       // A estrela está no canto superior direito da capa (acima do título).
-      const [cardBox, starBox, titleBox] = [await card.boundingBox(), await star.boundingBox(), await card.getByRole("link", { name: "Terminada Alfa Round87" }).last().boundingBox()];
+      const [cardBox, starBox, titleBox] = [await card.boundingBox(), await star.boundingBox(), await card.getByText("Terminada Alfa Round87", { exact: true }).last().boundingBox()];
       expect(starBox!.x + starBox!.width).toBeGreaterThan(cardBox!.x + cardBox!.width - 24);
       expect(starBox!.y).toBeLessThan(cardBox!.y + 24);
       expect(starBox!.y + starBox!.height).toBeLessThan(titleBox!.y);

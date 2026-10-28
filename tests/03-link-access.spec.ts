@@ -19,7 +19,8 @@ test.describe("Acesso ao link (sem navegar de verdade para fora)", () => {
       page,
     }) => {
       await page.goto("/minha-lista");
-      await page.getByRole("link", { name: anime.titleRomaji }).first().click();
+      await page.getByRole("button", { name: anime.titleRomaji }).first().click();
+      await page.getByRole("dialog").getByRole("link", { name: "Ver página da obra" }).click();
 
       const anchor = page
         .getByTestId("platform-links")

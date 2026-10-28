@@ -9,8 +9,9 @@ import EventRepeatIcon from "@mui/icons-material/EventRepeat";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import StarIcon from "@mui/icons-material/Star";
-import { Box, IconButton, Link as MuiLink, Typography } from "@mui/material";
+import { Box, Button, IconButton, Typography } from "@mui/material";
 import { CoverImage } from "@/components/CoverImage";
+import { WorkPreviewTrigger } from "@/components/WorkPreview";
 import type { DiscoverItem } from "@/lib/discoverItem";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { scheduleOf } from "@/lib/exploreGroups";
@@ -225,44 +226,53 @@ export function ExploreCard({ item }: { item: DiscoverItem }) {
     );
   }
 
+  // Ação da prévia: acompanhar dali mesmo (quem já acompanha vai pela "Ver página da obra", que abre o detalhe pessoal).
+  const previewAction = owned ? null : followable && user ? (
+    <Button variant="contained" size="small" disabled={following} onClick={() => void follow()} data-testid={`explore-preview-follow-${item.key}`}>
+      {following ? "Adicionando…" : "+ Acompanhar"}
+    </Button>
+  ) : followable && detailHref ? (
+    <Button component={NextLink} href={loginHref(detailHref)} variant="contained" size="small">
+      + Acompanhar
+    </Button>
+  ) : null;
+
+  // Capa, título e horário são uma área só: tocar ou clicar abre a prévia (a página da obra fica num botão dentro dela).
+  // A estrela de acompanhar fica por cima da capa, fora dessa área.
   return (
-    <Box data-testid={`explore-card-${item.key}`} sx={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-      <Box sx={{ position: "relative" }}>
-        {detailHref ? (
-          <MuiLink component={NextLink} href={detailHref} aria-hidden tabIndex={-1} underline="none" sx={{ display: "block" }}>
-            {cover}
-          </MuiLink>
-        ) : (
-          cover
-        )}
-        <Box sx={{ position: "absolute", top: 12, right: 12 }}>{star}</Box>
-        {followError && (
-          <Typography role="alert" sx={{ position: "absolute", left: 8, right: 8, bottom: 8, px: 1, py: 0.5, borderRadius: "6px", bgcolor: "rgba(8,8,11,0.88)", fontSize: 12, color: "primary.main" }}>
-            {followError}
-          </Typography>
-        )}
-      </Box>
-      {/* Altura fixa para todos os cartões: título em até 2 linhas, um subtítulo e o horário. */}
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-        <Typography lang={primaryLang} sx={{ fontSize: 20, fontWeight: 700, lineHeight: 1.5, minHeight: "3em", overflowWrap: "anywhere", ...clampSx(2) }}>
-          {detailHref ? (
-            <MuiLink component={NextLink} href={detailHref} underline="hover" color="inherit">
-              <PrimaryTitle lines={titleLines} />
-            </MuiLink>
-          ) : (
-            <PrimaryTitle lines={titleLines} />
+    <Box data-testid={`explore-card-${item.key}`} sx={{ position: "relative", minWidth: 0 }}>
+      <WorkPreviewTrigger
+        label={titleLines.primary}
+        testId={`explore-open-${item.key}`}
+        info={{ titles: item, coverImage: item.coverImage, href: detailHref, description: item.description, anilistId: item.anilistId, genres: item.genres, meta: [schedule.text] }}
+        actions={previewAction}
+        sx={{ display: "flex", flexDirection: "column", gap: 2, borderRadius: "12px" }}
+      >
+        <Box sx={{ position: "relative" }}>
+          {cover}
+          {followError && (
+            <Typography role="alert" sx={{ position: "absolute", left: 8, right: 8, bottom: 8, px: 1, py: 0.5, borderRadius: "6px", bgcolor: "rgba(8,8,11,0.88)", fontSize: 12, color: "primary.main" }}>
+              {followError}
+            </Typography>
           )}
-        </Typography>
-        <Typography lang={secondary[0] ? lineLang(secondary[0]) : undefined} sx={{ fontSize: 12, color: "text.secondary", lineHeight: 1.5, minHeight: "1.5em", ...clampSx(1) }}>
-          {secondary[0] ?? ""}
-        </Typography>
-      </Box>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, minHeight: 24 }}>
-        <ScheduleGlyph sx={{ fontSize: 16, flexShrink: 0 }} />
-        <Typography suppressHydrationWarning sx={{ fontSize: 14, ...clampSx(1) }}>
-          {schedule.text}
-        </Typography>
-      </Box>
+        </Box>
+        {/* Altura fixa para todos os cartões: título em até 2 linhas, um subtítulo e o horário. */}
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+          <Typography lang={primaryLang} sx={{ fontSize: 20, fontWeight: 700, lineHeight: 1.5, minHeight: "3em", overflowWrap: "anywhere", ...clampSx(2) }}>
+            <PrimaryTitle lines={titleLines} />
+          </Typography>
+          <Typography lang={secondary[0] ? lineLang(secondary[0]) : undefined} sx={{ fontSize: 12, color: "text.secondary", lineHeight: 1.5, minHeight: "1.5em", ...clampSx(1) }}>
+            {secondary[0] ?? ""}
+          </Typography>
+        </Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, minHeight: 24 }}>
+          <ScheduleGlyph sx={{ fontSize: 16, flexShrink: 0 }} />
+          <Typography suppressHydrationWarning sx={{ fontSize: 14, ...clampSx(1) }}>
+            {schedule.text}
+          </Typography>
+        </Box>
+      </WorkPreviewTrigger>
+      <Box sx={{ position: "absolute", top: 12, right: 12 }}>{star}</Box>
     </Box>
   );
 }

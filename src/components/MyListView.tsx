@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
-import NextLink from "next/link";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import EventBusyIcon from "@mui/icons-material/EventBusy";
 import EventNoteIcon from "@mui/icons-material/EventNote";
@@ -10,11 +9,13 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PauseCircleIcon from "@mui/icons-material/PauseCircle";
 import PauseCircleOutlineIcon from "@mui/icons-material/PauseCircleOutlined";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import { Box, Button, Link as MuiLink, Typography } from "@mui/material";
+import { Box, Button, Typography } from "@mui/material";
 import { ELEVATED_BUTTON_SX, lineLang, PrimaryTitle, useTitleLines } from "@/components/ExploreCard";
 import { SearchField, SelectField } from "@/components/FilterField";
 import { InfiniteFooter } from "@/components/InfiniteFooter";
 import { ListRow } from "@/components/ListRow";
+import { WorkPreviewTrigger } from "@/components/WorkPreview";
+import { readSession, useCameBack, useScrollMemory, writeSession } from "@/lib/useScrollMemory";
 import { useInfiniteScroll } from "@/lib/useInfiniteScroll";
 import { useWindowedList } from "@/lib/useWindowedList";
 import type { MyListEntry } from "@/lib/myList";
@@ -207,16 +208,21 @@ const panelSx = {
   minWidth: 0,
 } as const;
 
-/** Título (nativo em destaque) + apoio, como link para o detalhe pessoal. */
+/** Título (nativo em destaque) + apoio; tocar no título abre a prévia, com o botão do detalhe pessoal. */
 function EntryTitle({ entry, size = 20 }: { entry: MyListEntry; size?: number }) {
   const titleLines = useTitleLines(entry);
   const { secondary, primaryLang } = titleLines;
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, minWidth: 0 }}>
       <Typography lang={primaryLang} sx={{ fontSize: size, fontWeight: 700, lineHeight: 1.4, overflowWrap: "anywhere" }}>
-        <MuiLink component={NextLink} href={`/anime/${entry.id}`} underline="hover" color="inherit">
+        <WorkPreviewTrigger
+          inline
+          label={titleLines.primary}
+          info={{ titles: entry, coverImage: entry.coverImage, href: `/anime/${entry.id}`, anilistId: entry.anilistId, meta: [entry.seasonsCount > 1 ? `${entry.seasonsCount} temporadas` : null] }}
+          sx={{ display: "inline", width: "auto", font: "inherit", "&:hover": { textDecoration: "underline" } }}
+        >
           <PrimaryTitle lines={titleLines} />
-        </MuiLink>
+        </WorkPreviewTrigger>
       </Typography>
       {secondary.map((line) => (
         <Typography key={line} lang={lineLang(line)} sx={{ fontSize: 13, color: "text.secondary" }}>
@@ -236,9 +242,14 @@ function EntryTitle({ entry, size = 20 }: { entry: MyListEntry; size?: number })
 export function MyListView({ entries }: { entries: MyListEntry[] }) {
   const { preference } = useTitlePreference();
   const timeZone = useTimeZone();
-  const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<SortMode>("next");
-  const [status, setStatus] = useState("");
+  // Ao voltar da página de uma obra, a busca, a ordem, o filtro e a rolagem voltam como estavam.
+  const cameBack = useCameBack();
+  const [saved] = useState(() => (cameBack ? readSession<{ query: string; sort: SortMode; status: string }>("my-list:view") : null));
+  const [query, setQuery] = useState(saved?.query ?? "");
+  const [sort, setSort] = useState<SortMode>(saved?.sort ?? "next");
+  const [status, setStatus] = useState(saved?.status ?? "");
+  useEffect(() => writeSession("my-list:view", { query, sort, status }), [query, sort, status]);
+  useScrollMemory("/minha-lista", true);
 
   const statuses = useMemo(() => Array.from(new Set(entries.map((e) => e.status).filter((s): s is string => s !== null && s in STATUS_LABELS))), [entries]);
 
