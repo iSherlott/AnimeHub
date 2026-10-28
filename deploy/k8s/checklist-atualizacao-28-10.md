@@ -84,8 +84,30 @@ docker run --rm -v "$PWD:/w" postgres:18-alpine psql "<URL do banco sem ?schema=
 - [ ] Cada linha bate com o "espera" do lado: 75 migrações, 0 com falha, última `20261120100000_profile_background`, nenhum item
       de lista ou produção sem obra, 2 tabelas arquivadas, 1 ou mais administradores, nenhuma senha provisória,
       nenhum avatar enviado. Gênero não registrado não impede o site: registre, mescle ou remova em Admin → Taxonomia.
-- [ ] A linha "contas sem nome de usuário" diz quantas contas ainda não têm @. Não impede o site: defina cada uma em
-      Admin → Acesso e moderação → Usuários ("definir"), já que a pessoa não pode mais escolher o próprio @.
+- [ ] A linha "contas sem nome de usuário" diz quantas contas ainda não têm @. Não impede o site, mas a pessoa não
+      pode mais escolher o próprio @: defina pelo comando abaixo (todas de uma vez) ou uma por uma em Admin → Acesso e
+      moderação → Usuários ("definir").
+
+### Nome de usuário das contas antigas
+
+O comando mostra cada conta sem @ com uma sugestão tirada do nome ("Sherlott Silva" → `sherlott_silva`; repetido
+ganha `_2`). Sem `--aplicar`, só mostra. Ele nunca troca um @ que já existe, e cada gravação fica no log do painel.
+
+```bash
+# 1. Ver as sugestões (não grava nada)
+kubectl -n animehub run sugerir-usuarios --rm -it --restart=Never --image=animehub/migrate:latest --image-pull-policy=Never \
+  --overrides='{"spec":{"containers":[{"name":"sugerir-usuarios","image":"animehub/migrate:latest","imagePullPolicy":"Never","stdin":true,"tty":true,"envFrom":[{"secretRef":{"name":"animehub-env"}}],"command":["node","scripts/sugerir-usuarios.mjs"]}]}}'
+```
+
+Para gravar, rode de novo com `"--aplicar"` no fim do `command`. Para escolher o @ de alguém, acrescente
+`"--definir","email@exemplo.com=usuario"` antes do `"--aplicar"`.
+
+- [ ] Rodado sem `--aplicar`: as sugestões conferidas.
+- [ ] Rodado com `--aplicar`: termina com "✓ N nomes de usuário gravados" e, rodando de novo, "Todas as contas já
+      têm nome de usuário".
+
+No Windows, com `ANIME_HUB_DATABASE_URL` apontando para o banco: `npm run admin:usuarios` (e
+`npm run admin:usuarios -- --aplicar`).
 - [ ] `curl -s http://localhost:8010/api/auth/me` responde `{"user":null}`.
 - [ ] No navegador, sem entrar: Explorar e Calendário abrem; o menu mostra só Calendário e Explorar; abrir
       `/comunidades` leva ao login.

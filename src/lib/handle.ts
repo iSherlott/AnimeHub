@@ -9,8 +9,9 @@ export const HANDLE_MAX = 20;
 
 const HANDLE_PATTERN = /^[a-z0-9_]+$/;
 
-/** Rotas/nomes que um identificador não pode ocupar. */
-const RESERVED = new Set(["admin", "administrador", "anime", "animehub", "suporte", "moderacao", "sistema", "voce", "eu"]);
+/** Rotas/nomes que um nome de usuário não pode ocupar (o comando `scripts/sugerir-usuarios.mjs` repete a lista; um teste confere). */
+export const RESERVED_HANDLES: readonly string[] = ["admin", "administrador", "anime", "animehub", "suporte", "moderacao", "sistema", "voce", "eu"];
+const RESERVED = new Set(RESERVED_HANDLES);
 
 export function normalizeHandle(raw: string): string {
   return raw.trim().replace(/^@/, "").toLowerCase();

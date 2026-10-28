@@ -272,6 +272,10 @@ relacionadas às obras.
   - O administrador define o @ ao criar a conta (obrigatório, 3 a 20 letras minúsculas, números ou _, sem espaço) e pode
     definir ou corrigir depois em Acesso e moderação → Usuários, para as contas antigas que ainda não têm.
   - O comando do primeiro administrador pede `--usuario`.
+  - Contas antigas sem @: `scripts/sugerir-usuarios.mjs` (`npm run admin:usuarios`). Ele mostra uma sugestão por
+    conta, tirada do nome, e com `--aplicar` grava todas de uma vez. Só mexe em quem ainda não tem @; `--definir
+    email=usuario` troca uma sugestão. As regras estão repetidas em `.mjs` porque o comando roda no cluster com Node 20;
+    `handleSuggestion.test.ts` confere que elas batem com `src/lib/handle.ts`.
 - **Amigos.** Duas colunas no computador.
   - À esquerda, os seus amigos e as **pessoas na rede**: todo mundo no AnimeHub, das contas mais novas para as mais
     antigas, com amigos em comum, em páginas de 20.

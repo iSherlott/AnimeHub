@@ -15,7 +15,8 @@
     "test:unit:watch": "vitest",
     "seed:catalog": "node scripts/seed-catalog-cache.cjs",
     "seed:community": "node scripts/seed-community.cjs",
-    "admin:primeiro": "node scripts/criar-primeiro-admin.mjs"
+    "admin:primeiro": "node scripts/criar-primeiro-admin.mjs",
+    "admin:usuarios": "node scripts/sugerir-usuarios.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
