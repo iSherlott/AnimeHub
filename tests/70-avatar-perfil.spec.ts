@@ -11,6 +11,12 @@ const C1 = 970003;
 const C2 = 970004;
 const IMG = (name: string) => `https://s4.anilist.co/file/anilistcdn/spec70/${name}.png`;
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+// Tamanho real das imagens largas (a tabela ImageSize guarda a medida): banner e fundo só oferecem Full HD.
+const SIZES = [
+  { url: IMG("banner-a"), width: 1900, height: 400 }, // faixa larga em Full HD: banner
+  { url: IMG("banner-b"), width: 1280, height: 269 }, // pequena: nem banner nem fundo
+  { url: IMG("banner-g2"), width: 1900, height: 1069 }, // tela cheia em Full HD: fundo
+];
 const cast = (names: string[]) => JSON.stringify(names.map((n) => ({ role: "MAIN", name: n, image: IMG(n.toLowerCase().replace(/\W/g, "")), voiceActors: [] })));
 
 test.describe.serial("Avatar de anime e Editar Perfil", () => {
@@ -21,8 +27,10 @@ test.describe.serial("Avatar de anime e Editar Perfil", () => {
     prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
     userId = (await prisma.user.findUniqueOrThrow({ where: { email: TEST_USER_EMAIL } })).id;
     await prisma.anime.deleteMany({ where: { anilistId: { in: [A, B, C1, C2] } } });
+    await prisma.imageSize.deleteMany({ where: { url: { in: SIZES.map((s) => s.url) } } });
+    await prisma.imageSize.createMany({ data: SIZES });
     await prisma.anime.create({ data: { userId, anilistId: A, titleRomaji: "Avatar Round70 Alfa", genres: "", coverImage: IMG("capa-a"), bannerImage: IMG("banner-a"), castJson: cast(["Maomao", "Jinshi"]) } });
-    await prisma.anime.create({ data: { userId, anilistId: B, titleRomaji: "Avatar Round70 Beta", genres: "", coverImage: IMG("capa-b"), castJson: cast(["Frieren"]) } });
+    await prisma.anime.create({ data: { userId, anilistId: B, titleRomaji: "Avatar Round70 Beta", genres: "", coverImage: IMG("capa-b"), bannerImage: IMG("banner-b"), castJson: cast(["Frieren"]) } });
     await prisma.anime.create({ data: { userId, anilistId: C1, titleRomaji: "Avatar Round70 Gama", seriesKey: "avatar round70 gama", seasonNumber: 1, genres: "", coverImage: IMG("capa-g1"), castJson: cast(["Yuji", "Megumi"]) } });
     await prisma.anime.create({
       data: { userId, anilistId: C2, titleRomaji: "Avatar Round70 Gama 2nd Season", seriesKey: "avatar round70 gama", seasonNumber: 2, genres: "", coverImage: IMG("capa-g2"), bannerImage: IMG("banner-g2"), castJson: JSON.stringify([{ role: "MAIN", name: "Yuji", image: IMG("yuji-s2"), voiceActors: [] }, { role: "MAIN", name: "Megumi", image: IMG("megumi"), voiceActors: [] }]) },
@@ -32,6 +40,7 @@ test.describe.serial("Avatar de anime e Editar Perfil", () => {
   test.afterAll(async () => {
     await prisma.user.update({ where: { id: userId }, data: { avatarUrl: null, bannerUrl: null, backgroundUrl: null } });
     await prisma.anime.deleteMany({ where: { anilistId: { in: [A, B, C1, C2] } } });
+    await prisma.imageSize.deleteMany({ where: { url: { in: SIZES.map((s) => s.url) } } });
     await prisma.$disconnect();
   });
 
@@ -43,7 +52,11 @@ test.describe.serial("Avatar de anime e Editar Perfil", () => {
     const data = await (await request.get("/api/users/me/avatar")).json();
     const alfa = data.groups.find((g: { anilistId: number }) => g.anilistId === A);
     expect(alfa.avatars.map((i: { label: string }) => i.label)).toEqual(["Capa", "Maomao", "Jinshi"]);
-    expect(alfa.banners.map((i: { label: string }) => i.label)).toEqual(["Banner", "Capa"]);
+    // A capa (460 px) não serve mais de banner nem de fundo; o banner 1900×400 é faixa larga, não tela cheia.
+    expect(alfa.banners.map((i: { label: string }) => i.label)).toEqual(["Banner"]);
+    expect(alfa.backgrounds).toEqual([]);
+    const beta = data.groups.find((g: { anilistId: number }) => g.anilistId === B);
+    expect([...beta.banners, ...beta.backgrounds]).toEqual([]); // 1280×269: abaixo do Full HD
 
     // URL fora das opções (ou de outro tipo) é recusada.
     expect((await request.patch("/api/users/me/avatar", { data: { kind: "avatar", url: "https://evil.example/x.png" } })).status()).toBe(400);
@@ -71,9 +84,16 @@ test.describe.serial("Avatar de anime e Editar Perfil", () => {
     expect(page.groups[0].anilistId).toBe(C1);
     const many = await (await request.get("/api/users/me/avatar?kind=avatar&q=round70")).json();
     expect(many.total).toBe(3);
-    // O plano de fundo usa as imagens largas (banner) e as capas.
+    // Plano de fundo: só a imagem de tela cheia em Full HD (1900×1069); banner: só a faixa larga (1900×400).
     const bg = await (await request.get("/api/users/me/avatar?kind=background&q=round70")).json();
-    expect(bg.groups.find((g: { anilistId: number }) => g.anilistId === A).banners.map((i: { label: string }) => i.label)).toEqual(["Banner", "Capa"]);
+    expect(bg.groups.map((g: { anilistId: number }) => g.anilistId)).toEqual([C1]);
+    expect(bg.groups[0].backgrounds.map((i: { label: string }) => i.label)).toEqual(["Banner · 2ª temporada"]);
+    const banner = await (await request.get("/api/users/me/avatar?kind=banner&q=round70")).json();
+    expect(banner.groups.map((g: { anilistId: number }) => g.anilistId)).toEqual([A]);
+    // E a escolha recusa o que não passou: banner pequeno, ou a imagem de tela cheia usada como banner.
+    expect((await request.patch("/api/users/me/avatar", { data: { kind: "banner", url: IMG("banner-b") } })).status()).toBe(400);
+    expect((await request.patch("/api/users/me/avatar", { data: { kind: "banner", url: IMG("banner-g2") } })).status()).toBe(400);
+    expect((await request.patch("/api/users/me/avatar", { data: { kind: "background", url: IMG("capa-a") } })).status()).toBe(400);
   });
 
   test("Editar Perfil: Seleção de Avatar por obra, escolher e salvar troca o avatar", async ({ page }) => {

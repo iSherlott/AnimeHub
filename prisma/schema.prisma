@@ -1840,3 +1840,12 @@ model ProfileAlbumItem {
   @@id([albumId, animeId])
   @@index([animeId])
 }
+
+/// Tamanho real (px) de uma imagem de fora (banner da AniList/Kitsu), medido uma vez: o banner e o plano de fundo do
+/// perfil só oferecem imagens em Full HD (ver src/lib/imageSize.ts). Falha na medição grava 0×0 e tenta de novo um dia depois.
+model ImageSize {
+  url        String   @id
+  width      Int
+  height     Int
+  measuredAt DateTime @default(now())
+}

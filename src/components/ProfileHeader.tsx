@@ -4,13 +4,13 @@ import { useState, type ReactNode } from "react";
 import { Box, Stack, Tooltip, Typography } from "@mui/material";
 import { AchievementTitleBadge } from "@/components/AchievementTitleBadge";
 import { FollowToggle } from "@/components/FollowToggle";
-import { LinkButton } from "@/components/LinkButton";
+import { IconAction } from "@/components/IconAction";
 import { ProfileSafetyMenu } from "@/components/ProfileSafetyMenu";
 import { UserAvatar } from "@/components/UserAvatar";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import EditNoteOutlinedIcon from "@mui/icons-material/EditNoteOutlined";
 
-const quietActionSx = { px: 1.25, minHeight: 32, fontSize: 13, fontWeight: 600, color: "text.secondary", border: 1, borderColor: "divider", borderRadius: "999px", "&:hover": { color: "text.primary", borderColor: "text.secondary", bgcolor: "transparent" } } as const;
+const quietActionSx = { bgcolor: "transparent", color: "text.secondary", borderRadius: "999px", "&:hover": { color: "text.primary", borderColor: "text.secondary", bgcolor: "transparent" } } as const;
 
 /**
  * Bloco de identidade do perfil (Figma `13:42598` / `13:42736`, no estilo da Crunchyroll): banner (de uma obra
@@ -90,13 +90,9 @@ export function ProfileHeader({
           <Stack direction="row" sx={{ flexWrap: "wrap", gap: isOwnProfile ? 1 : 2 }}>
             {isOwnProfile ? (
               <>
-                {/* Discretos: atalhos da dona do perfil, sem disputar a atenção com o conteúdo da página. */}
-                <LinkButton href="/publicar" size="small" startIcon={<EditNoteOutlinedIcon />} sx={quietActionSx}>
-                  Nova publicação
-                </LinkButton>
-                <LinkButton href="/perfil/editar" size="small" startIcon={<EditOutlinedIcon />} data-testid="profile-edit-open" sx={quietActionSx}>
-                  Editar perfil
-                </LinkButton>
+                {/* Só o ícone (o nome aparece ao passar o mouse): atalhos da dona do perfil, sem disputar a atenção com o conteúdo. */}
+                <IconAction href="/publicar" label="Nova publicação" icon={<EditNoteOutlinedIcon fontSize="small" />} sx={quietActionSx} />
+                <IconAction href="/perfil/editar" label="Editar perfil" icon={<EditOutlinedIcon fontSize="small" />} testId="profile-edit-open" sx={quietActionSx} />
               </>
             ) : viewerLoggedIn ? (
               <>

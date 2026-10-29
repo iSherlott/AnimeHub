@@ -138,8 +138,26 @@ export default async function UserProfilePage({ params }: Params) {
           aria-hidden
           data-testid="profile-background"
           // A imagem vai no estilo da própria caixa (uma por pessoa), não numa classe gerada.
-          style={{ backgroundImage: `linear-gradient(180deg, rgba(8,8,11,0.72) 0%, rgba(8,8,11,0.86) 45%, #08080b 100%), url("${encodeURI(target.backgroundUrl)}")` }}
-          sx={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", backgroundSize: "cover", backgroundPosition: "center top" }}
+          style={{ backgroundImage: `url("${encodeURI(target.backgroundUrl)}")` }}
+          sx={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 0,
+            pointerEvents: "none",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            // Os dois lados ficam à mostra e o centro escurece atrás do conteúdo, para o texto continuar legível.
+            // No celular e no tablet o conteúdo ocupa a tela toda: escurece por igual.
+            "&::after": {
+              content: '""',
+              position: "absolute",
+              inset: 0,
+              background: {
+                xs: "rgba(8,8,11,0.86)",
+                lg: "linear-gradient(90deg, rgba(8,8,11,0.2) 0%, rgba(8,8,11,0.45) 9%, rgba(8,8,11,0.9) 20%, rgba(8,8,11,0.9) 80%, rgba(8,8,11,0.45) 91%, rgba(8,8,11,0.2) 100%)",
+              },
+            },
+          }}
         />
       )}
       <Box sx={{ position: "relative", zIndex: 1 }}>
@@ -319,16 +337,6 @@ export default async function UserProfilePage({ params }: Params) {
 
             {/* Direita: amigos, comunidades e conquistas */}
             <Box component="aside" aria-label="Amigos, comunidades e conquistas" sx={{ display: { xs: "flex", sm: "grid", lg: "flex" }, gridTemplateColumns: { sm: "repeat(2, minmax(0,1fr))" }, alignItems: { sm: "start", lg: "stretch" }, flexDirection: "column", gap: 2, gridColumn: { md: "1 / -1", lg: "auto" }, order: { xs: 3, md: 0 } }}>
-              {isOwnProfile && (
-                <SideBox title="só você vê">
-                  <Typography sx={{ fontSize: 13 }}>Seus animes e álbuns podem ser ocultados em Configurações. Datas e adiados continuam só seus.</Typography>
-                  <Box>
-                    <LinkButton href="/minha-lista" size="small" sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}>
-                      🔒 Abrir Minha Lista privada
-                    </LinkButton>
-                  </Box>
-                </SideBox>
-              )}
               <SideBox id="amigos" title="amigos" count={friends.total} testId="profile-friends" more={isOwnProfile ? { href: "/amigos", label: "gerenciar" } : friends.total > friends.rows.length ? { href: `/users/${id}/amigos`, label: "ver todos" } : undefined}>
                 {isOwnProfile && pendingRequests > 0 && (
                   <AppLink href="/amigos" underline="hover" sx={{ fontSize: 13, fontWeight: 700 }} data-testid="profile-friend-requests">

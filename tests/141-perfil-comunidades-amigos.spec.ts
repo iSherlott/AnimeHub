@@ -93,9 +93,15 @@ test.describe.serial("Perfil, Meus Animes, Amigos e Comunidades (28/10)", () => 
     await expect(edit).toHaveAccessibleName("Editar quem sou eu");
     await expect(edit).toHaveText("");
     await expect(page.getByTestId("profile-albums").getByRole("listitem").filter({ has: page.getByTestId("album-new") })).toHaveCount(1);
-    // Os atalhos da dona do perfil não são mais botões cheios.
-    const publish = page.getByRole("link", { name: "Nova publicação" });
-    expect(await publish.evaluate((el) => getComputedStyle(el).backgroundColor)).toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+    // Os atalhos da dona do perfil são só o ícone, com o nome na dica e para leitores de tela.
+    for (const name of ["Nova publicação", "Editar perfil"]) {
+      const shortcut = page.getByRole("link", { name, exact: true });
+      await expect(shortcut).toHaveText("");
+      expect(await shortcut.evaluate((el) => getComputedStyle(el).backgroundColor)).toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+    }
+    await page.getByRole("link", { name: "Editar perfil", exact: true }).hover();
+    await expect(page.getByRole("tooltip")).toHaveText("Editar perfil");
+    await expect(page.getByText("só você vê", { exact: true })).toHaveCount(0);
   });
 
   test("Amigos: as pessoas da rede com amigos em comum, e amigos de amigos nas sugestões", async ({ page }) => {

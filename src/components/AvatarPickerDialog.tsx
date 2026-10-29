@@ -30,9 +30,33 @@ const outlinedButton = (enabled: boolean) => ({
 });
 
 const TEXTS = {
-  avatar: { title: "Seleção de Avatar", lead: "Escolha seu avatar! Você pode mudá-lo a qualquer momento.", option: "Avatar", plural: "Avatares", remove: "Remover foto (usar a padrão)" },
-  banner: { title: "Seleção de Banner", lead: "Escolha o banner do seu perfil. Você pode mudá-lo a qualquer momento.", option: "Banner", plural: "Banners", remove: "Remover banner" },
-  background: { title: "Seleção de Plano de Fundo", lead: "Escolha o plano de fundo do seu perfil. Você pode mudá-lo a qualquer momento.", option: "Plano de fundo", plural: "Planos de fundo", remove: "Remover plano de fundo" },
+  avatar: {
+    title: "Seleção de Avatar",
+    lead: "Escolha seu avatar! Você pode mudá-lo a qualquer momento.",
+    option: "Avatar",
+    plural: "Avatares",
+    remove: "Remover foto (usar a padrão)",
+    empty: "Acompanhe um anime para escolher imagens dele aqui — a capa e os personagens viram opções de avatar.",
+    thumb: { width: 96, height: 96 },
+  },
+  banner: {
+    title: "Seleção de Banner",
+    lead: "Só imagens largas em Full HD, no formato do banner. Você pode mudá-lo a qualquer momento.",
+    option: "Banner",
+    plural: "Banners",
+    remove: "Remover banner",
+    empty: "Nenhum anime da sua lista tem imagem larga em Full HD para o banner. Acompanhe outros animes para ver mais opções.",
+    thumb: { width: 240, height: 60 },
+  },
+  background: {
+    title: "Seleção de Plano de Fundo",
+    lead: "Só imagens em Full HD de tela cheia: a arte aparece dos dois lados do perfil. Você pode mudá-lo a qualquer momento.",
+    option: "Plano de fundo",
+    plural: "Planos de fundo",
+    remove: "Remover plano de fundo",
+    empty: "Nenhum anime da sua lista tem imagem de tela cheia em Full HD para o fundo. Acompanhe outros animes para ver mais opções.",
+    thumb: { width: 192, height: 108 },
+  },
 } as const;
 
 type Page = { groups: AvatarGroup[]; total: number; page: number; pages: number };
@@ -40,7 +64,7 @@ type Page = { groups: AvatarGroup[]; total: number; page: number; pages: number 
 /**
  * "Seleção de Avatar" (e de banner e de plano de fundo): as imagens das obras que a pessoa acompanha, uma fileira por
  * obra (todas as temporadas juntas, sem repetir imagem), no estilo da Crunchyroll — com busca pelo título e páginas de
- * 8 obras. Escolher e Salvar grava na hora (PATCH /api/users/me/avatar); no avatar, a pessoa também pode voltar à foto
+ * 8 obras. Banner e fundo só mostram imagens em Full HD, cada uma na proporção em que vai aparecer. Escolher e Salvar grava na hora (PATCH /api/users/me/avatar); no avatar, a pessoa também pode voltar à foto
  * padrão. Não há envio de foto própria: avatar, capa e fundo são sempre imagens dos animes acompanhados.
  */
 export function AvatarPickerDialog({
@@ -157,7 +181,7 @@ export function AvatarPickerDialog({
         {isAvatar ? (
           <UserAvatar id={userId} displayName={displayName} avatarUrl={selected} size={96} />
         ) : (
-          <Box sx={{ width: 160, height: 64, borderRadius: "4px", overflow: "hidden", bgcolor: "#2a2a2a", flexShrink: 0 }}>
+          <Box sx={{ width: 160, height: kind === "background" ? 90 : 48, borderRadius: "4px", overflow: "hidden", bgcolor: "#2a2a2a", flexShrink: 0 }}>
             {selected && <Box component="img" src={selected} alt="" sx={{ width: "100%", height: "100%", objectFit: "cover" }} />}
           </Box>
         )}
@@ -213,15 +237,15 @@ export function AvatarPickerDialog({
           </Typography>
         ) : groups === null ? (
           <Typography role="status" sx={{ fontSize: 14, color: "text.secondary" }}>
-            Carregando…
+            {isAvatar ? "Carregando…" : "Procurando imagens em Full HD…"}
           </Typography>
         ) : groups.length === 0 ? (
           <Typography data-testid="avatar-picker-empty" sx={{ fontSize: 14, color: "text.secondary" }}>
-            {debounced ? `Nenhum anime da sua lista com “${debounced}”.` : `Acompanhe um anime para escolher imagens dele aqui — a capa e os personagens viram opções de ${texts.option.toLowerCase()}.`}
+            {debounced ? `Nenhum anime da sua lista com “${debounced}”${isAvatar ? "" : " e imagem em Full HD"}.` : texts.empty}
           </Typography>
         ) : (
           groups.map((group) => {
-            const items = isAvatar ? group.avatars : group.banners;
+            const items = kind === "avatar" ? group.avatars : kind === "banner" ? group.banners : group.backgrounds;
             if (items.length === 0) return null;
             const title = resolveTitleText(preference, group);
             return (
@@ -241,8 +265,8 @@ export function AvatarPickerDialog({
                         data-testid="avatar-option"
                         sx={{
                           flexShrink: 0,
-                          width: isAvatar ? 96 : 220,
-                          height: isAvatar ? 96 : 88,
+                          width: texts.thumb.width,
+                          height: texts.thumb.height,
                           borderRadius: isAvatar ? "50%" : "4px",
                           overflow: "hidden",
                           bgcolor: "#fff",

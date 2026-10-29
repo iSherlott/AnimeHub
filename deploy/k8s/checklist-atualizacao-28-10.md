@@ -1,8 +1,8 @@
-# Checklist da atualização de 28/10/2026 (28 migrações)
+# Checklist da atualização de 28/10/2026 (29 migrações)
 
 O banco do cluster e o do desenvolvimento no Windows são o mesmo (`datatrade`, schema `animehub`). Ele parou na
-migração `20261024120000_streaming_delay`; esta versão traz **28 migrações**, de `20261025100000` a
-`20261120100000`. Todas só acrescentam, com duas exceções que mexem em dados existentes:
+migração `20261024120000_streaming_delay`; esta versão traz **29 migrações**, de `20261025100000` a
+`20261121100000`. Todas só acrescentam, com duas exceções que mexem em dados existentes:
 
 - `20261102100000_archive_episode_watchprogress` **move** `Episode` e `WatchProgress` para o schema
   `animehub_archive`. Nada é apagado. O site antigo lê `Episode`, por isso banco e site sobem juntos.
@@ -28,8 +28,14 @@ restaurada num Postgres 18 separado, e as 27 migrações foram aplicadas com `pr
 - **Banco novo, do zero:** as 74 migrações levaram cerca de 6 s, e o comando do primeiro administrador (abaixo)
   funcionou de ponta a ponta. O login com a senha provisória pediu a troca, e o painel só abriu depois dela.
 
-Depois do ensaio entrou mais uma migração, `20261120100000_profile_background`, que só acrescenta a coluna do plano de
-fundo do perfil (`User.backgroundUrl`, vazia). Ela foi aplicada no banco de testes da suíte.
+Depois do ensaio entraram mais duas migrações, as duas só acrescentam:
+
+- `20261120100000_profile_background`: a coluna do plano de fundo do perfil (`User.backgroundUrl`, vazia).
+- `20261121100000_image_size`: a tabela `ImageSize`, com o tamanho medido de cada banner. O banner e o plano de fundo
+  do perfil só oferecem imagens em Full HD. A tabela começa vazia e se enche sozinha na primeira vez que alguém abre o
+  seletor de banner ou de fundo, que pode levar alguns segundos.
+
+As duas foram aplicadas no banco de testes da suíte.
 
 O banco real pode ter mudado desde 26/10. Por isso o backup novo do passo 2 é obrigatório.
 
@@ -81,7 +87,7 @@ aconteceu, e o site continua na versão anterior.
 docker run --rm -v "$PWD:/w" postgres:18-alpine psql "<URL do banco sem ?schema=…>" -f /w/deploy/k8s/conferir-atualizacao.sql
 ```
 
-- [ ] Cada linha bate com o "espera" do lado: 75 migrações, 0 com falha, última `20261120100000_profile_background`, nenhum item
+- [ ] Cada linha bate com o "espera" do lado: 76 migrações, 0 com falha, última `20261121100000_image_size`, nenhum item
       de lista ou produção sem obra, 2 tabelas arquivadas, 1 ou mais administradores, nenhuma senha provisória,
       nenhum avatar enviado. Gênero não registrado não impede o site: registre, mescle ou remova em Admin → Taxonomia.
 - [ ] A linha "contas sem nome de usuário" diz quantas contas ainda não têm @. Não impede o site, mas a pessoa não

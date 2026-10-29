@@ -57,8 +57,6 @@ export type ProfileAnimeList = {
 
 export type ProfileAnimeResult = { kind: "ok"; list: ProfileAnimeList; isOwn: boolean } | { kind: "hidden" } | { kind: "unavailable" };
 
-const MAX_ENTRIES = 500;
-
 /** Sem acento e em minúsculas, para a busca achar "Shingeki" e "Shíngeki" do mesmo jeito. */
 export function normalizeSearch(text: string): string {
   return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
@@ -111,10 +109,11 @@ export async function loadProfileAnimeList(targetId: string, viewerId: string | 
   if (!isOwn && (await blockRelation(viewerId, targetId)) !== "none") return { kind: "unavailable" };
   if (!isOwn && !target.animeListPublic) return { kind: "hidden" };
 
+  // A lista inteira, sem teto: com um limite de 500 temporadas, quem tinha 800 perdia as mais antigas — e com elas a
+  // maior parte do "Não terminei" e todo o "Dropei" (28/10). A página e os álbuns automáticos saem daqui.
   const rows = await prisma.anime.findMany({
     where: { userId: targetId },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: MAX_ENTRIES,
     select: { id: true, anilistId: true, anidbId: true, kitsuId: true, seriesKey: true, seasonNumber: true, titleRomaji: true, titleEnglish: true, titleNative: true, titlePortuguese: true, coverImage: true, genres: true, status: true, watchState: true, waiting: true, season: true, seasonYear: true },
   });
   const pending = new Set((await prisma.pendingEpisode.findMany({ where: { userId: targetId }, select: { anilistId: true } })).map((p) => p.anilistId));

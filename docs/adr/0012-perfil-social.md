@@ -310,3 +310,33 @@ relacionadas às obras.
   - Spec novo: 141.
   - Ajustados: 06, 18, 43, 48, 58, 61, 62, 70 e 120.
   - Testes de unidade das imagens por obra (`avatarOptions.test.ts`) e da ordem do diretório (`communityDirectory.test.ts`).
+
+## Revisão de 28/10/2026 — listas completas, perfil mais limpo e imagens em Full HD
+
+- **Categorias que não mostravam obras marcadas.**
+  - **Causa:** a lista do perfil lia só as 500 temporadas mais recentes. Na lista real há 800, e as 300 mais antigas
+    ficavam de fora. Com elas saíam 62 dos 71 "Não terminei" e todos os 8 "Dropei", além de parte do "Terminei".
+  - **Correção:** a lista agora é lida inteira. A aba Animes, os álbuns automáticos (Assistindo, Terminei, Não
+    terminei, Dropei) e a aba Pausados de Meus Animes saem da mesma leitura, então todos voltaram.
+- **Atalhos do perfil só com ícone.** "Nova publicação" e "Editar perfil" mostram só o ícone, com o nome na dica e
+  para leitores de tela (`IconAction`).
+- **Sai o cartão "só você vê"** da lateral do próprio perfil. Meus Animes continua no menu do site.
+- **Banner e plano de fundo só em Full HD.**
+  - **Antes:** a capa (460 px de largura) e banners de 1000 px também eram opções, e esticados deixavam o perfil
+    borrado.
+  - **Medição:** o seletor mede o tamanho real de cada banner (só o cabeçalho do arquivo) e guarda em `ImageSize`. Cada
+    imagem é medida uma vez para todo mundo. Uma falha é tentada de novo um dia depois.
+  - **Banner:** só faixas largas de 1900 px ou mais e pelo menos 3 por 1. A AniList guarda banners com no máximo
+    1900 px, então essa é a largura total dela.
+  - **Plano de fundo:** só imagens de tela cheia, de 1900×1000 ou mais.
+  - **Na lista real:** de 626 banners, 447 servem de banner e 21 de plano de fundo.
+  - **Capa:** fica só como opção de avatar.
+  - **Escolhas antigas:** banner e fundo escolhidos antes continuam enquanto a obra estiver na lista. A regra vale para
+    o que o seletor oferece.
+- **Plano de fundo com os dois lados à mostra.** Em telas largas, as laterais ficam claras e o centro escurece atrás do
+  conteúdo, para o texto continuar legível. No celular e no tablet, o conteúdo ocupa a tela toda e o fundo escurece por
+  igual.
+- **Testes.**
+  - Spec novo: 142, com uma lista de 520 temporadas marcadas justamente nas mais antigas.
+  - Ajustados: 58, 70, 121 e 141.
+  - Unidade: `imageSize.test.ts` e `avatarOptions.test.ts`.

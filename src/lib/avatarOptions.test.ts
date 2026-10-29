@@ -7,7 +7,7 @@ const cast = (people: Array<[string, string]>) => JSON.stringify(people.map(([na
 describe("workImages (uma obra com todas as temporadas)", () => {
   it("junta as temporadas sem repetir endereço nem personagem; fica a arte da temporada mais recente", () => {
     const taken = new Set<string>();
-    const { avatars, banners } = workImages(
+    const { avatars, wide } = workImages(
       [
         { seasonNumber: 1, coverImage: IMG("capa-1"), bannerImage: null, castJson: cast([["Yuji", "yuji-1"], ["Megumi", "megumi"]]) },
         { seasonNumber: 2, coverImage: IMG("capa-2"), bannerImage: IMG("banner-2"), castJson: cast([["Yuji", "yuji-2"], ["Megumi", "megumi"], ["Nobara", "nobara"]]) },
@@ -16,7 +16,8 @@ describe("workImages (uma obra com todas as temporadas)", () => {
     );
     expect(avatars.map((a) => a.label)).toEqual(["Capa", "Capa · 2ª temporada", "Yuji", "Megumi", "Nobara"]);
     expect(avatars.find((a) => a.label === "Yuji")?.url).toBe(IMG("yuji-2"));
-    expect(banners.map((b) => b.label)).toEqual(["Banner · 2ª temporada", "Capa", "Capa · 2ª temporada"]);
+    // Imagens largas: só o banner (a capa de 460 px fica no avatar; o tamanho decide entre banner e fundo depois).
+    expect(wide.map((b) => b.label)).toEqual(["Banner · 2ª temporada"]);
     expect(taken.has(IMG("megumi"))).toBe(true);
   });
 
@@ -33,7 +34,7 @@ describe("workImages (uma obra com todas as temporadas)", () => {
 });
 
 describe("pageOfOptions", () => {
-  const group = (n: number, title: string, avatars = 1): AvatarGroup => ({ key: String(n), anilistId: n, titleRomaji: title, titleEnglish: null, titleNative: null, avatars: Array.from({ length: avatars }, (_, i) => ({ url: IMG(`${n}-${i}`), label: "Capa" })), banners: [] });
+  const group = (n: number, title: string, avatars = 1): AvatarGroup => ({ key: String(n), anilistId: n, titleRomaji: title, titleEnglish: null, titleNative: null, avatars: Array.from({ length: avatars }, (_, i) => ({ url: IMG(`${n}-${i}`), label: "Capa" })), banners: [], backgrounds: [] });
   const groups = Array.from({ length: 19 }, (_, i) => group(i + 1, `Obra ${i + 1}`)).concat(group(99, "Shíngeki", 1), group(100, "Sem avatar", 0));
 
   it("páginas de 8 obras, só as que têm imagem do tipo pedido", () => {

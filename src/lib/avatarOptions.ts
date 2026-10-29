@@ -1,11 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { groupAnimes } from "@/lib/animeGroups";
 import { normalizeSearch } from "@/lib/profileAnimeList";
+import { fitsBackground, fitsBanner, imageSizes } from "@/lib/imageSize";
 
 /**
  * Avatar, banner e plano de fundo do perfil escolhidos entre as imagens das obras que a pessoa ACOMPANHA
- * (capa e personagens para o avatar; banner e capa para o banner e o plano de fundo), agrupadas por obra — como a
- * "Seleção de Avatar" da Crunchyroll. Só uma URL que está nesta lista pode ser gravada: a escolha nunca aceita um
+ * (capa e personagens para o avatar; as imagens largas da obra para o banner e o plano de fundo), agrupadas por obra —
+ * como a "Seleção de Avatar" da Crunchyroll. Banner e plano de fundo só oferecem imagens em Full HD (src/lib/imageSize.ts):
+ * faixa larga de 1900 px ou mais para o banner, tela cheia de 1900×1000 ou mais para o fundo. A capa (460 px) ficou só
+ * no avatar: esticada, deixava o perfil borrado. Só uma URL que está nesta lista pode ser gravada: a escolha nunca aceita um
  * endereço arbitrário vindo do cliente.
  *
  * Uma obra com várias temporadas é UM grupo. Antes era um grupo por temporada, e as mesmas pessoas apareciam de novo em
@@ -22,7 +25,10 @@ export type AvatarGroup = {
   titleEnglish: string | null;
   titleNative: string | null;
   avatars: AvatarItem[];
+  /** Imagens largas em Full HD no formato do banner. */
   banners: AvatarItem[];
+  /** Imagens em Full HD de tela cheia, para o plano de fundo. */
+  backgrounds: AvatarItem[];
 };
 
 const MAX_CHARACTERS_PER_SEASON = 12;
@@ -60,14 +66,14 @@ const seasonLabel = (base: string, seasonNumber: number, many: boolean) => (many
 
 /**
  * As imagens de uma obra, juntando as temporadas (da primeira à última). `taken` são os endereços já usados por outras
- * obras: não se repetem.
+ * obras: não se repetem. `wide` são os banners da obra, ainda sem medir (o tamanho decide se servem de banner ou de fundo).
  */
-export function workImages(seasons: SeasonImages[], taken: Set<string>): { avatars: AvatarItem[]; banners: AvatarItem[] } {
+export function workImages(seasons: SeasonImages[], taken: Set<string>): { avatars: AvatarItem[]; wide: AvatarItem[] } {
   const many = seasons.length > 1;
   const avatarUrls = new Set<string>();
   const bannerUrls = new Set<string>();
   const avatars: AvatarItem[] = [];
-  const banners: AvatarItem[] = [];
+  const wide: AvatarItem[] = [];
   const pushAvatar = (item: AvatarItem) => {
     if (avatarUrls.has(item.url) || taken.has(item.url)) return;
     avatarUrls.add(item.url);
@@ -76,7 +82,7 @@ export function workImages(seasons: SeasonImages[], taken: Set<string>): { avata
   const pushBanner = (item: AvatarItem) => {
     if (bannerUrls.has(item.url) || taken.has(item.url)) return;
     bannerUrls.add(item.url);
-    banners.push(item);
+    wide.push(item);
   };
   for (const s of seasons) if (isHttps(s.coverImage)) pushAvatar({ url: s.coverImage, label: seasonLabel("Capa", s.seasonNumber, many) });
   // Personagens: da temporada mais recente para a primeira, um por nome (a arte mais nova fica).
@@ -94,12 +100,15 @@ export function workImages(seasons: SeasonImages[], taken: Set<string>): { avata
     }
   }
   for (const s of seasons) if (isHttps(s.bannerImage)) pushBanner({ url: s.bannerImage, label: seasonLabel("Banner", s.seasonNumber, many) });
-  for (const s of seasons) if (isHttps(s.coverImage)) pushBanner({ url: s.coverImage, label: seasonLabel("Capa", s.seasonNumber, many) });
   for (const url of [...avatarUrls, ...bannerUrls]) taken.add(url);
-  return { avatars, banners };
+  return { avatars, wide };
 }
 
-export async function buildAvatarOptions(userId: string): Promise<AvatarGroup[]> {
+/**
+ * As opções de cada obra. Com `measure`, mede na hora as imagens largas que ainda não têm tamanho (o seletor de banner e
+ * de fundo); sem ele, usa só as já medidas (o avatar não depende disso, e a escolha só aceita o que o seletor mostrou).
+ */
+export async function buildAvatarOptions(userId: string, { measure = false } = {}): Promise<AvatarGroup[]> {
   const animes = await prisma.anime.findMany({
     where: { userId },
     orderBy: { titleRomaji: "asc" },
@@ -109,12 +118,18 @@ export async function buildAvatarOptions(userId: string): Promise<AvatarGroup[]>
   const title = (members: (typeof animes)[number][]) => members[0].titleRomaji;
   works.sort((a, b) => title(a).localeCompare(title(b), "pt-BR"));
   const taken = new Set<string>();
+  const images = works.map((members) => ({ members, ...workImages(members, taken) }));
+  const sizes = await imageSizes(
+    images.flatMap((i) => i.wide.map((w) => w.url)),
+    { measureMissing: measure },
+  );
   const groups: AvatarGroup[] = [];
-  for (const members of works) {
+  for (const { members, avatars, wide } of images) {
     const first = members[0];
-    const { avatars, banners } = workImages(members, taken);
-    if (avatars.length === 0 && banners.length === 0) continue;
-    groups.push({ key: first.anilistId !== null ? String(first.anilistId) : first.id, anilistId: first.anilistId, titleRomaji: first.titleRomaji, titleEnglish: first.titleEnglish, titleNative: first.titleNative, avatars, banners });
+    const banners = wide.filter((w) => fitsBanner(sizes.get(w.url)));
+    const backgrounds = wide.filter((w) => fitsBackground(sizes.get(w.url)));
+    if (avatars.length === 0 && banners.length === 0 && backgrounds.length === 0) continue;
+    groups.push({ key: first.anilistId !== null ? String(first.anilistId) : first.id, anilistId: first.anilistId, titleRomaji: first.titleRomaji, titleEnglish: first.titleEnglish, titleNative: first.titleNative, avatars, banners, backgrounds });
   }
   return groups;
 }
@@ -125,9 +140,9 @@ export function isImageKind(value: unknown): value is ImageKind {
   return value === "avatar" || value === "banner" || value === "background";
 }
 
-/** As imagens de um tipo: o plano de fundo usa as mesmas do banner (imagens largas e capas). */
+/** As imagens de um tipo. */
 export function itemsOf(group: AvatarGroup, kind: ImageKind): AvatarItem[] {
-  return kind === "avatar" ? group.avatars : group.banners;
+  return kind === "avatar" ? group.avatars : kind === "banner" ? group.banners : group.backgrounds;
 }
 
 /** A URL escolhida precisa estar entre as opções da própria pessoa. */
@@ -147,14 +162,19 @@ export function pageOfOptions(groups: AvatarGroup[], kind: ImageKind, q: string,
 /**
  * Avatar, capa e plano de fundo são sempre imagens dos animes que a pessoa acompanha: se ela deixou de acompanhar o
  * anime da imagem, a imagem volta ao padrão (foto padrão no avatar, sem capa, sem fundo). Chamado ao tirar um anime da
- * lista e ao abrir o Editar perfil.
+ * lista e ao abrir o Editar perfil. Banner e fundo escolhidos antes da regra do Full HD continuam enquanto a obra estiver
+ * na lista: aqui só vale de qual obra a imagem é, não o tamanho.
  */
 export async function dropStaleProfileImages(userId: string): Promise<{ avatarUrl: string | null; bannerUrl: string | null; backgroundUrl: string | null }> {
   const me = await prisma.user.findUnique({ where: { id: userId }, select: { avatarUrl: true, bannerUrl: true, backgroundUrl: true } });
   if (!me || (!me.avatarUrl && !me.bannerUrl && !me.backgroundUrl)) return { avatarUrl: me?.avatarUrl ?? null, bannerUrl: me?.bannerUrl ?? null, backgroundUrl: me?.backgroundUrl ?? null };
-  const groups = await buildAvatarOptions(userId);
-  const keep = (kind: ImageKind, url: string | null) => (url && isAllowedImage(groups, kind, url) ? url : null);
-  const next = { avatarUrl: keep("avatar", me.avatarUrl), bannerUrl: keep("banner", me.bannerUrl), backgroundUrl: keep("background", me.backgroundUrl) };
+  const [groups, rows] = await Promise.all([buildAvatarOptions(userId), prisma.anime.findMany({ where: { userId }, select: { coverImage: true, bannerImage: true } })]);
+  const owned = new Set(rows.flatMap((r) => [r.coverImage, r.bannerImage]).filter((u): u is string => !!u));
+  const next = {
+    avatarUrl: me.avatarUrl && isAllowedImage(groups, "avatar", me.avatarUrl) ? me.avatarUrl : null,
+    bannerUrl: me.bannerUrl && owned.has(me.bannerUrl) ? me.bannerUrl : null,
+    backgroundUrl: me.backgroundUrl && owned.has(me.backgroundUrl) ? me.backgroundUrl : null,
+  };
   if (next.avatarUrl !== me.avatarUrl || next.bannerUrl !== me.bannerUrl || next.backgroundUrl !== me.backgroundUrl) await prisma.user.update({ where: { id: userId }, data: next });
   return next;
 }

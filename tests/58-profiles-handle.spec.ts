@@ -66,7 +66,6 @@ test.describe("Perfil: nome, @identificador e discussões", () => {
     try {
       await page.goto(`/users/${userId}`);
       await expect(page.getByTestId("profile-handle")).toHaveText(`@${HANDLE}`);
-      await expect(page.getByRole("link", { name: "Minha Lista privada" })).toHaveAttribute("href", "/minha-lista");
       await expect(page.getByRole("link", { name: "Nova publicação" })).toBeVisible();
 
       await page.getByRole("tab", { name: "Discussões iniciadas" }).click();
@@ -96,6 +95,6 @@ test.describe("Perfil: nome, @identificador e discussões", () => {
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: TEST_ADMIN_EMAIL } });
     await page.goto(`/users/${admin.id}`);
     await expect(page.getByTestId("profile-edit-open")).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Minha Lista privada" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Nova publicação" })).toHaveCount(0);
   });
 });
