@@ -55,6 +55,7 @@ import { WorkCommunityCard, WorkQuizEntry, WorkRelated } from "@/components/Work
 import { PublicWork } from "@/app/anime/[id]/PublicWork";
 import { CatalogWork, PublicCatalogWork, findCatalogWork } from "@/app/anime/[id]/CatalogWork";
 import { CATALOG_ONLY_SLUG } from "@/lib/workHref";
+import { RecommendToFriend } from "@/components/RecommendToFriend";
 
 /** Um id só de dígitos é o da AniList (obra de quem ainda não a acompanha); o resto é o id da sua própria lista. */
 const ANILIST_ID = /^\d{1,9}$/;
@@ -371,6 +372,10 @@ export default async function AnimeDetailPage({
               </Typography>
             )}
             <UnfollowButton animeId={anime.id} title={anime.titleEnglish ?? anime.titleRomaji} />
+          </WorkCard>
+
+          <WorkCard title="Recomendar" testId="work-card-recommend">
+            <RecommendToFriend workKey={String(anime.anilistId)} title={anime.titleRomaji} />
           </WorkCard>
         </Box>
       </Box>

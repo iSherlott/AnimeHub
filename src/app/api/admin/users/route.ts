@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
 import { EMAIL_PATTERN, generateTempPassword, MAX_EMAIL_LENGTH, MAX_NAME_LENGTH } from "@/lib/auth/accounts";
 import { normalizeHandle, validateHandle } from "@/lib/handle";
+import { createPasswordLink } from "@/lib/auth/passwordLinks";
 
 export async function GET() {
   const { user, response } = await requireAdmin();
@@ -55,7 +56,10 @@ export async function POST(request: Request) {
     await prisma.adminLog.create({
       data: { level: "INFO", event: "Account created", message: `${admin.displayName} criou a conta de ${created.displayName} (${created.email}).`, context: `user:${created.id}`, adminName: admin.displayName },
     });
-    return NextResponse.json({ user: created, temporaryPassword }, { status: 201 });
+    // O jeito principal de entregar a conta é o link de uso único (a pessoa define a senha dela); a senha provisória
+    // continua valendo até o link ser usado, para quem preferir ditá-la.
+    const link = await createPasswordLink(created.id, admin.id);
+    return NextResponse.json({ user: created, temporaryPassword, passwordLink: link.path, passwordLinkExpiresAt: link.expiresAt.toISOString() }, { status: 201 });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       const onHandle = JSON.stringify(error.meta?.target ?? "").includes("handle");

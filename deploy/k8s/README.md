@@ -195,7 +195,9 @@ existe — ninguém precisa trocar a senha por causa dela. A `20261118100000_pos
 publicações) só acrescenta uma coluna, a `20261119100000_spoilers` (sistema de spoiler) só acrescenta colunas, a
 `20261120100000_profile_background` (plano de fundo do perfil) só acrescenta uma coluna, e a `20261121100000_image_size`
 (tamanho medido dos banners, para o banner e o fundo do perfil só oferecerem Full HD) só acrescenta uma tabela, e a
-`20261122100000_work_twitter` (X oficial da obra) só acrescenta uma coluna.
+`20261122100000_work_twitter` (X oficial da obra) só acrescenta uma coluna. Em 10/11 entraram mais duas, que também só
+acrescentam: `20261123100000_password_links_system_alerts` (link de senha e avisos do sistema) e
+`20261123110000_recommendations_friend_activity` (recomendar a um amigo e atividade dos amigos, que vem desligada).
 
 **Sistema fechado (28/10).** Não existe mais cadastro aberto nem convite: as contas nascem em Admin → Acesso e
 moderação → Criar conta, sempre como membro, com uma senha provisória mostrada uma vez (a pessoa troca no primeiro

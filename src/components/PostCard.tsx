@@ -273,6 +273,13 @@ export function PostCard({
         </Box>
       )}
 
+      {/* Spoiler "até o episódio N" que estreou há mais de 7 dias: aberto para todos, com a marca de que era spoiler. */}
+      {post.releasedSpoilerEpisode && (
+        <Typography data-testid="post-spoiler-released" sx={{ fontSize: 12, color: "text.secondary", border: 1, borderColor: "divider", borderRadius: "6px", px: 1, py: 0.25, alignSelf: "flex-start" }}>
+          {spoilerLabel({ work: animeTitle, episode: post.releasedSpoilerEpisode })} · liberado 7 dias depois da estreia
+        </Typography>
+      )}
+
       {/* Corpo: spoiler fechado, imagens + legenda, ou texto. O aviso de spoiler diz de qual obra e até onde. */}
       {post.isSpoiler ? (
         <SpoilerGate<{ body: string; imageUrls: string[]; imageAlts?: string[]; imageSpoilers?: boolean[] }>

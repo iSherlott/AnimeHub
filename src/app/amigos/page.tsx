@@ -14,6 +14,7 @@ import { formatRelativeTime } from "@/lib/relativeTime";
 import { formatBirthday, friendsBirthdays } from "@/lib/birthdays";
 import { resolveTimeZone } from "@/lib/timeZone";
 import { loginHref } from "@/lib/safeRedirect";
+import { receivedRecommendations } from "@/lib/workRecommendations";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Amigos · Anime Hub" };
@@ -60,13 +61,14 @@ export default async function FriendsHomePage({ searchParams }: { searchParams: 
   const sp = await searchParams;
   const query = (sp.q ?? "").trim().slice(0, 60);
   const page = Math.max(1, Number(sp.pagina) || 1) - 1;
-  const [{ received, sent }, friends, results, network, suggestions, birthdays] = await Promise.all([
+  const [{ received, sent }, friends, results, network, suggestions, birthdays, recommendations] = await Promise.all([
     friendRequests(user.id),
     listFriends(user.id, user.id, 24),
     query ? searchPeople(user.id, query) : Promise.resolve(null),
     query ? Promise.resolve(null) : networkPeople(user.id, page),
     friendSuggestions(user.id),
     friendsBirthdays(user.id, resolveTimeZone(user.timeZone)),
+    receivedRecommendations(user.id, 10),
   ]);
 
   return (
@@ -118,6 +120,27 @@ export default async function FriendsHomePage({ searchParams }: { searchParams: 
             <ProfileSection id="pedidos" title="pedidos recebidos" count={received.length} testId="friend-requests-received">
               {received.length === 0 ? <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Nenhum pedido esperando.</Typography> : <PeopleList people={received} testPrefix="friend-request" fallbackState="received" />}
             </ProfileSection>
+            {recommendations.length > 0 && (
+              <ProfileSection id="recomendacoes" title="recomendações dos amigos" count={recommendations.length} testId="friend-recommendations">
+                <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none" }}>
+                  {recommendations.map((r) => (
+                    <Box component="li" key={r.id} data-testid="friend-recommendation" sx={{ display: "flex", flexDirection: "column", gap: 0.5, py: 1.5, borderTop: 1, borderColor: "divider", "&:first-of-type": { borderTop: 0, pt: 0 } }}>
+                      <Typography sx={{ fontSize: 14 }}>
+                        <AppLink href={`/users/${r.from.id}`} underline="hover" sx={{ fontWeight: 700, color: "text.primary" }}>
+                          {r.from.displayName}
+                        </AppLink>{" "}
+                        recomendou{" "}
+                        <AppLink href={`/anime/${r.workKey}`} underline="hover" sx={{ fontWeight: 700 }}>
+                          {r.titleRomaji}
+                        </AppLink>
+                      </Typography>
+                      {r.note && <Typography sx={{ fontSize: 13, color: "text.secondary", overflowWrap: "anywhere" }}>“{r.note}”</Typography>}
+                      <Typography sx={{ fontSize: 12, color: "text.secondary" }}>{formatRelativeTime(r.createdAt)}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </ProfileSection>
+            )}
             {birthdays.length > 0 && (
               <ProfileSection id="aniversarios" title="aniversários" count={birthdays.length} testId="friend-birthdays">
                 <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none" }}>

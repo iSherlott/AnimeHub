@@ -33,6 +33,8 @@ export type PostDTO = {
   imageSpoilers: boolean[];
   /** Até onde vai o spoiler ("até o episódio 18"); só com `isSpoiler`. */
   spoilerEpisode: number | null;
+  /** Era spoiler até este episódio, e ele estreou há mais de 7 dias: o conteúdo já vem aberto (ver spoilerRelease.ts). */
+  releasedSpoilerEpisode: number | null;
   createdAt: string;
   /** null = publicação sem obra associada (Figma 13:41840: contexto opcional). */
   anilistId: number | null;
@@ -117,16 +119,21 @@ export function toPostDto(
     hasCommunity?: boolean;
     production?: { titleNative: string | null; format: string | null } | null;
     authorTitle?: string | null;
+    /** O episódio do spoiler estreou há mais de 7 dias: vai aberto, com a marca de que era spoiler. */
+    spoilerReleased?: boolean;
   }
 ): PostDTO {
+  const released = Boolean(opts.spoilerReleased && post.isSpoiler && post.spoilerEpisode);
+  const hidden = post.isSpoiler && !released;
   return {
     id: post.id,
-    body: post.isSpoiler ? "" : post.body,
-    isSpoiler: post.isSpoiler,
-    imageUrls: post.isSpoiler ? [] : post.imageUrls,
-    imageAlts: post.isSpoiler ? [] : post.imageUrls.map((_, i) => post.imageAlts?.[i] ?? ""),
-    imageSpoilers: post.isSpoiler ? [] : post.imageUrls.map((_, i) => post.imageSpoilers?.[i] ?? false),
-    spoilerEpisode: post.isSpoiler ? (post.spoilerEpisode ?? null) : null,
+    body: hidden ? "" : post.body,
+    isSpoiler: hidden,
+    imageUrls: hidden ? [] : post.imageUrls,
+    imageAlts: hidden ? [] : post.imageUrls.map((_, i) => post.imageAlts?.[i] ?? ""),
+    imageSpoilers: hidden ? [] : post.imageUrls.map((_, i) => (released ? false : (post.imageSpoilers?.[i] ?? false))),
+    spoilerEpisode: hidden ? (post.spoilerEpisode ?? null) : null,
+    releasedSpoilerEpisode: released ? (post.spoilerEpisode ?? null) : null,
     createdAt: post.createdAt.toISOString(),
     anilistId: post.anilistId,
     workKey: postWorkKey(post),

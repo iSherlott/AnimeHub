@@ -28,6 +28,8 @@ import { profileAlbums } from "@/lib/profileAlbums";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { resolveTimeZone } from "@/lib/timeZone";
 import { loginHref } from "@/lib/safeRedirect";
+import { loadAffinity } from "@/lib/affinity";
+import { AffinityBox } from "@/components/AffinityBox";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -107,6 +109,8 @@ export default async function UserProfilePage({ params }: Params) {
   // Álbuns (coletâneas de animes): seguem "Mostrar meus animes"; null = escondidos para quem vê. A lista de animes
   // já montada acima serve à contagem da seção e aos álbuns.
   const albums = await profileAlbums(id, viewerId, animeList);
+  // Afinidade de gosto com quem está vendo (perfil de outra pessoa; lista dela visível).
+  const affinity = viewerId && !isOwnProfile ? await loadAffinity(viewerId, id) : null;
   const animeCount = animeList.kind === "ok" ? animeList.list.total : null;
   const albumCards = albums ? [...albums.auto, ...albums.custom] : [];
   // Perfil próprio ainda sem amigos: a caixa de amigos mostra quem a pessoa talvez conheça.
@@ -337,6 +341,7 @@ export default async function UserProfilePage({ params }: Params) {
 
             {/* Direita: amigos, comunidades e conquistas */}
             <Box component="aside" aria-label="Amigos, comunidades e conquistas" sx={{ display: { xs: "flex", sm: "grid", lg: "flex" }, gridTemplateColumns: { sm: "repeat(2, minmax(0,1fr))" }, alignItems: { sm: "start", lg: "stretch" }, flexDirection: "column", gap: 2, gridColumn: { md: "1 / -1", lg: "auto" }, order: { xs: 3, md: 0 } }}>
+              {affinity && <AffinityBox result={affinity} firstName={firstName} />}
               <SideBox id="amigos" title="amigos" count={friends.total} testId="profile-friends" more={isOwnProfile ? { href: "/amigos", label: "gerenciar" } : friends.total > friends.rows.length ? { href: `/users/${id}/amigos`, label: "ver todos" } : undefined}>
                 {isOwnProfile && pendingRequests > 0 && (
                   <AppLink href="/amigos" underline="hover" sx={{ fontSize: 13, fontWeight: 700 }} data-testid="profile-friend-requests">

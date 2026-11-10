@@ -13,6 +13,7 @@ import { blockedUserIdSet } from "@/lib/blocks";
 import { prisma } from "@/lib/prisma";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { isMember, listReplies, loadTopic, REPLIES_PAGE } from "@/lib/community";
+import { releasedSpoilerIds, topicSpoilerWork } from "@/lib/spoilerRelease";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,11 @@ export default async function TopicPage({ params, searchParams }: Props) {
   const pages = Math.max(1, Math.ceil(first.total / REPLIES_PAGE));
   const page = rawPage === "ultima" ? pages : Math.min(pages, Math.max(1, Number(rawPage) || 1));
   const { rows: replies } = page === 1 ? first : await listReplies(topicId, page - 1, user?.id ?? null);
+
+  // Spoiler "até o episódio N" que estreou há mais de 7 dias abre para todos (spoilerRelease.ts).
+  const spoilerRef = await topicSpoilerWork(topic.catalogEntryId, scope.root.workKey);
+  const released = await releasedSpoilerIds([topic, ...replies].map((x) => ({ id: x.id, isSpoiler: x.isSpoiler, spoilerEpisode: x.spoilerEpisode, ...spoilerRef })));
+  const releasedNote = (episode: number | null) => `${spoilerLabel({ work: spoilerWork, episode })} · liberado 7 dias depois da estreia`;
 
   const myVote = topic.poll && user ? ((await prisma.communityPollVote.findUnique({ where: { pollId_userId: { pollId: topic.poll.id, userId: user.id } }, select: { optionId: true } }))?.optionId ?? null) : null;
   const now = new Date();
@@ -79,7 +85,12 @@ export default async function TopicPage({ params, searchParams }: Props) {
           </Typography>
           {topic.catalogEntry && <Chip size="small" label={`Sobre: ${topic.catalogEntry.titleNative ?? topic.catalogEntry.titleRomaji}`} data-testid="topic-about" />}
         </Box>
-        <SpoilerText text={topic.body} isSpoiler={topic.isSpoiler} testId="topic-body" label={spoilerLabel({ work: spoilerWork, episode: topic.spoilerEpisode })} />
+        {released.has(topic.id) && (
+          <Typography data-testid="topic-spoiler-released" sx={{ fontSize: 12, color: "text.secondary" }}>
+            {releasedNote(topic.spoilerEpisode)}
+          </Typography>
+        )}
+        <SpoilerText text={topic.body} isSpoiler={topic.isSpoiler && !released.has(topic.id)} testId="topic-body" label={spoilerLabel({ work: spoilerWork, episode: topic.spoilerEpisode })} />
         {topic.poll && <PollBox topicId={topic.id} options={topic.poll.options.map((o) => ({ id: o.id, label: o.label, votes: o._count.votes }))} myVote={myVote} canVote={member && !locked} />}
         <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start", flexWrap: "wrap" }}>
           <ContentActions kind="topic" id={topic.id} canEdit={user?.id === topic.authorId} canDelete={user?.id === topic.authorId || canModerate} initial={{ title: topic.title, body: topic.body }} afterDeleteHref={`${communityHref}/forum`} />
@@ -105,7 +116,8 @@ export default async function TopicPage({ params, searchParams }: Props) {
                   {r.editedAt ? " · editada" : ""}
                 </Typography>
               </Box>
-              <SpoilerText text={r.body} isSpoiler={r.isSpoiler} testId={`reply-body-${r.id}`} label={spoilerLabel({ work: spoilerWork, episode: r.spoilerEpisode })} />
+              {released.has(r.id) && <Typography sx={{ fontSize: 12, color: "text.secondary" }}>{releasedNote(r.spoilerEpisode)}</Typography>}
+              <SpoilerText text={r.body} isSpoiler={r.isSpoiler && !released.has(r.id)} testId={`reply-body-${r.id}`} label={spoilerLabel({ work: spoilerWork, episode: r.spoilerEpisode })} />
               <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start", flexWrap: "wrap" }}>
                 <ContentActions kind="reply" id={r.id} canEdit={user?.id === r.authorId} canDelete={user?.id === r.authorId || canModerate} initial={{ body: r.body }} />
                 {user && user.id !== r.authorId && <ReportButton replyId={r.id} />}

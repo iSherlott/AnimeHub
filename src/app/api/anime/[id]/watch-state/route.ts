@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth/session";
 import { isWatchState } from "@/lib/watchCategory";
 import { syncContinuations } from "@/lib/continuation";
 import { recomputeSiteScore } from "@/lib/siteScoreDb";
+import { recordFriendActivity, retractFriendActivity } from "@/lib/friendActivity";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -47,6 +48,9 @@ export async function PATCH(request: Request, { params }: Params) {
   if (existing.watchState !== "FINISHED" && state === "FINISHED") await recomputeSiteScore(existing).catch(() => undefined);
   // Terminada ou em espera, a obra não tem mais episódio "adiado" para ver.
   if ((state === "FINISHED" || waiting === true) && existing.anilistId !== null) await prisma.pendingEpisode.deleteMany({ where: { userId: user.id, anilistId: existing.anilistId } });
+  // Atividade dos amigos (só de quem compartilha): "terminou X"; sair de "Terminei" tira de lá.
+  if (existing.watchState !== "FINISHED" && state === "FINISHED") await recordFriendActivity(user.id, id, "FINISHED");
+  if (existing.watchState === "FINISHED" && state !== "FINISHED") await retractFriendActivity(user.id, id, "FINISHED");
   // Quem sai de "Dropei" pode ter continuações que ficaram sem chegar: recupera na hora.
   if (existing.watchState === "DROPPED" && state !== "DROPPED") void syncContinuations();
 

@@ -60,3 +60,22 @@ describe("rankRecommendations", () => {
     expect(result).toHaveLength(2);
   });
 });
+
+describe("rankRecommendations com amigos (10/11)", () => {
+  it("o que os amigos acompanham vem primeiro, com mais amigos e melhor nota antes, até metade das vagas", () => {
+    const picks = [
+      { anilistId: 30, friendNames: ["Ana"], bestScore: 9 },
+      { anilistId: 31, friendNames: ["Beto", "Caio"], bestScore: 6 },
+      { anilistId: 32, friendNames: ["Duda"], bestScore: 4 },
+    ];
+    const result = rankRecommendations([followed(1, [], [20])], [loaded(20, []), loaded(30, []), loaded(31, []), loaded(32, [])], 4, picks);
+    expect(result.map((r) => r.anilistId)).toEqual([31, 30, 20]);
+    expect(result[0].friendNames).toEqual(["Beto", "Caio"]);
+    expect(result[2].friendNames).toEqual([]);
+  });
+
+  it("não recomenda o que a pessoa já acompanha nem o que não está carregado, mesmo que amigos sigam", () => {
+    const picks = [{ anilistId: 1, friendNames: ["Ana"], bestScore: null }, { anilistId: 99, friendNames: ["Ana"], bestScore: null }];
+    expect(rankRecommendations([followed(1, [])], [loaded(1, [])], 4, picks)).toEqual([]);
+  });
+});

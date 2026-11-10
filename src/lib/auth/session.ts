@@ -43,6 +43,8 @@ export function toPublicUser(user: User): PublicUser {
       notifyCommunity: user.notifyCommunity,
       animeListPublic: user.animeListPublic,
       recordVisits: user.recordVisits,
+      notifyRecommendations: user.notifyRecommendations,
+      shareActivity: user.shareActivity,
       showSpoilers: user.showSpoilers,
     },
   };

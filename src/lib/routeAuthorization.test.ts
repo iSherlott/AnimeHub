@@ -19,6 +19,7 @@ const PUBLIC_BY_DESIGN = new Set([
   "auth/login/route.ts",
   "auth/logout/route.ts",
   "auth/me/route.ts",
+  "auth/password-link/route.ts", // link de uso único que o admin manda para a pessoa definir a senha (com limite por IP)
   "calendar/route.ts",
   "catalog/facets/route.ts", // o que existe no catálogo (gêneros, anos, tipos) para montar os filtros do Explorar
   "catalog/preview/route.ts", // sinopse e gêneros de uma obra para a prévia (com limite por IP)
@@ -32,7 +33,7 @@ const PUBLIC_BY_DESIGN = new Set([
 ]);
 
 /** A parte social (Feed, publicações, perfis, recados, hashtags, comunidades, amigos, quiz): toda leitura pede login. */
-const MEMBER_ONLY_PREFIXES = ["posts", "feed", "users", "hashtags", "communities", "anime-threads", "scraps", "testimonials", "friends", "albums", "quiz"];
+const MEMBER_ONLY_PREFIXES = ["posts", "feed", "users", "hashtags", "communities", "anime-threads", "scraps", "testimonials", "friends", "albums", "quiz", "recommendations"];
 
 function routeFiles(dir: string): string[] {
   const out: string[] = [];

@@ -27,11 +27,15 @@ export type UserPreferences = {
   recordVisits: boolean;
   /** Spoilers: false = perguntar antes de mostrar (padrão); true = mostrar direto, ainda com a marca de spoiler. */
   showSpoilers: boolean;
+  /** Recomendações de obras dos amigos no sino (10/11/2026). */
+  notifyRecommendations: boolean;
+  /** Os amigos veem o que termino e a nota que dou (10/11/2026). Vem desligado. */
+  shareActivity: boolean;
 };
 
 export type UserPreferencesPatch = Partial<UserPreferences>;
 
-const BOOLEAN_KEYS = ["notifyReleases", "notifyReplies", "notifyComments", "notifyFollowers", "notifyLikes", "notifyCommunity", "animeListPublic", "recordVisits", "showSpoilers"] as const;
+const BOOLEAN_KEYS = ["notifyReleases", "notifyReplies", "notifyComments", "notifyFollowers", "notifyLikes", "notifyCommunity", "animeListPublic", "recordVisits", "showSpoilers", "notifyRecommendations", "shareActivity"] as const;
 
 export type ValidationResult = { ok: true; patch: UserPreferencesPatch } | { ok: false; error: string };
 
@@ -84,4 +88,5 @@ export const SOCIAL_OFF_PATCH: UserPreferencesPatch = {
   notifyFollowers: false,
   notifyLikes: false,
   notifyCommunity: false,
+  notifyRecommendations: false,
 };

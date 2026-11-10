@@ -1,7 +1,7 @@
 "use client";
 
 /** O que /api/notifications devolve (só os campos que as telas leem; o resto segue junto). */
-export type NotificationsPayload = { alerts?: unknown[]; social?: unknown[] };
+export type NotificationsPayload = { alerts?: unknown[]; social?: unknown[]; system?: unknown[] };
 
 // Pedidos feitos quase juntos (o sino do cabeçalho e o Dashboard, ao abrir a página) dividem a mesma resposta.
 const SHARE_MS = 3000;

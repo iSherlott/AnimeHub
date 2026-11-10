@@ -3,6 +3,7 @@ import { toPostDto, type PostDTO } from "@/lib/postDto";
 import type { Post } from "@prisma/client";
 import { blockedUserIdSet } from "@/lib/blocks";
 import { equippedTitleNames } from "@/lib/quiz";
+import { releasedSpoilerIds } from "@/lib/spoilerRelease";
 
 type Author = { id: string; displayName: string; handle: string | null; avatarUrl: string | null };
 type QuotedPostRow = Post & { user: Author };
@@ -117,6 +118,8 @@ export async function toDtoPage(page: PostRow[], viewerId: string | null): Promi
     postAnilistIds.length ? (await prisma.catalogEntry.findMany({ where: { anilistId: { in: postAnilistIds } }, select: { anilistId: true } })).map((c) => c.anilistId) : []
   );
   const authorTitles = await equippedTitleNames(resolved.map((r) => r.effective.user.id));
+  // Spoiler "até o episódio N" que estreou há mais de 7 dias já vai aberto (spoilerRelease.ts).
+  const released = await releasedSpoilerIds(resolved.map((r) => r.effective));
   const likedSet = new Set(myLikes.map((l) => l.postId));
   const reportedSet = new Set(myOpenReports.map((r) => r.postId));
   const repostedSet = new Set(myReposts.map((r) => r.repostOfId));
@@ -136,6 +139,7 @@ export async function toDtoPage(page: PostRow[], viewerId: string | null): Promi
       hasCommunity: effective.anilistId !== null ? inCatalog.has(effective.anilistId) : effective.catalogEntryId !== null,
       production: effective.anilistId !== null ? (productionById.get(effective.anilistId) ?? null) : null,
       authorTitle: authorTitles.get(effective.user.id) ?? null,
+      spoilerReleased: released.has(effective.id),
     })
   );
 }

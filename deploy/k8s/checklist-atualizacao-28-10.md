@@ -43,6 +43,20 @@ a ler o site oficial de cada obra da temporada.
 
 O banco real pode ter mudado desde 26/10. Por isso o backup novo do passo 2 é obrigatório.
 
+### Atualização de 10/11/2026 (mais 2 migrações, as duas só acrescentam)
+
+O cluster já estava em `20261122100000_work_twitter`. Esta versão traz:
+
+- `20261123100000_password_links_system_alerts`: as tabelas `PasswordLink` (link de uso único para a pessoa definir a
+  senha) e `SystemAlert` (avisos de serviço ou job com falha, na aba Sistema do sino do admin). Começam vazias.
+- `20261123110000_recommendations_friend_activity`: recomendar uma obra a um amigo (`WorkRecommendation`), a atividade
+  compartilhada com os amigos (`FriendActivity`) e duas colunas em `User`: `notifyRecommendations` (ligada) e
+  `shareActivity` (**desligada** para todo mundo: ninguém aparece para os amigos sem escolher). Mais a coluna
+  `SocialNotification.recommendationId`.
+
+O mesmo `bash deploy/k8s/atualizar.sh` aplica as duas. A conferência passa a esperar 79 migrações, última
+`20261123110000_recommendations_friend_activity`.
+
 ## 1. Antes de começar
 
 - [ ] No Windows, o código está no `master` mais recente (último commit desta versão: a validação/spoiler de 28/10).
@@ -91,7 +105,7 @@ aconteceu, e o site continua na versão anterior.
 docker run --rm -v "$PWD:/w" postgres:18-alpine psql "<URL do banco sem ?schema=…>" -f /w/deploy/k8s/conferir-atualizacao.sql
 ```
 
-- [ ] Cada linha bate com o "espera" do lado: 77 migrações, 0 com falha, última `20261122100000_work_twitter`, nenhum item
+- [ ] Cada linha bate com o "espera" do lado: 79 migrações, 0 com falha, última `20261123110000_recommendations_friend_activity`, nenhum item
       de lista ou produção sem obra, 2 tabelas arquivadas, 1 ou mais administradores, nenhuma senha provisória,
       nenhum avatar enviado. Gênero não registrado não impede o site: registre, mescle ou remova em Admin → Taxonomia.
 - [ ] A linha "contas sem nome de usuário" diz quantas contas ainda não têm @. Não impede o site, mas a pessoa não

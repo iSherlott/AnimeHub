@@ -41,7 +41,7 @@ type AiringAlertItem = {
 
 type SocialItem = {
   id: string;
-  type: "POST_REPLY" | "COMMENT_REPLY" | "NEW_FOLLOWER" | "POST_LIKE" | "PROFILE_SCRAP" | "PROFILE_TESTIMONIAL" | "PROFILE_FAN" | "COMMUNITY_REPLY" | "COMMUNITY_EVENT" | "FRIEND_REQUEST" | "FRIEND_ACCEPTED" | "FRIEND_BIRTHDAY";
+  type: "POST_REPLY" | "COMMENT_REPLY" | "NEW_FOLLOWER" | "POST_LIKE" | "PROFILE_SCRAP" | "PROFILE_TESTIMONIAL" | "PROFILE_FAN" | "COMMUNITY_REPLY" | "COMMUNITY_EVENT" | "FRIEND_REQUEST" | "FRIEND_ACCEPTED" | "FRIEND_BIRTHDAY" | "WORK_RECOMMENDATION";
   actor: { id: string; displayName: string };
   /** Comunidades: a comunidade e o título do tópico ou do evento (públicos, como na lista do fórum). */
   community?: string | null;
@@ -51,6 +51,9 @@ type SocialItem = {
   unavailable: boolean;
   href: string | null;
 };
+
+/** Aviso do sistema (só admin): um serviço ou job que falhou ou parou. */
+type SystemItem = { id: string; source: string; title: string; message: string | null; href: string | null; createdAt: string; readAt: string | null };
 
 /** Igual ao de EpisodeGrid — o anime do alerta pode, em teoria, não ter mais
  * nenhum título carregado se já saiu da lista; resolveTitleTextLenient
@@ -99,6 +102,8 @@ function socialText(n: SocialItem): string {
       return `${n.actor.displayName} aceitou seu pedido de amizade`;
     case "FRIEND_BIRTHDAY":
       return `Hoje é aniversário de ${n.actor.displayName}. Deixe um recado`;
+    case "WORK_RECOMMENDATION":
+      return `${n.actor.displayName} recomendou ${n.subject ?? "uma obra"} para você`;
     case "COMMUNITY_EVENT":
       return `${n.actor.displayName} marcou o evento "${n.subject ?? "…"}"${n.community ? ` na comunidade ${n.community}` : ""}`;
   }
@@ -129,7 +134,8 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
   const timeZone = useTimeZone();
   const [alerts, setAlerts] = useState<AiringAlertItem[]>([]);
   const [social, setSocial] = useState<SocialItem[]>([]);
-  const [channel, setChannel] = useState<"releases" | "social">("releases");
+  const [system, setSystem] = useState<SystemItem[]>([]);
+  const [channel, setChannel] = useState<"releases" | "social" | "system">("releases");
   const [expanded, setExpanded] = useState(false);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const open = Boolean(anchorEl);
@@ -146,6 +152,7 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
       if (!data || cancelled) return;
       setAlerts((data.alerts ?? []) as AiringAlertItem[]);
       setSocial((data.social ?? []) as SocialItem[]);
+      setSystem((data.system ?? []) as SystemItem[]);
     }
 
     load();
@@ -168,7 +175,9 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
 
   const unseenReleases = alerts.filter((a) => !a.seenAt).length;
   const unreadSocial = social.filter((n) => !n.readAt).length;
-  const unseenCount = unseenReleases + unreadSocial;
+  const unreadSystem = system.filter((n) => !n.readAt).length;
+  const isAdmin = user.role === "ADMIN";
+  const unseenCount = unseenReleases + unreadSocial + unreadSystem;
 
   async function markSeen(id: string) {
     setAlerts((prev) =>
@@ -191,10 +200,20 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
     }
   }
 
+  async function markSystemRead(id: string) {
+    setSystem((prev) => prev.map((n) => (n.id === id ? { ...n, readAt: new Date().toISOString() } : n)));
+    try {
+      await fetch(`/api/notifications/system/${id}/read`, { method: "POST" });
+    } catch {
+      // idem
+    }
+  }
+
   async function markAllRead() {
     const now = new Date().toISOString();
     setAlerts((prev) => prev.map((a) => (a.seenAt ? a : { ...a, seenAt: now })));
     setSocial((prev) => prev.map((n) => (n.readAt ? n : { ...n, readAt: now })));
+    setSystem((prev) => prev.map((n) => (n.readAt ? n : { ...n, readAt: now })));
     try {
       await fetch("/api/notifications/read-all", { method: "POST" });
     } catch {
@@ -209,7 +228,9 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
 
   const visibleAlerts = expanded ? alerts : alerts.slice(0, PREVIEW_COUNT);
   const visibleSocial = expanded ? social : social.slice(0, PREVIEW_COUNT);
-  const hidden = channel === "releases" ? alerts.length - visibleAlerts.length : social.length - visibleSocial.length;
+  const visibleSystem = expanded ? system : system.slice(0, PREVIEW_COUNT);
+  const hidden =
+    channel === "releases" ? alerts.length - visibleAlerts.length : channel === "social" ? social.length - visibleSocial.length : system.length - visibleSystem.length;
 
   return (
     <>
@@ -260,9 +281,37 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
         <Tabs value={channel} onChange={(_, v) => { setChannel(v); setExpanded(false); }} aria-label="Canais de notificação" sx={{ mb: 2 }}>
           <Tab value="releases" label={unseenReleases > 0 ? `Lançamentos · ${unseenReleases}` : "Lançamentos"} />
           <Tab value="social" label={unreadSocial > 0 ? `Social · ${unreadSocial}` : "Social"} />
+          {isAdmin && <Tab value="system" data-testid="bell-tab-system" label={unreadSystem > 0 ? `Sistema · ${unreadSystem}` : "Sistema"} />}
         </Tabs>
 
-        {channel === "releases" ? (
+        {channel === "system" ? (
+          system.length === 0 ? (
+            <Typography sx={{ py: 2, color: "text.secondary", fontSize: 14 }}>Nenhum serviço com problema. Tudo rodando.</Typography>
+          ) : (
+            visibleSystem.map((n) => (
+              <MenuItem
+                key={n.id}
+                component={n.href ? NextLink : "div"}
+                href={n.href ?? undefined}
+                data-testid="bell-system-item"
+                onClick={() => {
+                  handleClose();
+                  if (!n.readAt) void markSystemRead(n.id);
+                }}
+                sx={{ display: "flex", alignItems: "flex-start", gap: 2, whiteSpace: "normal", px: 0, py: 2, borderTop: 1, borderColor: "divider", borderRadius: 0 }}
+              >
+                <Box aria-hidden sx={{ width: 8, height: 8, borderRadius: "50%", mt: "8px", flexShrink: 0, bgcolor: n.readAt ? "transparent" : "error.main" }} />
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ fontSize: 14, fontWeight: 700 }}>{n.title}</Typography>
+                  {n.message && <Typography sx={{ fontSize: 13, color: "text.secondary", mt: 0.5, overflowWrap: "anywhere" }}>{n.message}</Typography>}
+                  <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.5 }}>
+                    {n.readAt ? "Lido" : "Não lido"} · {formatRelativeTime(n.createdAt)}
+                  </Typography>
+                </Box>
+              </MenuItem>
+            ))
+          )
+        ) : channel === "releases" ? (
           alerts.length === 0 ? (
             <Typography sx={{ py: 2, color: "text.secondary", fontSize: 14 }}>Nenhum lançamento da sua lista hoje nem no ar agora.</Typography>
           ) : (
@@ -315,7 +364,7 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
               );
             })
           )
-        ) : !user.preferences.notifyReplies && !user.preferences.notifyComments && !user.preferences.notifyFollowers && !user.preferences.notifyLikes && !user.preferences.notifyCommunity ? (
+        ) : !user.preferences.notifyReplies && !user.preferences.notifyComments && !user.preferences.notifyFollowers && !user.preferences.notifyLikes && !user.preferences.notifyCommunity && !user.preferences.notifyRecommendations ? (
           <Box sx={{ py: 2, display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start" }}>
             <Typography sx={{ fontSize: 20 }}>Notificações sociais desativadas</Typography>
             <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Seus alertas de lançamentos continuam ativos.</Typography>
@@ -348,7 +397,7 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
                     {n.readAt ? "Lida" : "Não lida"} · {formatRelativeTime(n.createdAt)}
                   </Typography>
                   {n.unavailable ? (
-                    <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.5 }}>{n.type === "COMMUNITY_EVENT" ? "Evento removido" : n.type === "COMMUNITY_REPLY" ? "Tópico removido" : "Publicação removida"}</Typography>
+                    <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.5 }}>{n.type === "COMMUNITY_EVENT" ? "Evento removido" : n.type === "COMMUNITY_REPLY" ? "Tópico removido" : n.type === "WORK_RECOMMENDATION" ? "Recomendação removida" : "Publicação removida"}</Typography>
                   ) : (
                     <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.5 }}>Abrir contexto →</Typography>
                   )}

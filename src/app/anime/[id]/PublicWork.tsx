@@ -34,6 +34,7 @@ import { WorkHero } from "@/components/WorkHero";
 import { WorkExtras } from "@/components/WorkExtras";
 import { loadExtras } from "@/lib/episodeExtras";
 import { WorkCommunityCard, WorkQuizEntry, WorkRelated } from "@/components/WorkSections";
+import { RecommendToFriend } from "@/components/RecommendToFriend";
 
 /**
  * Detalhe de uma obra para quem ainda não a acompanha (e para visitantes): o MESMO desenho da página pessoal
@@ -216,6 +217,12 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
               {user ? "Acompanhe esta obra para guardar o link do site onde você assiste." : "Entre e acompanhe esta obra para guardar o link do site onde você assiste."}
             </Typography>
           </WorkCard>
+
+          {user && (
+            <WorkCard title="Recomendar" testId="work-card-recommend">
+              <RecommendToFriend workKey={String(anilistId)} title={production.titleRomaji} />
+            </WorkCard>
+          )}
 
           <WorkQuizEntry anilistId={anilistId} userId={user?.id ?? null} />
         </Box>

@@ -21,7 +21,7 @@ import { SOCIAL_OFF_PATCH, type UserPreferences } from "@/lib/userSettings";
  */
 type Draft = Pick<
   UserPreferences,
-  "notifyReleases" | "notifyReplies" | "notifyComments" | "notifyFollowers" | "notifyLikes" | "notifyCommunity" | "animeListPublic" | "recordVisits" | "showSpoilers"
+  "notifyReleases" | "notifyReplies" | "notifyComments" | "notifyFollowers" | "notifyLikes" | "notifyCommunity" | "animeListPublic" | "recordVisits" | "showSpoilers" | "notifyRecommendations" | "shareActivity"
 > & { titleFormat: "ja" | "romaji"; synopsisLanguage: "pt" | "ja"; timeZone: string };
 
 const SOCIAL_TOGGLES: Array<{ key: keyof Draft; label: string; hint: string }> = [
@@ -30,6 +30,7 @@ const SOCIAL_TOGGLES: Array<{ key: keyof Draft; label: string; hint: string }> =
   { key: "notifyFollowers", label: "Seguidores, amizade e fãs", hint: "Novos seguidores, pedidos de amizade aceitos ou recebidos, novos fãs e aniversários dos amigos. Vem ativado." },
   { key: "notifyLikes", label: "Curtidas", hint: "Vem desativado, para não encher o sino." },
   { key: "notifyCommunity", label: "Comunidades", hint: "Respostas nos tópicos em que você participa e eventos novos nas suas comunidades. Vem ativado." },
+  { key: "notifyRecommendations", label: "Recomendações dos amigos", hint: "Quando um amigo recomenda uma obra para você. Vem ativado." },
 ];
 
 /** Cartão do Figma: surface, raio 16, respiro de 24 e título de 20 px. */
@@ -150,6 +151,8 @@ export default function SettingsPage() {
         animeListPublic: p.animeListPublic,
         recordVisits: p.recordVisits,
         showSpoilers: p.showSpoilers,
+        notifyRecommendations: p.notifyRecommendations,
+        shareActivity: p.shareActivity,
       });
     }
   }, [user, draft]);
@@ -181,7 +184,7 @@ export default function SettingsPage() {
     }
   }
 
-  const allSocialOff = !draft.notifyReplies && !draft.notifyComments && !draft.notifyFollowers && !draft.notifyLikes && !draft.notifyCommunity;
+  const allSocialOff = !draft.notifyReplies && !draft.notifyComments && !draft.notifyFollowers && !draft.notifyLikes && !draft.notifyCommunity && !draft.notifyRecommendations;
   const japanese = draft.titleFormat === "ja";
 
   return (
@@ -280,8 +283,14 @@ export default function SettingsPage() {
                 checked={draft.recordVisits}
                 onChange={(v) => update("recordVisits", v)}
               />
+              <PillToggle
+                label="Compartilhar minha atividade com os amigos"
+                hint="Ativado, seus amigos veem na lateral do Feed quando você termina uma obra e a nota que deu. Vem desativado; desligar apaga o que já apareceu."
+                checked={draft.shareActivity}
+                onChange={(v) => update("shareActivity", v)}
+              />
               <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
-                Publicações são vistas por quem tem conta no AnimeHub. Acompanhar uma obra e seguir uma pessoa nunca publicam uma mensagem por conta própria.
+                Publicações são vistas por quem tem conta no AnimeHub. Acompanhar uma obra e seguir uma pessoa nunca publicam uma mensagem por conta própria; a atividade só aparece para os amigos se você ligar a opção acima.
               </Typography>
             </Card>
 

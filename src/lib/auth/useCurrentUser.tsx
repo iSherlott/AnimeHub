@@ -65,7 +65,8 @@ export function CurrentUserProvider({ children, initialUser }: { children: React
   // Senha provisória (conta criada ou senha redefinida pelo admin): nada abre até a pessoa escolher a dela.
   const mustChangePassword = Boolean(user?.mustChangePassword);
   useEffect(() => {
-    if (mustChangePassword && pathname !== "/trocar-senha") router.replace(`/trocar-senha?next=${encodeURIComponent(pathname)}`);
+    // O link de "defina sua senha" resolve a senha provisória por outro caminho: não desviar dele.
+    if (mustChangePassword && pathname !== "/trocar-senha" && pathname !== "/definir-senha") router.replace(`/trocar-senha?next=${encodeURIComponent(pathname)}`);
   }, [mustChangePassword, pathname, router]);
 
   // Detecta sessão invalidada (expirada, deslogada em outra aba, revogada

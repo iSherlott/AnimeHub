@@ -145,7 +145,8 @@ test.describe("Epic 18 — 3ª rodada — admin", () => {
     const row = page.getByRole("row", { name: new RegExp(THIRD_USER_EMAIL) });
     await row.getByRole("button", { name: "Resetar senha" }).click();
 
-    const dialog = page.getByRole("dialog", { name: "Nova senha provisória" });
+    // Desde 10/11 o diálogo traz o link de uso único (e a senha provisória como alternativa).
+    const dialog = page.getByRole("dialog", { name: "Link de nova senha" });
     await expect(dialog).toBeVisible();
     await dialog.getByRole("button", { name: "Fechar" }).click();
     await expect(dialog).toBeHidden();

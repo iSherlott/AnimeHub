@@ -26,6 +26,7 @@ import { SynopsisText } from "@/components/SynopsisText";
 import { WorkHero } from "@/components/WorkHero";
 import { WorkExtras } from "@/components/WorkExtras";
 import { loadExtras } from "@/lib/episodeExtras";
+import { RecommendToFriend } from "@/components/RecommendToFriend";
 
 const headingSx = { fontSize: 26, lineHeight: 1.5 } as const;
 
@@ -176,6 +177,11 @@ export async function CatalogWork({ entry, signedIn, userId, owned = null }: { e
           {owned && (
             <WorkCard title="Onde eu assisto" testId="my-watch-source">
               <PlatformLinksManager animeId={owned.id} initialLinks={owned.platformLinks} />
+            </WorkCard>
+          )}
+          {signedIn && (
+            <WorkCard title="Recomendar" testId="work-card-recommend">
+              <RecommendToFriend workKey={work} title={entry.titleRomaji} />
             </WorkCard>
           )}
           <WorkQuizEntry work={ref} workKey={work} userId={userId} />

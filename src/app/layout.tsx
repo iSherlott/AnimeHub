@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Anton, Inter, Noto_Sans_JP } from "next/font/google";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import { MuiProviders } from "@/components/MuiProviders";
@@ -33,6 +33,13 @@ const notoSansJP = Noto_Sans_JP({
 export const metadata: Metadata = {
   title: "Anime Hub",
   description: "Seu catálogo pessoal de animes, lançamentos e progresso.",
+  // Site instalável (ver app/manifest.ts): no iPhone, "Adicionar à Tela de Início" abre em tela cheia com este ícone.
+  appleWebApp: { capable: true, title: "Anime Hub", statusBarStyle: "black-translucent" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#08080b",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {

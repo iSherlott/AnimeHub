@@ -13,7 +13,8 @@ export type SocialNotificationType =
   | "COMMUNITY_EVENT"
   | "FRIEND_REQUEST"
   | "FRIEND_ACCEPTED"
-  | "FRIEND_BIRTHDAY";
+  | "FRIEND_BIRTHDAY"
+  | "WORK_RECOMMENDATION";
 
 /** Qual preferência da conta controla cada tipo (Configurações, S-12). */
 const PREFERENCE_BY_TYPE = {
@@ -33,6 +34,8 @@ const PREFERENCE_BY_TYPE = {
   FRIEND_ACCEPTED: "notifyFollowers",
   // Criado por src/lib/birthdays.ts (um por amigo por dia), não pelo notifySocial.
   FRIEND_BIRTHDAY: "notifyFollowers",
+  // Criado por src/lib/workRecommendations.ts (respeita a preferência própria).
+  WORK_RECOMMENDATION: "notifyRecommendations",
 } as const;
 
 /** Tipos que não se repetem: a mesma pessoa curtindo/seguindo de novo não gera outro aviso. */
@@ -65,7 +68,7 @@ export async function notifySocial(input: {
 
     const recipient = await prisma.user.findUnique({
       where: { id: recipientId },
-      select: { notifyReplies: true, notifyComments: true, notifyFollowers: true, notifyLikes: true, notifyCommunity: true },
+      select: { notifyReplies: true, notifyComments: true, notifyFollowers: true, notifyLikes: true, notifyCommunity: true, notifyRecommendations: true },
     });
     if (!recipient || !recipient[PREFERENCE_BY_TYPE[type]]) return;
 

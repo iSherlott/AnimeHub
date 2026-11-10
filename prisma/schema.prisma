@@ -58,6 +58,10 @@ model User {
   recordVisits    Boolean @default(true)
   /// Spoilers: false = pergunta antes de mostrar (padrão); true = mostra direto, ainda com a marca de spoiler.
   showSpoilers    Boolean @default(false)
+  /// Recomendações de obras enviadas por amigos chegam no sino (10/11/2026).
+  notifyRecommendations Boolean @default(true)
+  /// Compartilhar com os amigos o que termino e a nota que dou (10/11/2026). Vem DESLIGADO: só quem escolhe aparece.
+  shareActivity Boolean @default(false)
   notifyReleases  Boolean  @default(true)
   notifyReplies   Boolean  @default(true)
   notifyComments  Boolean  @default(true)
@@ -121,6 +125,10 @@ model User {
   profileVisitsMade      ProfileVisit[]  @relation("ProfileVisitor")
   profileAlbums          ProfileAlbum[]  @relation("ProfileAlbums")
   profileReportsResolved ProfileReport[] @relation("ProfileReportResolver")
+  passwordLinks          PasswordLink[]
+  recommendationsSent     WorkRecommendation[] @relation("RecommendationFrom")
+  recommendationsReceived WorkRecommendation[] @relation("RecommendationTo")
+  friendActivities        FriendActivity[]
 
   @@index([email])
 }
@@ -794,6 +802,8 @@ model SocialNotification {
   topicId   String?
   replyId   String?
   eventId   String?
+  /// Recomendação de obra de um amigo (WORK_RECOMMENDATION).
+  recommendationId String?
   readAt    DateTime?
   createdAt DateTime  @default(now())
 
@@ -1851,4 +1861,76 @@ model ImageSize {
   width      Int
   height     Int
   measuredAt DateTime @default(now())
+}
+
+/// Link de uso único para a pessoa definir a própria senha (10/11/2026): o admin gera ao criar a conta ou quando a pessoa
+/// esqueceu a senha, e repassa por fora (WhatsApp). Só o hash do código fica guardado; vale uma vez e expira.
+model PasswordLink {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdById String?
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+}
+
+/// Aviso do sistema para a administração (10/11/2026): um serviço ou job que falhou, ou que parou de rodar. Aparece no sino
+/// de quem é admin, na aba Sistema. `key` evita repetir o mesmo aviso; `readBy` guarda quem já leu.
+model SystemAlert {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  source    String
+  title     String
+  message   String?
+  href      String?
+  readBy    String[] @default([])
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// Recomendação de uma obra para um amigo (10/11/2026): "manda pro Fulano", com um bilhete opcional. Só entre amigos,
+/// uma vez por obra para a mesma pessoa, e com limite por dia.
+model WorkRecommendation {
+  id             String   @id @default(cuid())
+  fromId         String
+  from           User     @relation("RecommendationFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toId           String
+  to             User     @relation("RecommendationTo", fields: [toId], references: [id], onDelete: Cascade)
+  /// Chave da obra (AniList ID ou anidb-<id>, como em workRef).
+  workKey        String
+  catalogEntryId String?
+  titleRomaji    String
+  titleEnglish   String?
+  coverImage     String?
+  note           String?
+  createdAt      DateTime @default(now())
+
+  @@unique([fromId, toId, workKey])
+  @@index([toId, createdAt])
+  @@index([fromId, createdAt])
+}
+
+/// O que quem escolheu compartilhar fez na própria lista (10/11/2026): terminou uma obra ou deu nota. Aparece para os
+/// amigos na lateral do Feed. Uma linha por pessoa, obra e tipo (dar outra nota atualiza a mesma).
+model FriendActivity {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// FINISHED | RATED
+  kind         String
+  workKey      String
+  href         String?
+  titleRomaji  String
+  titleEnglish String?
+  coverImage   String?
+  score        Int?
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, workKey, kind])
+  @@index([userId, createdAt])
 }

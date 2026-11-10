@@ -10,6 +10,7 @@ import { HashtagRow } from "@/components/HashtagRow";
 import { UserAvatar } from "@/components/UserAvatar";
 import { FriendButton } from "@/components/profile/ProfileActions";
 import type { RecommendationItem } from "@/lib/animeRecommendations";
+import { activityText, type ActivityItem } from "@/lib/friendActivityText";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { currentSeasonTag } from "@/lib/season";
 import { resolveTitleTextLenient, useTitlePreference } from "@/lib/titlePreference";
@@ -44,6 +45,7 @@ export function CommunitySidebar() {
   const [trending, setTrending] = useState<Array<Tag & { postCount: number; kind: string }> | null>(null);
   const [next, setNext] = useState<CalendarItem | null>(null);
   const [recommended, setRecommended] = useState<RecommendationItem[] | null>(null);
+  const [activity, setActivity] = useState<ActivityItem[] | null>(null);
   const [people, setPeople] = useState<Person[] | null>(null);
   const [birthdays, setBirthdays] = useState<Birthday[] | null>(null);
   const [topics, setTopics] = useState<ActiveTopic[] | null>(null);
@@ -126,6 +128,21 @@ export function CommunitySidebar() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!cancelled) setPeople(data?.people ?? []);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [loggedIn]);
+
+  // "Atividade dos amigos": só de quem ligou o compartilhamento (vem desligado), ver friendActivity.ts.
+  useEffect(() => {
+    if (!loggedIn) return;
+    let cancelled = false;
+    fetch("/api/feed/activity")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) setActivity(data?.activity ?? []);
       })
       .catch(() => undefined);
     return () => {
@@ -333,6 +350,33 @@ export function CommunitySidebar() {
         </Box>
       )}
 
+      {loggedIn && activity !== null && activity.length > 0 && (
+        <Box component="section" aria-label="Atividade dos amigos" data-testid="sidebar-friend-activity" sx={{ borderTop: 1, borderColor: "divider", pt: 3, display: "flex", flexDirection: "column", gap: 2 }}>
+          <SectionTitle>Atividade dos amigos</SectionTitle>
+          <Box component="ul" sx={{ display: "flex", flexDirection: "column", gap: 1.5, p: 0, m: 0, listStyle: "none" }}>
+            {activity.map((item) => {
+              const title = resolveTitleTextLenient(preference, { titleRomaji: item.titleRomaji, titleEnglish: item.titleEnglish, titleNative: null, titlePortuguese: null }, "Anime");
+              return (
+                <Box component="li" key={item.key} data-testid="friend-activity-item" sx={{ fontSize: 14, lineHeight: 1.45 }}>
+                  <MuiLink component={NextLink} href={`/users/${item.user.id}`} underline="hover" sx={{ fontWeight: 700, color: "text.primary" }}>
+                    {item.user.displayName}
+                  </MuiLink>{" "}
+                  {item.href ? (
+                    <MuiLink component={NextLink} href={item.href} underline="hover" sx={{ color: "text.secondary" }}>
+                      {activityText(item, title)}
+                    </MuiLink>
+                  ) : (
+                    <Box component="span" sx={{ color: "text.secondary" }}>
+                      {activityText(item, title)}
+                    </Box>
+                  )}
+                </Box>
+              );
+            })}
+          </Box>
+        </Box>
+      )}
+
       {loggedIn && recommended !== null && (
         <Box component="section" aria-label="Animes recomendados" data-testid="sidebar-recommendations" sx={{ borderTop: 1, borderColor: "divider", pt: 3, display: "flex", flexDirection: "column", gap: 2 }}>
           <SectionTitle>Animes recomendados</SectionTitle>
@@ -357,10 +401,21 @@ export function CommunitySidebar() {
   );
 }
 
+/** "Ana acompanha" / "Ana e Beto acompanham" / "Ana e mais 3 amigos acompanham". */
+export function friendsReason(names: string[]): string {
+  if (names.length === 1) return `${names[0]} acompanha`;
+  if (names.length === 2) return `${names[0]} e ${names[1]} acompanham`;
+  return `${names[0]} e mais ${names.length - 1} amigos acompanham`;
+}
+
 function SidebarRecommendation({ rec }: { rec: RecommendationItem }) {
   const { preference } = useTitlePreference();
   const title = resolveTitleTextLenient(preference, { titleRomaji: rec.titleRomaji, titleEnglish: rec.titleEnglish, titleNative: null, titlePortuguese: null }, "Anime");
-  const reason = rec.becauseTitle ? `Porque você acompanha ${rec.becauseTitle}` : rec.sharedGenres.length > 0 ? `Gêneros em comum: ${rec.sharedGenres.slice(0, 3).join(", ")}` : null;
+  const reason = rec.friendNames?.length
+    ? friendsReason(rec.friendNames)
+    : rec.becauseTitle
+      ? `Porque você acompanha ${rec.becauseTitle}`
+      : rec.sharedGenres.length > 0 ? `Gêneros em comum: ${rec.sharedGenres.slice(0, 3).join(", ")}` : null;
   return (
     <Box component="li" data-testid={`sidebar-recommendation-${rec.anilistId}`}>
       <Box component={NextLink} href={rec.href} sx={{ display: "flex", gap: 2, alignItems: "center", color: "text.primary", textDecoration: "none", "&:hover .rec-title": { textDecoration: "underline" } }}>

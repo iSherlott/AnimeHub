@@ -6,6 +6,7 @@ import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import LogoutIcon from "@mui/icons-material/Logout";
 import PeopleIcon from "@mui/icons-material/People";
+import InsightsIcon from "@mui/icons-material/Insights";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { Divider, IconButton, ListItemIcon, Menu, MenuItem, Tooltip, Typography } from "@mui/material";
 import { LanguageMenuItems } from "@/components/TitleLanguageMenu";
@@ -79,6 +80,12 @@ export function AccountMenu({ user, onLogout }: { user: PublicUser; onLogout: ()
             <PeopleIcon fontSize="small" />
           </ListItemIcon>
           Amigos
+        </MenuItem>
+        <MenuItem component={NextLink} href="/retrospectiva" onClick={handleClose}>
+          <ListItemIcon>
+            <InsightsIcon fontSize="small" />
+          </ListItemIcon>
+          Retrospectiva da temporada
         </MenuItem>
         <MenuItem component={NextLink} href="/configuracoes" onClick={handleClose}>
           <ListItemIcon>

@@ -6,6 +6,7 @@ import { isAlertVisible } from "@/lib/alertVisibility";
 import { resolveTimeZone } from "@/lib/timeZone";
 import { communityLabels } from "@/lib/community";
 import { ensureBirthdayNotifications } from "@/lib/birthdays";
+import { ensureSystemAlerts, systemAlertsFor } from "@/lib/systemAlerts";
 
 /**
  * Lista os alertas de "favorito no ar agora" (Epic 10) — só leitura, quem
@@ -90,6 +91,11 @@ export async function GET() {
     topicIds.length ? prisma.communityTopic.findMany({ where: { id: { in: topicIds }, deletedAt: null }, select: { id: true, title: true, communityId: true } }) : [],
     eventIds.length ? prisma.communityEvent.findMany({ where: { id: { in: eventIds }, deletedAt: null }, select: { id: true, title: true, communityId: true } }) : [],
   ]);
+  // Recomendações de obras dos amigos: o título da obra e o link para ela.
+  const recommendationIds = [...new Set(socialRows.map((n) => n.recommendationId).filter((r): r is string => Boolean(r)))];
+  const recommendationById = new Map(
+    (recommendationIds.length ? await prisma.workRecommendation.findMany({ where: { id: { in: recommendationIds } }, select: { id: true, workKey: true, titleRomaji: true } }) : []).map((r) => [r.id, r])
+  );
   const topicById = new Map(topics.map((t) => [t.id, t]));
   const eventById = new Map(events.map((e) => [e.id, e]));
   const labels = await communityLabels([...topics, ...events].map((x) => x.communityId));
@@ -97,10 +103,13 @@ export async function GET() {
     const topic = n.topicId ? topicById.get(n.topicId) : undefined;
     const event = n.eventId ? eventById.get(n.eventId) : undefined;
     const label = labels.get(topic?.communityId ?? event?.communityId ?? "");
-    const unavailable = n.postId ? !livePosts.has(n.postId) : n.topicId ? !topic || !label : n.eventId ? !event || !label : false;
+    const recommendation = n.recommendationId ? recommendationById.get(n.recommendationId) : undefined;
+    const unavailable = n.postId ? !livePosts.has(n.postId) : n.topicId ? !topic || !label : n.eventId ? !event || !label : n.type === "WORK_RECOMMENDATION" ? !recommendation : false;
     let href: string | null = null;
     if (n.type === "NEW_FOLLOWER" || n.type === "PROFILE_FAN" || n.type === "FRIEND_ACCEPTED") href = `/users/${n.actor.id}`;
     else if (n.type === "FRIEND_REQUEST") href = "/amigos";
+    // O bilhete fica em Amigos → Recomendações dos amigos (o sino nunca mostra o texto).
+    else if (n.type === "WORK_RECOMMENDATION") href = recommendation ? "/amigos#recomendacoes" : null;
     else if (n.type === "FRIEND_BIRTHDAY") href = `/users/${n.actor.id}#recados`;
     // Recado e depoimento ficam no perfil de quem recebe (quem está vendo o sino).
     else if (n.type === "PROFILE_SCRAP") href = `/users/${user.id}#recados`;
@@ -118,14 +127,22 @@ export async function GET() {
       unavailable,
       href,
       community: label?.title ?? null,
-      subject: topic?.title ?? event?.title ?? null,
+      subject: topic?.title ?? event?.title ?? recommendation?.titleRomaji ?? null,
     };
   });
+
+  // Administração: serviços e jobs que falharam ou pararam (aba Sistema do sino).
+  let system: Awaited<ReturnType<typeof systemAlertsFor>> = [];
+  if (user.role === "ADMIN") {
+    await ensureSystemAlerts(now);
+    system = await systemAlertsFor(user.id);
+  }
 
   return NextResponse.json({
     alerts: results,
     unseenCount: results.filter((r) => !r.seenAt).length,
     social,
     socialUnreadCount: social.filter((n) => !n.readAt).length,
+    ...(user.role === "ADMIN" ? { system, systemUnreadCount: system.filter((n) => !n.readAt).length } : {}),
   });
 }

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { recomputeSiteScore } from "@/lib/siteScoreDb";
 import { isValidUserScore } from "@/lib/siteScore";
+import { recordFriendActivity, retractFriendActivity } from "@/lib/friendActivity";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -29,6 +30,9 @@ export async function PATCH(request: Request, { params }: Params) {
   if (score !== null && !isValidUserScore(score)) return NextResponse.json({ error: "score deve ser um inteiro de 0 a 10, ou null" }, { status: 400 });
 
   await prisma.anime.update({ where: { id }, data: { userScore: score, scoredAt: score === null ? null : new Date() } });
+  // Atividade dos amigos (só de quem compartilha): a nota nova aparece; tirar a nota tira também de lá.
+  if (score === null) await retractFriendActivity(user.id, id, "RATED");
+  else await recordFriendActivity(user.id, id, "RATED", score as number);
   const site = await recomputeSiteScore(existing);
   return NextResponse.json({ userScore: score, siteScore: site.score, siteScoreVotes: site.votes });
 }

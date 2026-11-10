@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth/password";
 import { requireAdmin } from "@/lib/auth/session";
 import { generateTempPassword } from "@/lib/auth/accounts";
+import { createPasswordLink } from "@/lib/auth/passwordLinks";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -37,5 +38,7 @@ export async function POST(_request: Request, { params }: Params) {
 
   // Não existe sistema de e-mail — a senha temporária só é exibida aqui,
   // uma vez, pro administrador repassar por fora.
-  return NextResponse.json({ temporaryPassword: tempPassword });
+  // E o link de uso único para a pessoa definir a senha dela sem precisar da provisória.
+  const link = await createPasswordLink(id, admin.id);
+  return NextResponse.json({ temporaryPassword: tempPassword, passwordLink: link.path, passwordLinkExpiresAt: link.expiresAt.toISOString() });
 }

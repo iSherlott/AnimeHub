@@ -100,7 +100,7 @@ export function AdminDashboard({ canManageUsers = true, currentUserId }: { canMa
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [resolvingPostId, setResolvingPostId] = useState<string | null>(null);
   // Senha provisória recém-gerada (conta criada ou senha redefinida): mostrada uma vez, num diálogo.
-  const [resetResult, setResetResult] = useState<{ userId: string; password: string; created?: { displayName: string; email: string } } | null>(
+  const [resetResult, setResetResult] = useState<{ userId: string; password: string; link?: string; created?: { displayName: string; email: string } } | null>(
     null
   );
   const [error, setError] = useState<string | null>(null);
@@ -194,7 +194,7 @@ export function AdminDashboard({ canManageUsers = true, currentUserId }: { canMa
         return;
       }
       setUsers((current) => [...current, data.user]);
-      setResetResult({ userId: data.user.id, password: data.temporaryPassword, created: { displayName: data.user.displayName, email: data.user.email } });
+      setResetResult({ userId: data.user.id, password: data.temporaryPassword, link: data.passwordLink, created: { displayName: data.user.displayName, email: data.user.email } });
       setNewName("");
       setNewEmail("");
       setNewHandle("");
@@ -225,7 +225,7 @@ export function AdminDashboard({ canManageUsers = true, currentUserId }: { canMa
       setError(data.error ?? "Falha ao resetar senha");
       return;
     }
-    setResetResult({ userId, password: data.temporaryPassword });
+    setResetResult({ userId, password: data.temporaryPassword, link: data.passwordLink });
     setUsers((current) => current.map((u) => (u.id === userId ? { ...u, mustChangePassword: true } : u)));
   }
 
@@ -431,8 +431,9 @@ export function AdminDashboard({ canManageUsers = true, currentUserId }: { canMa
           Criar conta
         </Typography>
         <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
-          O AnimeHub é fechado: só daqui nascem contas, sempre como membro. A senha provisória aparece uma única vez para
-          você repassar; no primeiro acesso a pessoa escolhe a dela.
+          O AnimeHub é fechado: só daqui nascem contas, sempre como membro. Você recebe um link de uso único para mandar à
+          pessoa (por WhatsApp, por exemplo): por ele, ela mesma define a senha. Esqueceu a senha? Em Usuários, gere um link
+          novo.
         </Typography>
         <Box component="form" onSubmit={handleCreateAccount} sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "flex-start" }}>
           <TextField label="Nome" size="small" required value={newName} onChange={(e) => setNewName(e.target.value)} slotProps={{ htmlInput: { maxLength: 60 } }} sx={{ flex: "1 1 200px" }} />
@@ -521,14 +522,17 @@ export function AdminDashboard({ canManageUsers = true, currentUserId }: { canMa
           em vez de empurrá-la (achado real da 3ª rodada de auditoria,
           Epic 18); um Dialog nunca colide com o conteúdo ao redor. */}
       <Dialog open={resetResult !== null} onClose={() => setResetResult(null)}>
-        <DialogTitle>{resetResult?.created ? "Conta criada" : "Nova senha provisória"}</DialogTitle>
+        <DialogTitle>{resetResult?.created ? "Conta criada" : "Link de nova senha"}</DialogTitle>
         <DialogContent>
           <DialogContentText>
             {resetResult?.created
-              ? `A conta de ${resetResult.created.displayName} (${resetResult.created.email}) foi criada como membro. Senha provisória — mostrada só uma vez; repasse por fora deste painel:`
-              : "Mostrada só uma vez — repasse pra pessoa por fora deste painel. No próximo acesso ela escolhe a própria senha:"}
+              ? `A conta de ${resetResult.created.displayName} (${resetResult.created.email}) foi criada como membro. Mande este link para a pessoa: por ele, ela define a própria senha e já entra.`
+              : "Mande este link para a pessoa: por ele, ela define a nova senha e já entra. As sessões abertas dela foram encerradas."}
           </DialogContentText>
-          <Box component="code" data-testid="temporary-password" sx={{ display: "block", mt: 2, fontWeight: 700, fontSize: 16 }}>
+          {resetResult?.link && <PasswordLinkBox path={resetResult.link} />}
+          <Typography sx={{ fontSize: 13, color: "text.secondary", mt: 1 }}>Vale uma vez só, por 48 horas. Mostrado só agora.</Typography>
+          <Typography sx={{ fontSize: 13, color: "text.secondary", mt: 2 }}>Se preferir ditar, a senha provisória (a pessoa troca no primeiro acesso):</Typography>
+          <Box component="code" data-testid="temporary-password" sx={{ display: "block", mt: 0.5, fontWeight: 700, fontSize: 16 }}>
             {resetResult?.password}
           </Box>
         </DialogContent>
@@ -536,6 +540,30 @@ export function AdminDashboard({ canManageUsers = true, currentUserId }: { canMa
           <Button onClick={() => setResetResult(null)}>Fechar</Button>
         </DialogActions>
       </Dialog>
+    </Box>
+  );
+}
+
+/** O link completo (com o endereço do site) e um botão de copiar: é o que o admin manda pelo WhatsApp. */
+function PasswordLinkBox({ path }: { path: string }) {
+  const [copied, setCopied] = useState(false);
+  const url = typeof window === "undefined" ? path : `${window.location.origin}${path}`;
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  }
+  return (
+    <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: 2, flexWrap: "wrap" }}>
+      <Box component="code" data-testid="password-link" sx={{ flex: "1 1 260px", minWidth: 0, overflowWrap: "anywhere", fontSize: 13, p: 1, borderRadius: "8px", bgcolor: "#171820" }}>
+        {url}
+      </Box>
+      <Button size="small" variant="contained" onClick={() => void copy()} data-testid="password-link-copy">
+        {copied ? "Copiado" : "Copiar link"}
+      </Button>
     </Box>
   );
 }

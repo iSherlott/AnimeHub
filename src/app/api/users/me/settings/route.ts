@@ -30,5 +30,7 @@ export async function PATCH(request: Request) {
   }
 
   const updated = await prisma.user.update({ where: { id: user.id }, data: result.patch });
+  // Parou de compartilhar a atividade: o que já tinha aparecido para os amigos some junto.
+  if (result.patch.shareActivity === false) await prisma.friendActivity.deleteMany({ where: { userId: user.id } });
   return NextResponse.json({ preferences: toPublicUser(updated).preferences });
 }
