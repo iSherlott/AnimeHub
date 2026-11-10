@@ -43,7 +43,7 @@ a ler o site oficial de cada obra da temporada.
 
 O banco real pode ter mudado desde 26/10. Por isso o backup novo do passo 2 é obrigatório.
 
-### Atualização de 10/11/2026 (mais 2 migrações, as duas só acrescentam)
+### Atualização de 10/11/2026 (mais 3 migrações, todas só acrescentam)
 
 O cluster já estava em `20261122100000_work_twitter`. Esta versão traz:
 
@@ -53,9 +53,18 @@ O cluster já estava em `20261122100000_work_twitter`. Esta versão traz:
   compartilhada com os amigos (`FriendActivity`) e duas colunas em `User`: `notifyRecommendations` (ligada) e
   `shareActivity` (**desligada** para todo mundo: ninguém aparece para os amigos sem escolher). Mais a coluna
   `SocialNotification.recommendationId`.
+- `20261123120000_episodes_season_games_cast`: 15 tabelas novas, vazias. São elas: reação, nota e diário por episódio;
+  bolão; anime da semana; tier list; agenda de eventos e quem vai; aberturas e encerramentos e as curtidas; personagens,
+  dubladores, papéis e favoritos. Também entra a coluna `SocialNotification.animeEventId`.
 
-O mesmo `bash deploy/k8s/atualizar.sh` aplica as duas. A conferência passa a esperar 79 migrações, última
-`20261123110000_recommendations_friend_activity`.
+Depois de subir, há três passos opcionais:
+
+- Admin → Elenco e aberturas → "Carregar elenco" e "Carregar aberturas" da temporada. O site precisa alcançar
+  `graphql.anilist.co` e `api.animethemes.moe`.
+- Admin → Eventos e votações, para abrir o anime da semana e o bolão e cadastrar eventos.
+
+O mesmo `bash deploy/k8s/atualizar.sh` aplica as três. A conferência passa a esperar 80 migrações, última
+`20261123120000_episodes_season_games_cast`.
 
 ## 1. Antes de começar
 
@@ -105,7 +114,7 @@ aconteceu, e o site continua na versão anterior.
 docker run --rm -v "$PWD:/w" postgres:18-alpine psql "<URL do banco sem ?schema=…>" -f /w/deploy/k8s/conferir-atualizacao.sql
 ```
 
-- [ ] Cada linha bate com o "espera" do lado: 79 migrações, 0 com falha, última `20261123110000_recommendations_friend_activity`, nenhum item
+- [ ] Cada linha bate com o "espera" do lado: 80 migrações, 0 com falha, última `20261123120000_episodes_season_games_cast`, nenhum item
       de lista ou produção sem obra, 2 tabelas arquivadas, 1 ou mais administradores, nenhuma senha provisória,
       nenhum avatar enviado. Gênero não registrado não impede o site: registre, mescle ou remova em Admin → Taxonomia.
 - [ ] A linha "contas sem nome de usuário" diz quantas contas ainda não têm @. Não impede o site, mas a pessoa não

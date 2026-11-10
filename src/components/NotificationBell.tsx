@@ -41,7 +41,7 @@ type AiringAlertItem = {
 
 type SocialItem = {
   id: string;
-  type: "POST_REPLY" | "COMMENT_REPLY" | "NEW_FOLLOWER" | "POST_LIKE" | "PROFILE_SCRAP" | "PROFILE_TESTIMONIAL" | "PROFILE_FAN" | "COMMUNITY_REPLY" | "COMMUNITY_EVENT" | "FRIEND_REQUEST" | "FRIEND_ACCEPTED" | "FRIEND_BIRTHDAY" | "WORK_RECOMMENDATION";
+  type: "POST_REPLY" | "COMMENT_REPLY" | "NEW_FOLLOWER" | "POST_LIKE" | "PROFILE_SCRAP" | "PROFILE_TESTIMONIAL" | "PROFILE_FAN" | "COMMUNITY_REPLY" | "COMMUNITY_EVENT" | "FRIEND_REQUEST" | "FRIEND_ACCEPTED" | "FRIEND_BIRTHDAY" | "WORK_RECOMMENDATION" | "EVENT_REMINDER";
   actor: { id: string; displayName: string };
   /** Comunidades: a comunidade e o título do tópico ou do evento (públicos, como na lista do fórum). */
   community?: string | null;
@@ -102,6 +102,8 @@ function socialText(n: SocialItem): string {
       return `${n.actor.displayName} aceitou seu pedido de amizade`;
     case "FRIEND_BIRTHDAY":
       return `Hoje é aniversário de ${n.actor.displayName}. Deixe um recado`;
+    case "EVENT_REMINDER":
+      return `Hoje tem "${n.subject ?? "evento"}", que você marcou na agenda`;
     case "WORK_RECOMMENDATION":
       return `${n.actor.displayName} recomendou ${n.subject ?? "uma obra"} para você`;
     case "COMMUNITY_EVENT":
@@ -397,7 +399,7 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
                     {n.readAt ? "Lida" : "Não lida"} · {formatRelativeTime(n.createdAt)}
                   </Typography>
                   {n.unavailable ? (
-                    <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.5 }}>{n.type === "COMMUNITY_EVENT" ? "Evento removido" : n.type === "COMMUNITY_REPLY" ? "Tópico removido" : n.type === "WORK_RECOMMENDATION" ? "Recomendação removida" : "Publicação removida"}</Typography>
+                    <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.5 }}>{n.type === "COMMUNITY_EVENT" ? "Evento removido" : n.type === "COMMUNITY_REPLY" ? "Tópico removido" : n.type === "WORK_RECOMMENDATION" ? "Recomendação removida" : n.type === "EVENT_REMINDER" ? "Evento cancelado" : "Publicação removida"}</Typography>
                   ) : (
                     <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.5 }}>Abrir contexto →</Typography>
                   )}

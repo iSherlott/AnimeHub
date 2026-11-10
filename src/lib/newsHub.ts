@@ -115,7 +115,7 @@ export function newsImageFor(newsImage: string | null, anime: Pick<AnimeForNews,
 }
 
 /** Amarra a # ao anime (Hashtag.anilistId): "obra em contexto" e a ligação da tag com a obra não dependem de adivinhação. */
-async function linkTagToAnime(tagKey: string, anilistId: number): Promise<void> {
+export async function linkTagToAnime(tagKey: string, anilistId: number): Promise<void> {
   await prisma.hashtag.updateMany({ where: { key: tagKey, anilistId: null }, data: { anilistId, kind: "WORK" } });
 }
 

@@ -14,7 +14,8 @@ export type SocialNotificationType =
   | "FRIEND_REQUEST"
   | "FRIEND_ACCEPTED"
   | "FRIEND_BIRTHDAY"
-  | "WORK_RECOMMENDATION";
+  | "WORK_RECOMMENDATION"
+  | "EVENT_REMINDER";
 
 /** Qual preferência da conta controla cada tipo (Configurações, S-12). */
 const PREFERENCE_BY_TYPE = {
@@ -36,6 +37,8 @@ const PREFERENCE_BY_TYPE = {
   FRIEND_BIRTHDAY: "notifyFollowers",
   // Criado por src/lib/workRecommendations.ts (respeita a preferência própria).
   WORK_RECOMMENDATION: "notifyRecommendations",
+  // Criado por src/lib/animeEvents.ts para quem marcou "vou" (a própria pessoa pediu o lembrete).
+  EVENT_REMINDER: "notifyCommunity",
 } as const;
 
 /** Tipos que não se repetem: a mesma pessoa curtindo/seguindo de novo não gera outro aviso. */

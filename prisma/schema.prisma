@@ -129,6 +129,13 @@ model User {
   recommendationsSent     WorkRecommendation[] @relation("RecommendationFrom")
   recommendationsReceived WorkRecommendation[] @relation("RecommendationTo")
   friendActivities        FriendActivity[]
+  episodeReactions        EpisodeReaction[]
+  poolPicks               SeasonPoolPick[]
+  weeklyBallots           WeeklyVoteBallot[]
+  tierLists               TierList[]
+  animeEventRsvps         AnimeEventRsvp[]
+  themeLikes              WorkThemeLike[]
+  favoriteCharacters      FavoriteCharacter[]
 
   @@index([email])
 }
@@ -804,6 +811,8 @@ model SocialNotification {
   eventId   String?
   /// Recomendação de obra de um amigo (WORK_RECOMMENDATION).
   recommendationId String?
+  /// Lembrete de um evento da agenda (EVENT_REMINDER).
+  animeEventId String?
   readAt    DateTime?
   createdAt DateTime  @default(now())
 
@@ -1934,3 +1943,235 @@ model FriendActivity {
   @@unique([userId, workKey, kind])
   @@index([userId, createdAt])
 }
+
+
+/// Reação, nota e diário de um episódio (10/11/2026). A reação (emoji) e a nota (1 a 5) somam na curva da temporada que
+/// todos veem; o diário (`note`) é só da pessoa. Uma linha por pessoa, obra e episódio.
+model EpisodeReaction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Chave da obra (AniList ID ou anidb-<id>).
+  workKey   String
+  episode   Int
+  emoji     String?
+  rating    Int?
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, workKey, episode])
+  @@index([workKey, episode])
+}
+
+/// Bolão da temporada (10/11/2026): o admin abre, cada pessoa escolhe até `picksPerUser` obras da temporada antes de
+/// `closesAt`, e os pontos vêm da nota do site e de quantas pessoas da rede acompanham cada obra. Ao encerrar, os pontos
+/// ficam gravados em cada escolha.
+model SeasonPool {
+  id           String           @id @default(cuid())
+  season       String
+  seasonYear   Int
+  title        String
+  picksPerUser Int              @default(5)
+  closesAt     DateTime
+  status       String           @default("OPEN")
+  finishedAt   DateTime?
+  createdById  String?
+  createdAt    DateTime         @default(now())
+  picks        SeasonPoolPick[]
+
+  @@unique([season, seasonYear])
+}
+
+model SeasonPoolPick {
+  id          String     @id @default(cuid())
+  poolId      String
+  pool        SeasonPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workKey     String
+  titleRomaji String
+  coverImage  String?
+  points      Int?
+  createdAt   DateTime   @default(now())
+
+  @@unique([poolId, userId, workKey])
+  @@index([poolId])
+}
+
+/// Anime da semana (10/11/2026): o admin abre a votação com as obras que tiveram episódio na semana; cada pessoa vota
+/// uma vez; ao encerrar, o NewsHub publica o resultado no Feed.
+model WeeklyVote {
+  id          String             @id @default(cuid())
+  title       String
+  weekStart   DateTime
+  closesAt    DateTime
+  status      String             @default("OPEN")
+  winnerKey   String?
+  postId      String?
+  createdById String?
+  createdAt   DateTime           @default(now())
+  options     WeeklyVoteOption[]
+  ballots     WeeklyVoteBallot[]
+
+  @@index([status, createdAt])
+}
+
+model WeeklyVoteOption {
+  id          String             @id @default(cuid())
+  voteId      String
+  vote        WeeklyVote         @relation(fields: [voteId], references: [id], onDelete: Cascade)
+  workKey     String
+  titleRomaji String
+  coverImage  String?
+  episode     Int?
+  position    Int                @default(0)
+  ballots     WeeklyVoteBallot[]
+
+  @@unique([voteId, workKey])
+}
+
+model WeeklyVoteBallot {
+  id        String           @id @default(cuid())
+  voteId    String
+  vote      WeeklyVote       @relation(fields: [voteId], references: [id], onDelete: Cascade)
+  optionId  String
+  option    WeeklyVoteOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+
+  @@unique([voteId, userId])
+}
+
+/// Tier list da temporada (10/11/2026): a pessoa distribui as obras da temporada em S/A/B/C/D e pode publicar no Feed.
+model TierList {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  season     String
+  seasonYear Int
+  /// {"S": ["<workKey>", ...], "A": [...], ...}
+  tiersJson  String
+  postId     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, season, seasonYear])
+}
+
+/// Agenda de eventos de anime (10/11/2026): convenções, estreias no cinema, lives. Só o admin cadastra (pensando em
+/// parcerias no futuro); quem tem conta marca "vou" e recebe um lembrete no sino no dia.
+model AnimeEvent {
+  id          String           @id @default(cuid())
+  title       String
+  description String?
+  /// CONVENCAO | CINEMA | LIVE | OUTRO
+  kind        String           @default("OUTRO")
+  startsAt    DateTime
+  endsAt      DateTime?
+  place       String?
+  url         String?
+  partner     String?
+  createdById String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  deletedAt   DateTime?
+  rsvps       AnimeEventRsvp[]
+
+  @@index([startsAt])
+}
+
+model AnimeEventRsvp {
+  eventId    String
+  event      AnimeEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  remindedAt DateTime?
+  createdAt  DateTime   @default(now())
+
+  @@id([eventId, userId])
+  @@index([userId])
+}
+
+/// Abertura ou encerramento de uma obra (10/11/2026), vindo da API pública do AnimeThemes quando o admin carrega. Só o
+/// link para o vídeo deles: nada é copiado para cá.
+model WorkTheme {
+  id          String          @id @default(cuid())
+  anilistId   Int
+  /// OP | ED
+  type        String
+  sequence    Int             @default(1)
+  slug        String
+  title       String?
+  artists     String?
+  episodes    String?
+  videoUrl    String?
+  sourceUrl   String?
+  fetchedAt   DateTime        @default(now())
+  likes       WorkThemeLike[]
+
+  @@unique([anilistId, slug])
+  @@index([anilistId])
+}
+
+model WorkThemeLike {
+  themeId   String
+  theme     WorkTheme @relation(fields: [themeId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+
+  @@id([themeId, userId])
+}
+
+/// Personagem (10/11/2026), da AniList, quando o admin carrega o elenco das obras.
+model Character {
+  id          Int                @id
+  name        String
+  nativeName  String?
+  image       String?
+  description String?
+  fetchedAt   DateTime           @default(now())
+  works       WorkCharacter[]
+  favoritedBy FavoriteCharacter[]
+}
+
+/// Dublador (seiyuu) japonês, da AniList.
+model VoiceActor {
+  id         Int             @id
+  name       String
+  nativeName String?
+  image      String?
+  fetchedAt  DateTime        @default(now())
+  roles      WorkCharacter[]
+}
+
+/// Quem é quem numa obra: o personagem, o papel (MAIN/SUPPORTING) e o dublador japonês.
+model WorkCharacter {
+  id           String      @id @default(cuid())
+  anilistId    Int
+  characterId  Int
+  character    Character   @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  role         String
+  voiceActorId Int?
+  voiceActor   VoiceActor? @relation(fields: [voiceActorId], references: [id], onDelete: SetNull)
+  position     Int         @default(0)
+
+  @@unique([anilistId, characterId])
+  @@index([characterId])
+  @@index([voiceActorId])
+}
+
+/// Personagens favoritos no perfil (até 5, em ordem).
+model FavoriteCharacter {
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  position    Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  @@id([userId, characterId])
+}
+

@@ -17,6 +17,7 @@ import { resolveTitleTextLenient, useTitlePreference } from "@/lib/titlePreferen
 import { formatTimeInZone, timeZoneLabel } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
 import type { CalendarItem } from "@/lib/calendarItem";
+import { WeeklyVoteCard } from "@/components/WeeklyVoteCard";
 
 type Tag = { key: string; display: string };
 type Person = { id: string; displayName: string; handle: string | null; avatarUrl: string | null; detail: string | null };
@@ -349,6 +350,8 @@ export function CommunitySidebar() {
           </MuiLink>
         </Box>
       )}
+
+      {loggedIn && <WeeklyVoteCard />}
 
       {loggedIn && activity !== null && activity.length > 0 && (
         <Box component="section" aria-label="Atividade dos amigos" data-testid="sidebar-friend-activity" sx={{ borderTop: 1, borderColor: "divider", pt: 3, display: "flex", flexDirection: "column", gap: 2 }}>

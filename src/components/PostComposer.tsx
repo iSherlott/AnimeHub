@@ -7,7 +7,6 @@ import {
   Box,
   Button,
   ButtonBase,
-  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
@@ -15,7 +14,6 @@ import {
   DialogTitle,
   InputBase,
   Stack,
-  TextField,
   Typography,
 } from "@mui/material";
 import { AnimeContextPicker, type RelatedAnime } from "@/components/AnimeContextPicker";
@@ -27,8 +25,9 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { canonicalHashtagKey, extractHashtags, MAX_HASHTAGS_PER_POST } from "@/lib/hashtags";
 import { DRAFT_IMAGES_KEY, MAX_COMPOSER_IMAGES, usePostImages } from "@/lib/usePostImages";
-import { parseSpoilerEpisode, spoilerLabel } from "@/lib/spoilers";
+import { parseSpoilerEpisode } from "@/lib/spoilers";
 import { wrapSpoilerSelection } from "@/lib/wrapSpoiler";
+import { ComposerSpoilerSection } from "@/components/ComposerSpoilerSection";
 
 const MAX_BODY_LENGTH = 500;
 const DRAFT_KEY = "anime-hub:draft:new-post";
@@ -393,48 +392,7 @@ export function PostComposer({
       </EditorSection>
 
       {/* Proteção de spoilers */}
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-          <Checkbox
-            id="post-spoiler"
-            checked={spoiler}
-            onChange={(e) => setSpoiler(e.target.checked)}
-            sx={{ p: 0.75, color: "text.secondary" }}
-          />
-          <Typography component="label" htmlFor="post-spoiler" sx={{ fontWeight: 700, fontSize: 14 }}>
-            Contém spoilers
-          </Typography>
-        </Stack>
-        <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
-          Desmarcado por padrão. Ative quando o texto revelar acontecimentos. Para esconder só uma parte, use &ldquo;Esconder trecho
-          (spoiler)&rdquo; no texto; para uma imagem, o botão Spoiler nela.
-        </Typography>
-        {spoiler && (
-          <TextField
-            label="Até o episódio (opcional)"
-            value={spoilerEpisode}
-            onChange={(e) => setSpoilerEpisode(e.target.value.replace(/\D/g, "").slice(0, 4))}
-            helperText="Aparece no aviso, para quem ainda não chegou lá decidir se vê."
-            slotProps={{ htmlInput: { inputMode: "numeric", "data-testid": "editor-spoiler-episode" } }}
-            sx={{ maxWidth: 280 }}
-          />
-        )}
-      </Box>
-
-      {spoiler && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-          <Typography sx={{ fontSize: 12, fontWeight: 700, color: "text.secondary" }}>COMO APARECERÁ NO FEED</Typography>
-          <Box sx={{ bgcolor: "background.paper", borderRadius: "12px", p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
-            <Typography sx={{ fontWeight: 700, fontSize: 14 }}>Conteúdo com spoilers</Typography>
-            <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
-              <Box component="span" sx={{ color: "warning.main", fontWeight: 700 }}>
-                {spoilerLabel({ work: anime ? (anime.native ?? anime.title) : null, episode: parseSpoilerEpisode(spoilerEpisode) ?? null })}
-              </Box>
-              {" · "}O texto fica oculto até você escolher revelar.
-            </Typography>
-          </Box>
-        </Box>
-      )}
+      <ComposerSpoilerSection spoiler={spoiler} onSpoilerChange={setSpoiler} spoilerEpisode={spoilerEpisode} onSpoilerEpisodeChange={setSpoilerEpisode} workLabel={anime ? (anime.native ?? anime.title) : null} />
 
       {error && (
         <Alert severity="error" role="alert">

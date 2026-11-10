@@ -197,7 +197,8 @@ publicações) só acrescenta uma coluna, a `20261119100000_spoilers` (sistema d
 (tamanho medido dos banners, para o banner e o fundo do perfil só oferecerem Full HD) só acrescenta uma tabela, e a
 `20261122100000_work_twitter` (X oficial da obra) só acrescenta uma coluna. Em 10/11 entraram mais duas, que também só
 acrescentam: `20261123100000_password_links_system_alerts` (link de senha e avisos do sistema) e
-`20261123110000_recommendations_friend_activity` (recomendar a um amigo e atividade dos amigos, que vem desligada).
+`20261123110000_recommendations_friend_activity` (recomendar a um amigo e atividade dos amigos, que vem desligada), e a
+`20261123120000_episodes_season_games_cast` (episódios, bolão, anime da semana, tier list, eventos, aberturas e elenco).
 
 **Sistema fechado (28/10).** Não existe mais cadastro aberto nem convite: as contas nascem em Admin → Acesso e
 moderação → Criar conta, sempre como membro, com uma senha provisória mostrada uma vez (a pessoa troca no primeiro

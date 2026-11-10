@@ -56,6 +56,10 @@ import { PublicWork } from "@/app/anime/[id]/PublicWork";
 import { CatalogWork, PublicCatalogWork, findCatalogWork } from "@/app/anime/[id]/CatalogWork";
 import { CATALOG_ONLY_SLUG } from "@/lib/workHref";
 import { RecommendToFriend } from "@/components/RecommendToFriend";
+import { EpisodeReactionsPanel } from "@/components/EpisodeReactionsPanel";
+import { WorkCharacters, WorkThemes } from "@/components/WorkThemesAndCast";
+import { castFor } from "@/lib/workCast";
+import { themesFor } from "@/lib/animeThemes";
 
 /** Um id só de dígitos é o da AniList (obra de quem ainda não a acompanha); o resto é o id da sua própria lista. */
 const ANILIST_ID = /^\d{1,9}$/;
@@ -145,6 +149,7 @@ export default async function AnimeDetailPage({
   const franchiseSeasons = allSeasons.filter((s) => !otherVersion.has(s.anilistId));
   const schedule = Object.fromEntries(timed(scheduleRows).map((r) => [r.episode, r.airingAt.toISOString()]));
   const episodeImages = Object.fromEntries(imageRows.map((r) => [r.episode, r.thumbnail]));
+  const workCast = await castFor(anime.anilistId);
 
   // O andamento de cada temporada da obra na lista de quem olha (para escolher: acompanhando, terminei, dropei…).
   const mySeasonRows = await prisma.anime.findMany({
@@ -283,6 +288,12 @@ export default async function AnimeDetailPage({
             <WorkExtras extras={extras} />
           </Box>
 
+          {/* Reação, nota e diário por episódio (10/11/2026): só aparece quando há episódio já exibido. */}
+          <EpisodeReactionsPanel workKey={String(anime.anilistId)} />
+
+          <WorkCharacters cast={workCast} />
+          <WorkThemes themes={await themesFor(anime.anilistId, user.id)} signedIn />
+
           {hasTrailer && (
             <Box component="section" id="trailer" aria-labelledby="trailer-heading" sx={{ display: "flex", flexDirection: "column", gap: 2, scrollMarginTop: 150 }}>
               <Typography id="trailer-heading" component="h2" sx={headingSx}>
@@ -292,7 +303,8 @@ export default async function AnimeDetailPage({
             </Box>
           )}
 
-          {cast.length > 0 && (
+          {/* O elenco antigo (sem páginas de personagem) só aparece enquanto o admin não carregou o elenco novo. */}
+          {cast.length > 0 && workCast.length === 0 && (
             <Box component="section" id="elenco" aria-labelledby="elenco-heading" sx={{ display: "flex", flexDirection: "column", gap: 2, scrollMarginTop: 150 }}>
               <Typography id="elenco-heading" component="h2" sx={headingSx}>
                 Elenco

@@ -29,6 +29,8 @@ import VideoLibraryOutlinedIcon from "@mui/icons-material/VideoLibraryOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import MenuIcon from "@mui/icons-material/Menu";
+import EventOutlinedIcon from "@mui/icons-material/EventOutlined";
+import RecordVoiceOverOutlinedIcon from "@mui/icons-material/RecordVoiceOverOutlined";
 import { Box, ButtonBase, Collapse, Typography } from "@mui/material";
 import { can, type Permission } from "@/lib/auth/permissions";
 
@@ -68,6 +70,8 @@ const NAV: NavItem[] = [
   { href: "/admin/curadoria", label: "Curadoria", icon: <FactCheckOutlinedIcon />, crumb: "CURADORIA", group: "curadoria" },
   { href: "/admin/pendencias", label: "Pendências", icon: <RuleOutlinedIcon />, crumb: "PENDÊNCIAS", group: "curadoria" },
   { href: "/admin/quizzes", label: "Quizzes", icon: <QuizOutlinedIcon />, crumb: "QUIZZES", group: "comunidade" },
+  { href: "/admin/rede", label: "Eventos e votações", icon: <EventOutlinedIcon />, crumb: "EVENTOS E VOTAÇÕES", perm: "admin", group: "comunidade" },
+  { href: "/admin/elenco", label: "Elenco e aberturas", icon: <RecordVoiceOverOutlinedIcon />, crumb: "ELENCO E ABERTURAS", group: "fontes" },
   { href: "/admin/acesso", label: "Acesso e moderação", icon: <AdminPanelSettingsOutlinedIcon />, crumb: "ACESSO E MODERAÇÃO", perm: "moderation", group: "comunidade" },
 ];
 

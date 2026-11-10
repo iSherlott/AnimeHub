@@ -135,7 +135,7 @@ export function rateLimitWaitMs(retryAfterHeader: string | null, attempt: number
 }
 
 /** `fresh`: consulta sem o cache de 1 h do Next (painel do admin precisa do que a AniList tem agora). */
-async function anilistRequest<T>(
+export async function anilistRequest<T>(
   query: string,
   variables: Record<string, unknown>,
   { fresh = false }: { fresh?: boolean } = {}

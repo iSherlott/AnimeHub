@@ -35,6 +35,9 @@ import { WorkExtras } from "@/components/WorkExtras";
 import { loadExtras } from "@/lib/episodeExtras";
 import { WorkCommunityCard, WorkQuizEntry, WorkRelated } from "@/components/WorkSections";
 import { RecommendToFriend } from "@/components/RecommendToFriend";
+import { WorkCharacters, WorkThemes } from "@/components/WorkThemesAndCast";
+import { castFor } from "@/lib/workCast";
+import { themesFor } from "@/lib/animeThemes";
 
 /**
  * Detalhe de uma obra para quem ainda não a acompanha (e para visitantes): o MESMO desenho da página pessoal
@@ -233,6 +236,8 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
         <Box id="comunidade" sx={{ scrollMarginTop: 150, maxWidth: 520 }}>
           <WorkCommunityCard workKey={String(anilistId)} />
         </Box>
+        <WorkCharacters cast={await castFor(anilistId)} />
+        <WorkThemes themes={await themesFor(anilistId, user?.id ?? null)} signedIn={Boolean(user)} />
         <WorkRelated anilistId={anilistId} franchiseId={production.franchiseId} relationsJson={production.relationsJson} seasonIds={seasons.map((s) => s.anilistId)} story={story.relations} />
       </Box>
     </div>

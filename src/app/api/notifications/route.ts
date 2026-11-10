@@ -7,6 +7,7 @@ import { resolveTimeZone } from "@/lib/timeZone";
 import { communityLabels } from "@/lib/community";
 import { ensureBirthdayNotifications } from "@/lib/birthdays";
 import { ensureSystemAlerts, systemAlertsFor } from "@/lib/systemAlerts";
+import { ensureEventReminders } from "@/lib/animeEvents";
 
 /**
  * Lista os alertas de "favorito no ar agora" (Epic 10) — só leitura, quem
@@ -71,6 +72,8 @@ export async function GET() {
   // comigo some; publicação apagada vira tombstone ("indisponível").
   // Aniversários dos amigos: o aviso do dia nasce quando o sino é consultado (um por amigo por dia).
   await ensureBirthdayNotifications(user.id, zone, now);
+  // Lembrete do dia dos eventos da agenda em que a pessoa marcou "vou".
+  await ensureEventReminders(user.id, zone, now);
   const blocked = await blockedUserIdSet(user.id);
   const socialRows = await prisma.socialNotification.findMany({
     where: { userId: user.id, ...(blocked.size ? { actorId: { notIn: [...blocked] } } : {}) },
@@ -87,6 +90,10 @@ export async function GET() {
   // Comunidades: o tópico (título, comunidade) e o evento; apagado vira "removido".
   const topicIds = [...new Set(socialRows.map((n) => n.topicId).filter((t): t is string => Boolean(t)))];
   const eventIds = [...new Set(socialRows.map((n) => n.eventId).filter((e): e is string => Boolean(e)))];
+  const animeEventIds = [...new Set(socialRows.map((n) => n.animeEventId).filter((e): e is string => Boolean(e)))];
+  const animeEventById = new Map(
+    (animeEventIds.length ? await prisma.animeEvent.findMany({ where: { id: { in: animeEventIds }, deletedAt: null }, select: { id: true, title: true } }) : []).map((e) => [e.id, e])
+  );
   const [topics, events] = await Promise.all([
     topicIds.length ? prisma.communityTopic.findMany({ where: { id: { in: topicIds }, deletedAt: null }, select: { id: true, title: true, communityId: true } }) : [],
     eventIds.length ? prisma.communityEvent.findMany({ where: { id: { in: eventIds }, deletedAt: null }, select: { id: true, title: true, communityId: true } }) : [],
@@ -104,12 +111,14 @@ export async function GET() {
     const event = n.eventId ? eventById.get(n.eventId) : undefined;
     const label = labels.get(topic?.communityId ?? event?.communityId ?? "");
     const recommendation = n.recommendationId ? recommendationById.get(n.recommendationId) : undefined;
-    const unavailable = n.postId ? !livePosts.has(n.postId) : n.topicId ? !topic || !label : n.eventId ? !event || !label : n.type === "WORK_RECOMMENDATION" ? !recommendation : false;
+    const animeEvent = n.animeEventId ? animeEventById.get(n.animeEventId) : undefined;
+    const unavailable = n.postId ? !livePosts.has(n.postId) : n.topicId ? !topic || !label : n.eventId ? !event || !label : n.type === "WORK_RECOMMENDATION" ? !recommendation : n.type === "EVENT_REMINDER" ? !animeEvent : false;
     let href: string | null = null;
     if (n.type === "NEW_FOLLOWER" || n.type === "PROFILE_FAN" || n.type === "FRIEND_ACCEPTED") href = `/users/${n.actor.id}`;
     else if (n.type === "FRIEND_REQUEST") href = "/amigos";
     // O bilhete fica em Amigos → Recomendações dos amigos (o sino nunca mostra o texto).
     else if (n.type === "WORK_RECOMMENDATION") href = recommendation ? "/amigos#recomendacoes" : null;
+    else if (n.type === "EVENT_REMINDER") href = animeEvent ? `/eventos#evento-${animeEvent.id}` : null;
     else if (n.type === "FRIEND_BIRTHDAY") href = `/users/${n.actor.id}#recados`;
     // Recado e depoimento ficam no perfil de quem recebe (quem está vendo o sino).
     else if (n.type === "PROFILE_SCRAP") href = `/users/${user.id}#recados`;
@@ -127,7 +136,7 @@ export async function GET() {
       unavailable,
       href,
       community: label?.title ?? null,
-      subject: topic?.title ?? event?.title ?? recommendation?.titleRomaji ?? null,
+      subject: topic?.title ?? event?.title ?? recommendation?.titleRomaji ?? animeEvent?.title ?? null,
     };
   });
 

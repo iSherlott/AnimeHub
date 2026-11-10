@@ -7,6 +7,10 @@ import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import LogoutIcon from "@mui/icons-material/Logout";
 import PeopleIcon from "@mui/icons-material/People";
 import InsightsIcon from "@mui/icons-material/Insights";
+import LeaderboardIcon from "@mui/icons-material/Leaderboard";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import MusicNoteIcon from "@mui/icons-material/MusicNote";
+import EventIcon from "@mui/icons-material/Event";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { Divider, IconButton, ListItemIcon, Menu, MenuItem, Tooltip, Typography } from "@mui/material";
 import { LanguageMenuItems } from "@/components/TitleLanguageMenu";
@@ -86,6 +90,30 @@ export function AccountMenu({ user, onLogout }: { user: PublicUser; onLogout: ()
             <InsightsIcon fontSize="small" />
           </ListItemIcon>
           Retrospectiva da temporada
+        </MenuItem>
+        <MenuItem component={NextLink} href="/tier-list" onClick={handleClose}>
+          <ListItemIcon>
+            <LeaderboardIcon fontSize="small" />
+          </ListItemIcon>
+          Tier list da temporada
+        </MenuItem>
+        <MenuItem component={NextLink} href="/bolao" onClick={handleClose}>
+          <ListItemIcon>
+            <EmojiEventsIcon fontSize="small" />
+          </ListItemIcon>
+          Bolão da temporada
+        </MenuItem>
+        <MenuItem component={NextLink} href="/aberturas" onClick={handleClose}>
+          <ListItemIcon>
+            <MusicNoteIcon fontSize="small" />
+          </ListItemIcon>
+          Aberturas da temporada
+        </MenuItem>
+        <MenuItem component={NextLink} href="/eventos" onClick={handleClose}>
+          <ListItemIcon>
+            <EventIcon fontSize="small" />
+          </ListItemIcon>
+          Eventos de anime
         </MenuItem>
         <MenuItem component={NextLink} href="/configuracoes" onClick={handleClose}>
           <ListItemIcon>

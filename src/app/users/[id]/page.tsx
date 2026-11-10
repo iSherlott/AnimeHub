@@ -111,6 +111,8 @@ export default async function UserProfilePage({ params }: Params) {
   const albums = await profileAlbums(id, viewerId, animeList);
   // Afinidade de gosto com quem está vendo (perfil de outra pessoa; lista dela visível).
   const affinity = viewerId && !isOwnProfile ? await loadAffinity(viewerId, id) : null;
+  // Personagens favoritos (até 5), escolhidos nas páginas dos personagens.
+  const favoriteCharacters = await prisma.favoriteCharacter.findMany({ where: { userId: id }, orderBy: { position: "asc" }, include: { character: { select: { id: true, name: true, image: true } } } });
   const animeCount = animeList.kind === "ok" ? animeList.list.total : null;
   const albumCards = albums ? [...albums.auto, ...albums.custom] : [];
   // Perfil próprio ainda sem amigos: a caixa de amigos mostra quem a pessoa talvez conheça.
@@ -342,6 +344,26 @@ export default async function UserProfilePage({ params }: Params) {
             {/* Direita: amigos, comunidades e conquistas */}
             <Box component="aside" aria-label="Amigos, comunidades e conquistas" sx={{ display: { xs: "flex", sm: "grid", lg: "flex" }, gridTemplateColumns: { sm: "repeat(2, minmax(0,1fr))" }, alignItems: { sm: "start", lg: "stretch" }, flexDirection: "column", gap: 2, gridColumn: { md: "1 / -1", lg: "auto" }, order: { xs: 3, md: 0 } }}>
               {affinity && <AffinityBox result={affinity} firstName={firstName} />}
+              {(favoriteCharacters.length > 0 || isOwnProfile) && (
+                <SideBox id="personagens" title="personagens favoritos" count={favoriteCharacters.length} testId="profile-favorite-characters">
+                  {favoriteCharacters.length === 0 ? (
+                    <Typography sx={{ fontSize: 13, color: "text.secondary" }}>Abra a página de um personagem (na ficha da obra) e use “Favoritar no perfil”.</Typography>
+                  ) : (
+                    <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "flex", flexWrap: "wrap", gap: 1 }}>
+                      {favoriteCharacters.map((f) => (
+                        <Box component="li" key={f.characterId} sx={{ width: 64 }}>
+                          <AppLink href={`/personagem/${f.characterId}`} underline="hover" sx={{ display: "flex", flexDirection: "column", gap: 0.5, color: "text.primary" }}>
+                            <Box sx={{ width: 64, height: 86, borderRadius: "8px", bgcolor: "#171820", backgroundImage: f.character.image ? `url(${f.character.image})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }} role="img" aria-label={f.character.name} />
+                            <Typography component="span" sx={{ fontSize: 11, lineHeight: 1.2, overflowWrap: "anywhere" }}>
+                              {f.character.name}
+                            </Typography>
+                          </AppLink>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                </SideBox>
+              )}
               <SideBox id="amigos" title="amigos" count={friends.total} testId="profile-friends" more={isOwnProfile ? { href: "/amigos", label: "gerenciar" } : friends.total > friends.rows.length ? { href: `/users/${id}/amigos`, label: "ver todos" } : undefined}>
                 {isOwnProfile && pendingRequests > 0 && (
                   <AppLink href="/amigos" underline="hover" sx={{ fontSize: 13, fontWeight: 700 }} data-testid="profile-friend-requests">

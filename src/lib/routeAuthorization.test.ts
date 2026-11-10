@@ -33,7 +33,7 @@ const PUBLIC_BY_DESIGN = new Set([
 ]);
 
 /** A parte social (Feed, publicações, perfis, recados, hashtags, comunidades, amigos, quiz): toda leitura pede login. */
-const MEMBER_ONLY_PREFIXES = ["posts", "feed", "users", "hashtags", "communities", "anime-threads", "scraps", "testimonials", "friends", "albums", "quiz", "recommendations"];
+const MEMBER_ONLY_PREFIXES = ["posts", "feed", "users", "hashtags", "communities", "anime-threads", "scraps", "testimonials", "friends", "albums", "quiz", "recommendations", "episode-reactions", "events", "weekly-vote", "pool", "tier-lists", "themes", "characters"];
 
 function routeFiles(dir: string): string[] {
   const out: string[] = [];
