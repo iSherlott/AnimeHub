@@ -13,6 +13,8 @@ import { catalogSlug } from "@/lib/workHref";
 import { Header } from "@/components/Header";
 import { AnimeTitle } from "@/components/AnimeTitle";
 import { AppLink } from "@/components/AppLink";
+import { WorkTwitterLinks } from "@/components/WorkTwitterLinks";
+import { parseTwitterLinks } from "@/lib/twitterLinks";
 import { WorkSectionNav } from "@/components/WorkSectionNav";
 import { AdultContentNotice, WorkBadgeRow, WorkCard, WorkInfoList } from "@/components/WorkInfoCard";
 import { isAdultContent } from "@/lib/contentPolicy";
@@ -167,6 +169,7 @@ export async function CatalogWork({ entry, signedIn, userId, owned = null }: { e
                     </AppLink>
                   ) : null,
                 ],
+                ["X (Twitter)", parseTwitterLinks(entry.twitterLinksJson).length ? <WorkTwitterLinks key="x" json={entry.twitterLinksJson} /> : null],
               ]}
             />
           </WorkCard>

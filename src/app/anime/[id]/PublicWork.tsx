@@ -8,6 +8,8 @@ import { Header } from "@/components/Header";
 import { RecentWorkTracker } from "@/components/RecentWorkTracker";
 import { AnimeTitle } from "@/components/AnimeTitle";
 import { AppLink } from "@/components/AppLink";
+import { WorkTwitterLinks } from "@/components/WorkTwitterLinks";
+import { parseTwitterLinks } from "@/lib/twitterLinks";
 import { FollowProductionButton } from "@/components/FollowProductionButton";
 import { WorkSeasons } from "@/components/WorkSeasons";
 import { WorkSectionNav } from "@/components/WorkSectionNav";
@@ -54,7 +56,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
 
   const [nextEpisode, catalog, allSeasons, schedule, images, timeline, franchiseSteps, story, extras] = await Promise.all([
     prisma.airingScheduleEntry.findFirst({ where: { anilistId, airingAt: { gte: new Date() }, status: "ACTIVE" }, orderBy: { airingAt: "asc" }, select: { episode: true, airingAt: true } }),
-    prisma.catalogEntry.findUnique({ where: { anilistId }, select: { siteScore: true, siteScoreVotes: true, kind: true, officialSite: true, descriptionPt: true, descriptionJa: true, format: true, status: true, season: true, seasonYear: true, episodes: true } }),
+    prisma.catalogEntry.findUnique({ where: { anilistId }, select: { siteScore: true, siteScoreVotes: true, kind: true, officialSite: true, twitterLinksJson: true, descriptionPt: true, descriptionJa: true, format: true, status: true, season: true, seasonYear: true, episodes: true } }),
     loadFranchiseSeasons(anilistId),
     loadGlobalEpisodes(anilistId),
     prisma.episodeImage.findMany({ where: { anilistId }, select: { episode: true, thumbnail: true } }),
@@ -200,6 +202,7 @@ export async function PublicWork({ anilistId }: { anilistId: number }) {
                     </AppLink>
                   ) : null,
                 ],
+                ["X (Twitter)", parseTwitterLinks(catalog?.twitterLinksJson).length ? <WorkTwitterLinks key="x" json={catalog?.twitterLinksJson} /> : null],
               ]}
             />
           </WorkCard>

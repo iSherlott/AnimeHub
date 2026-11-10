@@ -12,6 +12,7 @@ import { CoverImage } from "@/components/CoverImage";
 import { WORK_TRIGGER, WorkPreviewShell } from "@/components/WorkPreviewShell";
 import { formatTimeInZone } from "@/lib/timeZone";
 import { useTimeZone } from "@/lib/useTimeZone";
+import { ALERTS_SEEN_EVENT, type AlertsSeenDetail } from "@/lib/alertVisibility";
 
 /** Reavalia a cada minuto — sem isso, um bloco aberto numa aba esquecida
  * ficaria com o selo "NO AR" preso muito depois da janela real ter passado. */
@@ -133,6 +134,13 @@ export function CalendarEntryCard({
     }
     setPinned(true);
     setAnchorEl(target);
+    markWorkAlertsSeen();
+  }
+  // Abrir a descrição de propósito (clique, toque ou teclado; passar o mouse não conta) apaga o aviso dessa obra no sino.
+  function markWorkAlertsSeen() {
+    if (!item.inMyList) return;
+    window.dispatchEvent(new CustomEvent<AlertsSeenDetail>(ALERTS_SEEN_EVENT, { detail: { anilistId: item.anilistId } }));
+    void fetch("/api/notifications/seen-by-work", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ anilistId: item.anilistId }) }).catch(() => undefined);
   }
   function onKeyDown(e: KeyboardEvent<HTMLElement>) {
     if (e.key !== "Enter" && e.key !== " ") return;

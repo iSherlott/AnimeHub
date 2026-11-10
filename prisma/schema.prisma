@@ -510,6 +510,9 @@ model CatalogEntry {
   kind              String?
   /// Site oficial da obra (link "Official Site" da AniList).
   officialSite      String?
+  /// X (antigo Twitter) oficial da obra: JSON [{handle, url, language}] dos links "Twitter" da AniList, o japonês primeiro
+  /// (ver src/lib/twitterLinks.ts). Nulo = ainda não veio da AniList.
+  twitterLinksJson  String?
   /// Sinopse em português e em japonês (a original em inglês é `description`); preenchidas pela tradução guardada.
   descriptionPt     String?
   descriptionJa     String?

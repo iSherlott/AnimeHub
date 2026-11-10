@@ -6,10 +6,12 @@ import type { CatalogEntry } from "@prisma/client";
 import { hasBlockedGenre, NOT_BLOCKED_GENRE } from "@/lib/contentPolicy";
 import { classifyKind } from "@/lib/curation/kind";
 import { rankTitleMatches } from "@/lib/searchRank";
+import { twitterLinksFrom } from "@/lib/twitterLinks";
 
 function anilistToCatalogData(media: AniListMedia, popularityRank: number | null) {
   const startDateISO = fuzzyDateToISO(media.startDate);
   const endDateISO = fuzzyDateToISO(media.endDate);
+  const twitter = twitterLinksFrom(media.externalLinks ?? []);
 
   return {
     anilistId: media.id,
@@ -36,6 +38,8 @@ function anilistToCatalogData(media: AniListMedia, popularityRank: number | null
       : null,
     popularityRank,
     source: "anilist",
+    // O X oficial da obra: sem link na resposta, o que já estava guardado continua.
+    ...(twitter.length ? { twitterLinksJson: JSON.stringify(twitter) } : {}),
   };
 }
 

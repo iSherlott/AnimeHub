@@ -33,6 +33,8 @@ import { WorkSectionNav } from "@/components/WorkSectionNav";
 import { AdultContentNotice, WorkBadgeRow, WorkCard, WorkInfoList } from "@/components/WorkInfoCard";
 import { isAdultContent } from "@/lib/contentPolicy";
 import { AppLink } from "@/components/AppLink";
+import { WorkTwitterLinks } from "@/components/WorkTwitterLinks";
+import { parseTwitterLinks } from "@/lib/twitterLinks";
 import { episodesLabel, seasonLabel, statusLabel, typeLabel, workBadges, workFacts } from "@/lib/workLabels";
 import { BranchOnlyTimeline } from "@/components/BranchOnlyTimeline";
 import { EpisodesSkeleton } from "@/components/WorkSkeletons";
@@ -152,7 +154,7 @@ export default async function AnimeDetailPage({
 
   // Nota do site e linha do tempo (especiais) da obra; o site oficial do catálogo cobre quem ainda não o tem na lista.
   const [catalogMeta, timeline, franchiseSteps, extras] = await Promise.all([
-    prisma.catalogEntry.findUnique({ where: { anilistId: anime.anilistId }, select: { siteScore: true, siteScoreVotes: true, kind: true, officialSite: true, descriptionPt: true, descriptionJa: true, format: true, status: true, season: true, seasonYear: true, episodes: true } }),
+    prisma.catalogEntry.findUnique({ where: { anilistId: anime.anilistId }, select: { siteScore: true, siteScoreVotes: true, kind: true, officialSite: true, twitterLinksJson: true, descriptionPt: true, descriptionJa: true, format: true, status: true, season: true, seasonYear: true, episodes: true } }),
     loadTimeline(anime.anilistId),
     loadFranchiseSteps(anime.anilistId),
     // Especiais, aberturas, trailers… do AniDB: seção própria, fora da sequência de episódios.
@@ -318,6 +320,7 @@ export default async function AnimeDetailPage({
                     </AppLink>
                   ) : null,
                 ],
+                ["X (Twitter)", parseTwitterLinks(catalogMeta?.twitterLinksJson).length ? <WorkTwitterLinks key="x" json={catalogMeta?.twitterLinksJson} /> : null],
               ]}
             />
             <OtherTitles titlesJson={anime.anidbTitles} />

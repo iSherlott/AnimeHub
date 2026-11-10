@@ -43,7 +43,7 @@ export type AniListMedia = {
   startDate: AniListFuzzyDate | null;
   endDate: AniListFuzzyDate | null;
   nextAiringEpisode: { episode: number; airingAt: number } | null;
-  externalLinks: { site: string; url: string | null; type?: string | null; isDisabled?: boolean | null }[];
+  externalLinks: { site: string; url: string | null; type?: string | null; language?: string | null; isDisabled?: boolean | null }[];
 };
 
 export type StreamingLink = { site: string; url: string };
@@ -112,6 +112,7 @@ const MEDIA_FIELDS = `
     site
     url
     type
+    language
     isDisabled
   }
 `;

@@ -12,6 +12,7 @@ const HUB_EMAIL_CLEANUP = "newshub@system.invalid";
 const SYNOPSIS_ID = 965010;
 const NEWS_A = { anilistId: 965021, malId: 96521, title: "Noticia Alfa Round65" };
 const NEWS_B = { anilistId: 965022, malId: 96522, title: "Noticia Beta Round65" };
+const OFFICIAL_SITE = `http://localhost:${FAKE_PORT}/site/`;
 
 function currentSeasonNow(): { season: string; seasonYear: number } {
   const now = new Date();
@@ -48,6 +49,21 @@ test.beforeAll(async () => {
       </channel></rss>`);
       return;
     }
+    // Site oficial da obra Alfa (estrutura de lista dos sites japoneses: data + link da matéria em cada item).
+    if (url.pathname === "/site/") {
+      res.setHeader("Content-Type", "text/html");
+      res.end(`<html><body><a href="news/">NEWS</a><a href="story/">STORY</a></body></html>`);
+      return;
+    }
+    if (url.pathname === "/site/news/") {
+      const day = (d: Date) => `${d.getUTCFullYear()}.${String(d.getUTCMonth() + 1).padStart(2, "0")}.${String(d.getUTCDate()).padStart(2, "0")}`;
+      res.setHeader("Content-Type", "text/html");
+      res.end(`<ul class="news-list">
+        <li><a href="./?article_id=6501"><span class="date">${day(new Date(Date.now() - 86400_000))}</span><span class="title">第2期キービジュアル公開！</span></a></li>
+        <li><a href="./?category_id=1">INFO</a></li>
+      </ul>`);
+      return;
+    }
     const news = /^\/v4\/anime\/(\d+)\/news$/.exec(url.pathname);
     if (news) {
       const mal = Number(news[1]);
@@ -79,8 +95,8 @@ test.beforeAll(async () => {
   for (const n of [NEWS_A, NEWS_B]) {
     await prisma.catalogEntry.upsert({
       where: { anilistId: n.anilistId },
-      create: { anilistId: n.anilistId, malId: n.malId, titleRomaji: n.title, season, seasonYear, source: "anilist", bannerImage: `https://s4.anilist.co/file/anilistcdn/media/anime/banner-${n.malId === 96521 ? "a" : "b"}.jpg` },
-      update: { malId: n.malId, season, seasonYear, bannerImage: `https://s4.anilist.co/file/anilistcdn/media/anime/banner-${n.malId === 96521 ? "a" : "b"}.jpg` },
+      create: { anilistId: n.anilistId, malId: n.malId, titleRomaji: n.title, season, seasonYear, source: "anilist", bannerImage: `https://s4.anilist.co/file/anilistcdn/media/anime/banner-${n.malId === 96521 ? "a" : "b"}.jpg`, officialSite: n === NEWS_A ? OFFICIAL_SITE : null },
+      update: { malId: n.malId, season, seasonYear, bannerImage: `https://s4.anilist.co/file/anilistcdn/media/anime/banner-${n.malId === 96521 ? "a" : "b"}.jpg`, officialSite: n === NEWS_A ? OFFICIAL_SITE : null },
     });
   }
   const user = await prisma.user.findUniqueOrThrow({ where: { email: TEST_USER_EMAIL } });
@@ -154,14 +170,14 @@ test.describe.serial("Notícias = publicações do NewsHub", () => {
       await expect
         .poll(async () => (await prisma.newsRun.findFirst({ orderBy: { startedAt: "desc" } }))?.status ?? "NONE", { timeout: 40_000 })
         .toMatch(/OK|PARTIAL/);
-      expect(await prisma.animeNews.count({ where: { anilistId: NEWS_A.anilistId } })).toBe(3); // 2 da Jikan + 1 do feed
+      expect(await prisma.animeNews.count({ where: { anilistId: NEWS_A.anilistId } })).toBe(4); // 2 da Jikan + 1 do feed + 1 do site oficial
       expect(await prisma.animeNews.findFirstOrThrow({ where: { anilistId: NEWS_A.anilistId, url: { contains: "round65" } } })).toMatchObject({ source: "Anime News Network" });
 
       // Cada notícia virou UMA publicação do NewsHub, com imagem e a # de um anime.
       const hub = await prisma.user.findUniqueOrThrow({ where: { email: HUB_EMAIL } });
       expect(hub).toMatchObject({ handle: "newshub", displayName: "NewsHub" });
       const posts = await prisma.post.findMany({ where: { userId: hub.id, anilistId: { in: [NEWS_A.anilistId, NEWS_B.anilistId] } }, include: { hashtags: { include: { hashtag: true } } } });
-      expect(posts).toHaveLength(4);
+      expect(posts).toHaveLength(5);
       for (const post of posts) {
         expect(post.imageUrls).toHaveLength(1); // toda notícia tem imagem
         expect(post.hashtags).toHaveLength(1);
@@ -176,6 +192,11 @@ test.describe.serial("Notícias = publicações do NewsHub", () => {
       expect(trailer.imageUrls[0]).toBe("https://s4.anilist.co/file/anilistcdn/media/anime/banner-a.jpg");
       const withImage = posts.find((p) => p.body.includes("Alfa second season confirmed"))!;
       expect(withImage.imageUrls[0]).toBe("https://cdn.myanimelist.net/images/a.jpg");
+      // Do site oficial: o item da lista (a categoria não é matéria), com a fonte e o link da matéria.
+      const official = posts.find((p) => p.body.includes("第2期キービジュアル公開！"))!;
+      expect(official.body).toContain(`Fonte: Site oficial — ${OFFICIAL_SITE}news/?article_id=6501`);
+      expect(official.body).toContain("#noticiaalfaround65");
+      expect(await prisma.animeNews.count({ where: { url: { contains: "category_id" } } })).toBe(0);
       // A publicação nasce com a hora da notícia (ordem cronológica de verdade).
       expect(Date.now() - trailer.createdAt.getTime()).toBeGreaterThan(20 * 60_000);
     });
@@ -205,7 +226,7 @@ test.describe.serial("Notícias = publicações do NewsHub", () => {
 
   test("a notícia aparece no feed com imagem, NewsHub, # da obra e fonte clicável", async ({ page, request }) => {
     const feed = await (await request.get(`/api/posts?tab=recent&anilistId=${NEWS_A.anilistId}&limit=10`)).json();
-    expect(feed.posts.map((p: { body: string }) => p.body.split("\n")[0]).sort()).toEqual(["Alfa new visual", "Alfa second season confirmed", `${NEWS_A.title} gets a trailer`].sort());
+    expect(feed.posts.map((p: { body: string }) => p.body.split("\n")[0]).sort()).toEqual(["Alfa new visual", "Alfa second season confirmed", `${NEWS_A.title} gets a trailer`, "第2期キービジュアル公開！"].sort());
     expect(feed.posts.every((p: { author: { handle: string } }) => p.author.handle === "newshub")).toBe(true);
     expect(feed.posts.every((p: { imageUrls: string[] }) => p.imageUrls.length === 1)).toBe(true);
 

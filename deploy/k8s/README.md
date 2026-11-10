@@ -194,7 +194,8 @@ fechado: o admin cria as contas com senha provisória) só acrescenta a coluna `
 existe — ninguém precisa trocar a senha por causa dela. A `20261118100000_post_image_alts` (descrição das imagens das
 publicações) só acrescenta uma coluna, a `20261119100000_spoilers` (sistema de spoiler) só acrescenta colunas, a
 `20261120100000_profile_background` (plano de fundo do perfil) só acrescenta uma coluna, e a `20261121100000_image_size`
-(tamanho medido dos banners, para o banner e o fundo do perfil só oferecerem Full HD) só acrescenta uma tabela.
+(tamanho medido dos banners, para o banner e o fundo do perfil só oferecerem Full HD) só acrescenta uma tabela, e a
+`20261122100000_work_twitter` (X oficial da obra) só acrescenta uma coluna.
 
 **Sistema fechado (28/10).** Não existe mais cadastro aberto nem convite: as contas nascem em Admin → Acesso e
 moderação → Criar conta, sempre como membro, com uma senha provisória mostrada uma vez (a pessoa troca no primeiro
@@ -204,7 +205,7 @@ administrador precisa ser criado à mão (os bancos atuais já têm).
 Para o lote do AniDB funcionar, o servidor precisa de `ANIDB_CLIENT_NAME` e `ANIDB_CLIENT_VERSION` (o client registrado no
 AniDB). Opcional: `ANIDB_REQUEST_GAP_MS` (intervalo entre obras, padrão 4000 ms; não baixe de 2000).
 
-#### Ordem segura desta atualização (29 migrações, de `20261025100000` a `20261121100000`)
+#### Ordem segura desta atualização (30 migrações, de `20261025100000` a `20261122100000`)
 
 **Use o roteiro com caixas de marcar, ensaiado numa cópia do banco: [`checklist-atualizacao-28-10.md`](checklist-atualizacao-28-10.md)** (inclui a conferência em SQL, `conferir-atualizacao.sql`, e o comando do primeiro administrador para um banco novo). Os passos abaixo são o resumo.
 

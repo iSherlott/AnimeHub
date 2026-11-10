@@ -150,9 +150,9 @@ export default async function AdminScrapersPage() {
             `Resultado · ${newsRuns[0]?.message ?? "sem execução ainda"}`,
             `Notícias guardadas · ${newsCount}`,
             "Serviço · news-fetcher (chamado por este painel e uma vez por dia)",
-            "Fonte · API pública da Jikan (espelho aberto da MyAnimeList)",
+            "Fontes · site oficial de cada obra (feed ou lista de notícias, respeitando o robots.txt), Anime News Network (RSS) e Jikan (MyAnimeList)",
           ],
-          "Alimenta Comunidade → Notícias com o que a imprensa publicou sobre as obras da temporada atual. Buscar notícias força a busca agora.",
+          "Publica no feed (como NewsHub) as novidades das obras da temporada atual: do site oficial de cada uma e da imprensa. Buscar notícias força a busca agora.",
           <RunNewsButton running={newsRunning} />
         )}
         {card(

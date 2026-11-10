@@ -4,15 +4,19 @@ import { getJikanAnimeNews, JikanError, type JikanNewsItem } from "@/lib/jikan";
 import { getSeasonalCatalog } from "@/lib/seasonalCatalog";
 import { publishNewsPosts } from "@/lib/newsHub";
 import { fetchNewsFeed, matchFeedToAnimes, NEWS_FEED_SOURCE, type FeedItem } from "@/lib/newsRss";
+import { fetchOfficialNews, OFFICIAL_NEWS_SOURCE, type OfficialNewsItem } from "@/lib/officialNews";
 import { startOfDayInZone, DEFAULT_TIME_ZONE } from "@/lib/timeZone";
 
 /**
  * Notícias das obras da temporada atual (Comunidade → Notícias).
  *
- * Roda no serviço `news-fetcher`, chamado pelo painel (Admin → Scrapers) e uma
- * vez por dia. Usa só a API pública da Jikan (espelho aberto da MyAnimeList) a
- * partir do `idMal` que a AniList informa; nada é coletado de sites de terceiros
- * (D-30). O resultado fica em `AnimeNews`, e a Comunidade só lê essa tabela.
+ * Roda no serviço `news-fetcher`, chamado pelo painel (Admin → Scrapers) e uma vez por dia. Três fontes, nesta ordem:
+ *   1. o feed RSS do Anime News Network, ligado às obras pelo título;
+ *   2. o site oficial de cada obra (feed ou lista de notícias; ver src/lib/officialNews.ts), pedido de 09/11 — a regra
+ *      antiga de não ler sites (D-30) fica de pé para todo o resto: só se lê a lista de notícias do próprio site da obra,
+ *      respeitando o robots.txt, com uma pausa entre um site e outro;
+ *   3. a API pública da Jikan (espelho aberto da MyAnimeList), pelo `idMal` que a AniList informa.
+ * O resultado fica em `AnimeNews`, e cada notícia nova vira uma publicação do NewsHub.
  */
 export const NEWS_RUN_LOCK_MS = 30 * 60 * 1000;
 export const NEWS_TIME_BUDGET_MS = 25 * 60 * 1000;
@@ -24,11 +28,15 @@ const RATE_LIMIT_WAIT_MS = 4000;
 const KEEP_DAYS = 180;
 /** Falhas de rede seguidas na Jikan até desistir dela nesta execução (senão cada obra espera o timeout). */
 const JIKAN_GIVE_UP_AFTER = 5;
+/** Tempo máximo para os sites oficiais (cada site leva de 2 a 4 pedidos): o resto da execução fica para a Jikan. */
+const OFFICIAL_TIME_BUDGET_MS = 10 * 60 * 1000;
 
 export type NewsDeps = {
   /** Feed geral (ANN): uma chamada só; as notícias são ligadas às obras pelo título. */
   getFeed: () => Promise<FeedItem[]>;
   getNews: (malId: number) => Promise<JikanNewsItem[]>;
+  /** As notícias do site oficial (null = o site não respondeu ou não deixa ler). `robots` guarda o robots.txt de cada site. */
+  getOfficialNews: (siteUrl: string, robots: Map<string, string>) => Promise<OfficialNewsItem[] | null>;
   sleep: (ms: number) => Promise<void>;
   /** Completa o catálogo da temporada (traz o `idMal` de cada obra). */
   ensureSeason: (season: "WINTER" | "SPRING" | "SUMMER" | "FALL", year: number) => Promise<void>;
@@ -37,6 +45,7 @@ export type NewsDeps = {
 const defaultDeps: NewsDeps = {
   getFeed: () => fetchNewsFeed(),
   getNews: getJikanAnimeNews,
+  getOfficialNews: (siteUrl, robots) => fetchOfficialNews(siteUrl, undefined, robots),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   ensureSeason: async (season, year) => {
     // Mesma chave da importação: testes e ambientes sem rede não consultam a AniList.
@@ -88,7 +97,7 @@ export async function runNewsSync(options: { trigger: "schedule" | "manual"; adm
       where: { season, seasonYear, anilistId: { not: null }, onPlatform: true },
       orderBy: [{ popularityRank: "asc" }, { titleRomaji: "asc" }],
       take: NEWS_MAX_ANIMES,
-      select: { anilistId: true, malId: true, titleRomaji: true, titleEnglish: true, titleNative: true },
+      select: { anilistId: true, malId: true, titleRomaji: true, titleEnglish: true, titleNative: true, officialSite: true },
     });
     const targets = seasonEntries.filter((e): e is typeof e & { anilistId: number } => e.anilistId !== null);
     animes = targets.length;
@@ -117,7 +126,34 @@ export async function runNewsSync(options: { trigger: "schedule" | "manual"; adm
       note += " Feed do Anime News Network indisponível.";
     }
 
-    // 2) Jikan (MyAnimeList): uma chamada por obra com idMal.
+    // 2) O site oficial de cada obra: um site por vez (temporadas no mesmo endereço leem uma vez só).
+    const bySite = new Map<string, number[]>();
+    for (const t of targets) if (t.officialSite && /^https?:\/\//i.test(t.officialSite)) bySite.set(t.officialSite, [...(bySite.get(t.officialSite) ?? []), t.anilistId]);
+    const robots = new Map<string, string>();
+    const officialStarted = Date.now();
+    let officialRead = 0;
+    let officialWithNews = 0;
+    for (const [site, ids] of bySite) {
+      if (Date.now() - officialStarted > OFFICIAL_TIME_BUDGET_MS) {
+        note += ` Sites oficiais: tempo máximo atingido (${officialRead} de ${bySite.size} lidos).`;
+        break;
+      }
+      let items: OfficialNewsItem[] | null = null;
+      try {
+        items = await deps.getOfficialNews(site, robots);
+      } catch (error) {
+        console.error(`[news] site oficial ${site} falhou:`, error);
+      }
+      officialRead += 1;
+      await deps.sleep(REQUEST_GAP_MS);
+      // Site fora do ar, que não deixa ler ou que monta a lista só no navegador: não é falha da execução.
+      if (!items || items.length === 0) continue;
+      officialWithNews += 1;
+      for (const anilistId of ids) await save(anilistId, OFFICIAL_NEWS_SOURCE, items);
+    }
+    if (bySite.size > 0) sources.push(`sites oficiais (${officialWithNews} de ${bySite.size} com notícias)`);
+
+    // 3) Jikan (MyAnimeList): uma chamada por obra com idMal.
     let jikanFailures = 0;
     let jikanStreak = 0;
     let jikanOk = 0;

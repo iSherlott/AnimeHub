@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { blockedUserIdSet } from "@/lib/blocks";
-import { isTodaysRelease } from "@/lib/airingWindow";
+import { isAlertVisible } from "@/lib/alertVisibility";
 import { resolveTimeZone } from "@/lib/timeZone";
 import { communityLabels } from "@/lib/community";
 import { ensureBirthdayNotifications } from "@/lib/birthdays";
@@ -22,11 +22,10 @@ export async function GET() {
     prisma.airingAlert.findMany({ where: { userId: user.id }, orderBy: { airingAt: "desc" } }),
     prisma.user.findUnique({ where: { id: user.id }, select: { timeZone: true } }),
   ]);
-  // Lançamento comum só vale no dia dele: um aviso criado "um dia antes" (episódio de amanhã) fica escondido até o dia chegar.
-  // "Data alterada" e "voltou a sair episódios" continuam aparecendo, porque falam de uma data futura de propósito.
+  // Lançamento comum só vale no dia dele (o episódio de amanhã fica escondido até o dia chegar); ver isAlertVisible.
   const now = new Date();
   const zone = resolveTimeZone(zoneRow?.timeZone);
-  const alerts = allAlerts.filter((a) => a.kind !== "EPISODE" || a.previousAiringAt !== null || a.airingAt.getTime() <= now.getTime() || isTodaysRelease(a.airingAt, now, zone));
+  const alerts = allAlerts.filter((a) => isAlertVisible(a, now, zone));
 
   const anilistIds = [...new Set(alerts.map((a) => a.anilistId))];
   const animeByAnilistId = new Map(

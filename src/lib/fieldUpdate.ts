@@ -8,6 +8,7 @@ import { propagateWork } from "@/lib/workPropagation";
 import { getKitsuAnimeByIds, type KitsuAnimeDetails } from "@/lib/kitsu";
 import { getAnidbAnimeById, isAnidbConfigured, type AnidbAnime } from "@/lib/anidb";
 import { aliveExclusiveJob } from "@/lib/jobLock";
+import { twitterLinksFrom } from "@/lib/twitterLinks";
 
 /**
  * Atualização seletiva de campos (Fase 6, §11 e Cenário F). Etapas:
@@ -38,7 +39,7 @@ export const FIELD_GROUPS = {
   generos: { label: "Gêneros", fields: ["genres"] },
   ficha: { label: "Ficha (formato, situação, episódios, época, datas)", fields: ["format", "status", "episodes", "season", "seasonYear", "startDate", "endDate"] },
   imagens: { label: "Imagens", fields: ["coverImage", "bannerImage"] },
-  site: { label: "Site oficial", fields: ["officialSite"] },
+  site: { label: "Site oficial e X (Twitter)", fields: ["officialSite", "twitterLinksJson"] },
 } as const;
 export type FieldGroup = keyof typeof FIELD_GROUPS;
 export type UpdatableField = (typeof FIELD_GROUPS)[FieldGroup]["fields"][number];
@@ -59,6 +60,7 @@ export const FIELD_UPDATE_LABELS: Record<UpdatableField, string> = {
   coverImage: "Capa",
   bannerImage: "Banner",
   officialSite: "Site oficial",
+  twitterLinksJson: "X (Twitter)",
 };
 /** Acima disso, executar exige confirmação explícita. */
 export const LARGE_BATCH = 20;
@@ -73,6 +75,12 @@ function comparable(field: UpdatableField, value: unknown): string | null {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   if (field === "genres") return String(value).split(",").filter(Boolean).sort().join(",") || null;
   return String(value);
+}
+
+/** Os links de X da obra como o catálogo guarda (JSON), ou `undefined` quando a AniList não tem nenhum (não apaga). */
+function twitterJson(media: AniListMedia): string | undefined {
+  const links = twitterLinksFrom(media.externalLinks ?? []);
+  return links.length ? JSON.stringify(links) : undefined;
 }
 
 /** O que a AniList informa, já normalizado como o catálogo guarda. `undefined` = a fonte não informa (não apaga). */
@@ -96,6 +104,7 @@ export function incomingFromAniList(media: AniListMedia): Partial<Record<Updatab
     coverImage: media.coverImage?.extraLarge ?? undefined,
     bannerImage: media.bannerImage ?? undefined,
     officialSite: getOfficialSiteUrl(media) ?? undefined,
+    twitterLinksJson: twitterJson(media),
   };
   return out;
 }

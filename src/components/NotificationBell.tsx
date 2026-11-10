@@ -19,6 +19,7 @@ import { formatTimeInZone } from "@/lib/timeZone";
 import { formatRelativeTime } from "@/lib/relativeTime";
 import { useTimeZone } from "@/lib/useTimeZone";
 import { fetchNotifications } from "@/lib/notificationsClient";
+import { ALERTS_SEEN_EVENT, type AlertsSeenDetail } from "@/lib/alertVisibility";
 
 type AiringAlertItem = {
   id: string;
@@ -149,9 +150,17 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
 
     load();
     const interval = setInterval(load, POLL_INTERVAL_MS);
+    // Avisos vistos fora do sino (a prévia da obra no calendário): somem do contador na hora, sem esperar a próxima rodada.
+    const onSeenElsewhere = (event: Event) => {
+      const { anilistId } = (event as CustomEvent<AlertsSeenDetail>).detail ?? {};
+      const at = new Date().toISOString();
+      setAlerts((prev) => prev.map((a) => (a.anilistId === anilistId && !a.seenAt ? { ...a, seenAt: at } : a)));
+    };
+    window.addEventListener(ALERTS_SEEN_EVENT, onSeenElsewhere);
     return () => {
       cancelled = true;
       clearInterval(interval);
+      window.removeEventListener(ALERTS_SEEN_EVENT, onSeenElsewhere);
     };
   }, [user]);
 
