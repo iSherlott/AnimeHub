@@ -28,7 +28,8 @@ export async function GET() {
   // Lançamento comum só vale no dia dele (o episódio de amanhã fica escondido até o dia chegar); ver isAlertVisible.
   const now = new Date();
   const zone = resolveTimeZone(zoneRow?.timeZone);
-  const alerts = allAlerts.filter((a) => isAlertVisible(a, now, zone));
+  // Não vistos primeiro; dentro de cada grupo, o mais recente no topo (sort estável).
+  const alerts = allAlerts.filter((a) => isAlertVisible(a, now, zone)).sort((a, b) => Number(Boolean(a.seenAt)) - Number(Boolean(b.seenAt)));
 
   const anilistIds = [...new Set(alerts.map((a) => a.anilistId))];
   const animeByAnilistId = new Map(
@@ -78,12 +79,15 @@ export async function GET() {
   // Continuação, filme ou especial anunciado de uma obra da lista (no máximo uma varredura a cada tanto, por pessoa).
   await ensureWorkAnnouncements(user.id, now);
   const blocked = await blockedUserIdSet(user.id);
-  const socialRows = await prisma.socialNotification.findMany({
-    where: { userId: user.id, ...(blocked.size ? { actorId: { notIn: [...blocked] } } : {}) },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-    include: { actor: { select: { id: true, displayName: true } } },
-  });
+  // As não lidas vêm primeiro (e nunca ficam de fora por causa das lidas); as lidas completam até 50.
+  const socialWhere = { userId: user.id, ...(blocked.size ? { actorId: { notIn: [...blocked] } } : {}) };
+  const socialInclude = { actor: { select: { id: true, displayName: true } } };
+  const unreadRows = await prisma.socialNotification.findMany({ where: { ...socialWhere, readAt: null }, orderBy: { createdAt: "desc" }, take: 50, include: socialInclude });
+  const readRows =
+    unreadRows.length < 50
+      ? await prisma.socialNotification.findMany({ where: { ...socialWhere, readAt: { not: null } }, orderBy: { createdAt: "desc" }, take: 50 - unreadRows.length, include: socialInclude })
+      : [];
+  const socialRows = [...unreadRows, ...readRows];
   const postIds = [...new Set(socialRows.map((n) => n.postId).filter((p): p is string => Boolean(p)))];
   const livePosts = new Set(
     postIds.length
@@ -124,7 +128,8 @@ export async function GET() {
     // O bilhete fica em Amigos → Recomendações dos amigos (o sino nunca mostra o texto).
     else if (n.type === "WORK_RECOMMENDATION") href = recommendation ? "/amigos#recomendacoes" : null;
     else if (n.type === "EVENT_REMINDER") href = animeEvent ? `/eventos#evento-${animeEvent.id}` : null;
-    else if (n.type === "WORK_ANNOUNCED") href = n.workKey && announcedTitles.has(n.workKey) ? `/anime/${n.workKey}` : null;
+    // Os anúncios ficam juntos na tela "Em breve" (só se chega a ela pelo sino).
+    else if (n.type === "WORK_ANNOUNCED") href = n.workKey && announcedTitles.has(n.workKey) ? `/em-breve#obra-${n.workKey}` : null;
     else if (n.type === "FRIEND_BIRTHDAY") href = `/users/${n.actor.id}#recados`;
     // Recado e depoimento ficam no perfil de quem recebe (quem está vendo o sino).
     else if (n.type === "PROFILE_SCRAP") href = `/users/${user.id}#recados`;

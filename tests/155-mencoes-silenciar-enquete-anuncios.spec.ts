@@ -59,7 +59,7 @@ test.describe.serial("Menções, silenciar, enquete, anúncios, comparar, person
     // Listas: as duas acompanham WORK (notas bem diferentes); só a Bia acompanha OTHER.
     await prisma.anime.createMany({
       data: [
-        { userId, anilistId: WORK, titleRomaji: "Silencio Round155", userScore: 9 },
+        { userId, anilistId: WORK, titleRomaji: "Silencio Round155", userScore: 9, watchState: "FINISHED" },
         { userId: biaId, anilistId: WORK, titleRomaji: "Silencio Round155", userScore: 4 },
         { userId: biaId, anilistId: OTHER, titleRomaji: "Outra Round155", userScore: 7 },
       ],
@@ -148,7 +148,7 @@ test.describe.serial("Menções, silenciar, enquete, anúncios, comparar, person
     await prisma.catalogEntry.create({
       data: { anilistId: ANNOUNCED, titleRomaji: "Silencio Round155 2nd Season", source: "anilist", onPlatform: true, status: "NOT_YET_RELEASED", relationsJson: JSON.stringify([{ id: WORK, relationType: "PREQUEL" }]) },
     });
-    const find = async () => ((await (await request.get("/api/notifications")).json()).social as { type: string; subject: string; related: string; href: string }[]).filter((n) => n.type === "WORK_ANNOUNCED" && n.href === `/anime/${ANNOUNCED}`);
+    const find = async () => ((await (await request.get("/api/notifications")).json()).social as { type: string; subject: string; related: string; href: string }[]).filter((n) => n.type === "WORK_ANNOUNCED" && n.href === `/em-breve#obra-${ANNOUNCED}`);
     const first = await find();
     expect(first).toHaveLength(1);
     expect(first[0]).toMatchObject({ subject: "Silencio Round155 2nd Season", related: "Silencio Round155" });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState, type MouseEvent } from "react";
+import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
 import NextLink from "next/link";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import {
@@ -20,6 +20,7 @@ import { formatRelativeTime } from "@/lib/relativeTime";
 import { useTimeZone } from "@/lib/useTimeZone";
 import { fetchNotifications } from "@/lib/notificationsClient";
 import { ALERTS_SEEN_EVENT, type AlertsSeenDetail } from "@/lib/alertVisibility";
+import { ANNOUNCEMENTS_SEEN_EVENT, type AnnouncementsSeenDetail } from "@/components/ComingSoonSeen";
 
 type AiringAlertItem = {
   id: string;
@@ -119,6 +120,17 @@ function socialText(n: SocialItem): string {
   }
 }
 
+/** Não lidas em cima, lidas embaixo; dentro de cada grupo continua a ordem do servidor (a mais recente primeiro). */
+function unreadFirst<T>(items: T[], isRead: (item: T) => boolean): T[] {
+  return [...items].sort((a, b) => Number(isRead(a)) - Number(isRead(b)));
+}
+
+/** Anúncios criados até `at` contam como lidos (a tela "Em breve" já os marcou no servidor). */
+function withAnnouncedSeen(items: SocialItem[], at: string | null): SocialItem[] {
+  if (!at) return items;
+  return items.map((n) => (n.type === "WORK_ANNOUNCED" && !n.readAt && n.createdAt <= at ? { ...n, readAt: at } : n));
+}
+
 const POLL_INTERVAL_MS = 60 * 1000;
 /** Quantas notificações cada canal mostra antes de "Ver mais". */
 const PREVIEW_COUNT = 5;
@@ -148,6 +160,8 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
   const [channel, setChannel] = useState<"releases" | "social" | "system">("releases");
   const [expanded, setExpanded] = useState(false);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  // Até quando os anúncios já foram lidos na tela "Em breve" (uma resposta antiga do servidor não os traz de volta).
+  const announcedSeenAt = useRef<string | null>(null);
   const open = Boolean(anchorEl);
   const buttonId = useId();
   const menuId = useId();
@@ -161,7 +175,7 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
       const data = await fetchNotifications();
       if (!data || cancelled) return;
       setAlerts((data.alerts ?? []) as AiringAlertItem[]);
-      setSocial((data.social ?? []) as SocialItem[]);
+      setSocial(withAnnouncedSeen((data.social ?? []) as SocialItem[], announcedSeenAt.current));
       setSystem((data.system ?? []) as SystemItem[]);
     }
 
@@ -174,17 +188,29 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
       setAlerts((prev) => prev.map((a) => (a.anilistId === anilistId && !a.seenAt ? { ...a, seenAt: at } : a)));
     };
     window.addEventListener(ALERTS_SEEN_EVENT, onSeenElsewhere);
+    const onAnnouncementsSeen = (event: Event) => {
+      const { at } = (event as CustomEvent<AnnouncementsSeenDetail>).detail ?? {};
+      if (!at) return;
+      announcedSeenAt.current = at;
+      setSocial((prev) => withAnnouncedSeen(prev, at));
+    };
+    window.addEventListener(ANNOUNCEMENTS_SEEN_EVENT, onAnnouncementsSeen);
     return () => {
       cancelled = true;
       clearInterval(interval);
       window.removeEventListener(ALERTS_SEEN_EVENT, onSeenElsewhere);
+      window.removeEventListener(ANNOUNCEMENTS_SEEN_EVENT, onAnnouncementsSeen);
     };
   }, [user]);
 
   if (!user) return null;
 
-  const unseenReleases = alerts.filter((a) => !a.seenAt).length;
-  const unreadSocial = social.filter((n) => !n.readAt).length;
+  // Os anúncios de continuação não vão para o Social: viram uma entrada só, "Em breve", em Lançamentos.
+  const announced = social.filter((n) => n.type === "WORK_ANNOUNCED");
+  const socialItems = social.filter((n) => n.type !== "WORK_ANNOUNCED");
+  const unreadAnnounced = announced.filter((n) => !n.readAt).length;
+  const unseenReleases = alerts.filter((a) => !a.seenAt).length + unreadAnnounced;
+  const unreadSocial = socialItems.filter((n) => !n.readAt).length;
   const unreadSystem = system.filter((n) => !n.readAt).length;
   const isAdmin = user.role === "ADMIN";
   const unseenCount = unseenReleases + unreadSocial + unreadSystem;
@@ -231,16 +257,27 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
     }
   }
 
+  /** Abrir o "Em breve" conta como ler os anúncios (a página marca no servidor). */
+  function openComingSoon() {
+    const now = new Date().toISOString();
+    setSocial((prev) => prev.map((n) => (n.type === "WORK_ANNOUNCED" && !n.readAt ? { ...n, readAt: now } : n)));
+    handleClose();
+  }
+
   function handleClose() {
     setAnchorEl(null);
     setExpanded(false);
   }
 
-  const visibleAlerts = expanded ? alerts : alerts.slice(0, PREVIEW_COUNT);
-  const visibleSocial = expanded ? social : social.slice(0, PREVIEW_COUNT);
-  const visibleSystem = expanded ? system : system.slice(0, PREVIEW_COUNT);
+  const sortedAlerts = unreadFirst(alerts, (a) => Boolean(a.seenAt));
+  const sortedSocial = unreadFirst(socialItems, (n) => Boolean(n.readAt));
+  const sortedSystem = unreadFirst(system, (n) => Boolean(n.readAt));
+  const visibleAlerts = expanded ? sortedAlerts : sortedAlerts.slice(0, PREVIEW_COUNT);
+  const visibleSocial = expanded ? sortedSocial : sortedSocial.slice(0, PREVIEW_COUNT);
+  const visibleSystem = expanded ? sortedSystem : sortedSystem.slice(0, PREVIEW_COUNT);
   const hidden =
-    channel === "releases" ? alerts.length - visibleAlerts.length : channel === "social" ? social.length - visibleSocial.length : system.length - visibleSystem.length;
+    channel === "releases" ? alerts.length - visibleAlerts.length : channel === "social" ? socialItems.length - visibleSocial.length : system.length - visibleSystem.length;
+  const latestAnnounced = unreadFirst(announced, (n) => Boolean(n.readAt)).filter((n) => !n.unavailable && n.subject);
 
   return (
     <>
@@ -322,8 +359,28 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
             ))
           )
         ) : channel === "releases" ? (
-          alerts.length === 0 ? (
-            <Typography sx={{ py: 2, color: "text.secondary", fontSize: 14 }}>Nenhum lançamento da sua lista hoje nem no ar agora.</Typography>
+          <>
+          {/* "Em breve": a única porta para a tela das continuações anunciadas (não há link no menu). */}
+          <MenuItem
+            component={NextLink}
+            href="/em-breve"
+            data-testid="bell-coming-soon"
+            onClick={openComingSoon}
+            sx={{ display: "flex", alignItems: "flex-start", gap: 2, whiteSpace: "normal", px: 0, py: 2, borderTop: 1, borderColor: "divider", borderRadius: 0 }}
+          >
+            <Box aria-hidden sx={{ width: 8, height: 8, borderRadius: "50%", mt: "8px", flexShrink: 0, bgcolor: unreadAnnounced > 0 ? "primary.main" : "transparent" }} />
+            <Box sx={{ minWidth: 0 }}>
+              <Typography sx={{ fontSize: 14, fontWeight: 700, textTransform: "uppercase" }}>Em breve</Typography>
+              <Typography sx={{ fontSize: 14, overflowWrap: "anywhere" }} data-testid="bell-coming-soon-text">
+                {unreadAnnounced > 0
+                  ? `${unreadAnnounced === 1 ? "1 continuação anunciada" : `${unreadAnnounced} continuações anunciadas`}${latestAnnounced[0] ? `: ${latestAnnounced[0].subject}${unreadAnnounced > 1 ? " e mais" : ""}` : ""}.`
+                  : "Continuações, filmes e especiais das obras que você assistiu ou favoritou."}
+              </Typography>
+              <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.5 }}>Ver tudo o que vem aí →</Typography>
+            </Box>
+          </MenuItem>
+          {alerts.length === 0 ? (
+            <Typography sx={{ py: 2, color: "text.secondary", fontSize: 14, borderTop: 1, borderColor: "divider" }}>Nenhum lançamento da sua lista hoje nem no ar agora.</Typography>
           ) : (
             visibleAlerts.map((alert) => {
               const when = new Date(alert.airingAt);
@@ -373,8 +430,9 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
                 </MenuItem>
               );
             })
-          )
-        ) : !user.preferences.notifyReplies && !user.preferences.notifyComments && !user.preferences.notifyFollowers && !user.preferences.notifyLikes && !user.preferences.notifyCommunity && !user.preferences.notifyRecommendations && !user.preferences.notifyMentions && !user.preferences.notifyAnnouncements ? (
+          )}
+          </>
+        ) : !user.preferences.notifyReplies && !user.preferences.notifyComments && !user.preferences.notifyFollowers && !user.preferences.notifyLikes && !user.preferences.notifyCommunity && !user.preferences.notifyRecommendations && !user.preferences.notifyMentions ? (
           <Box sx={{ py: 2, display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start" }}>
             <Typography sx={{ fontSize: 20 }}>Notificações sociais desativadas</Typography>
             <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Seus alertas de lançamentos continuam ativos.</Typography>
@@ -382,7 +440,7 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
               Configurar Social
             </Button>
           </Box>
-        ) : social.length === 0 ? (
+        ) : socialItems.length === 0 ? (
           <Box sx={{ py: 2, display: "flex", flexDirection: "column", gap: 1 }}>
             <Typography sx={{ fontSize: 20 }}>Você está em dia.</Typography>
             <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Novas respostas e seguidores aparecerão aqui.</Typography>
@@ -394,6 +452,8 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
                 key={n.id}
                 component={n.href ? NextLink : "div"}
                 href={n.href ?? undefined}
+                data-testid="bell-social-item"
+                data-read={n.readAt ? "true" : "false"}
                 onClick={() => {
                   handleClose();
                   if (!n.readAt) void markSocialRead(n.id);
