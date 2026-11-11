@@ -30,7 +30,7 @@ import type { PublicUser } from "@/lib/auth/session";
 /** Largura a partir da qual o menu completo (logo + nav + conta) cabe sem hambúrguer. */
 const DESKTOP_QUERY = "@media (min-width:1240px)";
 
-// Ordem do menu: Feed, Calendário, Explorar, Meus animes, Comunidades.
+// Ordem do menu: Feed, Calendário, Explorar, Meus animes, Temporada, Comunidades.
 const NAV_ITEMS: Array<{ href: string; label: string; match: (p: string) => boolean }> = [
   // "Feed" cobre as publicações e as telas sociais (publicar, buscar, hashtag, discussão, perfis).
   {
@@ -47,8 +47,10 @@ const NAV_ITEMS: Array<{ href: string; label: string; match: (p: string) => bool
   { href: "/calendar", label: "Calendário", match: (p) => p === "/calendar" },
   { href: "/discover", label: "Explorar", match: (p) => p === "/discover" },
   { href: "/minha-lista", label: "Meus animes", match: (p) => p === "/minha-lista" || p.startsWith("/minha-lista/") },
+  // "Temporada": tier list, bolão, aberturas e retrospectiva (11/11: saíram do menu da conta, viraram abas).
+  { href: "/tier-list", label: "Temporada", match: (p) => ["/tier-list", "/bolao", "/aberturas", "/retrospectiva"].includes(p) },
   // "Comunidades": o fórum de cada anime e o diretório.
-  { href: "/comunidades", label: "Comunidades", match: (p) => p === "/comunidades" || p.startsWith("/comunidades/") },
+  { href: "/comunidades", label: "Comunidades", match: (p) => p === "/comunidades" || p.startsWith("/comunidades/") || p === "/eventos" },
 ];
 
 function NavLinks({

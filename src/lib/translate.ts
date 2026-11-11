@@ -5,6 +5,8 @@
  * (SynopsisTranslation) — cada sinopse é traduzida uma única vez.
  */
 export type TranslationTarget = "pt" | "ja";
+/** Os idiomas das notícias do Feed (11/11/2026): o original é japonês ou inglês; o Feed mostra em português. */
+export type NewsLang = "pt" | "en" | "ja";
 
 /** A cota do serviço de tradução acabou (MyMemory grátis: poucos milhares de caracteres por dia). Não adianta tentar de novo agora. */
 export class TranslationQuotaError extends Error {
@@ -55,13 +57,13 @@ export function splitForTranslation(text: string, limit = CHUNK_LIMIT): string[]
 
 type Fetcher = typeof fetch;
 
-async function translateChunk(chunk: string, target: TranslationTarget, fetcher: Fetcher): Promise<string> {
+async function translateChunk(chunk: string, target: NewsLang, fetcher: Fetcher, source: NewsLang = "en"): Promise<string> {
   const libre = process.env.LIBRETRANSLATE_URL;
   if (libre) {
     const res = await fetcher(`${libre.replace(/\/$/, "")}/translate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ q: chunk, source: "en", target, format: "text", api_key: process.env.LIBRETRANSLATE_API_KEY }),
+      body: JSON.stringify({ q: chunk, source, target, format: "text", api_key: process.env.LIBRETRANSLATE_API_KEY }),
       signal: AbortSignal.timeout(15_000),
     });
     if (res.status === 429) throw new TranslationQuotaError("LibreTranslate limitou as chamadas");
@@ -71,7 +73,7 @@ async function translateChunk(chunk: string, target: TranslationTarget, fetcher:
     return data.translatedText;
   }
   const base = process.env.MYMEMORY_URL || MYMEMORY_URL;
-  const url = `${base}?q=${encodeURIComponent(chunk)}&langpair=en|${target}`;
+  const url = `${base}?q=${encodeURIComponent(chunk)}&langpair=${source}|${target}`;
   const res = await fetcher(url, { signal: AbortSignal.timeout(15_000) });
   if (res.status === 429) throw new TranslationQuotaError();
   if (!res.ok) throw new Error(`MyMemory HTTP ${res.status}`);
@@ -117,4 +119,28 @@ export async function translateText(text: string, target: TranslationTarget, fet
     out.push(chunk === "\n\n" ? chunk : await translateChunk(chunk, target, fetcher));
   }
   return restoreForeignRuns(out.join(""), runs);
+}
+
+/**
+ * Traduz entre os idiomas das notícias (ja/en → pt/en/ja). Do inglês, os trechos em japonês ficam intactos (como na
+ * sinopse); do japonês, o texto vai inteiro. Endereços (https://…) e # nunca passam pelo tradutor.
+ */
+export async function translateBetween(text: string, source: NewsLang, target: NewsLang, fetcher: Fetcher = fetch): Promise<string> {
+  if (source === target) return text;
+  const keep: string[] = [];
+  const masked0 = text.replace(/https?:\/\/\S+|#[\p{L}\p{N}_]+/gu, (m) => `ZQK${keep.push(m) - 1}ZQ`);
+  const { masked, runs } = source === "en" ? protectForeignRuns(masked0) : { masked: masked0, runs: [] as string[] };
+  const out: string[] = [];
+  for (const chunk of splitForTranslation(masked)) out.push(chunk === "\n\n" ? chunk : await translateChunk(chunk, target, fetcher, source));
+  let result = restoreForeignRuns(out.join(""), runs);
+  keep.forEach((k, n) => {
+    if (!result.includes(`ZQK${n}ZQ`)) throw new Error("A tradução perdeu um link ou #");
+    result = result.replace(`ZQK${n}ZQ`, () => k);
+  });
+  return result;
+}
+
+/** O idioma original de uma notícia: com kana/kanji é japonês; senão, inglês. */
+export function detectNewsLang(text: string): "ja" | "en" {
+  return /[぀-ヿ㐀-鿿]/.test(text) ? "ja" : "en";
 }

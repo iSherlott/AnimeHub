@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Box, Chip } from "@mui/material";
 import { Header } from "@/components/Header";
 import { PageContainer, PageIntro } from "@/components/PageShell";
+import { SeasonTabs } from "@/components/SectionTabs";
 import { TierListEditor } from "@/components/TierListEditor";
 import { getCurrentUser } from "@/lib/auth/session";
 import { loginHref } from "@/lib/safeRedirect";
@@ -27,6 +28,7 @@ export default async function TierListPage({ searchParams }: Props) {
       <Header />
       <PageContainer>
         <PageIntro kicker="ランキング / TIER LIST" title={`Tier list · ${seasonDisplayName(season)}`} subtitle="Distribua as obras que você acompanha nesta temporada e publique no Feed para a rede comentar." />
+        <SeasonTabs active="tier-list" />
         <Box component="nav" aria-label="Escolher temporada" sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           {recentSeasons(new Date(), 4).map((s) => (
             <Chip key={seasonSlug(s)} component="a" href={`/tier-list?temporada=${seasonSlug(s)}`} clickable label={seasonDisplayName(s)} color={seasonSlug(s) === slug ? "primary" : "default"} variant={seasonSlug(s) === slug ? "filled" : "outlined"} />

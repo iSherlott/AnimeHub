@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import SendIcon from "@mui/icons-material/Send";
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField, Typography } from "@mui/material";
+import LinkIcon from "@mui/icons-material/Link";
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Divider, MenuItem, TextField, Typography } from "@mui/material";
 
 type Friend = { id: string; displayName: string; handle: string | null; alreadySent: boolean; follows: boolean };
 const NOTE_MAX = 200;
@@ -10,6 +11,9 @@ const NOTE_MAX = 200;
 /**
  * "Recomendar a um amigo" (10/11/2026): escolhe um amigo, escreve um bilhete opcional e a recomendação chega no sino
  * dele. Quem já recebeu esta obra de você, ou já acompanha, aparece marcado.
+ *
+ * Para quem não tem conta (11/11/2026): "Gerar link" cria um endereço público com a obra e o bilhete, para copiar ou
+ * mandar pelo WhatsApp.
  */
 export function RecommendToFriend({ workKey, title }: { workKey: string; title: string }) {
   const [open, setOpen] = useState(false);
@@ -19,11 +23,15 @@ export function RecommendToFriend({ workKey, title }: { workKey: string; title: 
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const [link, setLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   async function openDialog() {
     setOpen(true);
     setError(null);
     setSentTo(null);
+    setLink(null);
+    setCopied(false);
     const res = await fetch(`/api/recommendations?obra=${encodeURIComponent(workKey)}`).catch(() => null);
     const data = res && res.ok ? await res.json() : { friends: [] };
     setFriends(data.friends ?? []);
@@ -50,10 +58,39 @@ export function RecommendToFriend({ workKey, title }: { workKey: string; title: 
     }
   }
 
+  async function makeLink() {
+    setSending(true);
+    setError(null);
+    setCopied(false);
+    try {
+      const res = await fetch("/api/recommendations/link", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ work: workKey, note }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Não foi possível gerar o link agora.");
+        return;
+      }
+      setLink(`${window.location.origin}${data.url}`);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function copyLink() {
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  const shareText = link ? `${note ? `${note}\n\n` : ""}Recomendo ${title}: ${link}` : "";
+
   return (
     <>
       <Button variant="outlined" startIcon={<SendIcon />} onClick={() => void openDialog()} data-testid="recommend-open" sx={{ alignSelf: "flex-start" }}>
-        Recomendar a um amigo
+        Recomendar
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="xs" aria-labelledby="recommend-title">
         <DialogTitle id="recommend-title">Recomendar {title}</DialogTitle>
@@ -90,6 +127,39 @@ export function RecommendToFriend({ workKey, title }: { workKey: string; title: 
                 slotProps={{ htmlInput: { "data-testid": "recommend-note", maxLength: NOTE_MAX } }}
               />
             </>
+          )}
+          <Divider flexItem>
+            <Typography sx={{ fontSize: 12, color: "text.secondary" }}>ou, para quem não tem conta</Typography>
+          </Divider>
+          {friends !== null && friends.length === 0 && (
+            <TextField
+              label="Bilhete (opcional)"
+              value={note}
+              onChange={(e) => setNote(e.target.value.slice(0, NOTE_MAX))}
+              multiline
+              minRows={2}
+              size="small"
+              helperText={`${note.length}/${NOTE_MAX} · sem spoiler, por favor`}
+              slotProps={{ htmlInput: { "data-testid": "recommend-note", maxLength: NOTE_MAX } }}
+            />
+          )}
+          {link ? (
+            <Box data-testid="recommend-link" sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              <TextField value={link} size="small" label="Link da recomendação" slotProps={{ htmlInput: { readOnly: true, "data-testid": "recommend-link-url", onFocus: (e: React.FocusEvent<HTMLInputElement>) => e.currentTarget.select() } }} />
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                <Button size="small" variant="outlined" onClick={() => void copyLink()} data-testid="recommend-link-copy">
+                  {copied ? "Copiado" : "Copiar link"}
+                </Button>
+                <Button size="small" variant="outlined" component="a" href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noopener noreferrer">
+                  Mandar no WhatsApp
+                </Button>
+              </Box>
+              <Typography sx={{ fontSize: 12, color: "text.secondary" }}>Quem abrir vê a obra e o seu bilhete, sem precisar de conta. Gerar de novo atualiza o bilhete no mesmo link.</Typography>
+            </Box>
+          ) : (
+            <Button startIcon={<LinkIcon />} onClick={() => void makeLink()} disabled={sending} data-testid="recommend-link-create" sx={{ alignSelf: "flex-start" }}>
+              Gerar link para mandar por fora
+            </Button>
           )}
           {error && (
             <Alert severity="error" role="alert">

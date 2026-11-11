@@ -4,6 +4,7 @@ import { Box, Chip, Typography } from "@mui/material";
 import { AppLink } from "@/components/AppLink";
 import { Header } from "@/components/Header";
 import { PageContainer, PageIntro } from "@/components/PageShell";
+import { SeasonTabs } from "@/components/SectionTabs";
 import { ThemeRow } from "@/components/WorkThemesAndCast";
 import { getCurrentUser } from "@/lib/auth/session";
 import { loginHref } from "@/lib/safeRedirect";
@@ -29,6 +30,7 @@ export default async function ThemesRankingPage({ searchParams }: Props) {
       <Header />
       <PageContainer>
         <PageIntro kicker="主題歌 / ABERTURAS" title={`${type === "OP" ? "Aberturas" : "Encerramentos"} · ${seasonDisplayName(season)}`} subtitle="Curta as suas preferidas: o ranking é de quem tem conta no AnimeHub. O vídeo abre no AnimeThemes." />
+        <SeasonTabs active="aberturas" />
         <Box component="nav" aria-label="Escolher temporada e tipo" sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           {recentSeasons(new Date(), 4).map((s) => (
             <Chip key={seasonSlug(s)} component="a" href={`/aberturas?temporada=${seasonSlug(s)}&tipo=${type}`} clickable label={seasonDisplayName(s)} color={seasonSlug(s) === slug ? "primary" : "default"} variant={seasonSlug(s) === slug ? "filled" : "outlined"} />

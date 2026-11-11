@@ -4,7 +4,8 @@
  * da parte social pedem login. Esta lista é usada pelo `proxy.ts` (redireciona antes de a página abrir), pelo menu (não
  * mostra o que a pessoa não pode abrir) e pelo `CurrentUserProvider` (sessão que expirou com a página aberta).
  */
-const PUBLIC_PREFIXES = ["/discover", "/calendar", "/temporada/", "/anime/", "/login", "/definir-senha"];
+// "/r/<código>": recomendação por link, para quem não tem conta (11/11/2026).
+const PUBLIC_PREFIXES = ["/discover", "/calendar", "/temporada/", "/anime/", "/login", "/definir-senha", "/r/"];
 
 /** Página da obra é pública; o quiz da obra é da comunidade. */
 const PUBLIC_EXCEPTIONS_PRIVATE = [/^\/obra\/[^/]+\/quiz(\/|$)/];

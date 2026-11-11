@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { extractHashtags, MAX_HASHTAGS_PER_POST, MAX_HASHTAG_LENGTH } from "@/lib/hashtags";
 import { linkHashtagsToPost } from "@/lib/postHashtags";
 import { animeSlug } from "@/lib/animeHashtag";
+import { imageSizes } from "@/lib/imageSize";
+import { pickNewsImage } from "@/lib/newsImage";
+import { detectNewsLang } from "@/lib/translate";
 
 /** Mesmo limite de createPost.ts (não importado de lá: o serviço de notícias roda fora do Next). */
 const MAX_POST_BODY_LENGTH = 500;
@@ -108,12 +111,6 @@ type AnimeForNews = {
   bannerImage: string | null;
 };
 
-/** Imagem da notícia: a da própria matéria; sem ela, o banner (ou a capa) da obra — toda notícia sai com imagem. */
-export function newsImageFor(newsImage: string | null, anime: Pick<AnimeForNews, "coverImage" | "bannerImage">): string | null {
-  const candidates = [newsImage, anime.bannerImage, anime.coverImage];
-  return candidates.find((u): u is string => Boolean(u) && /^https:\/\//i.test(u as string)) ?? null;
-}
-
 /** Amarra a # ao anime (Hashtag.anilistId): "obra em contexto" e a ligação da tag com a obra não dependem de adivinhação. */
 export async function linkTagToAnime(tagKey: string, anilistId: number): Promise<void> {
   await prisma.hashtag.updateMany({ where: { key: tagKey, anilistId: null }, data: { anilistId, kind: "WORK" } });
@@ -137,14 +134,21 @@ export async function publishNewsPosts(now: Date = new Date()): Promise<number> 
     : [];
   const animeById = new Map(catalog.map((c) => [c.anilistId as number, c]));
 
-  // Reparo das já publicadas: imagem e vínculo da #.
+  // Só os banners são medidos: a capa sempre cabe no quadro do Feed; o banner da AniList costuma ser uma faixa larga demais.
+  const sizes = await imageSizes(catalog.map((c) => c.bannerImage).filter((u): u is string => Boolean(u)), { measureMissing: true });
+  const newsImages = new Map(
+    (await prisma.animeNews.findMany({ where: { postId: { in: existing.map((p) => p.id) }, imageUrl: { not: null } }, select: { postId: true, imageUrl: true } })).map((n) => [n.postId as string, n.imageUrl as string])
+  );
+
+  // Reparo das já publicadas: imagem e vínculo da #. A imagem só é trocada quando a atual é a da própria obra (ou falta):
+  // a imagem da matéria, quando aparece, toma o lugar; um banner que não serve para o Feed vira a capa.
   for (const post of existing) {
     const anime = animeById.get(post.anilistId as number);
     if (!anime) continue;
-    if (post.imageUrls.length === 0) {
-      const image = newsImageFor(null, anime);
-      if (image) await prisma.post.update({ where: { id: post.id }, data: { imageUrls: [image] } });
-    }
+    const current = post.imageUrls[0] ?? null;
+    const own = current === null || current === anime.bannerImage || current === anime.coverImage;
+    const image = pickNewsImage(newsImages.get(post.id) ?? null, anime, sizes);
+    if (own && image && image !== current) await prisma.post.update({ where: { id: post.id }, data: { imageUrls: [image], imageAlts: [""], imageSpoilers: [false] } });
     const tag = animeHashtagFor(anime);
     if (tag && anime.anilistId !== null) await linkTagToAnime(tag.slice(1), anime.anilistId);
   }
@@ -162,7 +166,7 @@ export async function publishNewsPosts(now: Date = new Date()): Promise<number> 
     if (!primary || primary.anilistId === null) continue; // sem obra no catálogo = sem # vinculada: não publica
 
     const body = buildNewsPostBody({ title: first.title, excerpt: first.excerpt, url: first.url, source: first.source, hashtags: pairs.map((p) => p.tag) });
-    const image = newsImageFor(first.imageUrl, primary);
+    const image = pickNewsImage(group.find((g) => g.imageUrl)?.imageUrl ?? null, primary, sizes);
     const post = await prisma.post.create({
       data: {
         userId: hub.id,
@@ -171,6 +175,7 @@ export async function publishNewsPosts(now: Date = new Date()): Promise<number> 
         animeTitleEnglish: primary.titleEnglish,
         animeCoverImage: primary.coverImage,
         body,
+        bodyLang: detectNewsLang(`${first.title} ${first.excerpt ?? ""}`),
         imageUrls: image ? [image] : [],
         // A hora da publicação é a da notícia: o feed fica em ordem cronológica de verdade.
         createdAt: first.publishedAt > now ? now : first.publishedAt,

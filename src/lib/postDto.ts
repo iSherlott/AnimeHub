@@ -38,6 +38,12 @@ export type PostDTO = {
   releasedSpoilerEpisode: number | null;
   /** Tier list publicada: o card desenha o quadro (e o texto vem sem as linhas "S: …", que o quadro já mostra). */
   tierList: TierSnapshot | null;
+  /** Idioma do texto original ("ja"/"en" nas notícias do NewsHub); null = escrito na plataforma, em português. */
+  bodyLang: string | null;
+  /** O texto em outros idiomas (notícias do NewsHub): o card abre em português e um botão troca para inglês ou japonês. */
+  translations: { lang: string; body: string }[];
+  /** Proporção (largura/altura) medida de cada imagem, na mesma ordem; null = ainda não medida. O quadro se ajusta a ela. */
+  imageRatios: (number | null)[];
   createdAt: string;
   /** null = publicação sem obra associada (Figma 13:41840: contexto opcional). */
   anilistId: number | null;
@@ -124,6 +130,9 @@ export function toPostDto(
     authorTitle?: string | null;
     /** O episódio do spoiler estreou há mais de 7 dias: vai aberto, com a marca de que era spoiler. */
     spoilerReleased?: boolean;
+    translations?: { lang: string; body: string }[];
+    /** Tamanho medido das imagens (ImageSize), por endereço. */
+    imageSizes?: Map<string, { width: number; height: number }>;
   }
 ): PostDTO {
   const released = Boolean(opts.spoilerReleased && post.isSpoiler && post.spoilerEpisode);
@@ -139,6 +148,12 @@ export function toPostDto(
     spoilerEpisode: hidden ? (post.spoilerEpisode ?? null) : null,
     releasedSpoilerEpisode: released ? (post.spoilerEpisode ?? null) : null,
     tierList,
+    bodyLang: post.bodyLang ?? null,
+    translations: hidden ? [] : (opts.translations ?? []),
+    imageRatios: hidden ? [] : post.imageUrls.map((u) => {
+      const size = opts.imageSizes?.get(u);
+      return size && size.height > 0 ? size.width / size.height : null;
+    }),
     createdAt: post.createdAt.toISOString(),
     anilistId: post.anilistId,
     workKey: postWorkKey(post),

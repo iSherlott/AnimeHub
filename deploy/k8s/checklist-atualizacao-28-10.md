@@ -65,15 +65,20 @@ Depois de subir, há três passos opcionais:
 
 O mesmo `bash deploy/k8s/atualizar.sh` aplica as três.
 
-### Atualização de 11/11/2026 (mais 1 migração, só acrescenta)
+### Atualização de 11/11/2026 (mais 2 migrações, só acrescentam)
 
 O cluster já estava em `20261123120000_episodes_season_games_cast` (80). Esta versão traz:
 
 - `20261124100000_post_tier_list_snapshot`: a coluna `Post.tierListJson`, com o quadro da tier list publicada (o Feed
   mostra as faixas S/A/B/C/D com as capas, como no montador). A migração preenche as tier lists que já tinham sido
   publicadas, com o título e a capa da obra na lista de quem publicou.
+- `20261124110000_news_images_translations_rec_links`: `AnimeNews.imageCheckedAt` (a imagem da matéria do site oficial
+  é procurada uma vez), `Post.bodyLang` e a tabela `PostTranslation` (as notícias do NewsHub em português, com botão
+  para inglês e japonês) e a tabela `RecommendationLink` (recomendar uma obra por link a quem não tem conta). Tudo
+  começa vazio; a próxima coleta de notícias acha as imagens e traduz as publicações (precisa do LibreTranslate do
+  cluster, com `en,pt,ja`).
 
-A conferência passa a esperar 81 migrações, última `20261124100000_post_tier_list_snapshot`.
+A conferência passa a esperar 82 migrações, última `20261124110000_news_images_translations_rec_links`.
 
 ## 1. Antes de começar
 
@@ -123,7 +128,7 @@ aconteceu, e o site continua na versão anterior.
 docker run --rm -v "$PWD:/w" postgres:18-alpine psql "<URL do banco sem ?schema=…>" -f /w/deploy/k8s/conferir-atualizacao.sql
 ```
 
-- [ ] Cada linha bate com o "espera" do lado: 81 migrações, 0 com falha, última `20261124100000_post_tier_list_snapshot`, nenhum item
+- [ ] Cada linha bate com o "espera" do lado: 82 migrações, 0 com falha, última `20261124110000_news_images_translations_rec_links`, nenhum item
       de lista ou produção sem obra, 2 tabelas arquivadas, 1 ou mais administradores, nenhuma senha provisória,
       nenhum avatar enviado. Gênero não registrado não impede o site: registre, mescle ou remova em Admin → Taxonomia.
 - [ ] A linha "contas sem nome de usuário" diz quantas contas ainda não têm @. Não impede o site, mas a pessoa não

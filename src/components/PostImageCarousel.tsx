@@ -26,17 +26,21 @@ export function PostImageCarousel({
   imageUrls,
   imageAlts = [],
   imageSpoilers = [],
+  imageRatios = [],
   spoilerLabel = "Spoiler",
 }: {
   imageUrls: string[];
   imageAlts?: string[];
   imageSpoilers?: boolean[];
+  /** Largura/altura de cada imagem, quando já medida: o quadro segue a foto (entre 4:5 e 1,91:1) desde o início. */
+  imageRatios?: (number | null)[];
   spoilerLabel?: string;
 }) {
   const [index, setIndex] = useState(0);
   const [brokenIndexes, setBrokenIndexes] = useState<Set<number>>(new Set());
   const [altAnchor, setAltAnchor] = useState<HTMLElement | null>(null);
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
+  const [loadedRatios, setLoadedRatios] = useState<Record<number, number>>({});
   const showSpoilers = useShowSpoilers();
 
   if (imageUrls.length === 0) return null;
@@ -49,6 +53,9 @@ export function PostImageCarousel({
   // Coberta, nem a descrição sai: ela contaria o spoiler.
   const currentAlt = covered ? "" : (imageAlts[clampedIndex] ?? "").trim();
   const isBroken = brokenIndexes.has(clampedIndex);
+  // O quadro acompanha a foto, como num feed: de 4:5 (em pé) até 1,91:1 (deitada); fora disso, corta o mínimo.
+  const ratio = imageRatios[clampedIndex] ?? loadedRatios[clampedIndex] ?? 4 / 5;
+  const frameRatio = Math.min(1.91, Math.max(0.8, ratio));
 
   function go(e: React.MouseEvent, delta: number) {
     e.preventDefault();
@@ -59,10 +66,11 @@ export function PostImageCarousel({
 
   return (
     <Box
+      data-testid="post-image-frame"
       sx={{
         position: "relative",
         width: "100%",
-        aspectRatio: "4 / 5",
+        aspectRatio: String(frameRatio),
         borderRadius: 2,
         overflow: "hidden",
         bgcolor: "background.default",
@@ -75,6 +83,13 @@ export function PostImageCarousel({
           alt={currentAlt}
           aria-hidden={covered || undefined}
           onError={() => setBrokenIndexes((prev) => new Set(prev).add(clampedIndex))}
+          onLoad={(e) => {
+            const img = e.currentTarget;
+            if (img.naturalWidth > 0 && img.naturalHeight > 0 && imageRatios[clampedIndex] == null) {
+              const r = img.naturalWidth / img.naturalHeight;
+              setLoadedRatios((prev) => (prev[clampedIndex] === r ? prev : { ...prev, [clampedIndex]: r }));
+            }
+          }}
           style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", ...(covered ? { filter: "blur(28px) brightness(0.6)", transform: "scale(1.15)" } : {}) }}
         />
       )}

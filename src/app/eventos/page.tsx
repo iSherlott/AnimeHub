@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Box } from "@mui/material";
 import { Header } from "@/components/Header";
 import { PageContainer, PageIntro } from "@/components/PageShell";
+import { COMMUNITY_EXTRA_TABS, SectionTabs } from "@/components/SectionTabs";
 import { EventsAgenda } from "@/components/EventsAgenda";
 import { getCurrentUser } from "@/lib/auth/session";
 import { loginHref } from "@/lib/safeRedirect";
@@ -21,6 +22,12 @@ export default async function EventsPage() {
       <Header />
       <PageContainer>
         <PageIntro kicker="イベント / EVENTOS" title="Eventos de anime" subtitle="Convenções, estreias no cinema e lives. Marque “Vou” para ver quem mais vai e receber um lembrete no dia." />
+        <SectionTabs
+          label="Comunidades"
+          testId="communities-tab"
+          active="eventos"
+          tabs={[{ key: "minhas", label: "Minhas", href: "/comunidades?aba=minhas" }, { key: "explorar", label: "Explorar", href: "/comunidades?aba=explorar" }, ...COMMUNITY_EXTRA_TABS]}
+        />
         <EventsAgenda initial={events} />
       </PageContainer>
     </Box>

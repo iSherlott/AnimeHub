@@ -16,8 +16,8 @@ import { htmlToPlainText } from "@/lib/plainText";
  * A forma da lista, porém, é sempre essa.
  *
  * Ordem: o feed (RSS/Atom) quando o site tem um — é o que ele publica para ser lido por outros programas — e, sem feed, a
- * lista de notícias. O `robots.txt` de cada site é respeitado; só se leem a página inicial, o feed e a lista (nunca as
- * matérias), com uma pausa entre um site e outro.
+ * lista de notícias. O `robots.txt` de cada site é respeitado; aqui só se leem a página inicial, o feed e a lista, com uma
+ * pausa entre um site e outro. A matéria em si só é aberta depois, uma vez, para achar a imagem dela (ver newsImage.ts).
  */
 export const OFFICIAL_NEWS_SOURCE = "Site oficial";
 export const OFFICIAL_NEWS_USER_AGENT = "AnimeHubNewsBot/1.0 (+noticias das obras da temporada; le so a lista de noticias)";
@@ -214,7 +214,7 @@ export function robotsAllows(robots: string, path: string): boolean {
 }
 
 /** Endereço de rede interna (localhost, 10.x, 192.168.x…): nunca é site oficial; só os testes liberam. */
-function isPrivateHost(host: string): boolean {
+export function isPrivateHost(host: string): boolean {
   if (process.env.OFFICIAL_NEWS_ALLOW_PRIVATE_HOSTS === "1") return false;
   const h = host.replace(/^\[|\]$/g, "").toLowerCase();
   return h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local") || h === "::1" || /^(127|10|0)\./.test(h) || /^192\.168\./.test(h) || /^172\.(1[6-9]|2\d|3[01])\./.test(h) || /^169\.254\./.test(h) || /^f[cd][0-9a-f]{2}:/.test(h);

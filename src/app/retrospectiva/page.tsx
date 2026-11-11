@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Box } from "@mui/material";
 import { Header } from "@/components/Header";
 import { PageContainer, PageIntro } from "@/components/PageShell";
+import { SeasonTabs } from "@/components/SectionTabs";
 import { SeasonRecapView } from "@/components/SeasonRecapView";
 import { getCurrentUser } from "@/lib/auth/session";
 import { loginHref } from "@/lib/safeRedirect";
@@ -32,6 +33,7 @@ export default async function SeasonRecapPage({ searchParams }: Props) {
       <Header />
       <PageContainer>
         <PageIntro kicker="振り返り / RETROSPECTIVA" title={`Sua ${seasonDisplayName(season)}`} subtitle="As obras da temporada na sua lista, os gêneros que mais apareceram e o que os seus amigos viram." />
+        <SeasonTabs active="retrospectiva" />
         <SeasonRecapView recap={recap} seasons={options} currentSlug={seasonSlug(season)} />
       </PageContainer>
     </Box>

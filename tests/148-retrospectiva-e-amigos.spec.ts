@@ -86,10 +86,15 @@ test.describe.serial("Retrospectiva da temporada e recomendações com amigos", 
     expect(hidden?.friendNames ?? []).toEqual([]);
   });
 
-  test("o menu da conta leva à retrospectiva", async ({ page }) => {
+  test("a barra leva à Temporada, e as abas dela levam à retrospectiva (11/11: saiu do menu da conta)", async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
     await page.goto("/calendar");
-    await page.getByRole("button", { name: "Menu da conta" }).click();
-    await page.getByRole("menuitem", { name: "Retrospectiva da temporada" }).click();
+    await page.getByRole("link", { name: "Temporada", exact: true }).first().click();
+    await expect(page).toHaveURL(/\/tier-list$/);
+    await page.getByTestId("season-tabs-retrospectiva").click();
     await expect(page).toHaveURL(/\/retrospectiva$/);
+    await expect(page.getByTestId("season-tabs-retrospectiva")).toHaveAttribute("aria-current", "page");
+    await page.getByRole("button", { name: "Menu da conta" }).click();
+    await expect(page.getByRole("menuitem", { name: /Retrospectiva/ })).toHaveCount(0);
   });
 });

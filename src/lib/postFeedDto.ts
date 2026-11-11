@@ -120,6 +120,16 @@ export async function toDtoPage(page: PostRow[], viewerId: string | null): Promi
   const authorTitles = await equippedTitleNames(resolved.map((r) => r.effective.user.id));
   // Spoiler "até o episódio N" que estreou há mais de 7 dias já vai aberto (spoilerRelease.ts).
   const released = await releasedSpoilerIds(resolved.map((r) => r.effective));
+  // Notícias do NewsHub traduzidas (o card abre em português) e o tamanho das imagens (o quadro segue a proporção).
+  const effectiveIds = resolved.map((r) => r.effective.id);
+  const imageUrls = Array.from(new Set(resolved.flatMap((r) => r.effective.imageUrls)));
+  const [translationRows, sizeRows] = await Promise.all([
+    effectiveIds.length ? prisma.postTranslation.findMany({ where: { postId: { in: effectiveIds } }, select: { postId: true, lang: true, body: true } }) : [],
+    imageUrls.length ? prisma.imageSize.findMany({ where: { url: { in: imageUrls }, width: { gt: 0 } }, select: { url: true, width: true, height: true } }) : [],
+  ]);
+  const translationsByPost = new Map<string, { lang: string; body: string }[]>();
+  for (const t of translationRows) translationsByPost.set(t.postId, [...(translationsByPost.get(t.postId) ?? []), { lang: t.lang, body: t.body }]);
+  const sizes = new Map(sizeRows.map((r) => [r.url, { width: r.width, height: r.height }]));
   const likedSet = new Set(myLikes.map((l) => l.postId));
   const reportedSet = new Set(myOpenReports.map((r) => r.postId));
   const repostedSet = new Set(myReposts.map((r) => r.repostOfId));
@@ -140,6 +150,8 @@ export async function toDtoPage(page: PostRow[], viewerId: string | null): Promi
       production: effective.anilistId !== null ? (productionById.get(effective.anilistId) ?? null) : null,
       authorTitle: authorTitles.get(effective.user.id) ?? null,
       spoilerReleased: released.has(effective.id),
+      translations: translationsByPost.get(effective.id) ?? [],
+      imageSizes: sizes,
     })
   );
 }

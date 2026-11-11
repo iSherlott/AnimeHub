@@ -6,6 +6,7 @@ import { AnimeTitle } from "@/components/AnimeTitle";
 import { CoverImage } from "@/components/CoverImage";
 import { LinkButton } from "@/components/LinkButton";
 import { PageContainer, PageIntro } from "@/components/PageShell";
+import { COMMUNITY_EXTRA_TABS, SectionTabs } from "@/components/SectionTabs";
 import { Pager } from "@/components/community/CommunityParts";
 import { getCurrentUser } from "@/lib/auth/session";
 import { DIRECTORY_SORTS, exploreCommunities, friendsCommunities, isDirectorySort, myCommunities, trackedWorkCommunities, type DirectoryCard, type DirectorySort } from "@/lib/community";
@@ -99,13 +100,7 @@ export default async function CommunitiesPage({ searchParams }: Props) {
       <Header />
       <PageContainer>
         <PageIntro kicker="コミュニティ / COMUNIDADES" title="Comunidades" subtitle="O fórum de cada anime: tópicos, enquetes, eventos e quem curte a mesma obra." />
-        <Box component="nav" aria-label="Comunidades" sx={{ display: "flex", gap: 3, borderBottom: 1, borderColor: "divider" }} data-testid="communities-tabs">
-          {tabs.map((t) => (
-            <AppLink key={t.key} href={`/comunidades?aba=${t.key}`} underline="none" aria-current={tab === t.key ? "page" : undefined} data-testid={`communities-tab-${t.key}`} sx={{ pb: 1.25, fontSize: 14, fontWeight: 700, color: tab === t.key ? "text.primary" : "text.secondary", borderBottom: 2, borderColor: tab === t.key ? "primary.main" : "transparent", mb: "-1px" }}>
-              {t.label}
-            </AppLink>
-          ))}
-        </Box>
+        <SectionTabs label="Comunidades" testId="communities-tab" active={tab} tabs={[...tabs.map((t) => ({ key: t.key, label: t.label, href: `/comunidades?aba=${t.key}` })), ...COMMUNITY_EXTRA_TABS]} />
 
         {tab === "minhas" &&
           (!user ? (

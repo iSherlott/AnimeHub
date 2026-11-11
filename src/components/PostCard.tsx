@@ -1,6 +1,7 @@
 "use client";
 
 import { TierListBoard } from "@/components/TierListBoard";
+import { PostLanguageSwitch } from "@/components/PostLanguageSwitch";
 import { loginHref } from "@/lib/safeRedirect";
 import { useCallback, useId, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -117,7 +118,11 @@ export function PostCard({
 
   // Fileira final de hashtags separada do texto (Figma: texto primeiro,
   // hashtags numa linha própria); hashtags no meio do texto seguem inline.
-  const { body: displayBody, tags: trailingTags } = useMemo(() => splitTrailingHashtags(post.body), [post.body]);
+  // Notícia traduzida: abre em português; o botão troca para o inglês ou o japonês (um deles é o original).
+  const originalLang = post.bodyLang ?? "pt";
+  const [lang, setLang] = useState(() => (post.translations.some((t) => t.lang === "pt") ? "pt" : originalLang));
+  const shownBody = lang === originalLang ? post.body : (post.translations.find((t) => t.lang === lang)?.body ?? post.body);
+  const { body: displayBody, tags: trailingTags } = useMemo(() => splitTrailingHashtags(shownBody), [shownBody]);
   const captionCut = useMemo(() => truncateKeepingSpoilers(displayBody, LONG_CAPTION_THRESHOLD), [displayBody]);
   // "Spoiler de Frieren · até o episódio 18": o aviso dos spoilers desta publicação (inteira, trechos e imagens).
   const postSpoilerLabel = spoilerLabel({ work: animeTitle, episode: post.spoilerEpisode });
@@ -297,7 +302,7 @@ export function PostCard({
         />
       ) : (
         <>
-          {hasImages && <PostImageCarousel imageUrls={post.imageUrls} imageAlts={post.imageAlts} imageSpoilers={post.imageSpoilers} spoilerLabel={postSpoilerLabel} />}
+          {hasImages && <PostImageCarousel imageUrls={post.imageUrls} imageAlts={post.imageAlts} imageSpoilers={post.imageSpoilers} imageRatios={post.imageRatios} spoilerLabel={postSpoilerLabel} />}
           <Box>
             <Typography sx={{ whiteSpace: "pre-wrap", fontSize: 16, color: "text.primary", overflowWrap: "anywhere" }}>
               <PostBodyText
@@ -312,6 +317,7 @@ export function PostCard({
               </Button>
             )}
           </Box>
+          {post.translations.length > 0 && <PostLanguageSwitch original={originalLang} available={[originalLang, ...post.translations.map((t) => t.lang)]} value={lang} onChange={setLang} />}
           {post.tierList && <TierListBoard snapshot={post.tierList} />}
         </>
       )}

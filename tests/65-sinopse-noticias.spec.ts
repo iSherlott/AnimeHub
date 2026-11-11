@@ -13,6 +13,11 @@ const SYNOPSIS_ID = 965010;
 const NEWS_A = { anilistId: 965021, malId: 96521, title: "Noticia Alfa Round65" };
 const NEWS_B = { anilistId: 965022, malId: 96522, title: "Noticia Beta Round65" };
 const OFFICIAL_SITE = `http://localhost:${FAKE_PORT}/site/`;
+// 11/11: a matéria do site oficial é aberta para achar a imagem dela; o tamanho já fica "medido" (sem rede no teste).
+const ARTICLE_IMAGE = "https://img.round65.test/kv-round65.jpg";
+const BANNER_A = "https://s4.anilist.co/file/anilistcdn/media/anime/banner-a.jpg";
+const BANNER_B = "https://s4.anilist.co/file/anilistcdn/media/anime/banner-b.jpg";
+const COVER_A = "https://s4.anilist.co/file/anilistcdn/media/anime/cover-a-round65.jpg";
 
 function currentSeasonNow(): { season: string; seasonYear: number } {
   const now = new Date();
@@ -33,6 +38,9 @@ let prisma: PrismaClient;
 
 test.beforeAll(async () => {
   prisma = new PrismaClient({ datasourceUrl: TEST_DB_URL });
+  for (const [url, width, height] of [[BANNER_A, 1900, 400], [BANNER_B, 1900, 400], [COVER_A, 460, 650], [ARTICLE_IMAGE, 1200, 630]] as const) {
+    await prisma.imageSize.upsert({ where: { url }, create: { url, width, height }, update: { width, height, measuredAt: new Date() } });
+  }
   fake = createServer((req, res) => {
     const url = new URL(req.url ?? "/", `http://localhost:${FAKE_PORT}`);
     res.setHeader("Content-Type", "application/json");
@@ -53,6 +61,11 @@ test.beforeAll(async () => {
     if (url.pathname === "/site/") {
       res.setHeader("Content-Type", "text/html");
       res.end(`<html><body><a href="news/">NEWS</a><a href="story/">STORY</a></body></html>`);
+      return;
+    }
+    if (url.pathname === "/site/news/" && url.searchParams.get("article_id") === "6501") {
+      res.setHeader("Content-Type", "text/html");
+      res.end(`<html><head><meta property="og:image" content="${ARTICLE_IMAGE}"><link rel="icon" href="/favicon.ico"></head><body>第2期キービジュアル公開！</body></html>`);
       return;
     }
     if (url.pathname === "/site/news/") {
@@ -95,8 +108,8 @@ test.beforeAll(async () => {
   for (const n of [NEWS_A, NEWS_B]) {
     await prisma.catalogEntry.upsert({
       where: { anilistId: n.anilistId },
-      create: { anilistId: n.anilistId, malId: n.malId, titleRomaji: n.title, season, seasonYear, source: "anilist", bannerImage: `https://s4.anilist.co/file/anilistcdn/media/anime/banner-${n.malId === 96521 ? "a" : "b"}.jpg`, officialSite: n === NEWS_A ? OFFICIAL_SITE : null },
-      update: { malId: n.malId, season, seasonYear, bannerImage: `https://s4.anilist.co/file/anilistcdn/media/anime/banner-${n.malId === 96521 ? "a" : "b"}.jpg`, officialSite: n === NEWS_A ? OFFICIAL_SITE : null },
+      create: { anilistId: n.anilistId, malId: n.malId, titleRomaji: n.title, season, seasonYear, source: "anilist", bannerImage: `https://s4.anilist.co/file/anilistcdn/media/anime/banner-${n.malId === 96521 ? "a" : "b"}.jpg`, coverImage: n === NEWS_A ? COVER_A : null, officialSite: n === NEWS_A ? OFFICIAL_SITE : null },
+      update: { malId: n.malId, season, seasonYear, bannerImage: `https://s4.anilist.co/file/anilistcdn/media/anime/banner-${n.malId === 96521 ? "a" : "b"}.jpg`, coverImage: n === NEWS_A ? COVER_A : null, officialSite: n === NEWS_A ? OFFICIAL_SITE : null },
     });
   }
   const user = await prisma.user.findUniqueOrThrow({ where: { email: TEST_USER_EMAIL } });
@@ -188,8 +201,9 @@ test.describe.serial("Notícias = publicações do NewsHub", () => {
       expect(trailer.body).toContain("Fonte: Anime News Network — https://www.animenewsnetwork.com/news/round65/.1");
       expect(trailer.body).toContain("#noticiaalfaround65");
       expect(trailer.body.length).toBeLessThanOrEqual(500);
-      // Sem imagem na matéria (feed do ANN), usa a imagem da obra; com imagem (Jikan), usa a da matéria.
-      expect(trailer.imageUrls[0]).toBe("https://s4.anilist.co/file/anilistcdn/media/anime/banner-a.jpg");
+      // Sem imagem na matéria (feed do ANN), usa a imagem da obra que serve para o Feed: o banner 1900×400 é uma faixa
+      // larga demais, então vai a capa. Sem capa (Beta), fica o banner mesmo. Com imagem (Jikan), usa a da matéria.
+      expect(trailer.imageUrls[0]).toBe(COVER_A);
       const withImage = posts.find((p) => p.body.includes("Alfa second season confirmed"))!;
       expect(withImage.imageUrls[0]).toBe("https://cdn.myanimelist.net/images/a.jpg");
       // Do site oficial: o item da lista (a categoria não é matéria), com a fonte e o link da matéria.
@@ -197,6 +211,19 @@ test.describe.serial("Notícias = publicações do NewsHub", () => {
       expect(official.body).toContain(`Fonte: Site oficial — ${OFFICIAL_SITE}news/?article_id=6501`);
       expect(official.body).toContain("#noticiaalfaround65");
       expect(await prisma.animeNews.count({ where: { url: { contains: "category_id" } } })).toBe(0);
+      // 11/11: a imagem da matéria do site oficial (og:image) foi achada e conferida; o ícone não conta.
+      expect(official.imageUrls[0]).toBe(ARTICLE_IMAGE);
+      expect((await prisma.animeNews.findFirstOrThrow({ where: { url: { contains: "article_id=6501" } } })).imageCheckedAt).not.toBeNull();
+      // 11/11: a notícia em japonês ganhou português e inglês; a do ANN (inglês), português e japonês.
+      const translationsOf = async (postId: string) => Object.fromEntries((await prisma.postTranslation.findMany({ where: { postId } })).map((t) => [t.lang, t.body]));
+      expect(official.bodyLang).toBe("ja");
+      const officialT = await translationsOf(official.id);
+      expect(officialT.pt).toContain("[PT] 第2期キービジュアル公開！");
+      expect(officialT.pt).toContain(`Fonte: Site oficial — ${OFFICIAL_SITE}news/?article_id=6501`);
+      expect(officialT.pt).toContain("#noticiaalfaround65");
+      expect(officialT.en).toContain("[EN] 第2期キービジュアル公開！");
+      expect(trailer.bodyLang).toBe("en");
+      expect(Object.keys(await translationsOf(trailer.id)).sort()).toEqual(["ja", "pt"]);
       // A publicação nasce com a hora da notícia (ordem cronológica de verdade).
       expect(Date.now() - trailer.createdAt.getTime()).toBeGreaterThan(20 * 60_000);
     });

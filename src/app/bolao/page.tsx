@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Box, Typography } from "@mui/material";
 import { Header } from "@/components/Header";
 import { PageContainer, PageIntro } from "@/components/PageShell";
+import { SeasonTabs } from "@/components/SectionTabs";
 import { SeasonPoolView } from "@/components/SeasonPoolView";
 import { getCurrentUser } from "@/lib/auth/session";
 import { loginHref } from "@/lib/safeRedirect";
@@ -21,6 +22,7 @@ export default async function SeasonPoolPage() {
       <Header />
       <PageContainer>
         <PageIntro kicker="予想 / BOLÃO" title={pool?.title ?? "Bolão da temporada"} subtitle="Aposte nas obras que vão bombar na temporada e dispute com a rede." />
+        <SeasonTabs active="bolao" />
         {pool ? (
           <SeasonPoolView initial={pool} viewerId={user.id} />
         ) : (

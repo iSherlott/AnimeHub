@@ -136,6 +136,7 @@ model User {
   animeEventRsvps         AnimeEventRsvp[]
   themeLikes              WorkThemeLike[]
   favoriteCharacters      FavoriteCharacter[]
+  recommendationLinks     RecommendationLink[] @relation("RecommendationLinksSent")
 
   @@index([email])
 }
@@ -861,6 +862,9 @@ model Post {
   /// Tier list publicada (11/11/2026): {"season","seasonYear","tiers":{"S":[{"key","title","cover"}],...}} do momento em
   /// que a pessoa publicou. O Feed desenha o mesmo quadro do montador; o texto continua no `body` (busca, citação).
   tierListJson      String?
+  /// Idioma do texto original (11/11/2026): "ja" ou "en" nas notícias do NewsHub; null = escrito na plataforma, em português.
+  bodyLang          String?
+  translations      PostTranslation[]
   createdAt         DateTime  @default(now())
   /// Soft delete pelo autor ou por admin via fila de denúncia — mesmo
   /// padrão do Comment (Epic 15).
@@ -1314,6 +1318,9 @@ model AnimeNews {
   title       String
   excerpt     String?
   imageUrl    String?
+  /// Quando a imagem da matéria foi procurada (11/11/2026): a `og:image` da página, se servir para o Feed. Procurada uma
+  /// vez só; null = ainda não procurada.
+  imageCheckedAt DateTime?
   author      String?
   publishedAt DateTime
   source      String   @default("MyAnimeList")
@@ -2178,3 +2185,33 @@ model FavoriteCharacter {
   @@id([userId, characterId])
 }
 
+/// Tradução de uma publicação (11/11/2026): as notícias do NewsHub chegam em japonês ou inglês; o Feed mostra em português
+/// e um botão troca para inglês ou japonês. Uma linha por idioma que não é o original (o original fica no `Post.body`).
+model PostTranslation {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  /// "pt", "en" ou "ja".
+  lang      String
+  body      String
+  createdAt DateTime @default(now())
+
+  @@unique([postId, lang])
+}
+
+/// Recomendação por link (11/11/2026), para quem não tem conta: quem recomenda gera um link da obra com o bilhete e manda
+/// por fora (WhatsApp). O link abre uma página pública com a obra e o recado; um por pessoa e obra (o bilhete se atualiza).
+model RecommendationLink {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  fromId    String
+  from      User     @relation("RecommendationLinksSent", fields: [fromId], references: [id], onDelete: Cascade)
+  /// `/anime/<workKey>`: o AniList ID ou `anidb-<id>`.
+  workKey   String
+  note      String?
+  views     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([fromId, workKey])
+}

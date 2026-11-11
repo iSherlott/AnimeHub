@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { splitForTranslation, TranslationQuotaError, translateText, translationEngine } from "./translate";
+import { detectNewsLang, splitForTranslation, TranslationQuotaError, translateBetween, translateText, translationEngine } from "./translate";
 
 describe("splitForTranslation", () => {
   it("mantém texto curto em um pedaço só", () => {
@@ -92,5 +92,30 @@ describe("translationEngine", () => {
       if (old === undefined) delete process.env.LIBRETRANSLATE_URL;
       else process.env.LIBRETRANSLATE_URL = old;
     }
+  });
+});
+
+describe("translateBetween (notícias do Feed, 11/11)", () => {
+  it("passa o idioma de origem, e links e # voltam intactos", async () => {
+    const prev = process.env.LIBRETRANSLATE_URL;
+    delete process.env.LIBRETRANSLATE_URL;
+    const seen: string[] = [];
+    const fetcher = (async (url: string) => {
+      const u = new URL(url);
+      seen.push(u.searchParams.get("langpair") ?? "");
+      return new Response(JSON.stringify({ responseStatus: 200, responseData: { translatedText: `[pt] ${u.searchParams.get("q")}` } }), { status: 200 });
+    }) as typeof fetch;
+    const out = await translateBetween("第2期決定！ https://site.jp/news/1 #frieren", "ja", "pt", fetcher);
+    expect(seen).toEqual(["ja|pt"]);
+    expect(out).toContain("https://site.jp/news/1");
+    expect(out).toContain("#frieren");
+    expect(out.startsWith("[pt] 第2期決定！")).toBe(true);
+    expect(await translateBetween("igual", "pt", "pt", fetcher)).toBe("igual");
+    if (prev !== undefined) process.env.LIBRETRANSLATE_URL = prev;
+  });
+
+  it("detecta o original: com kana/kanji é japonês, senão inglês", () => {
+    expect(detectNewsLang("TVアニメ第2期")).toBe("ja");
+    expect(detectNewsLang("Season 2 announced")).toBe("en");
   });
 });

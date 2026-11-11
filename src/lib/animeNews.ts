@@ -6,6 +6,8 @@ import { publishNewsPosts } from "@/lib/newsHub";
 import { fetchNewsFeed, matchFeedToAnimes, NEWS_FEED_SOURCE, type FeedItem } from "@/lib/newsRss";
 import { fetchOfficialNews, OFFICIAL_NEWS_SOURCE, type OfficialNewsItem } from "@/lib/officialNews";
 import { startOfDayInZone, DEFAULT_TIME_ZONE } from "@/lib/timeZone";
+import { findArticleImage } from "@/lib/newsImage";
+import { translateNewsPosts } from "@/lib/newsTranslations";
 
 /**
  * Notícias das obras da temporada atual (Comunidade → Notícias).
@@ -17,6 +19,10 @@ import { startOfDayInZone, DEFAULT_TIME_ZONE } from "@/lib/timeZone";
  *      respeitando o robots.txt, com uma pausa entre um site e outro;
  *   3. a API pública da Jikan (espelho aberto da MyAnimeList), pelo `idMal` que a AniList informa.
  * O resultado fica em `AnimeNews`, e cada notícia nova vira uma publicação do NewsHub.
+ *
+ * Desde 11/11, a matéria de SITE OFICIAL é aberta uma vez para achar a imagem dela (`og:image`, ver newsImage.ts) — é o
+ * mesmo site da obra que a regra de 09/11 já deixa ler. As do Anime News Network não (D-30: site de terceiro); elas usam a
+ * imagem da obra que serve para o Feed. No fim, as publicações novas do NewsHub são traduzidas (ver newsTranslations.ts).
  */
 export const NEWS_RUN_LOCK_MS = 30 * 60 * 1000;
 export const NEWS_TIME_BUDGET_MS = 25 * 60 * 1000;
@@ -30,6 +36,10 @@ const KEEP_DAYS = 180;
 const JIKAN_GIVE_UP_AFTER = 5;
 /** Tempo máximo para os sites oficiais (cada site leva de 2 a 4 pedidos): o resto da execução fica para a Jikan. */
 const OFFICIAL_TIME_BUDGET_MS = 10 * 60 * 1000;
+/** Tempo máximo para abrir as matérias atrás da imagem (uma página por notícia nova). */
+const IMAGE_TIME_BUDGET_MS = 4 * 60 * 1000;
+/** Só procura imagem de notícia que ainda pode virar publicação (a janela do NewsHub). */
+const IMAGE_WINDOW_DAYS = 30;
 
 export type NewsDeps = {
   /** Feed geral (ANN): uma chamada só; as notícias são ligadas às obras pelo título. */
@@ -38,6 +48,10 @@ export type NewsDeps = {
   /** As notícias do site oficial (null = o site não respondeu ou não deixa ler). `robots` guarda o robots.txt de cada site. */
   getOfficialNews: (siteUrl: string, robots: Map<string, string>) => Promise<OfficialNewsItem[] | null>;
   sleep: (ms: number) => Promise<void>;
+  /** A imagem da matéria que serve para o Feed (null = não achou). `robots` guarda o robots.txt de cada site. */
+  getArticleImage?: (url: string, robots: Map<string, string>) => Promise<string | null>;
+  /** Traduz as publicações novas do NewsHub (padrão: translateNewsPosts, com o LibreTranslate do cluster). */
+  translatePosts?: (deadline: number) => Promise<{ translated: number; failed: number; stoppedByQuota: boolean }>;
   /** Completa o catálogo da temporada (traz o `idMal` de cada obra). */
   ensureSeason: (season: "WINTER" | "SPRING" | "SUMMER" | "FALL", year: number) => Promise<void>;
 };
@@ -46,6 +60,8 @@ const defaultDeps: NewsDeps = {
   getFeed: () => fetchNewsFeed(),
   getNews: getJikanAnimeNews,
   getOfficialNews: (siteUrl, robots) => fetchOfficialNews(siteUrl, undefined, robots),
+  getArticleImage: (url, robots) => findArticleImage(url, { robots }),
+  translatePosts: (deadline) => translateNewsPosts({ deadline }),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   ensureSeason: async (season, year) => {
     // Mesma chave da importação: testes e ambientes sem rede não consultam a AniList.
@@ -105,7 +121,8 @@ export async function runNewsSync(options: { trigger: "schedule" | "manual"; adm
 
     async function save(anilistId: number, source: string, items: Array<{ url: string; title: string; excerpt: string | null; imageUrl?: string | null; author?: string | null; publishedAt: Date }>) {
       for (const item of items.sort((x, y) => y.publishedAt.getTime() - x.publishedAt.getTime()).slice(0, NEWS_PER_ANIME)) {
-        const data = { title: item.title, excerpt: item.excerpt, imageUrl: item.imageUrl ?? null, author: item.author ?? null, publishedAt: item.publishedAt, source, fetchedAt: now };
+        // A imagem só entra quando a fonte traz uma: regravar sem imagem não apaga a que foi achada na matéria.
+        const data = { title: item.title, excerpt: item.excerpt, ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}), author: item.author ?? null, publishedAt: item.publishedAt, source, fetchedAt: now };
         const existing = await prisma.animeNews.findUnique({ where: { anilistId_url: { anilistId, url: item.url } }, select: { id: true } });
         await prisma.animeNews.upsert({ where: { anilistId_url: { anilistId, url: item.url } }, create: { anilistId, url: item.url, ...data }, update: data });
         if (!existing) fetched += 1;
@@ -194,13 +211,54 @@ export async function runNewsSync(options: { trigger: "schedule" | "manual"; adm
       if (jikanStreak >= JIKAN_GIVE_UP_AFTER) note += " Jikan indisponível; parei de tentar nesta execução.";
     }
 
+    // A imagem de cada notícia de site oficial ainda sem imagem: abre a matéria uma vez (procurada uma vez só).
+    let images = 0;
+    if (deps.getArticleImage) {
+      const imageStarted = Date.now();
+      const toCheck = await prisma.animeNews.findMany({
+        where: { source: OFFICIAL_NEWS_SOURCE, imageUrl: null, imageCheckedAt: null, publishedAt: { gte: new Date(now.getTime() - IMAGE_WINDOW_DAYS * 86400_000) } },
+        orderBy: { publishedAt: "desc" },
+        select: { id: true, url: true },
+      });
+      const robots = new Map<string, string>();
+      const byUrl = new Map<string, string[]>();
+      for (const n of toCheck) byUrl.set(n.url, [...(byUrl.get(n.url) ?? []), n.id]);
+      for (const [url, ids] of byUrl) {
+        if (Date.now() - imageStarted > IMAGE_TIME_BUDGET_MS || Date.now() - started > NEWS_TIME_BUDGET_MS) {
+          note += " Imagens das matérias: tempo máximo atingido; o restante fica para a próxima execução.";
+          break;
+        }
+        let image: string | null = null;
+        try {
+          image = await deps.getArticleImage(url, robots);
+        } catch (error) {
+          console.error(`[news] imagem da matéria ${url} falhou:`, error);
+        }
+        await prisma.animeNews.updateMany({ where: { id: { in: ids } }, data: { imageCheckedAt: new Date(), ...(image ? { imageUrl: image } : {}) } });
+        if (image) images += 1;
+        await deps.sleep(REQUEST_GAP_MS);
+      }
+    }
+
     // Cada notícia nova vira uma publicação do NewsHub (mesmo cartão do feed, com a # da obra).
     const posts = await publishNewsPosts(now);
+
+    // Português no Feed (e inglês/japonês no botão): traduz o que ainda não foi traduzido, no tempo que sobrar.
+    let translatedNote = "";
+    if (deps.translatePosts) {
+      try {
+        const t = await deps.translatePosts(started + NEWS_TIME_BUDGET_MS);
+        if (t.translated > 0 || t.failed > 0) translatedNote = ` Traduções: ${t.translated} feitas${t.failed ? `, ${t.failed} com falha` : ""}${t.stoppedByQuota ? " (o tradutor limitou as chamadas)" : ""}.`;
+      } catch (error) {
+        console.error("[news] tradução das publicações falhou:", error);
+        translatedNote = " Tradutor indisponível; as publicações ficam no original até a próxima execução.";
+      }
+    }
 
     await prisma.animeNews.deleteMany({ where: { publishedAt: { lt: new Date(now.getTime() - KEEP_DAYS * 86400_000) } } });
 
     const result: "OK" | "PARTIAL" | "ERROR" = failed === 0 ? "OK" : fetched > 0 || sources.length > 0 ? "PARTIAL" : "ERROR";
-    const message = `${animes} ${animes === 1 ? "obra" : "obras"} da temporada ${season} ${seasonYear} · ${fetched} ${fetched === 1 ? "notícia nova" : "notícias novas"} · ${posts} ${posts === 1 ? "publicação" : "publicações"} no feed · ${failed} ${failed === 1 ? "falha" : "falhas"}.${sources.length ? ` Fontes: ${sources.join(", ")}.` : ""}${animes === 0 ? " Nenhuma obra no catálogo da temporada." : ""}${note}`;
+    const message = `${animes} ${animes === 1 ? "obra" : "obras"} da temporada ${season} ${seasonYear} · ${fetched} ${fetched === 1 ? "notícia nova" : "notícias novas"} · ${posts} ${posts === 1 ? "publicação" : "publicações"} no feed · ${failed} ${failed === 1 ? "falha" : "falhas"}.${sources.length ? ` Fontes: ${sources.join(", ")}.` : ""}${animes === 0 ? " Nenhuma obra no catálogo da temporada." : ""}${images ? ` ${images} ${images === 1 ? "imagem achada" : "imagens achadas"} nas matérias.` : ""}${translatedNote}${note}`;
     await prisma.newsRun.update({ where: { id: run.id }, data: { status: result, finishedAt: new Date(), animes, fetched, failed, message } });
     await prisma.adminLog
       .create({
