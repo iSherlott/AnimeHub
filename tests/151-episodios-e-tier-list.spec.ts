@@ -75,11 +75,23 @@ test.describe.serial("Reações e diário por episódio; tier list da temporada"
     await expect(panel.getByText(/O ponto alto até agora: episódio 2/)).toBeVisible();
   });
 
-  test("tier list: toca na obra e no tier, salva e publica no Feed com a #tierlist", async ({ page }) => {
+  test("tier list: arrasta uma obra, toca na outra e no tier, publica no Feed com o mesmo quadro e a #tierlist", async ({ page }) => {
     await page.goto("/tier-list?temporada=autumn2026");
     const list = page.getByTestId("tier-list");
-    await list.getByTestId(`tier-work-${WORK}`).click();
-    await list.getByTestId("tier-S").click();
+    // Arrastar com o mouse até a faixa do S (pedido de 11/11). Tela alta: a obra e o S cabem juntos, sem rolar.
+    await page.setViewportSize({ width: 1280, height: 1400 });
+    const from = (await list.getByTestId(`tier-work-${WORK}`).boundingBox())!;
+    const to = (await list.getByTestId("tier-row-S").boundingBox())!;
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(from.x + from.width / 2 + 20, from.y + from.height / 2 - 10, { steps: 3 });
+    await expect(page.getByTestId("tier-drag-ghost")).toBeVisible();
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
+    await page.mouse.up();
+    await expect(list.getByTestId("tier-row-S").getByTestId(`tier-work-${WORK}`)).toBeVisible();
+    await expect(page.getByTestId("tier-drag-ghost")).toHaveCount(0);
+    // Soltar não seleciona a obra; tocar na obra e no tier continua funcionando.
+    await expect(list.getByTestId(`tier-work-${WORK}`)).toHaveAttribute("aria-pressed", "false");
     await list.getByTestId(`tier-work-${OTHER}`).click();
     await list.getByTestId("tier-B").click();
     await list.getByTestId("tier-publish").click();
@@ -89,6 +101,13 @@ test.describe.serial("Reações e diário por episódio; tier list da temporada"
     const post = await prisma.post.findUniqueOrThrow({ where: { id: saved.postId as string } });
     expect(post.body).toContain(`S: Obra ${WORK} Round151`);
     expect(post.body).toContain("#tierlist");
+    // A publicação mostra o quadro (S/A/B/C/D com as capas), não as linhas de texto.
+    await page.goto(`/publicacao/${post.id}`);
+    const board = page.getByTestId("post-tier-board").first();
+    await expect(board.getByTestId("tier-row-S").getByTestId("post-tier-work")).toHaveAttribute("href", `/anime/${WORK}`);
+    await expect(board.getByTestId("tier-row-B").getByTestId("post-tier-work")).toHaveAttribute("title", `Obra ${OTHER} Round151`);
+    await expect(page.getByText(`S: Obra ${WORK} Round151`)).toHaveCount(0);
+    await expect(page.getByText("Minha tier list de Outono 2026").first()).toBeVisible();
     // Obra que não é da pessoa não entra.
     const res = await page.request.put("/api/tier-lists", { data: { season: "FALL", seasonYear: 2026, tiers: { S: ["999999"] } } });
     expect((await res.json()).tiers.S).toEqual([]);

@@ -63,8 +63,17 @@ Depois de subir, há três passos opcionais:
   `graphql.anilist.co` e `api.animethemes.moe`.
 - Admin → Eventos e votações, para abrir o anime da semana e o bolão e cadastrar eventos.
 
-O mesmo `bash deploy/k8s/atualizar.sh` aplica as três. A conferência passa a esperar 80 migrações, última
-`20261123120000_episodes_season_games_cast`.
+O mesmo `bash deploy/k8s/atualizar.sh` aplica as três.
+
+### Atualização de 11/11/2026 (mais 1 migração, só acrescenta)
+
+O cluster já estava em `20261123120000_episodes_season_games_cast` (80). Esta versão traz:
+
+- `20261124100000_post_tier_list_snapshot`: a coluna `Post.tierListJson`, com o quadro da tier list publicada (o Feed
+  mostra as faixas S/A/B/C/D com as capas, como no montador). A migração preenche as tier lists que já tinham sido
+  publicadas, com o título e a capa da obra na lista de quem publicou.
+
+A conferência passa a esperar 81 migrações, última `20261124100000_post_tier_list_snapshot`.
 
 ## 1. Antes de começar
 
@@ -114,7 +123,7 @@ aconteceu, e o site continua na versão anterior.
 docker run --rm -v "$PWD:/w" postgres:18-alpine psql "<URL do banco sem ?schema=…>" -f /w/deploy/k8s/conferir-atualizacao.sql
 ```
 
-- [ ] Cada linha bate com o "espera" do lado: 80 migrações, 0 com falha, última `20261123120000_episodes_season_games_cast`, nenhum item
+- [ ] Cada linha bate com o "espera" do lado: 81 migrações, 0 com falha, última `20261124100000_post_tier_list_snapshot`, nenhum item
       de lista ou produção sem obra, 2 tabelas arquivadas, 1 ou mais administradores, nenhuma senha provisória,
       nenhum avatar enviado. Gênero não registrado não impede o site: registre, mescle ou remova em Admin → Taxonomia.
 - [ ] A linha "contas sem nome de usuário" diz quantas contas ainda não têm @. Não impede o site, mas a pessoa não

@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { seasonDisplayName, type SeasonName, type SeasonRef } from "@/lib/exploreGroups";
 import { extractHashtags, MAX_HASHTAGS_PER_POST } from "@/lib/hashtags";
 import { linkHashtagsToPost } from "@/lib/postHashtags";
-import { TIERS, type Tier, type TierWork } from "@/lib/tierListTypes";
+import { TIERS, type Tier, type TierSnapshot, type TierWork } from "@/lib/tierListTypes";
 
 /**
  * Tier list da temporada (10/11/2026): a pessoa distribui as obras da temporada que acompanha em S/A/B/C/D e pode
@@ -31,6 +31,14 @@ export function sanitizeTiers(raw: unknown, allowed: Set<string>): Record<Tier, 
 export function tierListPostBody(season: SeasonRef, tiers: Record<Tier, string[]>, titleOf: (key: string) => string): string {
   const lines = TIERS.filter((t) => tiers[t].length > 0).map((t) => `${t}: ${tiers[t].map(titleOf).join(", ")}`);
   return [`Minha tier list de ${seasonDisplayName(season)}`, "", ...lines, "", "#tierlist"].join("\n");
+}
+
+/** O quadro que vai junto da publicação: título e capa de agora, para a publicação não mudar se a lista mudar depois. */
+export function tierSnapshot(season: SeasonRef, tiers: Record<Tier, string[]>, byKey: Map<string, TierWork>): TierSnapshot {
+  const out = Object.fromEntries(
+    TIERS.map((t) => [t, tiers[t].map((key) => ({ key, title: byKey.get(key)?.titleRomaji ?? key, cover: byKey.get(key)?.coverImage ?? null }))])
+  ) as TierSnapshot["tiers"];
+  return { season: season.season, seasonYear: season.year, tiers: out };
 }
 
 export async function seasonWorksFor(userId: string, season: SeasonRef): Promise<TierWork[]> {
@@ -77,9 +85,9 @@ export async function saveTierList(userId: string, season: SeasonRef, raw: unkno
 export async function publishTierList(userId: string, season: SeasonRef): Promise<{ ok: true; postId: string } | { ok: false; status: 400; error: string }> {
   const { works, tiers } = await loadTierList(userId, season);
   if (TIERS.every((t) => tiers[t].length === 0)) return { ok: false, status: 400, error: "Coloque pelo menos uma obra num tier antes de publicar." };
-  const titles = new Map(works.map((w) => [w.key, w.titleRomaji]));
-  const body = tierListPostBody(season, tiers, (k) => titles.get(k) ?? k);
-  const post = await prisma.post.create({ data: { userId, body } });
+  const byKey = new Map(works.map((w) => [w.key, w]));
+  const body = tierListPostBody(season, tiers, (k) => byKey.get(k)?.titleRomaji ?? k);
+  const post = await prisma.post.create({ data: { userId, body, tierListJson: JSON.stringify(tierSnapshot(season, tiers, byKey)) } });
   await linkHashtagsToPost(post.id, extractHashtags(body).slice(0, MAX_HASHTAGS_PER_POST));
   await prisma.tierList.update({ where: { userId_season_seasonYear: { userId, season: season.season, seasonYear: season.year } }, data: { postId: post.id } });
   return { ok: true, postId: post.id };

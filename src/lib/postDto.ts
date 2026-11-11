@@ -1,5 +1,6 @@
 import type { Post } from "@prisma/client";
 import { maskSpoilers } from "@/lib/spoilers";
+import { parseTierSnapshot, stripTierLines, type TierSnapshot } from "@/lib/tierListTypes";
 
 /**
  * Pré-visualização só-leitura de um post citado (Epic 25) — nunca mais
@@ -35,6 +36,8 @@ export type PostDTO = {
   spoilerEpisode: number | null;
   /** Era spoiler até este episódio, e ele estreou há mais de 7 dias: o conteúdo já vem aberto (ver spoilerRelease.ts). */
   releasedSpoilerEpisode: number | null;
+  /** Tier list publicada: o card desenha o quadro (e o texto vem sem as linhas "S: …", que o quadro já mostra). */
+  tierList: TierSnapshot | null;
   createdAt: string;
   /** null = publicação sem obra associada (Figma 13:41840: contexto opcional). */
   anilistId: number | null;
@@ -125,15 +128,17 @@ export function toPostDto(
 ): PostDTO {
   const released = Boolean(opts.spoilerReleased && post.isSpoiler && post.spoilerEpisode);
   const hidden = post.isSpoiler && !released;
+  const tierList = hidden ? null : parseTierSnapshot(post.tierListJson);
   return {
     id: post.id,
-    body: hidden ? "" : post.body,
+    body: hidden ? "" : tierList ? stripTierLines(post.body) : post.body,
     isSpoiler: hidden,
     imageUrls: hidden ? [] : post.imageUrls,
     imageAlts: hidden ? [] : post.imageUrls.map((_, i) => post.imageAlts?.[i] ?? ""),
     imageSpoilers: hidden ? [] : post.imageUrls.map((_, i) => (released ? false : (post.imageSpoilers?.[i] ?? false))),
     spoilerEpisode: hidden ? (post.spoilerEpisode ?? null) : null,
     releasedSpoilerEpisode: released ? (post.spoilerEpisode ?? null) : null,
+    tierList,
     createdAt: post.createdAt.toISOString(),
     anilistId: post.anilistId,
     workKey: postWorkKey(post),

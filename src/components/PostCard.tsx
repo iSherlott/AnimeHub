@@ -1,5 +1,6 @@
 "use client";
 
+import { TierListBoard } from "@/components/TierListBoard";
 import { loginHref } from "@/lib/safeRedirect";
 import { useCallback, useId, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -311,6 +312,7 @@ export function PostCard({
               </Button>
             )}
           </Box>
+          {post.tierList && <TierListBoard snapshot={post.tierList} />}
         </>
       )}
 

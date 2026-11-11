@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { pickWinner } from "./weeklyVote";
 import { rankStandings, workPoints } from "./seasonPoolTypes";
-import { sanitizeTiers, tierListPostBody } from "./tierList";
+import { sanitizeTiers, tierListPostBody, tierSnapshot } from "./tierList";
+import { moveWork, parseTierSnapshot, stripTierLines } from "./tierListTypes";
 import { parseThemes, themesUrl } from "./animeThemes";
 import { parseCast } from "./workCast";
 import { validateEvent } from "./animeEvents";
@@ -43,6 +44,27 @@ describe("tier list", () => {
   it("o texto publicado lista os tiers com obras e leva a #tierlist", () => {
     const body = tierListPostBody({ season: "FALL", year: 2026 }, { S: ["1"], A: [], B: ["2", "3"], C: [], D: [] }, (k) => `Obra ${k}`);
     expect(body).toBe("Minha tier list de Outono 2026\n\nS: Obra 1\nB: Obra 2, Obra 3\n\n#tierlist");
+  });
+
+  it("a publicação guarda o quadro (título e capa) e o card tira do texto as linhas que o quadro já mostra", () => {
+    const byKey = new Map([["1", { key: "1", titleRomaji: "Obra 1", titleEnglish: null, coverImage: "https://x/1.jpg" }]]);
+    const snap = tierSnapshot({ season: "FALL", year: 2026 }, { S: ["1"], A: [], B: ["2"], C: [], D: [] }, byKey);
+    expect(snap.tiers.S).toEqual([{ key: "1", title: "Obra 1", cover: "https://x/1.jpg" }]);
+    expect(snap.tiers.B).toEqual([{ key: "2", title: "2", cover: null }]);
+    expect(parseTierSnapshot(JSON.stringify(snap))).toEqual(snap);
+    expect(parseTierSnapshot("{}")).toBeNull();
+    expect(parseTierSnapshot("não é json")).toBeNull();
+    expect(parseTierSnapshot(JSON.stringify({ season: "FALL", seasonYear: 2026, tiers: { S: [] } }))).toBeNull();
+    const body = "Minha tier list de Outono 2026\n\nS: Obra 1\nB: Obra 2, Obra 3\n\n#tierlist";
+    expect(stripTierLines(body)).toBe("Minha tier list de Outono 2026\n\n#tierlist");
+  });
+
+  it("arrastar: tira de onde estava e põe antes da obra em que soltou (ou no fim)", () => {
+    const start = { S: ["1"], A: ["2", "3"], B: [], C: [], D: [] };
+    expect(moveWork(start, "1", "A", "3")).toEqual({ S: [], A: ["2", "1", "3"], B: [], C: [], D: [] });
+    expect(moveWork(start, "3", "A", "2")).toEqual({ S: ["1"], A: ["3", "2"], B: [], C: [], D: [] });
+    expect(moveWork(start, "2", "D", null)).toEqual({ S: ["1"], A: ["3"], B: [], C: [], D: ["2"] });
+    expect(moveWork(start, "1", "none", null)).toEqual({ S: [], A: ["2", "3"], B: [], C: [], D: [] });
   });
 });
 

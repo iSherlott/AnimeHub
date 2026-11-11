@@ -858,6 +858,9 @@ model Post {
   imageSpoilers     Boolean[] @default([])
   /// Até onde vai o spoiler ("até o episódio 18"), dito por quem escreveu; só com `isSpoiler`.
   spoilerEpisode    Int?
+  /// Tier list publicada (11/11/2026): {"season","seasonYear","tiers":{"S":[{"key","title","cover"}],...}} do momento em
+  /// que a pessoa publicou. O Feed desenha o mesmo quadro do montador; o texto continua no `body` (busca, citação).
+  tierListJson      String?
   createdAt         DateTime  @default(now())
   /// Soft delete pelo autor ou por admin via fila de denúncia — mesmo
   /// padrão do Comment (Epic 15).
