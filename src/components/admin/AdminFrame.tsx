@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
@@ -70,6 +71,7 @@ const NAV: NavItem[] = [
   { href: "/admin/curadoria", label: "Curadoria", icon: <FactCheckOutlinedIcon />, crumb: "CURADORIA", group: "curadoria" },
   { href: "/admin/pendencias", label: "Pendências", icon: <RuleOutlinedIcon />, crumb: "PENDÊNCIAS", group: "curadoria" },
   { href: "/admin/quizzes", label: "Quizzes", icon: <QuizOutlinedIcon />, crumb: "QUIZZES", group: "comunidade" },
+  { href: "/admin/uso", label: "Uso da rede", icon: <InsightsOutlinedIcon />, crumb: "USO DA REDE", perm: "admin", group: "comunidade" },
   { href: "/admin/rede", label: "Eventos e votações", icon: <EventOutlinedIcon />, crumb: "EVENTOS E VOTAÇÕES", perm: "admin", group: "comunidade" },
   { href: "/admin/elenco", label: "Elenco e aberturas", icon: <RecordVoiceOverOutlinedIcon />, crumb: "ELENCO E ABERTURAS", group: "fontes" },
   { href: "/admin/acesso", label: "Acesso e moderação", icon: <AdminPanelSettingsOutlinedIcon />, crumb: "ACESSO E MODERAÇÃO", perm: "moderation", group: "comunidade" },

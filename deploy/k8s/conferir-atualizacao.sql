@@ -1,13 +1,14 @@
 -- Conferência depois da atualização (28/10/2026: 30 migrações, de 20261025100000 a 20261122100000; 10/11/2026: mais 3,
--- 20261123100000, 20261123110000 e 20261123120000; 11/11/2026: mais 2, 20261124100000 e 20261124110000).
+-- 20261123100000, 20261123110000 e 20261123120000; 11/11/2026: mais 2, 20261124100000 e 20261124110000;
+-- 12/11/2026: mais 1, 20261125100000).
 -- Rode com:  psql "<URL do banco sem ?schema=…>" -f deploy/k8s/conferir-atualizacao.sql
 -- Cada linha traz o que se espera ao lado (no ensaio numa cópia do banco de 26/10, todas bateram).
 
-select 'migrações aplicadas (espera 82)' as conferencia, count(*)::text as valor
+select 'migrações aplicadas (espera 83)' as conferencia, count(*)::text as valor
   from animehub._prisma_migrations where finished_at is not null and rolled_back_at is null
 union all select 'migrações com falha (espera 0)', count(*)::text
   from animehub._prisma_migrations where finished_at is null or rolled_back_at is not null
-union all select 'última migração (espera 20261124110000_news_images_translations_rec_links)', max(migration_name)
+union all select 'última migração (espera 20261125100000_mentions_mutes_polls_announcements)', max(migration_name)
   from animehub._prisma_migrations
 union all select 'itens de lista sem obra do catálogo (espera 0)', count(*)::text
   from animehub."Anime" where "catalogEntryId" is null

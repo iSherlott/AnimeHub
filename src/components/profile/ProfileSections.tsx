@@ -157,7 +157,7 @@ const albumCoverSx = { position: "relative", aspectRatio: "1 / 1", borderRadius:
  * Capa do álbum. Sem obra, a capa padrão; com menos de 4, a primeira capa inteira; com 4 ou mais, o mosaico 2×2.
  * Quadrados vazios no mosaico formavam uma cruz que parecia um botão de fechar.
  */
-function AlbumMosaic({ covers }: { covers: string[] }) {
+export function AlbumMosaic({ covers }: { covers: string[] }) {
   if (covers.length === 0) {
     return <Box data-testid="album-cover-default" sx={{ ...albumCoverSx, backgroundImage: "url(/album-padrao.svg)", backgroundSize: "cover" }} />;
   }
@@ -175,6 +175,34 @@ function AlbumMosaic({ covers }: { covers: string[] }) {
           <CoverImage src={covers[i]} sizes="90px" />
         </Box>
       ))}
+    </Box>
+  );
+}
+
+/** As tier lists do perfil (12/11/2026): um cartão por temporada publicada, com a mesma capa dos álbuns. */
+export function TierListGrid({ userId, lists, createLink }: { userId: string; lists: Array<{ slug: string; label: string; count: number; covers: string[] }>; createLink?: boolean }) {
+  return (
+    <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0,1fr))", sm: "repeat(4, minmax(0,1fr))" }, gap: 2 }}>
+      {lists.map((l) => (
+        <Box component="li" key={l.slug} data-testid={`profile-tier-list-${l.slug}`}>
+          <AppLink href={`/users/${userId}/tier-lists/${l.slug}`} underline="none" sx={{ display: "flex", flexDirection: "column", gap: 0.75, color: "text.primary", "&:hover .album-name": { textDecoration: "underline" } }}>
+            <AlbumMosaic covers={l.covers} />
+            <Typography className="album-name" sx={{ fontSize: 14, fontWeight: 700 }}>
+              Tier list · {l.label}
+            </Typography>
+            <Typography component="span" sx={{ fontSize: 12, color: "text.secondary" }}>
+              {l.count} {l.count === 1 ? "obra" : "obras"}
+            </Typography>
+          </AppLink>
+        </Box>
+      ))}
+      {createLink && (
+        <Box component="li">
+          <AppLink href="/tier-list" underline="none" data-testid="profile-tier-list-new" sx={{ display: "flex", alignItems: "center", justifyContent: "center", aspectRatio: "1 / 1", borderRadius: "10px", border: 1, borderStyle: "dashed", borderColor: "divider", color: "text.secondary", fontSize: 14, fontWeight: 700, textAlign: "center", p: 2, "&:hover": { color: "text.primary", borderColor: "text.secondary" } }}>
+            + Montar a tier list da temporada
+          </AppLink>
+        </Box>
+      )}
     </Box>
   );
 }

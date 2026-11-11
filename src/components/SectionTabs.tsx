@@ -39,6 +39,7 @@ export const SEASON_TABS: SectionTab[] = [
   { key: "tier-list", label: "Tier list", href: "/tier-list" },
   { key: "bolao", label: "Bolão", href: "/bolao" },
   { key: "aberturas", label: "Aberturas", href: "/aberturas" },
+  { key: "personagens", label: "Personagens", href: "/personagens" },
   { key: "retrospectiva", label: "Retrospectiva", href: "/retrospectiva" },
 ];
 

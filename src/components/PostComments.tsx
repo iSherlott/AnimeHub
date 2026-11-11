@@ -21,6 +21,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { AchievementTitleBadge } from "@/components/AchievementTitleBadge";
 import { SpoilerGate } from "@/components/SpoilerGate";
 import { SpoilerRichText } from "@/components/Spoiler";
+import { TextWithMentions } from "@/components/PostBodyText";
 import { spoilerLabel } from "@/lib/spoilers";
 import { ReportDialog } from "@/components/ReportDialog";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
@@ -332,7 +333,7 @@ export function PostComments({
                   />
                 ) : (
                   <Typography sx={{ whiteSpace: "pre-wrap", fontSize: 16, overflowWrap: "anywhere" }}>
-                    <SpoilerRichText text={c.body} label={spoilerLabel({ work: spoilerWork })} />
+                    <SpoilerRichText text={c.body} label={spoilerLabel({ work: spoilerWork })} renderText={(value, key) => <TextWithMentions key={key} value={value} />} />
                   </Typography>
                 )}
                 <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>

@@ -13,12 +13,16 @@ import {
   DialogContentText,
   DialogTitle,
   InputBase,
+  MenuItem,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
 import { AnimeContextPicker, type RelatedAnime } from "@/components/AnimeContextPicker";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import BarChartIcon from "@mui/icons-material/BarChart";
+import { POLL_DURATIONS, POLL_MAX_OPTIONS, POLL_MIN_OPTIONS, POLL_OPTION_MAX } from "@/lib/postPollTypes";
 import { HashtagRow } from "@/components/HashtagRow";
 import { PostImageAttachments } from "@/components/PostImageAttachments";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -76,6 +80,10 @@ export function PostComposer({
   const [tagInput, setTagInput] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [spoiler, setSpoiler] = useState(false);
+  // Enquete (12/11/2026): de 2 a 4 opções; a pergunta é o texto da publicação.
+  const [pollOn, setPollOn] = useState(false);
+  const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
+  const [pollDays, setPollDays] = useState<number | null>(1);
   const [spoilerEpisode, setSpoilerEpisode] = useState("");
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
   const [quoted, setQuoted] = useState<ComposerQuote | null>(quote);
@@ -86,7 +94,8 @@ export function PostComposer({
   const fileRef = useRef<HTMLInputElement | null>(null);
   const images = usePostImages(DRAFT_IMAGES_KEY);
   // Imagem que falhou bloqueia o Publicar até ser removida: senão a pessoa acharia que ela foi junto.
-  const canPublish = (Boolean(body.trim()) || images.urls.length > 0) && !images.uploading && !images.failed && !busy;
+  const pollReady = !pollOn || (Boolean(body.trim()) && pollOptions.filter((o) => o.trim()).length >= POLL_MIN_OPTIONS);
+  const canPublish = (Boolean(body.trim()) || images.urls.length > 0) && pollReady && !images.uploading && !images.failed && !busy;
 
   // Rascunho preservado entre navegações/login (sessionStorage; falha em silêncio).
   useEffect(() => {
@@ -192,7 +201,7 @@ export function PostComposer({
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: full, imageUrls: images.urls, imageAlts: images.alts, imageSpoilers: images.spoilers, anilistId: anime?.anilistId ?? undefined, work: anime && anime.anilistId === null ? anime.work : undefined, isSpoiler: spoiler, spoilerEpisode: episode ?? undefined, quotedPostId: quoted?.id }),
+        body: JSON.stringify({ body: full, imageUrls: images.urls, imageAlts: images.alts, imageSpoilers: images.spoilers, anilistId: anime?.anilistId ?? undefined, work: anime && anime.anilistId === null ? anime.work : undefined, isSpoiler: spoiler, spoilerEpisode: episode ?? undefined, quotedPostId: quoted?.id, poll: pollOn ? { options: pollOptions.map((o) => o.trim()).filter(Boolean), days: pollDays } : undefined }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -290,6 +299,54 @@ export function PostComposer({
           </Button>
         </Box>
       </Box>
+
+      {/* Enquete */}
+      <EditorSection title="Enquete">
+        {pollOn ? (
+          <Box data-testid="editor-poll" sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+            <Typography sx={{ fontSize: 14, color: "text.secondary" }}>A pergunta é o texto da publicação. De {POLL_MIN_OPTIONS} a {POLL_MAX_OPTIONS} opções; cada pessoa vota uma vez e pode trocar enquanto estiver aberta.</Typography>
+            {pollOptions.map((value, i) => (
+              <TextField
+                key={i}
+                size="small"
+                label={`Opção ${i + 1}`}
+                value={value}
+                onChange={(e) => setPollOptions((list) => list.map((o, j) => (j === i ? e.target.value.slice(0, POLL_OPTION_MAX) : o)))}
+                slotProps={{ htmlInput: { maxLength: POLL_OPTION_MAX, "data-testid": `editor-poll-option-${i}` } }}
+              />
+            ))}
+            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+              {pollOptions.length < POLL_MAX_OPTIONS && (
+                <Button size="small" onClick={() => setPollOptions((list) => [...list, ""])}>
+                  + Opção
+                </Button>
+              )}
+              {pollOptions.length > POLL_MIN_OPTIONS && (
+                <Button size="small" onClick={() => setPollOptions((list) => list.slice(0, -1))}>
+                  − Opção
+                </Button>
+              )}
+              <TextField select size="small" label="Fica aberta" value={pollDays === null ? "none" : String(pollDays)} onChange={(e) => setPollDays(e.target.value === "none" ? null : Number(e.target.value))} sx={{ minWidth: 160 }}>
+                {POLL_DURATIONS.map((d) => (
+                  <MenuItem key={d} value={String(d)}>
+                    {d === 1 ? "1 dia" : `${d} dias`}
+                  </MenuItem>
+                ))}
+                <MenuItem value="none">Sem prazo</MenuItem>
+              </TextField>
+              <Button size="small" color="inherit" onClick={() => setPollOn(false)} sx={{ color: "text.secondary" }}>
+                Tirar a enquete
+              </Button>
+            </Box>
+          </Box>
+        ) : (
+          <Box>
+            <Button onClick={() => setPollOn(true)} disabled={busy} startIcon={<BarChartIcon />} data-testid="editor-poll-add" sx={{ bgcolor: "#171820", color: "text.primary", "&:hover": { bgcolor: "#1d1e28" } }}>
+              Adicionar enquete
+            </Button>
+          </Box>
+        )}
+      </EditorSection>
 
       {/* Imagens */}
       <EditorSection title="Imagens">

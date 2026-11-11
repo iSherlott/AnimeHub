@@ -9,7 +9,8 @@ import { LinkButton } from "@/components/LinkButton";
 import { PageContainer, PageIntro } from "@/components/PageShell";
 import { SideBox } from "@/components/SideBox";
 import { FanButton, FriendButton, ProfileReportButton, RatingBox, ScrapForm, TestimonialDecision, TestimonialForm, DeleteButton } from "@/components/profile/ProfileActions";
-import { AlbumGrid, CommunityGrid, NoteItem, PeopleGrid, ProfileSection, ScrapList } from "@/components/profile/ProfileSections";
+import { AlbumGrid, CommunityGrid, NoteItem, PeopleGrid, ProfileSection, ScrapList, TierListGrid } from "@/components/profile/ProfileSections";
+import { profileTierLists } from "@/lib/profileTierLists";
 import { NewAlbumButton } from "@/components/profile/ProfileAlbums";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -115,6 +116,8 @@ export default async function UserProfilePage({ params }: Params) {
   const favoriteCharacters = await prisma.favoriteCharacter.findMany({ where: { userId: id }, orderBy: { position: "asc" }, include: { character: { select: { id: true, name: true, image: true } } } });
   const animeCount = animeList.kind === "ok" ? animeList.list.total : null;
   const albumCards = albums ? [...albums.auto, ...albums.custom] : [];
+  // Tier lists publicadas, uma por temporada (12/11/2026): como os álbuns, mas o que já saiu no Feed.
+  const tierLists = await profileTierLists(id);
   // Perfil próprio ainda sem amigos: a caixa de amigos mostra quem a pessoa talvez conheça.
   const peopleYouMayKnow = isOwnProfile && friends.total === 0 ? await friendSuggestions(id, 3) : [];
 
@@ -127,6 +130,7 @@ export default async function UserProfilePage({ params }: Params) {
   const menu = [
     { href: "#quem-sou-eu", label: "Quem sou eu", count: null },
     ...(albums ? [{ href: "#albuns", label: "Animes", count: animeCount }] : []),
+    ...(tierLists.length > 0 || isOwnProfile ? [{ href: "#tier-lists", label: "Tier lists", count: tierLists.length }] : []),
     { href: "#recados", label: "Recados", count: scraps.total },
     { href: "#depoimentos", label: "Depoimentos", count: approved.length },
     { href: "#amigos", label: "Amigos", count: friends.total },
@@ -284,6 +288,15 @@ export default async function UserProfilePage({ params }: Params) {
                 </ProfileSection>
               )}
 
+              {(tierLists.length > 0 || isOwnProfile) && (
+                <ProfileSection id="tier-lists" title="tier lists" count={tierLists.length} testId="profile-tier-lists">
+                  {tierLists.length === 0 && (
+                    <Typography sx={{ fontSize: 14, color: "text.secondary" }}>As tier lists que você publicar no Feed ficam guardadas aqui, uma por temporada.</Typography>
+                  )}
+                  <TierListGrid userId={id} lists={tierLists} createLink={isOwnProfile} />
+                </ProfileSection>
+              )}
+
               <ProfileSection id="recados" title="recados" count={scraps.total} testId="profile-scraps" more={scraps.total > SCRAPS_ON_PROFILE ? { href: `/users/${id}/recados`, label: "ver todos" } : undefined}>
                 {viewer ? (
                   <ScrapForm userId={id} />
@@ -343,7 +356,7 @@ export default async function UserProfilePage({ params }: Params) {
 
             {/* Direita: amigos, comunidades e conquistas */}
             <Box component="aside" aria-label="Amigos, comunidades e conquistas" sx={{ display: { xs: "flex", sm: "grid", lg: "flex" }, gridTemplateColumns: { sm: "repeat(2, minmax(0,1fr))" }, alignItems: { sm: "start", lg: "stretch" }, flexDirection: "column", gap: 2, gridColumn: { md: "1 / -1", lg: "auto" }, order: { xs: 3, md: 0 } }}>
-              {affinity && <AffinityBox result={affinity} firstName={firstName} />}
+              {affinity && <AffinityBox result={affinity} firstName={firstName} compareHref={affinity.kind === "ok" ? `/comparar/${id}` : undefined} />}
               {(favoriteCharacters.length > 0 || isOwnProfile) && (
                 <SideBox id="personagens" title="personagens favoritos" count={favoriteCharacters.length} testId="profile-favorite-characters">
                   {favoriteCharacters.length === 0 ? (

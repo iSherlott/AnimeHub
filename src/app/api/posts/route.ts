@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { toDtoPage, POST_ROW_INCLUDE } from "@/lib/postFeedDto";
+import { filterMuted } from "@/lib/mutes";
 import { loadRecommendedPage } from "@/lib/feedRecommended";
 import { createPostResponse } from "@/lib/createPost";
 import { ensureProduction } from "@/lib/production";
@@ -68,7 +69,8 @@ export async function GET(request: Request) {
   if (tab === "following") {
     const cursor = searchParams.get("cursor");
     const { page, nextCursor } = await loadFollowingPage(user.id, cursor, limit);
-    return NextResponse.json({ posts: await toDtoPage(page, user.id), nextCursor });
+    // O que a pessoa silenciou (obra ou #) some do Feed (12/11/2026); o cursor segue o da página inteira.
+    return NextResponse.json({ posts: await toDtoPage(await filterMuted(user.id, page), user.id), nextCursor });
   }
 
   if (tab === "recent") {
@@ -79,7 +81,8 @@ export async function GET(request: Request) {
     // Obra pedida e não encontrada: nenhuma publicação (e não o feed inteiro).
     if (workParam && !work) return NextResponse.json({ posts: [], nextCursor: null });
     const { page, nextCursor } = await loadRecentPage(searchParams.get("cursor"), limit, work);
-    return NextResponse.json({ posts: await toDtoPage(page, user.id), nextCursor });
+    // Pedindo uma obra (a página da obra), mostra tudo dela; no Feed, tira o que foi silenciado.
+    return NextResponse.json({ posts: await toDtoPage(work ? page : await filterMuted(user.id, page), user.id), nextCursor });
   }
 
   const offset = Math.max(0, Number(searchParams.get("offset")) || 0);
@@ -102,7 +105,7 @@ export async function GET(request: Request) {
   const now = since && !Number.isNaN(since.getTime()) ? since : new Date();
   const { page, nextOffset } = await loadRecommendedPage(offset, limit, now);
   return NextResponse.json({
-    posts: await toDtoPage(page, user.id),
+    posts: await toDtoPage(await filterMuted(user.id, page), user.id),
     nextOffset,
     since: now.toISOString(),
   });

@@ -15,8 +15,12 @@ async function send(url: string, method: string, body?: unknown): Promise<{ ok: 
 }
 
 /** "Participar" / "Sair da comunidade". Sem conta, leva ao login e volta para a comunidade. */
-export function JoinButton({ communityKey, member, loggedIn }: { communityKey: string; member: boolean; loggedIn: boolean }) {
+export function JoinButton({ communityKey, member: memberProp, loggedIn }: { communityKey: string; member: boolean; loggedIn: boolean }) {
   const router = useRouter();
+  // O botão troca assim que o servidor confirma (não espera a página recarregar): sem isso, um segundo toque no meio da
+  // recarga caía no botão que já tinha virado "Sair" e tirava a pessoa da comunidade.
+  const [confirmed, setConfirmed] = useState<boolean | null>(null);
+  const member = confirmed ?? memberProp;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (!loggedIn) {
@@ -32,7 +36,10 @@ export function JoinButton({ communityKey, member, loggedIn }: { communityKey: s
     try {
       const r = await send(`/api/communities/${communityKey}/membership`, member ? "DELETE" : "POST");
       if (!r.ok) setError(String(r.data.error ?? "Não foi possível. Tente novamente."));
-      else router.refresh();
+      else {
+        setConfirmed(!member);
+        router.refresh();
+      }
     } finally {
       setBusy(false);
     }

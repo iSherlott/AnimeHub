@@ -1,6 +1,7 @@
 import { equippedTitleNames } from "@/lib/quiz";
 import { NextResponse } from "next/server";
 import { notifySocial } from "@/lib/socialNotifications";
+import { notifyMentions } from "@/lib/mentions";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireUser } from "@/lib/auth/session";
 import { isBlank } from "@/lib/text";
@@ -139,6 +140,8 @@ export async function POST(request: Request, { params }: Params) {
       ? { type: "COMMENT_REPLY", recipientId: replyToUserId, actorId: user.id, postId, commentId: comment.id }
       : { type: "POST_REPLY", recipientId: post.userId, actorId: user.id, postId, commentId: comment.id }
   );
+  // Menção com @ no comentário (12/11/2026); quem já foi avisado da resposta não recebe um segundo aviso.
+  await notifyMentions({ actorId: user.id, text, postId, commentId: comment.id, skip: [replyToUserId ?? post.userId] });
 
   return NextResponse.json(
     {

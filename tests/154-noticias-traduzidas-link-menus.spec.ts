@@ -117,10 +117,10 @@ test.describe.serial("Notícias traduzidas, imagem do feed, link de recomendaç�
     for (const name of [/Tier list/, /Bolão/, /Aberturas/, /Eventos/]) await expect(page.getByRole("menuitem", { name })).toHaveCount(0);
   });
 
-  test("a Temporada tem as quatro abas", async ({ page }) => {
+  test("a Temporada tem as cinco abas", async ({ page }) => {
     await page.goto("/bolao");
     const tabs = page.getByTestId("season-tabs");
-    await expect(tabs.getByRole("link")).toHaveText(["Tier list", "Bolão", "Aberturas", "Retrospectiva"]);
+    await expect(tabs.getByRole("link")).toHaveText(["Tier list", "Bolão", "Aberturas", "Personagens", "Retrospectiva"]);
     await expect(tabs.getByTestId("season-tabs-bolao")).toHaveAttribute("aria-current", "page");
   });
 });

@@ -72,6 +72,7 @@ export function PostFeedList({
           timeStyle={timeStyle}
           followingLabel={followingLabel}
           onDeleted={handlePostDeleted}
+          onMuted={handlePostDeleted}
           onQuote={handleQuote}
           onCommentCountChange={handleCommentCountChange}
           onRepostChange={handleRepostChange}

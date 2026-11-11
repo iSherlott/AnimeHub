@@ -78,7 +78,14 @@ O cluster já estava em `20261123120000_episodes_season_games_cast` (80). Esta v
   começa vazio; a próxima coleta de notícias acha as imagens e traduz as publicações (precisa do LibreTranslate do
   cluster, com `en,pt,ja`).
 
-A conferência passa a esperar 82 migrações, última `20261124110000_news_images_translations_rec_links`.
+### Atualização de 12/11/2026 (mais 1 migração, só acrescenta)
+
+- `20261125100000_mentions_mutes_polls_announcements`: duas preferências novas em `User` (`notifyMentions` e
+  `notifyAnnouncements`, as duas ligadas), as colunas `SocialNotification.workKey` e `relatedWorkKey` (aviso de
+  continuação anunciada) e as tabelas `MutedTopic` (silenciar obra ou # no Feed), `PostPoll`, `PostPollOption`,
+  `PostPollVote` (enquete nas publicações) e `SeasonCharacterAward` (personagem da temporada). Tudo começa vazio.
+
+A conferência passa a esperar 83 migrações, última `20261125100000_mentions_mutes_polls_announcements`.
 
 ## 1. Antes de começar
 
@@ -128,7 +135,7 @@ aconteceu, e o site continua na versão anterior.
 docker run --rm -v "$PWD:/w" postgres:18-alpine psql "<URL do banco sem ?schema=…>" -f /w/deploy/k8s/conferir-atualizacao.sql
 ```
 
-- [ ] Cada linha bate com o "espera" do lado: 82 migrações, 0 com falha, última `20261124110000_news_images_translations_rec_links`, nenhum item
+- [ ] Cada linha bate com o "espera" do lado: 83 migrações, 0 com falha, última `20261125100000_mentions_mutes_polls_announcements`, nenhum item
       de lista ou produção sem obra, 2 tabelas arquivadas, 1 ou mais administradores, nenhuma senha provisória,
       nenhum avatar enviado. Gênero não registrado não impede o site: registre, mescle ou remova em Admin → Taxonomia.
 - [ ] A linha "contas sem nome de usuário" diz quantas contas ainda não têm @. Não impede o site, mas a pessoa não

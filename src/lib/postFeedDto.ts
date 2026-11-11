@@ -4,6 +4,7 @@ import type { Post } from "@prisma/client";
 import { blockedUserIdSet } from "@/lib/blocks";
 import { equippedTitleNames } from "@/lib/quiz";
 import { releasedSpoilerIds } from "@/lib/spoilerRelease";
+import { pollsFor } from "@/lib/postPolls";
 
 type Author = { id: string; displayName: string; handle: string | null; avatarUrl: string | null };
 type QuotedPostRow = Post & { user: Author };
@@ -130,6 +131,7 @@ export async function toDtoPage(page: PostRow[], viewerId: string | null): Promi
   const translationsByPost = new Map<string, { lang: string; body: string }[]>();
   for (const t of translationRows) translationsByPost.set(t.postId, [...(translationsByPost.get(t.postId) ?? []), { lang: t.lang, body: t.body }]);
   const sizes = new Map(sizeRows.map((r) => [r.url, { width: r.width, height: r.height }]));
+  const polls = await pollsFor(effectiveIds, viewerId);
   const likedSet = new Set(myLikes.map((l) => l.postId));
   const reportedSet = new Set(myOpenReports.map((r) => r.postId));
   const repostedSet = new Set(myReposts.map((r) => r.repostOfId));
@@ -152,6 +154,7 @@ export async function toDtoPage(page: PostRow[], viewerId: string | null): Promi
       spoilerReleased: released.has(effective.id),
       translations: translationsByPost.get(effective.id) ?? [],
       imageSizes: sizes,
+      poll: polls.get(effective.id) ?? null,
     })
   );
 }

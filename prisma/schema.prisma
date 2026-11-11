@@ -60,6 +60,10 @@ model User {
   showSpoilers    Boolean @default(false)
   /// Recomendações de obras enviadas por amigos chegam no sino (10/11/2026).
   notifyRecommendations Boolean @default(true)
+  /// Avisar quando alguém menciona a pessoa com @ numa publicação ou comentário (12/11/2026). Vem ligado.
+  notifyMentions        Boolean   @default(true)
+  /// Avisar quando uma continuação, filme ou especial de uma obra da lista é anunciado (12/11/2026). Vem ligado.
+  notifyAnnouncements   Boolean   @default(true)
   /// Compartilhar com os amigos o que termino e a nota que dou (10/11/2026). Vem DESLIGADO: só quem escolhe aparece.
   shareActivity Boolean @default(false)
   notifyReleases  Boolean  @default(true)
@@ -137,6 +141,8 @@ model User {
   themeLikes              WorkThemeLike[]
   favoriteCharacters      FavoriteCharacter[]
   recommendationLinks     RecommendationLink[] @relation("RecommendationLinksSent")
+  mutedTopics             MutedTopic[]
+  postPollVotes           PostPollVote[]
 
   @@index([email])
 }
@@ -814,6 +820,9 @@ model SocialNotification {
   recommendationId String?
   /// Lembrete de um evento da agenda (EVENT_REMINDER).
   animeEventId String?
+  /// Anúncio de obra (WORK_ANNOUNCED, 12/11/2026): a obra nova e a obra da lista de quem ela é continuação/especial.
+  workKey        String?
+  relatedWorkKey String?
   readAt    DateTime?
   createdAt DateTime  @default(now())
 
@@ -865,6 +874,7 @@ model Post {
   /// Idioma do texto original (11/11/2026): "ja" ou "en" nas notícias do NewsHub; null = escrito na plataforma, em português.
   bodyLang          String?
   translations      PostTranslation[]
+  poll              PostPoll?
   createdAt         DateTime  @default(now())
   /// Soft delete pelo autor ou por admin via fila de denúncia — mesmo
   /// padrão do Comment (Epic 15).
@@ -2214,4 +2224,71 @@ model RecommendationLink {
   updatedAt DateTime @updatedAt
 
   @@unique([fromId, workKey])
+}
+
+/// Silenciar no Feed (12/11/2026): uma obra ("WORK", chave = AniList ID ou `catalog:<id>`) ou uma # ("TAG", chave da
+/// hashtag). As publicações sobre ela somem das abas do Feed da pessoa; a página da obra e a da # continuam mostrando.
+model MutedTopic {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  key       String
+  /// Como aparece na lista de silenciados (título da obra ou #tag).
+  label     String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, kind, key])
+}
+
+/// Enquete numa publicação do Feed (12/11/2026), como a das comunidades: de 2 a 4 opções, um voto por pessoa (pode trocar
+/// enquanto estiver aberta). `closesAt` null = fica aberta.
+model PostPoll {
+  id       String           @id @default(cuid())
+  postId   String           @unique
+  post     Post             @relation(fields: [postId], references: [id], onDelete: Cascade)
+  closesAt DateTime?
+  options  PostPollOption[]
+  votes    PostPollVote[]
+}
+
+model PostPollOption {
+  id       String         @id @default(cuid())
+  pollId   String
+  poll     PostPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  position Int
+  label    String
+  votes    PostPollVote[]
+
+  @@unique([pollId, position])
+}
+
+model PostPollVote {
+  pollId   String
+  poll     PostPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  optionId String
+  option   PostPollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  votedAt  DateTime       @default(now())
+
+  @@id([pollId, userId])
+  @@index([optionId])
+}
+
+/// Personagem da temporada (12/11/2026): o admin publica o mais favoritado entre os personagens das obras da temporada;
+/// sai no Feed pelo NewsHub. Um por temporada (publicar de novo atualiza).
+model SeasonCharacterAward {
+  id          String   @id @default(cuid())
+  season      String
+  seasonYear  Int
+  characterId Int
+  /// Obra em que o personagem aparece na temporada (chave da página da obra).
+  workKey     String?
+  favorites   Int
+  postId      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([season, seasonYear])
 }

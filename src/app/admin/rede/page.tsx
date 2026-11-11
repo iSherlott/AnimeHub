@@ -19,7 +19,7 @@ export default async function AdminSocialPage() {
   const season = currentSeasonRef();
   return (
     <>
-      <AdminPageHeader title="Eventos e votações" subtitle="Os disparos da parte social: a agenda de eventos (e parcerias), o anime da semana e o bolão da temporada." />
+      <AdminPageHeader title="Eventos e votações" subtitle="Os disparos da parte social: a agenda de eventos (e parcerias), o anime da semana, o bolão e o personagem da temporada." />
       <AdminSocialPanels
         events={events.map((e) => ({ id: e.id, title: e.title, kind: e.kind, startsAt: e.startsAt.toISOString(), place: e.place, partner: e.partner, going: e._count.rsvps }))}
         vote={vote ? { id: vote.id, title: vote.title, status: vote.status, closesAt: vote.closesAt.toISOString(), options: vote._count.options, ballots: vote._count.ballots } : null}

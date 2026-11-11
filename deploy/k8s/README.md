@@ -200,7 +200,8 @@ acrescentam: `20261123100000_password_links_system_alerts` (link de senha e avis
 `20261123110000_recommendations_friend_activity` (recomendar a um amigo e atividade dos amigos, que vem desligada), e a
 `20261123120000_episodes_season_games_cast` (episódios, bolão, anime da semana, tier list, eventos, aberturas e elenco).
 Em 11/11, a `20261124100000_post_tier_list_snapshot` só acrescenta a coluna do quadro da tier list publicada, e a
-`20261124110000_news_images_translations_rec_links` acrescenta a imagem e a tradução das notícias e o link de recomendação.
+`20261124110000_news_images_translations_rec_links` acrescenta a imagem e a tradução das notícias e o link de recomendação. Em 12/11, a
+`20261125100000_mentions_mutes_polls_announcements` acrescenta menções, silenciados, enquetes, anúncios e o personagem da temporada.
 
 **Sistema fechado (28/10).** Não existe mais cadastro aberto nem convite: as contas nascem em Admin → Acesso e
 moderação → Criar conta, sempre como membro, com uma senha provisória mostrada uma vez (a pessoa troca no primeiro

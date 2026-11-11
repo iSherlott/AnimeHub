@@ -2,6 +2,7 @@
 
 import { TierListBoard } from "@/components/TierListBoard";
 import { PostLanguageSwitch } from "@/components/PostLanguageSwitch";
+import { PostPollView } from "@/components/PostPollView";
 import { loginHref } from "@/lib/safeRedirect";
 import { useCallback, useId, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -64,6 +65,7 @@ export function PostCard({
   commentsHeading = false,
   timeStyle = "relative",
   followingLabel = false,
+  onMuted,
 }: {
   post: PostDTO;
   /** "relative" = "há 18 min" (Para você); "clock" = "12:42" no fuso da conta (Seguindo/Recentes). */
@@ -75,6 +77,8 @@ export function PostCard({
   /** Mostra o título "Respostas" acima da lista (página de discussão). */
   commentsHeading?: boolean;
   onDeleted: (id: string) => void;
+  /** Silenciou a obra ou a # desta publicação (12/11/2026): no Feed, o card sai da lista. */
+  onMuted?: (id: string) => void;
   /** Abre o editor de nova publicação em modo citação (Epic 25). */
   onQuote: (post: PostDTO) => void;
   /** Sobe até o FeedView/UserPostList — ver comentário logo abaixo sobre
@@ -113,6 +117,7 @@ export function PostCard({
   const [reportOpen, setReportOpen] = useState(false);
   const [shareAnchor, setShareAnchor] = useState<HTMLElement | null>(null);
   const [moreAnchor, setMoreAnchor] = useState<HTMLElement | null>(null);
+  const [mutedLabel, setMutedLabel] = useState<string | null>(null);
   const shareMenuId = useId();
   const moreMenuId = useId();
 
@@ -126,6 +131,18 @@ export function PostCard({
   const captionCut = useMemo(() => truncateKeepingSpoilers(displayBody, LONG_CAPTION_THRESHOLD), [displayBody]);
   // "Spoiler de Frieren · até o episódio 18": o aviso dos spoilers desta publicação (inteira, trechos e imagens).
   const postSpoilerLabel = spoilerLabel({ work: animeTitle, episode: post.spoilerEpisode });
+
+  // Silenciar no Feed (12/11/2026): a obra ou a # some das abas do Feed; volta em Configurações → Silenciados.
+  async function mute(kind: "WORK" | "TAG", key: string, label: string) {
+    setMoreAnchor(null);
+    const res = await fetch("/api/mutes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, key, label }) }).catch(() => null);
+    if (!res?.ok) {
+      setError("Não foi possível silenciar agora.");
+      return;
+    }
+    if (onMuted) onMuted(post.id);
+    else setMutedLabel(label);
+  }
 
   async function handleDelete() {
     try {
@@ -270,6 +287,16 @@ export function PostCard({
             Abrir discussão
           </MenuItem>
           <MenuItem onClick={copyLink}>Copiar link da publicação</MenuItem>
+          {post.workKey && animeTitle && (
+            <MenuItem onClick={() => void mute("WORK", post.workKey as string, animeTitle)} data-testid="mute-work">
+              Silenciar {animeTitle} no Feed
+            </MenuItem>
+          )}
+          {trailingTags.slice(0, 3).map((t) => (
+            <MenuItem key={t.key} onClick={() => void mute("TAG", t.key, `#${t.display}`)} data-testid={`mute-tag-${t.key}`}>
+              Silenciar #{t.display} no Feed
+            </MenuItem>
+          ))}
         </Menu>
       </Stack>
 
@@ -317,6 +344,7 @@ export function PostCard({
               </Button>
             )}
           </Box>
+          {post.poll && <PostPollView postId={post.id} initial={post.poll} isMine={post.isMine} />}
           {post.translations.length > 0 && <PostLanguageSwitch original={originalLang} available={[originalLang, ...post.translations.map((t) => t.lang)]} value={lang} onChange={setLang} />}
           {post.tierList && <TierListBoard snapshot={post.tierList} />}
         </>
@@ -415,6 +443,11 @@ export function PostCard({
       {error && (
         <Typography role="alert" sx={{ color: "error.main", fontSize: 12 }}>
           {error}
+        </Typography>
+      )}
+      {mutedLabel && (
+        <Typography role="status" data-testid="post-muted" sx={{ color: "text.secondary", fontSize: 12 }}>
+          {mutedLabel} silenciado: some do seu Feed. Para voltar a ver, vá em Configurações → Silenciados.
         </Typography>
       )}
     </Box>

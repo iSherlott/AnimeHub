@@ -45,6 +45,8 @@ export function toPublicUser(user: User): PublicUser {
       recordVisits: user.recordVisits,
       notifyRecommendations: user.notifyRecommendations,
       shareActivity: user.shareActivity,
+      notifyMentions: user.notifyMentions,
+      notifyAnnouncements: user.notifyAnnouncements,
       showSpoilers: user.showSpoilers,
     },
   };

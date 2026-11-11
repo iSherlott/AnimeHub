@@ -31,11 +31,15 @@ export type UserPreferences = {
   notifyRecommendations: boolean;
   /** Os amigos veem o que termino e a nota que dou (10/11/2026). Vem desligado. */
   shareActivity: boolean;
+  /** Alguém me mencionou com @ (12/11/2026). Vem ligado. */
+  notifyMentions: boolean;
+  /** Continuação, filme ou especial anunciado de uma obra da minha lista (12/11/2026). Vem ligado. */
+  notifyAnnouncements: boolean;
 };
 
 export type UserPreferencesPatch = Partial<UserPreferences>;
 
-const BOOLEAN_KEYS = ["notifyReleases", "notifyReplies", "notifyComments", "notifyFollowers", "notifyLikes", "notifyCommunity", "animeListPublic", "recordVisits", "showSpoilers", "notifyRecommendations", "shareActivity"] as const;
+const BOOLEAN_KEYS = ["notifyReleases", "notifyReplies", "notifyComments", "notifyFollowers", "notifyLikes", "notifyCommunity", "animeListPublic", "recordVisits", "showSpoilers", "notifyRecommendations", "shareActivity", "notifyMentions", "notifyAnnouncements"] as const;
 
 export type ValidationResult = { ok: true; patch: UserPreferencesPatch } | { ok: false; error: string };
 
@@ -89,4 +93,6 @@ export const SOCIAL_OFF_PATCH: UserPreferencesPatch = {
   notifyLikes: false,
   notifyCommunity: false,
   notifyRecommendations: false,
+  notifyMentions: false,
+  notifyAnnouncements: false,
 };

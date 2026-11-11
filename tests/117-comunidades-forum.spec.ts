@@ -88,10 +88,11 @@ test.describe.serial("Comunidades dos animes (fórum)", () => {
     await page.getByTestId("community-menu-fórum").click();
     await expect(page).toHaveURL(new RegExp(`/comunidades/${S1}/forum$`));
     await expect(page.getByTestId("community-join-hint")).toBeVisible();
-    await expect(async () => {
-      await page.getByTestId("community-join").click();
-      await expect(page.getByTestId("community-leave")).toBeVisible({ timeout: 3000 });
-    }).toPass();
+    // Um clique só, depois que a página carregou: repetir o clique com o servidor lento acertava o botão que já tinha
+    // virado "Sair" e tirava a pessoa da comunidade (era a falha intermitente deste teste).
+    await page.waitForLoadState("networkidle");
+    await page.getByTestId("community-join").click();
+    await expect(page.getByTestId("community-leave")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("community-stats")).toContainText("1 membro");
 
     await page.getByTestId("new-topic-open").click();

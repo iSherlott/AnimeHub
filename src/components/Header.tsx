@@ -48,7 +48,7 @@ const NAV_ITEMS: Array<{ href: string; label: string; match: (p: string) => bool
   { href: "/discover", label: "Explorar", match: (p) => p === "/discover" },
   { href: "/minha-lista", label: "Meus animes", match: (p) => p === "/minha-lista" || p.startsWith("/minha-lista/") },
   // "Temporada": tier list, bolão, aberturas e retrospectiva (11/11: saíram do menu da conta, viraram abas).
-  { href: "/tier-list", label: "Temporada", match: (p) => ["/tier-list", "/bolao", "/aberturas", "/retrospectiva"].includes(p) },
+  { href: "/tier-list", label: "Temporada", match: (p) => ["/tier-list", "/bolao", "/aberturas", "/personagens", "/retrospectiva"].includes(p) },
   // "Comunidades": o fórum de cada anime e o diretório.
   { href: "/comunidades", label: "Comunidades", match: (p) => p === "/comunidades" || p.startsWith("/comunidades/") || p === "/eventos" },
 ];

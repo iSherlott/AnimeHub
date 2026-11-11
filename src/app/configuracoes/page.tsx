@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import { Alert, Box, Button, MenuItem, Select, Typography } from "@mui/material";
 import { Header } from "@/components/Header";
+import { MutedTopicsList } from "@/components/MutedTopicsList";
 import { PageContainer, PageIntro } from "@/components/PageShell";
 import { useCurrentUser, useSetCurrentUser } from "@/lib/auth/useCurrentUser";
 import { useTitlePreference } from "@/lib/titlePreference";
@@ -21,7 +22,7 @@ import { SOCIAL_OFF_PATCH, type UserPreferences } from "@/lib/userSettings";
  */
 type Draft = Pick<
   UserPreferences,
-  "notifyReleases" | "notifyReplies" | "notifyComments" | "notifyFollowers" | "notifyLikes" | "notifyCommunity" | "animeListPublic" | "recordVisits" | "showSpoilers" | "notifyRecommendations" | "shareActivity"
+  "notifyReleases" | "notifyReplies" | "notifyComments" | "notifyFollowers" | "notifyLikes" | "notifyCommunity" | "animeListPublic" | "recordVisits" | "showSpoilers" | "notifyRecommendations" | "shareActivity" | "notifyMentions" | "notifyAnnouncements"
 > & { titleFormat: "ja" | "romaji"; synopsisLanguage: "pt" | "ja"; timeZone: string };
 
 const SOCIAL_TOGGLES: Array<{ key: keyof Draft; label: string; hint: string }> = [
@@ -31,6 +32,8 @@ const SOCIAL_TOGGLES: Array<{ key: keyof Draft; label: string; hint: string }> =
   { key: "notifyLikes", label: "Curtidas", hint: "Vem desativado, para não encher o sino." },
   { key: "notifyCommunity", label: "Comunidades", hint: "Respostas nos tópicos em que você participa e eventos novos nas suas comunidades. Vem ativado." },
   { key: "notifyRecommendations", label: "Recomendações dos amigos", hint: "Quando um amigo recomenda uma obra para você. Vem ativado." },
+  { key: "notifyMentions", label: "Menções", hint: "Quando alguém escreve o seu @ numa publicação ou comentário. Vem ativado." },
+  { key: "notifyAnnouncements", label: "Anúncios das suas obras", hint: "Quando uma continuação, filme ou especial de uma obra da sua lista é anunciado. Vem ativado." },
 ];
 
 /** Cartão do Figma: surface, raio 16, respiro de 24 e título de 20 px. */
@@ -153,6 +156,8 @@ export default function SettingsPage() {
         showSpoilers: p.showSpoilers,
         notifyRecommendations: p.notifyRecommendations,
         shareActivity: p.shareActivity,
+        notifyMentions: p.notifyMentions,
+        notifyAnnouncements: p.notifyAnnouncements,
       });
     }
   }, [user, draft]);
@@ -184,7 +189,7 @@ export default function SettingsPage() {
     }
   }
 
-  const allSocialOff = !draft.notifyReplies && !draft.notifyComments && !draft.notifyFollowers && !draft.notifyLikes && !draft.notifyCommunity && !draft.notifyRecommendations;
+  const allSocialOff = !draft.notifyReplies && !draft.notifyComments && !draft.notifyFollowers && !draft.notifyLikes && !draft.notifyCommunity && !draft.notifyRecommendations && !draft.notifyMentions && !draft.notifyAnnouncements;
   const japanese = draft.titleFormat === "ja";
 
   return (
@@ -305,6 +310,10 @@ export default function SettingsPage() {
                 checked={draft.showSpoilers}
                 onChange={(v) => update("showSpoilers", v)}
               />
+            </Card>
+
+            <Card title="Silenciados no Feed" labelledBy="muted-heading">
+              <MutedTopicsList />
             </Card>
 
             <Card title="Senha" labelledBy="password-heading">

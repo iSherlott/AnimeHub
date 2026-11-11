@@ -15,7 +15,9 @@ export type SocialNotificationType =
   | "FRIEND_ACCEPTED"
   | "FRIEND_BIRTHDAY"
   | "WORK_RECOMMENDATION"
-  | "EVENT_REMINDER";
+  | "EVENT_REMINDER"
+  | "MENTION"
+  | "WORK_ANNOUNCED";
 
 /** Qual preferência da conta controla cada tipo (Configurações, S-12). */
 const PREFERENCE_BY_TYPE = {
@@ -39,6 +41,10 @@ const PREFERENCE_BY_TYPE = {
   WORK_RECOMMENDATION: "notifyRecommendations",
   // Criado por src/lib/animeEvents.ts para quem marcou "vou" (a própria pessoa pediu o lembrete).
   EVENT_REMINDER: "notifyCommunity",
+  // Alguém escreveu o @ da pessoa (src/lib/mentions.ts).
+  MENTION: "notifyMentions",
+  // Continuação/filme/especial anunciado de uma obra da lista (src/lib/workAnnouncements.ts, preferência própria).
+  WORK_ANNOUNCED: "notifyAnnouncements",
 } as const;
 
 /** Tipos que não se repetem: a mesma pessoa curtindo/seguindo de novo não gera outro aviso. */
@@ -71,7 +77,7 @@ export async function notifySocial(input: {
 
     const recipient = await prisma.user.findUnique({
       where: { id: recipientId },
-      select: { notifyReplies: true, notifyComments: true, notifyFollowers: true, notifyLikes: true, notifyCommunity: true, notifyRecommendations: true },
+      select: { notifyReplies: true, notifyComments: true, notifyFollowers: true, notifyLikes: true, notifyCommunity: true, notifyRecommendations: true, notifyMentions: true, notifyAnnouncements: true },
     });
     if (!recipient || !recipient[PREFERENCE_BY_TYPE[type]]) return;
 

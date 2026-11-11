@@ -41,11 +41,15 @@ type AiringAlertItem = {
 
 type SocialItem = {
   id: string;
-  type: "POST_REPLY" | "COMMENT_REPLY" | "NEW_FOLLOWER" | "POST_LIKE" | "PROFILE_SCRAP" | "PROFILE_TESTIMONIAL" | "PROFILE_FAN" | "COMMUNITY_REPLY" | "COMMUNITY_EVENT" | "FRIEND_REQUEST" | "FRIEND_ACCEPTED" | "FRIEND_BIRTHDAY" | "WORK_RECOMMENDATION" | "EVENT_REMINDER";
+  type: "POST_REPLY" | "COMMENT_REPLY" | "NEW_FOLLOWER" | "POST_LIKE" | "PROFILE_SCRAP" | "PROFILE_TESTIMONIAL" | "PROFILE_FAN" | "COMMUNITY_REPLY" | "COMMUNITY_EVENT" | "FRIEND_REQUEST" | "FRIEND_ACCEPTED" | "FRIEND_BIRTHDAY" | "WORK_RECOMMENDATION" | "EVENT_REMINDER" | "MENTION" | "WORK_ANNOUNCED";
   actor: { id: string; displayName: string };
   /** Comunidades: a comunidade e o título do tópico ou do evento (públicos, como na lista do fórum). */
   community?: string | null;
   subject?: string | null;
+  /** Menção: num comentário (e não na publicação em si). */
+  inComment?: boolean;
+  /** Anúncio: a obra da lista de quem a nova é continuação ou especial. */
+  related?: string | null;
   readAt: string | null;
   createdAt: string;
   unavailable: boolean;
@@ -106,6 +110,10 @@ function socialText(n: SocialItem): string {
       return `Hoje tem "${n.subject ?? "evento"}", que você marcou na agenda`;
     case "WORK_RECOMMENDATION":
       return `${n.actor.displayName} recomendou ${n.subject ?? "uma obra"} para você`;
+    case "MENTION":
+      return `${n.actor.displayName} mencionou você ${n.inComment ? "num comentário" : "numa publicação"}`;
+    case "WORK_ANNOUNCED":
+      return `Anunciado: ${n.subject ?? "uma obra nova"}${n.related ? `, de ${n.related}` : ""} (está na sua lista)`;
     case "COMMUNITY_EVENT":
       return `${n.actor.displayName} marcou o evento "${n.subject ?? "…"}"${n.community ? ` na comunidade ${n.community}` : ""}`;
   }
@@ -366,7 +374,7 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
               );
             })
           )
-        ) : !user.preferences.notifyReplies && !user.preferences.notifyComments && !user.preferences.notifyFollowers && !user.preferences.notifyLikes && !user.preferences.notifyCommunity && !user.preferences.notifyRecommendations ? (
+        ) : !user.preferences.notifyReplies && !user.preferences.notifyComments && !user.preferences.notifyFollowers && !user.preferences.notifyLikes && !user.preferences.notifyCommunity && !user.preferences.notifyRecommendations && !user.preferences.notifyMentions && !user.preferences.notifyAnnouncements ? (
           <Box sx={{ py: 2, display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start" }}>
             <Typography sx={{ fontSize: 20 }}>Notificações sociais desativadas</Typography>
             <Typography sx={{ fontSize: 14, color: "text.secondary" }}>Seus alertas de lançamentos continuam ativos.</Typography>
@@ -399,7 +407,7 @@ export function NotificationBell({ user }: { user: PublicUser | null | undefined
                     {n.readAt ? "Lida" : "Não lida"} · {formatRelativeTime(n.createdAt)}
                   </Typography>
                   {n.unavailable ? (
-                    <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.5 }}>{n.type === "COMMUNITY_EVENT" ? "Evento removido" : n.type === "COMMUNITY_REPLY" ? "Tópico removido" : n.type === "WORK_RECOMMENDATION" ? "Recomendação removida" : n.type === "EVENT_REMINDER" ? "Evento cancelado" : "Publicação removida"}</Typography>
+                    <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.5 }}>{n.type === "COMMUNITY_EVENT" ? "Evento removido" : n.type === "COMMUNITY_REPLY" ? "Tópico removido" : n.type === "WORK_RECOMMENDATION" ? "Recomendação removida" : n.type === "EVENT_REMINDER" ? "Evento cancelado" : n.type === "WORK_ANNOUNCED" ? "Obra fora do catálogo" : "Publicação removida"}</Typography>
                   ) : (
                     <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.5 }}>Abrir contexto →</Typography>
                   )}

@@ -1,6 +1,7 @@
 import type { Post } from "@prisma/client";
 import { maskSpoilers } from "@/lib/spoilers";
 import { parseTierSnapshot, stripTierLines, type TierSnapshot } from "@/lib/tierListTypes";
+import type { PostPollDTO } from "@/lib/postPollTypes";
 
 /**
  * Pré-visualização só-leitura de um post citado (Epic 25) — nunca mais
@@ -44,6 +45,8 @@ export type PostDTO = {
   translations: { lang: string; body: string }[];
   /** Proporção (largura/altura) medida de cada imagem, na mesma ordem; null = ainda não medida. O quadro se ajusta a ela. */
   imageRatios: (number | null)[];
+  /** Enquete da publicação (12/11/2026), ou null. */
+  poll: PostPollDTO | null;
   createdAt: string;
   /** null = publicação sem obra associada (Figma 13:41840: contexto opcional). */
   anilistId: number | null;
@@ -133,6 +136,7 @@ export function toPostDto(
     translations?: { lang: string; body: string }[];
     /** Tamanho medido das imagens (ImageSize), por endereço. */
     imageSizes?: Map<string, { width: number; height: number }>;
+    poll?: PostPollDTO | null;
   }
 ): PostDTO {
   const released = Boolean(opts.spoilerReleased && post.isSpoiler && post.spoilerEpisode);
@@ -149,6 +153,7 @@ export function toPostDto(
     releasedSpoilerEpisode: released ? (post.spoilerEpisode ?? null) : null,
     tierList,
     bodyLang: post.bodyLang ?? null,
+    poll: hidden ? null : (opts.poll ?? null),
     translations: hidden ? [] : (opts.translations ?? []),
     imageRatios: hidden ? [] : post.imageUrls.map((u) => {
       const size = opts.imageSizes?.get(u);

@@ -4,6 +4,7 @@ import NextLink from "next/link";
 import { Link as MuiLink } from "@mui/material";
 import { splitBodyByHashtags } from "@/lib/hashtags";
 import { SpoilerRichText } from "@/components/Spoiler";
+import { splitMentions } from "@/lib/mentionText";
 
 /** Só https; a pontuação final da frase não entra no link. */
 const URL_PATTERN = /(https:\/\/[^\s<>"]+[^\s<>".,;:!?)\]])/g;
@@ -17,7 +18,27 @@ function TextWithLinks({ value }: { value: string }) {
             {part}
           </MuiLink>
         ) : (
-          <span key={i}>{part}</span>
+          <TextWithMentions key={i} value={part} />
+        )
+      )}
+    </>
+  );
+}
+
+/**
+ * `@handle` vira link para o perfil (12/11/2026); o resto fica como texto. Link comum (não o do Next): o `/u/<@>` só
+ * redireciona para `/users/<id>`, e a navegação interna do Next não seguia esse redirecionamento.
+ */
+export function TextWithMentions({ value }: { value: string }) {
+  return (
+    <>
+      {splitMentions(value).map((segment, i) =>
+        segment.type === "text" ? (
+          <span key={i}>{segment.value}</span>
+        ) : (
+          <MuiLink key={i} href={`/u/${segment.handle}`} underline="hover" color="secondary" data-testid="mention-link" sx={{ fontWeight: 700 }}>
+            {segment.value}
+          </MuiLink>
         )
       )}
     </>

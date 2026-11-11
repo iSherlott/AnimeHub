@@ -41,6 +41,7 @@ export function AdminSocialPanels({ events, vote, pool, defaultSeason }: { event
   const [event, setEvent] = useState({ title: "", kind: "CONVENCAO", startsAt: "", endsAt: "", place: "", url: "", partner: "", description: "" });
   const [days, setDays] = useState("3");
   const [poolForm, setPoolForm] = useState({ season: defaultSeason.season, seasonYear: String(defaultSeason.year), closesAt: "", picksPerUser: "5" });
+  const [charForm, setCharForm] = useState({ season: defaultSeason.season, seasonYear: String(defaultSeason.year) });
 
   async function run(action: () => Promise<{ ok: boolean; error?: string }>, success: string) {
     setMessage(null);
@@ -171,6 +172,32 @@ export function AdminSocialPanels({ events, vote, pool, defaultSeason }: { event
             </Button>
           </Box>
         )}
+      </AdminPanel>
+
+      <AdminPanel title="Personagem da temporada" testId="admin-season-character">
+        <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
+          O mais favoritado entre os personagens das obras da temporada (o elenco precisa estar carregado em Elenco e aberturas). Sai no Feed pelo NewsHub; publicar de novo troca a publicação anterior.
+        </Typography>
+        <Box
+          component="form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void run(() => send("/api/admin/season-character", "POST", { season: charForm.season, seasonYear: Number(charForm.seasonYear) }), "Personagem da temporada publicado no Feed.");
+          }}
+          sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "flex-start" }}
+        >
+          <TextField select label="Temporada" size="small" value={charForm.season} onChange={(e) => setCharForm({ ...charForm, season: e.target.value })} sx={{ minWidth: 140 }}>
+            {SEASONS.map(([v, l]) => (
+              <MenuItem key={v} value={v}>
+                {l}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField label="Ano" size="small" type="number" value={charForm.seasonYear} onChange={(e) => setCharForm({ ...charForm, seasonYear: e.target.value })} sx={{ width: 110 }} />
+          <Button type="submit" variant="contained" data-testid="admin-season-character-publish">
+            Publicar personagem da temporada
+          </Button>
+        </Box>
       </AdminPanel>
     </Box>
   );

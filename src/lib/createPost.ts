@@ -9,6 +9,9 @@ import { extractHashtags, MAX_HASHTAGS_PER_POST } from "@/lib/hashtags";
 import { parseSpoilerEpisode, stripSpoilers } from "@/lib/spoilers";
 import { linkHashtagsToPost } from "@/lib/postHashtags";
 import { equippedTitleNames } from "@/lib/quiz";
+import { notifyMentions } from "@/lib/mentions";
+import { parsePollInput } from "@/lib/postPollTypes";
+import { createPostPoll, pollsFor } from "@/lib/postPolls";
 
 export const MAX_POST_BODY_LENGTH = 500;
 export const MAX_POST_IMAGES = 6;
@@ -94,6 +97,11 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
     }
   }
 
+  // Enquete (12/11/2026): opcional, de 2 a 4 opções; precisa de uma pergunta no texto.
+  const pollInput = parsePollInput(body.poll);
+  if (!pollInput.ok) return NextResponse.json({ error: pollInput.error }, { status: 400 });
+  if (pollInput.poll && isBlank(text)) return NextResponse.json({ error: "Escreva a pergunta da enquete no texto da publicação." }, { status: 400 });
+
   // isBlank (não só !text) — ver src/lib/text.ts (achado real da 11ª rodada de auditoria, Epic 18). Como no X, uma
   // publicação pode ser só imagem; vazia de tudo, não.
   if (isBlank(text) && imageUrls.length === 0) {
@@ -160,6 +168,9 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
   });
 
   await linkHashtagsToPost(post.id, hashtags, [anime?.titleRomaji, anime?.titleEnglish]);
+  if (pollInput.poll) await createPostPoll(post.id, pollInput.poll);
+  // Quem foi mencionado com @ recebe o aviso (12/11/2026).
+  await notifyMentions({ actorId: user.id, text, postId: post.id });
 
   return NextResponse.json(
     {
@@ -172,6 +183,7 @@ export async function createPostResponse(user: User, rawBody: unknown, anime: Po
         quotedPost: post.quotedPost,
         authorTitle: (await equippedTitleNames([user.id])).get(user.id) ?? null,
         hasCommunity: post.anilistId !== null ? (await prisma.catalogEntry.count({ where: { anilistId: post.anilistId } })) > 0 : post.catalogEntryId !== null,
+        poll: pollInput.poll ? ((await pollsFor([post.id], user.id)).get(post.id) ?? null) : null,
       }),
     },
     { status: 201 }
