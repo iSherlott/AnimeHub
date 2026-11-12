@@ -77,12 +77,27 @@ type KitsuEpisodesResponse = {
   links?: { next?: string };
 };
 
+/** Erro HTTP da Kitsu, com o código (404 = a obra não existe ou a Kitsu a esconde de quem não está logado). */
+export class KitsuHttpError extends Error {
+  constructor(
+    readonly status: number,
+    body: string
+  ) {
+    super(`Kitsu request failed (${status}): ${body}`);
+    this.name = "KitsuHttpError";
+  }
+}
+
+export function isKitsuNotFound(error: unknown): boolean {
+  return error instanceof KitsuHttpError && error.status === 404;
+}
+
 async function kitsuFetch<T>(path: string, baseUrl: string = KITSU_API_BASE_URL): Promise<T> {
   const res = await fetch(`${baseUrl}${path}`, {
     headers: { Accept: "application/vnd.api+json" },
   });
   if (!res.ok) {
-    throw new Error(`Kitsu request failed (${res.status}): ${await res.text()}`);
+    throw new KitsuHttpError(res.status, await res.text());
   }
   return res.json();
 }

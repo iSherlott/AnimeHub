@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { withAnilist } from "@/lib/episodeState";
-import { getKitsuEpisodeThumbnail, getKitsuIdByAnilistId } from "@/lib/kitsu";
+import { getKitsuEpisodeThumbnail, getKitsuIdByAnilistId, isKitsuNotFound } from "@/lib/kitsu";
 import { startOfDayInZone, DEFAULT_TIME_ZONE } from "@/lib/timeZone";
 
 /**
@@ -124,6 +124,13 @@ export async function syncTargets(
           found += 1;
         }
       } catch (error) {
+        // A Kitsu não mostra mais a obra do vínculo (apagada, ou escondida de quem não está logado, como as +18): não é
+        // falha da busca. O vínculo vira "sem Kitsu" (o calendário usa a capa) e é conferido de novo em 14 dias.
+        if (isKitsuNotFound(error)) {
+          console.warn(`[episode-images] ${target.anilistId}: a Kitsu não mostra a obra ${kitsuId}; vínculo desfeito.`);
+          await prisma.episodeImageSource.upsert({ where: { anilistId: target.anilistId }, create: { anilistId: target.anilistId, kitsuId: null }, update: { kitsuId: null, checkedAt: now } });
+          break;
+        }
         console.error(`[episode-images] ${target.anilistId} EP${episode} falhou:`, error);
         failed += 1;
       }
